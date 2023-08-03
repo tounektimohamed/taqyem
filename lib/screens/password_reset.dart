@@ -98,7 +98,7 @@ class _PasswordResetState extends State<PasswordReset> {
       appBar: AppBar(
         // systemOverlayStyle: const SystemUiOverlayStyle(
         //     statusBarColor: Color.fromARGB(255, 233, 237, 237)),
-        elevation: 0,
+        // elevation: 0,
         // iconTheme: const IconThemeData(
         //   color: Color.fromRGBO(7, 82, 96, 1),
         // ),
@@ -109,7 +109,6 @@ class _PasswordResetState extends State<PasswordReset> {
             // color: const Color.fromRGBO(7, 82, 96, 1),
           ),
         ),
-        // backgroundColor: const Color.fromARGB(255, 233, 237, 237),
         // backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
       ),
       body: Container(

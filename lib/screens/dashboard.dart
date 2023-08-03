@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:mymeds_app/screens/user_profile.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -51,6 +52,14 @@ class _DashboardState extends State<Dashboard> {
                 FirebaseAuth.instance.signOut();
               },
               child: Text('Log out'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) {
+                  return const UserProfile();
+                }));
+              },
+              child: Text('User profile'),
             ),
           ],
         ),
