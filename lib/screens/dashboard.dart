@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:mymeds_app/screens/account_settings.dart';
 import 'package:mymeds_app/screens/user_profile.dart';
 
 class Dashboard extends StatefulWidget {
@@ -60,6 +61,14 @@ class _DashboardState extends State<Dashboard> {
                 }));
               },
               child: Text('User profile'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (context) {
+                  return SettingsPageUI();
+                }));
+              },
+              child: Text('User settings'),
             ),
           ],
         ),

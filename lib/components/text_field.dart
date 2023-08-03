@@ -32,7 +32,7 @@ class Text_Field extends StatelessWidget {
       decoration: InputDecoration(
         hintText: label,
         filled: true,
-        floatingLabelBehavior: FloatingLabelBehavior.never,
+        // floatingLabelBehavior: FloatingLabelBehavior.never,
         // fillColor: Colors.white,
         focusedBorder: const OutlineInputBorder(
           borderRadius: BorderRadius.all(
@@ -54,7 +54,7 @@ class Text_Field extends StatelessWidget {
             color: Colors.transparent,
           ),
         ),
-        // labelText: 'Username',
+        labelText: 'Username',
         labelStyle: const TextStyle(
           color: Color.fromARGB(255, 16, 15, 15),
         ),

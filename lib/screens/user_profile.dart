@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../components/text_field.dart';
+
 class UserProfile extends StatefulWidget {
   const UserProfile({super.key});
 
@@ -12,19 +14,19 @@ class _UserProfileState extends State<UserProfile> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Your profile',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w600,
+        appBar: AppBar(
+          title: Text(
+            'Your profile',
+            style: GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
-      ),
-      body: ListView(
-        children: [
-          //profile pic
-        ],
-      ),
-    );
+        body: Column(
+          children: [
+            //email
+            
+          ],
+        ));
   }
 }
