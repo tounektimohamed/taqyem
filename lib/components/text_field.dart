@@ -54,7 +54,7 @@ class Text_Field extends StatelessWidget {
             color: Colors.transparent,
           ),
         ),
-        labelText: 'Username',
+        // labelText: 'Username',
         labelStyle: const TextStyle(
           color: Color.fromARGB(255, 16, 15, 15),
         ),
