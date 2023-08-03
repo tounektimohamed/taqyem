@@ -98,7 +98,7 @@ class _PasswordResetState extends State<PasswordReset> {
       appBar: AppBar(
         // systemOverlayStyle: const SystemUiOverlayStyle(
         //     statusBarColor: Color.fromARGB(255, 233, 237, 237)),
-        // elevation: 0,
+        elevation: 5,
         // iconTheme: const IconThemeData(
         //   color: Color.fromRGBO(7, 82, 96, 1),
         // ),
@@ -132,6 +132,7 @@ class _PasswordResetState extends State<PasswordReset> {
               //email txtfield
               Text_Field(
                 label: 'Email',
+                hint: 'name@email.com',
                 isPassword: false,
                 keyboard: TextInputType.emailAddress,
                 txtEditController: _emailController,

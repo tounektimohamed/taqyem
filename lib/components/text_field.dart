@@ -6,12 +6,14 @@ class Text_Field extends StatelessWidget {
   const Text_Field({
     super.key,
     required this.label,
+    required this.hint,
     required this.isPassword,
     required this.keyboard,
     required this.txtEditController,
   });
 
   final String label;
+  final String hint;
   final bool isPassword;
   final TextInputType keyboard;
   final TextEditingController txtEditController;
@@ -30,9 +32,9 @@ class Text_Field extends StatelessWidget {
       ),
       cursorColor: const Color.fromARGB(255, 7, 82, 96),
       decoration: InputDecoration(
-        hintText: label,
+        hintText: hint,
         filled: true,
-        // floatingLabelBehavior: FloatingLabelBehavior.never,
+        floatingLabelBehavior: FloatingLabelBehavior.auto,
         // fillColor: Colors.white,
         focusedBorder: const OutlineInputBorder(
           borderRadius: BorderRadius.all(
@@ -54,9 +56,9 @@ class Text_Field extends StatelessWidget {
             color: Colors.transparent,
           ),
         ),
-        // labelText: 'Username',
-        labelStyle: const TextStyle(
-          color: Color.fromARGB(255, 16, 15, 15),
+        labelText: label,
+        labelStyle: GoogleFonts.poppins(
+          color: const Color.fromARGB(255, 16, 15, 15),
         ),
       ),
     );

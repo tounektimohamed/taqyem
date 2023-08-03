@@ -149,6 +149,7 @@ class _SignInState extends State<SignIn> {
                     //email
                     Text_Field(
                       label: 'Email',
+                      hint: 'name@email.com',
                       isPassword: false,
                       keyboard: TextInputType.emailAddress,
                       txtEditController: _emailController,
@@ -159,6 +160,7 @@ class _SignInState extends State<SignIn> {
                     //password
                     Text_Field(
                       label: 'Password',
+                      hint: 'Password',
                       isPassword: true,
                       keyboard: TextInputType.visiblePassword,
                       txtEditController: _passwordController,
