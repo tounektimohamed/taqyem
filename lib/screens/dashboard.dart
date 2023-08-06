@@ -14,26 +14,26 @@ class Dashboard extends StatefulWidget {
 class _DashboardState extends State<Dashboard> {
   final user = FirebaseAuth.instance.currentUser;
 
-  //documnet IDs
-  List<String> docIDs = [];
+  // // documnet IDs
+  // List<String> docIDs = [];
 
-  //get docIDs
-  Future getDocIDs() async {
-    await FirebaseFirestore.instance.collection('users').get().then(
-          (snapshot) => snapshot.docs.forEach(
-            (documnet) {
-              print(documnet.reference);
-              docIDs.add(documnet.reference.id);
-            },
-          ),
-        );
-  }
+  // //get docIDs
+  // Future getDocIDs() async {
+  //   await FirebaseFirestore.instance.collection('users').get().then(
+  //         (snapshot) => snapshot.docs.forEach(
+  //           (documnet) {
+  //             print(documnet.reference);
+  //             docIDs.add(documnet.reference.id);
+  //           },
+  //         ),
+  //       );
+  // }
 
-  @override
-  void initState() {
-    getDocIDs();
-    super.initState();
-  }
+  // @override
+  // void initState() {
+  //   getDocIDs();
+  //   super.initState();
+  // }
 
   @override
   Widget build(BuildContext context) {

@@ -50,17 +50,31 @@ class _SignUpState extends State<SignUp> {
       } else {
         if (isPasswordConfirmed()) {
           //create user
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          UserCredential userCredential =
+              await FirebaseAuth.instance.createUserWithEmailAndPassword(
             email: _emailController.text.trim(),
             password: _passwordController.text.trim(),
           );
 
           //add user data
-          addUserData(
-            _nameController.text.trim(),
-            _dobController.text.trim(),
-            _genderController.text.trim(),
-            _emailController.text.trim(),
+          // addUserData(
+          //   _nameController.text.trim(),
+          //   _dobController.text.trim(),
+          //   _genderController.text.trim(),
+          //   _emailController.text.trim(),
+          // );
+          await FirebaseFirestore.instance
+              .collection('Users')
+              .doc(userCredential.user!.email)
+              .set(
+            {
+              'name': _nameController.text.trim(),
+              'dob': _dobController.text.trim(),
+              'gender': _genderController.text.trim(),
+              'nic': null,
+              'address': null,
+              'mobile': null,
+            },
           );
 
           if (!mounted) {
@@ -96,12 +110,14 @@ class _SignUpState extends State<SignUp> {
 
   Future addUserData(
       String name, String dob, String gender, String email) async {
-    await FirebaseFirestore.instance.collection('users').add({
-      'name': name,
-      'dob': dob,
-      'gender': gender,
-      'email': email,
-    });
+    // await FirebaseFirestore.instance.collection('users').add(
+    //   {
+    //     'name': name,
+    //     'dob': dob,
+    //     'gender': gender,
+    //     'email': email,
+    //   },
+    // );
   }
 
   bool isPasswordConfirmed() {
@@ -519,8 +535,24 @@ class _SignUpState extends State<SignUp> {
                       width: double.infinity,
                       height: 55,
                       child: FilledButton.tonalIcon(
-                        onPressed: () =>
-                            AuthService().signInWithGoogle(context),
+                        onPressed: () async {
+                          UserCredential userCredential =
+                              await AuthService().signInWithGoogle(context);
+                          print(userCredential.user!.email);
+                          await FirebaseFirestore.instance
+                              .collection('Users')
+                              .doc(userCredential.user!.email)
+                              .set(
+                            {
+                              'name': userCredential.user!.displayName,
+                              'dob': null,
+                              'gender': null,
+                              'nic': null,
+                              'address': null,
+                              'mobile': userCredential.user!.phoneNumber,
+                            },
+                          );
+                        },
                         style: const ButtonStyle(
                           // overlayColor:
                           //     MaterialStateProperty.resolveWith<Color>(
