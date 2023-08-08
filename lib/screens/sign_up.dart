@@ -50,17 +50,31 @@ class _SignUpState extends State<SignUp> {
       } else {
         if (isPasswordConfirmed()) {
           //create user
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          UserCredential userCredential =
+              await FirebaseAuth.instance.createUserWithEmailAndPassword(
             email: _emailController.text.trim(),
             password: _passwordController.text.trim(),
           );
 
           //add user data
-          addUserData(
-            _nameController.text.trim(),
-            _dobController.text.trim(),
-            _genderController.text.trim(),
-            _emailController.text.trim(),
+          // addUserData(
+          //   _nameController.text.trim(),
+          //   _dobController.text.trim(),
+          //   _genderController.text.trim(),
+          //   _emailController.text.trim(),
+          // );
+          await FirebaseFirestore.instance
+              .collection('Users')
+              .doc(userCredential.user!.email)
+              .set(
+            {
+              'name': _nameController.text.trim(),
+              'dob': _dobController.text.trim(),
+              'gender': _genderController.text.trim(),
+              'nic': null,
+              'address': null,
+              'mobile': null,
+            },
           );
 
           if (!mounted) {
@@ -96,12 +110,14 @@ class _SignUpState extends State<SignUp> {
 
   Future addUserData(
       String name, String dob, String gender, String email) async {
-    await FirebaseFirestore.instance.collection('users').add({
-      'name': name,
-      'dob': dob,
-      'gender': gender,
-      'email': email,
-    });
+    // await FirebaseFirestore.instance.collection('users').add(
+    //   {
+    //     'name': name,
+    //     'dob': dob,
+    //     'gender': gender,
+    //     'email': email,
+    //   },
+    // );
   }
 
   bool isPasswordConfirmed() {
@@ -142,13 +158,13 @@ class _SignUpState extends State<SignUp> {
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(0),
         child: AppBar(
-          // systemOverlayStyle: const SystemUiOverlayStyle(
-          //     statusBarColor: Color.fromARGB(255, 233, 237, 237)),
-          elevation: 0,
-          // iconTheme: const IconThemeData(
-          //     color: Color.fromRGBO(7, 82, 96, 1),
-          //     ),
-        ),
+            // systemOverlayStyle: const SystemUiOverlayStyle(
+            //     statusBarColor: Color.fromARGB(255, 233, 237, 237)),
+            // elevation: 0,
+            // iconTheme: const IconThemeData(
+            //     color: Color.fromRGBO(7, 82, 96, 1),
+            //     ),
+            ),
       ),
       // backgroundColor: const Color.fromARGB(255, 233, 237, 237),
       body: SafeArea(
@@ -222,6 +238,7 @@ class _SignUpState extends State<SignUp> {
                     //name
                     Text_Field(
                       label: 'Name',
+                      hint: 'FirstName LastName',
                       isPassword: false,
                       keyboard: TextInputType.text,
                       txtEditController: _nameController,
@@ -258,12 +275,16 @@ class _SignUpState extends State<SignUp> {
                         color: const Color.fromARGB(255, 16, 15, 15),
                       ),
                       cursorColor: const Color.fromARGB(255, 7, 82, 96),
-                      decoration: const InputDecoration(
-                        hintText: 'Date of Birth',
+                      decoration: InputDecoration(
+                        hintText: 'DD-MM-YYYY',
+                        labelText: 'Date of Birth',
+                        labelStyle: GoogleFonts.poppins(
+                          color: const Color.fromARGB(255, 16, 15, 15),
+                        ),
                         filled: true,
-                        floatingLabelBehavior: FloatingLabelBehavior.never,
+                        floatingLabelBehavior: FloatingLabelBehavior.auto,
                         // fillColor: Colors.white,
-                        focusedBorder: OutlineInputBorder(
+                        focusedBorder: const OutlineInputBorder(
                           borderRadius: BorderRadius.all(
                             Radius.circular(
                               20,
@@ -273,7 +294,7 @@ class _SignUpState extends State<SignUp> {
                             color: Color.fromARGB(255, 7, 82, 96),
                           ),
                         ),
-                        enabledBorder: OutlineInputBorder(
+                        enabledBorder: const OutlineInputBorder(
                           borderRadius: BorderRadius.all(
                             Radius.circular(
                               20,
@@ -282,9 +303,6 @@ class _SignUpState extends State<SignUp> {
                           borderSide: BorderSide(
                             color: Colors.transparent,
                           ),
-                        ),
-                        labelStyle: TextStyle(
-                          color: Color.fromARGB(255, 16, 15, 15),
                         ),
                       ),
                     ),
@@ -338,7 +356,7 @@ class _SignUpState extends State<SignUp> {
                                   children: <Widget>[
                                     RadioListTile(
                                       value: Genders.male,
-                                      title: Text('Male'),
+                                      title: const Text('Male'),
                                       groupValue: _genderSelected,
                                       onChanged: (Genders? vale) {
                                         setState(
@@ -352,7 +370,7 @@ class _SignUpState extends State<SignUp> {
                                     ),
                                     RadioListTile(
                                       value: Genders.female,
-                                      title: Text('Female'),
+                                      title: const Text('Female'),
                                       groupValue: _genderSelected,
                                       onChanged: (Genders? vale) {
                                         setState(
@@ -366,7 +384,7 @@ class _SignUpState extends State<SignUp> {
                                     ),
                                     RadioListTile(
                                       value: Genders.other,
-                                      title: Text('Other'),
+                                      title: const Text('Other'),
                                       groupValue: _genderSelected,
                                       onChanged: (Genders? vale) {
                                         setState(
@@ -392,12 +410,16 @@ class _SignUpState extends State<SignUp> {
                         color: const Color.fromARGB(255, 16, 15, 15),
                       ),
                       cursorColor: const Color.fromARGB(255, 7, 82, 96),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
+                        labelText: 'Gender',
+                        labelStyle: GoogleFonts.poppins(
+                          color: const Color.fromARGB(255, 16, 15, 15),
+                        ),
                         hintText: 'Gender',
                         filled: true,
-                        floatingLabelBehavior: FloatingLabelBehavior.never,
+                        floatingLabelBehavior: FloatingLabelBehavior.auto,
                         // fillColor: Colors.white,
-                        focusedBorder: OutlineInputBorder(
+                        focusedBorder: const OutlineInputBorder(
                           borderRadius: BorderRadius.all(
                             Radius.circular(
                               20,
@@ -407,7 +429,7 @@ class _SignUpState extends State<SignUp> {
                             color: Color.fromARGB(255, 7, 82, 96),
                           ),
                         ),
-                        enabledBorder: OutlineInputBorder(
+                        enabledBorder: const OutlineInputBorder(
                           borderRadius: BorderRadius.all(
                             Radius.circular(
                               20,
@@ -416,9 +438,6 @@ class _SignUpState extends State<SignUp> {
                           borderSide: BorderSide(
                             color: Colors.transparent,
                           ),
-                        ),
-                        labelStyle: TextStyle(
-                          color: Color.fromARGB(255, 16, 15, 15),
                         ),
                       ),
                     ),
@@ -430,6 +449,7 @@ class _SignUpState extends State<SignUp> {
                     //email
                     Text_Field(
                       label: 'Email',
+                      hint: 'name@email.com',
                       isPassword: false,
                       keyboard: TextInputType.emailAddress,
                       txtEditController: _emailController,
@@ -442,6 +462,7 @@ class _SignUpState extends State<SignUp> {
                     //password
                     Text_Field(
                       label: 'Password',
+                      hint: 'Password',
                       isPassword: true,
                       keyboard: TextInputType.visiblePassword,
                       txtEditController: _passwordController,
@@ -454,6 +475,7 @@ class _SignUpState extends State<SignUp> {
                     //confirm password
                     Text_Field(
                       label: 'Confirm Password',
+                      hint: 'Password',
                       isPassword: true,
                       keyboard: TextInputType.visiblePassword,
                       txtEditController: _confirmpasswordController,
@@ -513,8 +535,24 @@ class _SignUpState extends State<SignUp> {
                       width: double.infinity,
                       height: 55,
                       child: FilledButton.tonalIcon(
-                        onPressed: () =>
-                            AuthService().signInWithGoogle(context),
+                        onPressed: () async {
+                          UserCredential userCredential =
+                              await AuthService().signInWithGoogle(context);
+                          print(userCredential.user!.email);
+                          await FirebaseFirestore.instance
+                              .collection('Users')
+                              .doc(userCredential.user!.email)
+                              .set(
+                            {
+                              'name': userCredential.user!.displayName,
+                              'dob': null,
+                              'gender': null,
+                              'nic': null,
+                              'address': null,
+                              'mobile': userCredential.user!.phoneNumber,
+                            },
+                          );
+                        },
                         style: const ButtonStyle(
                           // overlayColor:
                           //     MaterialStateProperty.resolveWith<Color>(
