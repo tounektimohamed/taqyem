@@ -104,7 +104,7 @@ class _SettingPageUIState extends State<SettingsPageUI> {
         children: [
           Container(
             alignment: Alignment.topLeft,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(35, 0, 35, 0),
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               // crossAxisAlignment: CrossAxisAlignment.center,

@@ -1,8 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mymeds_app/screens/account_settings.dart';
+import 'package:mymeds_app/screens/home.dart';
+import 'package:mymeds_app/screens/medication.dart';
+import 'package:mymeds_app/screens/statistic.dart';
 import 'package:mymeds_app/screens/user_profile.dart';
+import 'package:mymeds_app/screens/settings.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -13,6 +18,12 @@ class Dashboard extends StatefulWidget {
 
 class _DashboardState extends State<Dashboard> {
   final user = FirebaseAuth.instance.currentUser;
+
+  //bottom nav bar
+  int _selectedIndex = 0;
+
+  //Floating Action Button
+  bool isFABvisible = false;
 
   // // documnet IDs
   // List<String> docIDs = [];
@@ -37,41 +48,119 @@ class _DashboardState extends State<Dashboard> {
 
   @override
   Widget build(BuildContext context) {
+    //pages
+    final List<Widget> _pages = <Widget>[
+      //main page
+      Home(),
+      //medication
+      Mediaction(),
+      //statistic
+      Statistic(),
+      //settings
+      AppSettings(),
+    ];
+
+    //scaffold
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Email:  ${user!.email!}',
-            ),
-            // Text(
-            //   'Name:  ${user!.displayName!}',
-            // ),
-            ElevatedButton(
-              onPressed: () {
-                FirebaseAuth.instance.signOut();
-              },
-              child: Text('Log out'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) {
-                  return const UserProfile();
-                }));
-              },
-              child: Text('User profile'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) {
-                  return SettingsPageUI();
-                }));
-              },
-              child: Text('User settings'),
-            ),
-          ],
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(0),
+        child: AppBar(),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: _pages.elementAt(_selectedIndex),
         ),
+      ),
+      //floating action button
+      floatingActionButton: isFABvisible
+          ? FloatingActionButton(
+              onPressed: () {},
+              child: const Icon(Icons.add),
+              // shape: const RoundedRectangleBorder(
+              //   borderRadius: BorderRadius.all(
+              //     Radius.circular(50.0),
+              //   ),
+              // ),
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.background,
+            )
+          : null,
+      // floatingActionButtonLocation:
+      //     FloatingActionButtonLocation.miniCenterDocked,
+      //bottom navigation
+      bottomNavigationBar: NavigationBar(
+        // type: BottomNavigationBarType.fixed,
+        destinations: const [
+          //home
+          NavigationDestination(
+            icon: Icon(
+              Icons.home_outlined,
+              color: Color.fromRGBO(7, 82, 96, 1),
+            ),
+            label: 'Home',
+            selectedIcon: Icon(
+              Icons.home_rounded,
+              color: Color.fromRGBO(7, 82, 96, 1),
+            ),
+          ),
+          //medications
+          NavigationDestination(
+            icon: Icon(
+              Icons.medication_outlined,
+            ),
+            label: 'Medications',
+            selectedIcon: Icon(
+              Icons.medication,
+              color: Color.fromRGBO(7, 82, 96, 1),
+            ),
+          ),
+          //history
+          NavigationDestination(
+            icon: Icon(
+              Icons.analytics_outlined,
+            ),
+            label: 'Statistics',
+            selectedIcon: Icon(
+              Icons.analytics_rounded,
+              color: Color.fromRGBO(7, 82, 96, 1),
+            ),
+          ),
+          //settings
+          NavigationDestination(
+            icon: Icon(
+              Icons.dashboard_customize_outlined,
+            ),
+            label: 'More',
+            selectedIcon: Icon(
+              Icons.dashboard_customize_rounded,
+              color: Color.fromRGBO(7, 82, 96, 1),
+            ),
+          ),
+        ],
+        // unselectedLabelStyle: GoogleFonts.poppins(
+        //   fontWeight: FontWeight.w400,
+        // ),
+        // selectedLabelStyle: GoogleFonts.poppins(
+        //   fontWeight: FontWeight.w600,
+        // ),
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (int) {
+          switch (int) {
+            case 1: //home
+              //show FAB in medication page
+              isFABvisible = true;
+              break;
+            case 0:
+            case 2:
+            case 3:
+              isFABvisible = false;
+              break;
+          }
+
+          setState(() {
+            _selectedIndex = int;
+          });
+        },
       ),
     );
   }
