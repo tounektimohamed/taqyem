@@ -1,5 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:mymeds_app/screens/user_profile.dart';
 import 'package:provider/provider.dart';
 import 'package:mymeds_app/screens/edit_profile.dart';
 import 'package:mymeds_app/screens/help_center.dart';
@@ -227,36 +229,42 @@ class _SettingPageUIState extends State<SettingsPageUI> {
                 //      onChangeFunction3),
                 const SizedBox(height: 10),
                 Center(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 40),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20))),
-                    onPressed: () {},
-                    // child:Text("Sign Out", style:TextStyle(
-                    //   fontSize: 16,
-                    //   letterSpacing: 2.2,
-                    //   color: Color.fromARGB(246, 233, 3, 3)
-                    // )),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.logout,
-                          color: Color.fromARGB(246, 255, 0, 0),
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          "Sign Out",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2.2,
-                            color: Color.fromARGB(246, 255, 0, 0),
-                          ),
-                        ),
-                      ],
-                    ),
+                  // child: OutlinedButton(
+                  //   style: OutlinedButton.styleFrom(
+                  //       padding: const EdgeInsets.symmetric(horizontal: 40),
+                  //       shape: RoundedRectangleBorder(
+                  //           borderRadius: BorderRadius.circular(20))),
+                  //   onPressed: () {},
+                  //   // child:Text("Sign Out", style:TextStyle(
+                  //   //   fontSize: 16,
+                  //   //   letterSpacing: 2.2,
+                  //   //   color: Color.fromARGB(246, 233, 3, 3)
+                  //   // )),
+                  //   child: const Row(
+                  //     mainAxisAlignment: MainAxisAlignment.center,
+                  //     children: [
+                  //       Icon(
+                  //         Icons.logout,
+                  //         color: Color.fromARGB(246, 255, 0, 0),
+                  //       ),
+                  //       SizedBox(width: 5),
+                  //       Text(
+                  //         "Sign Out",
+                  //         style: TextStyle(
+                  //           fontSize: 18,
+                  //           fontWeight: FontWeight.bold,
+                  //           letterSpacing: 2.2,
+                  //           color: Color.fromARGB(246, 255, 0, 0),
+                  //         ),
+                  //       ),
+                  //     ],
+                  //   ),
+                  // ),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      FirebaseAuth.instance.signOut();
+                    },
+                    child: Text('Sign out'),
                   ),
                 )
               ],
@@ -322,7 +330,7 @@ class _SettingPageUIState extends State<SettingsPageUI> {
         if (title == "   Edit Profile") {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => EditProfilePage()),
+            MaterialPageRoute(builder: (context) => UserProfile()),
           );
         } else if (title == "   Notification Settings") {
           Navigator.push(
