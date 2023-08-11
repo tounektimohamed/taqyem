@@ -78,7 +78,10 @@ flutter:
     - lib/assets/icon.png
     - lib/assets/icon_small.png
     - lib/assets/user.png
+    
+    - lib/assets/images/medication.gif
 
+flutter_gif: any // or the latest version on Pub
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
