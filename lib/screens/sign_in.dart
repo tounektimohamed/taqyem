@@ -126,7 +126,7 @@ class _SignInState extends State<SignIn> {
                     //app name
                     Text(
                       'MyMeds',
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.roboto(
                         fontSize: 30,
                         fontWeight: FontWeight.w600,
                         color: const Color.fromRGBO(7, 82, 96, 1),
@@ -138,7 +138,7 @@ class _SignInState extends State<SignIn> {
                     //text
                     Text(
                       'Welcome back!',
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.roboto(
                         fontSize: 35,
                         color: const Color.fromARGB(255, 16, 15, 15),
                       ),
@@ -209,7 +209,7 @@ class _SignInState extends State<SignIn> {
                           ),
                           child: Text(
                             'Forgot password?',
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.roboto(
                               fontSize: 15,
                               // color: const Color.fromARGB(255, 7, 82, 96),
                             ),
@@ -239,7 +239,7 @@ class _SignInState extends State<SignIn> {
                         ),
                         child: Text(
                           'Sign In',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.roboto(
                             fontSize: 25,
                             fontWeight: FontWeight.w600,
                           ),
@@ -251,7 +251,7 @@ class _SignInState extends State<SignIn> {
                     ),
                     Text(
                       'or',
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.roboto(
                         fontSize: 15,
                         color: const Color.fromARGB(255, 67, 63, 63),
                       ),
@@ -299,7 +299,7 @@ class _SignInState extends State<SignIn> {
                         ),
                         label: Text(
                           'Continue with Google',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.roboto(
                             fontSize: 20,
                             // color: const Color.fromARGB(255, 7, 82, 96),
                           ),
@@ -315,7 +315,7 @@ class _SignInState extends State<SignIn> {
                       children: [
                         Text(
                           'Don\'t have an account? ',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.roboto(
                             fontSize: 15,
                             color: const Color.fromARGB(255, 67, 63, 63),
                           ),
@@ -348,7 +348,7 @@ class _SignInState extends State<SignIn> {
                           ),
                           child: Text(
                             'Sign Up',
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.roboto(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                               // color: const Color.fromARGB(255, 7, 82, 96),

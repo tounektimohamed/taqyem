@@ -137,10 +137,10 @@ class _DashboardState extends State<Dashboard> {
             ),
           ),
         ],
-        // unselectedLabelStyle: GoogleFonts.poppins(
+        // unselectedLabelStyle: GoogleFonts.roboto(
         //   fontWeight: FontWeight.w400,
         // ),
-        // selectedLabelStyle: GoogleFonts.poppins(
+        // selectedLabelStyle: GoogleFonts.roboto(
         //   fontWeight: FontWeight.w600,
         // ),
         selectedIndex: _selectedIndex,

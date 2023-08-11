@@ -1,8 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_timeline_calendar/timeline/flutter_timeline_calendar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mymeds_app/components/time_line.dart';
-import 'package:mymeds_app/screens/user_profile.dart';
 import 'package:timeline_tile/timeline_tile.dart';
 
 import 'account_settings.dart';
@@ -38,7 +38,7 @@ class _HomeState extends State<Home> {
                       //app name
                       Text(
                         'MyMeds',
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.roboto(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
                           color: const Color.fromRGBO(7, 82, 96, 1),
@@ -117,31 +117,62 @@ class _HomeState extends State<Home> {
         //calendar
         Container(
           alignment: Alignment.center,
-          height: 50,
-          child: Text('Calendar'),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(0, 20, 0, 20),
+            child: TimelineCalendar(
+              calendarType: CalendarType.GREGORIAN,
+              calendarLanguage: "en",
+              calendarOptions: CalendarOptions(
+                viewType: ViewType.DAILY,
+                toggleViewType: false,
+                headerMonthElevation: 0,
+              ),
+              dayOptions: DayOptions(
+                compactMode: true,
+                dayFontSize: 15,
+                weekDaySelectedColor: Theme.of(context).colorScheme.primary,
+                selectedBackgroundColor: Theme.of(context).colorScheme.primary,
+                disableDaysBeforeNow: false,
+              ),
+              headerOptions: HeaderOptions(
+                  weekDayStringType: WeekDayStringTypes.SHORT,
+                  monthStringType: MonthStringTypes.FULL,
+                  backgroundColor: Colors.transparent,
+                  headerTextColor: Colors.black),
+              onChangeDateTime: (datetime) {
+                print(datetime.getDate());
+              },
+            ),
+          ),
         ),
 
         //date text
         Container(
-          padding: EdgeInsets.fromLTRB(20, 0, 20, 0),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               //title
               Text(
                 'Today',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.roboto(
                   fontSize: 30,
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              const SizedBox(
+                height: 10,
+              ),
               //reminder text
               Text(
                 'You currently have no reminders',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.roboto(
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
                 ),
+              ),
+              const SizedBox(
+                height: 10,
               ),
             ],
           ),
@@ -161,26 +192,46 @@ class _HomeState extends State<Home> {
                   isFirst: true,
                   isLast: false,
                   isPast: true,
+                  medName: 'Vitamin C',
+                  dosage: '1 Capsule',
+                  time: '06:00 am',
+                  isTaken: true,
                 ),
                 TimeLine(
                   isFirst: false,
                   isLast: false,
                   isPast: true,
+                  medName: 'Panadol',
+                  dosage: '2 Tablets',
+                  time: '08:00 am',
+                  isTaken: false,
                 ),
                 TimeLine(
                   isFirst: false,
                   isLast: false,
                   isPast: false,
+                  medName: 'Vitamin D',
+                  dosage: '0.5 Capsule',
+                  time: '02:00 pm',
+                  isTaken: false,
                 ),
                 TimeLine(
                   isFirst: false,
                   isLast: false,
                   isPast: false,
+                  medName: 'Salbutimola',
+                  dosage: '1.5 Capsule',
+                  time: '03:00 pm',
+                  isTaken: false,
                 ),
                 TimeLine(
                   isFirst: false,
                   isLast: true,
                   isPast: false,
+                  medName: 'Vitamin E',
+                  dosage: '1 Tablet',
+                  time: '06:00 pm',
+                  isTaken: false,
                 ),
               ],
             ),
