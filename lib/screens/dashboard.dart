@@ -8,6 +8,7 @@ import 'package:mymeds_app/screens/medication.dart';
 import 'package:mymeds_app/screens/statistic.dart';
 import 'package:mymeds_app/screens/user_profile.dart';
 import 'package:mymeds_app/screens/settings.dart';
+import 'package:mymeds_app/screens/add_medication1.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -74,7 +75,14 @@ class _DashboardState extends State<Dashboard> {
       //floating action button
       floatingActionButton: isFABvisible
           ? FloatingActionButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddMedication1(),
+                  ),
+                );
+              },
               child: const Icon(Icons.add),
               // shape: const RoundedRectangleBorder(
               //   borderRadius: BorderRadius.all(
