@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mymeds_app/screens/add_medication1.dart';
+import 'package:mymeds_app/screens/home.dart';
 
 class Mediaction extends StatefulWidget {
   const Mediaction({super.key});
@@ -48,7 +49,7 @@ class _MediactionState extends State<Mediaction> {
 
         leading: IconButton(
           icon: const Icon(
-            Icons.search,
+            Icons.arrow_back_ios,
             color: Colors.black,
           ),
           padding: const EdgeInsets.only(left: 20),
@@ -60,16 +61,14 @@ class _MediactionState extends State<Mediaction> {
         actions: [
           IconButton(
             icon: const Icon(
-              Icons.close,
+              Icons.search,
               color: Colors.black,
             ),
             padding: const EdgeInsets.only(right: 20),
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(
-                  builder: (context) => const AddMedication1(),
-                ),
+                MaterialPageRoute(builder: (context) => const Home()),
               );
             },
           ),
