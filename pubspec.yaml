@@ -45,6 +45,7 @@ dependencies:
   cloud_firestore: ^4.8.4
   timeline_tile: ^2.0.0
   time_picker_spinner: any
+  flutter_timeline_calendar: ^1.0.9
 
 dev_dependencies:
   flutter_test:

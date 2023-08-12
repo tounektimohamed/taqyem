@@ -104,7 +104,7 @@ class _PasswordResetState extends State<PasswordReset> {
         // ),
         title: Text(
           'Reset your password',
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.roboto(
             fontWeight: FontWeight.w600,
             // color: const Color.fromRGBO(7, 82, 96, 1),
           ),
@@ -120,7 +120,7 @@ class _PasswordResetState extends State<PasswordReset> {
               //text
               Text(
                 'Enter the email address associated with your account',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.roboto(
                   fontSize: 20,
                   color: const Color.fromARGB(255, 16, 15, 15),
                 ),
@@ -161,7 +161,7 @@ class _PasswordResetState extends State<PasswordReset> {
                   ),
                   child: Text(
                     'Reset Password',
-                    style: GoogleFonts.poppins(
+                    style: GoogleFonts.roboto(
                       fontSize: 25,
                     ),
                   ),

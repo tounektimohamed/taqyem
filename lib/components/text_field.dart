@@ -26,7 +26,7 @@ class Text_Field extends StatelessWidget {
       // keyboardType: isEmail ? TextInputType.emailAddress : TextInputType.name,
       obscureText: isPassword,
       controller: txtEditController,
-      style: GoogleFonts.poppins(
+      style: GoogleFonts.roboto(
         height: 2,
         color: const Color.fromARGB(255, 16, 15, 15),
       ),
@@ -57,7 +57,7 @@ class Text_Field extends StatelessWidget {
           ),
         ),
         labelText: label,
-        labelStyle: GoogleFonts.poppins(
+        labelStyle: GoogleFonts.roboto(
           color: const Color.fromARGB(255, 16, 15, 15),
         ),
       ),
