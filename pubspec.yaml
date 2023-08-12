@@ -44,6 +44,7 @@ dependencies:
   flutter_holo_date_picker: ^1.1.0
   cloud_firestore: ^4.8.4
   timeline_tile: ^2.0.0
+  time_picker_spinner: any
   flutter_timeline_calendar: ^1.0.9
 
 dev_dependencies:
@@ -79,7 +80,7 @@ flutter:
     - lib/assets/icon.png
     - lib/assets/icon_small.png
     - lib/assets/user.png
-    
+
     - lib/assets/images/medication.gif
 
 flutter_gif: any // or the latest version on Pub
