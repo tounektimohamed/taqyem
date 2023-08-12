@@ -82,40 +82,33 @@ class _MediactionState extends State<Mediaction> {
           Container(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
             alignment: Alignment.topCenter,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        //medication gif
-                        Image.asset(
-                          'assets/images/medication.gif',
-                          height: 200,
-                          width: 200,
-                        ),
-                      ],
-                    ),
-                    //title
-                    Text(
-                      'Medication',
-                      style: GoogleFonts.poppins(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    //reminder text
-                    Text(
-                      'You currently have no reminders',
-                      style: GoogleFonts.poppins(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                      ),
+                    //medication gif
+                    Image.asset(
+                      'lib/assets/images/medication.gif',
                     ),
                   ],
+                ),
+                //title
+                Text(
+                  'Medication',
+                  style: GoogleFonts.poppins(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                //reminder text
+                Text(
+                  'You currently have no reminders',
+                  style: GoogleFonts.poppins(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ],
             ),

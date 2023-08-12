@@ -186,7 +186,7 @@ class _SignUpState extends State<SignUp> {
                           flex: 1,
                           child: Text(
                             'Let\'s \nGet Started',
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.roboto(
                               fontSize: 35,
                               height: 1.0,
                               color: const Color.fromARGB(255, 16, 15, 15),
@@ -203,7 +203,7 @@ class _SignUpState extends State<SignUp> {
                             //title
                             Text(
                               'MyMeds',
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.roboto(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w600,
                                 color: const Color.fromRGBO(7, 82, 96, 1),
@@ -270,7 +270,7 @@ class _SignUpState extends State<SignUp> {
                       },
                       controller: _dobController,
                       readOnly: true,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.roboto(
                         height: 2,
                         color: const Color.fromARGB(255, 16, 15, 15),
                       ),
@@ -278,7 +278,7 @@ class _SignUpState extends State<SignUp> {
                       decoration: InputDecoration(
                         hintText: 'DD-MM-YYYY',
                         labelText: 'Date of Birth',
-                        labelStyle: GoogleFonts.poppins(
+                        labelStyle: GoogleFonts.roboto(
                           color: const Color.fromARGB(255, 16, 15, 15),
                         ),
                         filled: true,
@@ -343,7 +343,7 @@ class _SignUpState extends State<SignUp> {
                           return AlertDialog(
                             title: Text(
                               'Select your gender',
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.roboto(
                                 color: const Color.fromARGB(255, 16, 15, 15),
                               ),
                             ),
@@ -405,14 +405,14 @@ class _SignUpState extends State<SignUp> {
                       ),
                       controller: _genderController,
                       readOnly: true,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.roboto(
                         height: 2,
                         color: const Color.fromARGB(255, 16, 15, 15),
                       ),
                       cursorColor: const Color.fromARGB(255, 7, 82, 96),
                       decoration: InputDecoration(
                         labelText: 'Gender',
-                        labelStyle: GoogleFonts.poppins(
+                        labelStyle: GoogleFonts.roboto(
                           color: const Color.fromARGB(255, 16, 15, 15),
                         ),
                         hintText: 'Gender',
@@ -506,7 +506,7 @@ class _SignUpState extends State<SignUp> {
                         ),
                         child: Text(
                           'Sign Up',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.roboto(
                             fontSize: 25,
                             fontWeight: FontWeight.w600,
                           ),
@@ -520,7 +520,7 @@ class _SignUpState extends State<SignUp> {
 
                     Text(
                       'or',
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.roboto(
                         fontSize: 15,
                         color: const Color.fromARGB(255, 67, 63, 63),
                       ),
@@ -583,7 +583,7 @@ class _SignUpState extends State<SignUp> {
                         ),
                         label: Text(
                           'Sign up with Google',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.roboto(
                             fontSize: 20,
                             // color: const Color.fromARGB(255, 7, 82, 96),
                           ),
@@ -599,7 +599,7 @@ class _SignUpState extends State<SignUp> {
                       children: [
                         Text(
                           'Already have an account?',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.roboto(
                             fontSize: 15,
                             color: const Color.fromARGB(255, 67, 63, 63),
                           ),
@@ -632,7 +632,7 @@ class _SignUpState extends State<SignUp> {
                           ),
                           child: Text(
                             'Sign In',
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.roboto(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
                               // color: const Color.fromARGB(255, 7, 82, 96),

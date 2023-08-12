@@ -20,13 +20,13 @@ class Alert_Dialog extends StatelessWidget {
     return AlertDialog(
       title: Text(
         alertTitle,
-        style: GoogleFonts.poppins(
+        style: GoogleFonts.roboto(
           color: const Color.fromARGB(255, 16, 15, 15),
         ),
       ),
       content: Text(
         errorMessage,
-        style: GoogleFonts.poppins(
+        style: GoogleFonts.roboto(
           color: isError
               ? const Color.fromRGBO(255, 16, 15, 15)
               : const Color.fromRGBO(7, 82, 96, 1),
@@ -36,7 +36,7 @@ class Alert_Dialog extends StatelessWidget {
         TextButton(
           child: Text(
             buttonText,
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.roboto(
               fontWeight: FontWeight.w600,
               color: const Color.fromARGB(255, 16, 15, 15),
             ),

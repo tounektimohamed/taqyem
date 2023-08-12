@@ -1,14 +1,3 @@
-//here the use should be able to add a medication to the database.
-//the user should be able to add the name of the medication, type of the medication, the available quantity, the dosage, the frequency, and the time of day.
-//the user should also be able to add a reminder for the medication.
-//the user should be able to add a note for the medication.
-//the user should be able to add a photo of the medication.
-
-/*
-This file should include the UI and the functions for adding a medication to the database.
-And this file should be called from the medication.dart file.
-*/
-
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:mymeds_app/auth/main_page.dart';
