@@ -47,7 +47,7 @@ class _UserProfileState extends State<UserProfile> {
       appBar: AppBar(
         title: Text(
           'Your profile',
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.roboto(
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -106,7 +106,7 @@ class _UserProfileState extends State<UserProfile> {
                     Text(
                       '${currentUser!.email}',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.roboto(
                         fontSize: 15,
                         color: const Color.fromARGB(255, 16, 15, 15),
                       ),
@@ -119,7 +119,7 @@ class _UserProfileState extends State<UserProfile> {
                       children: [
                         Text(
                           'Basic Info',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.roboto(
                             fontSize: 15,
                             color: const Color.fromARGB(255, 16, 15, 15),
                           ),
@@ -166,7 +166,7 @@ class _UserProfileState extends State<UserProfile> {
                       },
                       controller: _dobController,
                       readOnly: true,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.roboto(
                         height: 2,
                         color: const Color.fromARGB(255, 16, 15, 15),
                       ),
@@ -174,7 +174,7 @@ class _UserProfileState extends State<UserProfile> {
                       decoration: InputDecoration(
                         hintText: 'DD-MM-YYYY',
                         labelText: 'Date of Birth',
-                        labelStyle: GoogleFonts.poppins(
+                        labelStyle: GoogleFonts.roboto(
                           color: const Color.fromARGB(255, 16, 15, 15),
                         ),
                         filled: true,
@@ -215,7 +215,7 @@ class _UserProfileState extends State<UserProfile> {
                           return AlertDialog(
                             title: Text(
                               'Select your gender',
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.roboto(
                                 color: const Color.fromARGB(255, 16, 15, 15),
                               ),
                             ),
@@ -277,14 +277,14 @@ class _UserProfileState extends State<UserProfile> {
                       ),
                       controller: _genderController,
                       readOnly: true,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.roboto(
                         height: 2,
                         color: const Color.fromARGB(255, 16, 15, 15),
                       ),
                       cursorColor: const Color.fromARGB(255, 7, 82, 96),
                       decoration: InputDecoration(
                         labelText: 'Gender',
-                        labelStyle: GoogleFonts.poppins(
+                        labelStyle: GoogleFonts.roboto(
                           color: const Color.fromARGB(255, 16, 15, 15),
                         ),
                         hintText: 'Gender',
@@ -334,7 +334,7 @@ class _UserProfileState extends State<UserProfile> {
                       children: [
                         Text(
                           'Contact Info',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.roboto(
                             fontSize: 15,
                             color: const Color.fromARGB(255, 16, 15, 15),
                           ),
@@ -389,7 +389,7 @@ class _UserProfileState extends State<UserProfile> {
                         ),
                         child: Text(
                           'Save',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.roboto(
                             fontSize: 25,
                             fontWeight: FontWeight.w600,
                           ),
