@@ -4,16 +4,36 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_holo_date_picker/flutter_holo_date_picker.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mymeds_app/components/text_field.dart';
-
 import 'add_medication2.dart';
+import 'package:mymeds_app/components/category_model.dart';
 // import 'package:time_picker_spinner/time_picker_spinner.dart';
 // import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
 // import 'package:show_time_picker/show_time_picker.dart';
 
 class AddMedication1 extends StatefulWidget {
-  const AddMedication1({Key? key}) : super(key: key);
+  // List<Category> categories = [
+  //   Category('Pill', Icons.medication),
+  //   Category('Liquid', Icons.medication),
+  //   Category('Inhaler', Icons.medication),
+  //   Category('Injection', Icons.medication),
+  //   Category('Cream', Icons.medication),
+  //   Category('Patch', Icons.medication),
+  //   Category('Suppository', Icons.medication),
+  //   Category('Other', Icons.medication),
+  // ];
+
+  List<CategoryModel> categories = [];
+
+  void _getInitialInfo() {
+    categories = CategoryModel.getCategories();
+  }
+
+  // void _getCategories() {
+  //   categories = CategoryModel.getCategories();
+  // }
 
   @override
   _AddMedication1State createState() => _AddMedication1State();
@@ -91,6 +111,12 @@ class _AddMedication1State extends State<AddMedication1> {
   final _medicationPhotoController = TextEditingController();
 
   // var time = DateTime.now();
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    widget._getInitialInfo();
+  }
 
   void _openImagePicker() {
     // Implement your image picker logic here
@@ -99,6 +125,7 @@ class _AddMedication1State extends State<AddMedication1> {
 
   @override
   Widget build(BuildContext context) {
+    widget._getInitialInfo();
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -131,7 +158,7 @@ class _AddMedication1State extends State<AddMedication1> {
                 onTap: _openImagePicker,
                 child: Container(
                   margin: const EdgeInsets.only(
-                      left: 80, right: 80, top: 16, bottom: 16),
+                      left: 20, right: 20, top: 16, bottom: 10),
                   height: 100,
                   width: 100,
                   decoration: BoxDecoration(
@@ -141,13 +168,108 @@ class _AddMedication1State extends State<AddMedication1> {
                   child: Icon(Icons.add_a_photo, size: 50),
                 ),
               ),
-              SizedBox(height: 16),
+              const Padding(
+                padding: EdgeInsets.only(top: 16, left: 10),
+                child: Text(
+                  'Name',
+                  style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600),
+                ),
+              ),
+              SizedBox(height: 8),
               Text_Field(
                 label: 'Medication Name',
                 hint: 'Medicine',
                 isPassword: false,
                 keyboard: TextInputType.text,
                 txtEditController: _medicationNameController,
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 20, left: 10),
+                child: Text(
+                  'Category',
+                  style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600),
+                ),
+              ),
+              const SizedBox(
+                height: 15,
+              ),
+              Container(
+                height: 120,
+                child: ListView.separated(
+                  itemCount: widget.categories.length,
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.only(left: 10, right: 20),
+                  separatorBuilder: (context, index) => const SizedBox(
+                    width: 25,
+                  ),
+                  itemBuilder: (context, index) {
+                    return Container(
+                      width: 100,
+                      decoration: BoxDecoration(
+                          color: widget.categories[index].boxColor
+                              .withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(16)),
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            widget.categories[index].isSelected =
+                                !widget.categories[index].isSelected;
+
+                            //   if (widget.categories[index].isSelected) {
+                            //     widget.selectedCategories
+                            //         .add(widget.categories[index]);
+                            //   } else {
+                            //     widget.selectedCategories
+                            //         .remove(widget.categories[index]);
+                            //   }
+                          });
+                        },
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Container(
+                                width: 50,
+                                height: 50,
+                                decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Image.asset(
+                                    widget.categories[index].iconPath,
+                                  ),
+                                )
+                                // child: const Icon(Icons.medication)),
+                                ),
+                            Text(
+                              widget.categories[index].name,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w400,
+                                  color: Colors.black,
+                                  fontSize: 14),
+                            )
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.only(top: 20, left: 10),
+                child: Text(
+                  'Strength',
+                  style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600),
+                ),
               ),
               SizedBox(height: 20),
               Row(
@@ -165,7 +287,7 @@ class _AddMedication1State extends State<AddMedication1> {
                       cursorColor: const Color.fromARGB(255, 7, 82, 96),
                       decoration: InputDecoration(
                         hintText: '0.0',
-                        labelText: 'Medication Strength',
+                        labelText: 'Strength Value',
                         labelStyle: GoogleFonts.poppins(
                           color: const Color.fromARGB(255, 16, 15, 15),
                         ),
@@ -307,13 +429,9 @@ class _AddMedication1State extends State<AddMedication1> {
               SizedBox(height: 16),
               TextFormField(
                 controller: _medicationNoteController,
-                decoration: InputDecoration(labelText: 'Medication Note'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter the medication note';
-                  }
-                  return null;
-                },
+                decoration: InputDecoration(
+                    labelText: 'Medication Note',
+                    hintText: 'Take note about this medication'),
               ),
               SizedBox(height: 24),
               ElevatedButton(
