@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_holo_date_picker/flutter_holo_date_picker.dart';
 // import 'package:flutter_holo_date_picker/flutter_holo_date_picker.dart';
 // import 'package:flutter_spinner_picker/flutter_spinner_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -27,7 +28,7 @@ class _AddMedication1State extends State<AddMedication2> {
   final _formKey = GlobalKey<FormState>();
   final _medicationNameController = TextEditingController();
   final _medicationTypeController = TextEditingController();
-  final _medicationStrengthController = TextEditingController();
+  var _startingDateController = TextEditingController();
   final _medicationQuantityController = TextEditingController();
   final _medicationDosageController = TextEditingController();
   final _medicationFrequencyController = TextEditingController();
@@ -84,41 +85,13 @@ class _AddMedication1State extends State<AddMedication2> {
             children: [
               SizedBox(height: 16),
               Text_Field(
-                label: 'Medication Dose',
-                hint: '2',
+                label: 'Medication Freqency',
+                hint: 'Everyday',
                 isPassword: false,
                 keyboard: TextInputType.text,
                 txtEditController: _medicationNameController,
               ),
-              // SizedBox(height: 16),
-              // TextButton(
-              //   onPressed: () {
-              //     Navigator.of(context).push(
-              //       showPicker(
-              //         context: context,
-              //         value: _medicationTimeOfDayController.text == ''
-              //             ? TimeOfDay.now()
-              //             : TimeOfDay(
-              //                 hour: int.parse(_medicationTimeOfDayController
-              //                     .text
-              //                     .split(':')[0]),
-              //                 minute: int.parse(_medicationTimeOfDayController
-              //                     .text
-              //                     .split(':')[1]),
-              //               ),
-              //         sunrise: TimeOfDay(hour: 6, minute: 0), // optional
-              //         sunset: TimeOfDay(hour: 18, minute: 0), // optional
-              //         duskSpanInMinutes: 120, // optional
-              //         onChange: _medicationTimeOfDayController.text =
-              //             _time.format(context),
-              //       ),
-              //     );
-              //   },
-              //   child: Text(
-              //     "Open time picker",
-              //     style: TextStyle(color: Colors.white),
-              //   ),
-              // ),
+
               SizedBox(height: 16),
               TextField(
                 onTap: () {
@@ -172,6 +145,66 @@ class _AddMedication1State extends State<AddMedication2> {
                   ),
                 ),
               ),
+
+              SizedBox(height: 16),
+              TextField(
+                onTap: () async {
+                  var datePicked = await DatePicker.showSimpleDatePicker(
+                    context,
+                    titleText: 'Select the Starting Date',
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2099),
+                    dateFormat: "dd-MMMM-yyyy",
+                    locale: DateTimePickerLocale.en_us,
+                    looping: true,
+                  );
+                  String date =
+                      '${datePicked!.day}-${datePicked.month}-${datePicked.year}';
+
+                  setState(() {
+                    _startingDateController = TextEditingController(text: date);
+                  });
+                },
+                controller: _startingDateController,
+                readOnly: true,
+                style: GoogleFonts.roboto(
+                  height: 2,
+                  color: const Color.fromARGB(255, 16, 15, 15),
+                ),
+                cursorColor: const Color.fromARGB(255, 7, 82, 96),
+                decoration: InputDecoration(
+                  hintText: 'DD-MM-YYYY',
+                  labelText: 'Starting Date',
+                  labelStyle: GoogleFonts.roboto(
+                    color: const Color.fromARGB(255, 16, 15, 15),
+                  ),
+                  filled: true,
+                  floatingLabelBehavior: FloatingLabelBehavior.auto,
+                  // fillColor: Colors.white,
+                  focusedBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(
+                        20,
+                      ),
+                    ),
+                    borderSide: BorderSide(
+                      color: Color.fromARGB(255, 7, 82, 96),
+                    ),
+                  ),
+                  enabledBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(
+                        20,
+                      ),
+                    ),
+                    borderSide: BorderSide(
+                      color: Colors.transparent,
+                    ),
+                  ),
+                ),
+              ),
+
               // SizedBox(height: 16),
               // TextFormField(
               //   controller: _medicationReminderController,

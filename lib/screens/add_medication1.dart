@@ -96,6 +96,29 @@ String unitToString(Units unit) {
 
 Units? _units;
 
+// class Category {
+//   final String name;
+//   final String iconPath;
+//   Color boxColor;
+//   bool isSelected;
+
+//   Category({
+//     required this.name,
+//     required this.iconPath,
+//     this.boxColor = Colors.white,
+//     this.isSelected = false,
+//   });
+// }
+
+// class CategoriesWidget extends StatefulWidget {
+//   final List<Category> categories;
+
+//   CategoriesWidget({required this.categories});
+
+//   @override
+//   _AddMedication1State createState() => _AddMedication1State();
+// }
+
 class _AddMedication1State extends State<AddMedication1> {
   final user = FirebaseAuth.instance.currentUser;
   final _formKey = GlobalKey<FormState>();
@@ -218,17 +241,23 @@ class _AddMedication1State extends State<AddMedication1> {
                       child: GestureDetector(
                         onTap: () {
                           setState(() {
-                            widget.categories[index].isSelected =
-                                !widget.categories[index].isSelected;
-
-                            //   if (widget.categories[index].isSelected) {
-                            //     widget.selectedCategories
-                            //         .add(widget.categories[index]);
-                            //   } else {
-                            //     widget.selectedCategories
-                            //         .remove(widget.categories[index]);
-                            //   }
+                            widget.categories[index].boxColor =
+                                const Color.fromARGB(255, 7, 82, 96);
+                            widget.categories[index].isSelected = true;
                           });
+
+                          for (int i = 0; i < widget.categories.length; i++) {
+                            if (i != index) {
+                              setState(() {
+                                widget.categories[i].boxColor =
+                                    Colors.transparent;
+                                widget.categories[i].isSelected = false;
+                              });
+                            }
+                          }
+
+                          _medicationTypeController.text =
+                              widget.categories[index].name;
                         },
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -244,9 +273,7 @@ class _AddMedication1State extends State<AddMedication1> {
                                   child: Image.asset(
                                     widget.categories[index].iconPath,
                                   ),
-                                )
-                                // child: const Icon(Icons.medication)),
-                                ),
+                                )),
                             Text(
                               widget.categories[index].name,
                               style: const TextStyle(
