@@ -26,7 +26,7 @@ class _MediactionState extends State<Mediaction> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const AddMedication1(),
+            builder: (context) => AddMedication1(),
           ),
         );
       },
@@ -47,16 +47,6 @@ class _MediactionState extends State<Mediaction> {
           ),
         ),
 
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios,
-            color: Colors.black,
-          ),
-          padding: const EdgeInsets.only(left: 20),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
         centerTitle: true,
         actions: [
           IconButton(
@@ -66,7 +56,7 @@ class _MediactionState extends State<Mediaction> {
             ),
             padding: const EdgeInsets.only(right: 20),
             onPressed: () {
-              Navigator.push(
+              Navigator.pop(
                 context,
                 MaterialPageRoute(builder: (context) => const Home()),
               );

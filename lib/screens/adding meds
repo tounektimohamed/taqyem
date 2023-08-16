@@ -383,4 +383,20 @@ onTap: () => showDialog(
                   ),
                 ),
 
-                
+      
+      
+               var timePicked = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+                  //In 24 hours format
+                  // String time = '${timePicked!.hour}:${timePicked.minute}';
+                  //In 12 hours format
+                  String time = timePicked!.format(context);
+
+                  setState(() {
+                    _medicationTimeOfDayController =
+                        TextEditingController(text: time);
+                  });
+                    
+                    

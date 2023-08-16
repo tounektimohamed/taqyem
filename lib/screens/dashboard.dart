@@ -79,7 +79,7 @@ class _DashboardState extends State<Dashboard> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const AddMedication1(),
+                    builder: (context) => AddMedication1(),
                   ),
                 );
               },
