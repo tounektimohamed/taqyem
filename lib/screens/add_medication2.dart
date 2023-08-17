@@ -4,12 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_holo_date_picker/flutter_holo_date_picker.dart';
+// import 'package:flutter_holo_date_picker/flutter_holo_date_picker.dart';
+// import 'package:flutter_spinner_picker/flutter_spinner_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mymeds_app/components/text_field.dart';
-
-import 'add_medication2.dart';
+// import 'package:flutter_spinner_picker/flutter_spinner_picker.dart';
+// import 'add_medication2.dart';
 // import 'package:time_picker_spinner/time_picker_spinner.dart';
-// import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
+
+import 'package:day_night_time_picker/day_night_time_picker.dart';
+
 // import 'package:show_time_picker/show_time_picker.dart';
 
 class AddMedication2 extends StatefulWidget {
@@ -24,7 +28,7 @@ class _AddMedication1State extends State<AddMedication2> {
   final _formKey = GlobalKey<FormState>();
   final _medicationNameController = TextEditingController();
   final _medicationTypeController = TextEditingController();
-  final _medicationStrengthController = TextEditingController();
+  var _startingDateController = TextEditingController();
   final _medicationQuantityController = TextEditingController();
   final _medicationDosageController = TextEditingController();
   final _medicationFrequencyController = TextEditingController();
@@ -32,6 +36,15 @@ class _AddMedication1State extends State<AddMedication2> {
   final _medicationReminderController = TextEditingController();
   final _medicationNoteController = TextEditingController();
   final _medicationPhotoController = TextEditingController();
+
+  Time _time = Time(hour: 11, minute: 30, second: 20);
+  bool iosStyle = true;
+
+  void onTimeChanged(Time newTime) {
+    setState(() {
+      _time = newTime;
+    });
+  }
 
   // var time = DateTime.now();
 
@@ -72,28 +85,27 @@ class _AddMedication1State extends State<AddMedication2> {
             children: [
               SizedBox(height: 16),
               Text_Field(
-                label: 'Medication Name',
-                hint: 'Vitamin C',
+                label: 'Medication Freqency',
+                hint: 'Everyday',
                 isPassword: false,
                 keyboard: TextInputType.text,
                 txtEditController: _medicationNameController,
               ),
+
               SizedBox(height: 16),
               TextField(
-                onTap: () async {
-                  var timePicked = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay.now(),
+                onTap: () {
+                  Navigator.of(context).push(
+                    showPicker(
+                      context: context,
+                      value: _time,
+                      sunrise: TimeOfDay(hour: 6, minute: 0), // optional
+                      sunset: TimeOfDay(hour: 18, minute: 0), // optional
+                      duskSpanInMinutes: 120, // optional
+                      onChange: onTimeChanged,
+                      iosStylePicker: iosStyle,
+                    ),
                   );
-                  //In 24 hours format
-                  // String time = '${timePicked!.hour}:${timePicked.minute}';
-                  //In 12 hours format
-                  String time = timePicked!.format(context);
-
-                  setState(() {
-                    _medicationTimeOfDayController =
-                        TextEditingController(text: time);
-                  });
                 },
                 controller: _medicationTimeOfDayController,
                 readOnly: true,
@@ -103,7 +115,7 @@ class _AddMedication1State extends State<AddMedication2> {
                 ),
                 cursorColor: const Color.fromARGB(255, 7, 82, 96),
                 decoration: InputDecoration(
-                  hintText: 'DD-MM-YYYY',
+                  hintText: 'Select the Time',
                   labelText: 'Medication Time of Day',
                   labelStyle: GoogleFonts.poppins(
                     color: const Color.fromARGB(255, 16, 15, 15),
@@ -133,17 +145,77 @@ class _AddMedication1State extends State<AddMedication2> {
                   ),
                 ),
               ),
+
               SizedBox(height: 16),
-              TextFormField(
-                controller: _medicationReminderController,
-                decoration: InputDecoration(labelText: 'Medication Reminder'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter the medication reminder';
-                  }
-                  return null;
+              TextField(
+                onTap: () async {
+                  var datePicked = await DatePicker.showSimpleDatePicker(
+                    context,
+                    titleText: 'Select the Starting Date',
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2099),
+                    dateFormat: "dd-MMMM-yyyy",
+                    locale: DateTimePickerLocale.en_us,
+                    looping: true,
+                  );
+                  String date =
+                      '${datePicked!.day}-${datePicked.month}-${datePicked.year}';
+
+                  setState(() {
+                    _startingDateController = TextEditingController(text: date);
+                  });
                 },
+                controller: _startingDateController,
+                readOnly: true,
+                style: GoogleFonts.roboto(
+                  height: 2,
+                  color: const Color.fromARGB(255, 16, 15, 15),
+                ),
+                cursorColor: const Color.fromARGB(255, 7, 82, 96),
+                decoration: InputDecoration(
+                  hintText: 'DD-MM-YYYY',
+                  labelText: 'Starting Date',
+                  labelStyle: GoogleFonts.roboto(
+                    color: const Color.fromARGB(255, 16, 15, 15),
+                  ),
+                  filled: true,
+                  floatingLabelBehavior: FloatingLabelBehavior.auto,
+                  // fillColor: Colors.white,
+                  focusedBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(
+                        20,
+                      ),
+                    ),
+                    borderSide: BorderSide(
+                      color: Color.fromARGB(255, 7, 82, 96),
+                    ),
+                  ),
+                  enabledBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(
+                        20,
+                      ),
+                    ),
+                    borderSide: BorderSide(
+                      color: Colors.transparent,
+                    ),
+                  ),
+                ),
               ),
+
+              // SizedBox(height: 16),
+              // TextFormField(
+              //   controller: _medicationReminderController,
+              //   decoration: InputDecoration(labelText: 'Medication Reminder'),
+              //   validator: (value) {
+              //     if (value == null || value.isEmpty) {
+              //       return 'Please enter the medication reminder';
+              //     }
+              //     return null;
+              //   },
+              // ),
               SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () async {
