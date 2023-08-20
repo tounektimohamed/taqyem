@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mymeds_app/screens/account_settings.dart';
 import 'package:mymeds_app/screens/home.dart';
+import 'package:mymeds_app/screens/homepage.dart';
+import 'package:mymeds_app/screens/homepage2.dart';
 import 'package:mymeds_app/screens/medication.dart';
 import 'package:mymeds_app/screens/statistic.dart';
 import 'package:mymeds_app/screens/user_profile.dart';
@@ -51,7 +53,7 @@ class _DashboardState extends State<Dashboard> {
     //pages
     final List<Widget> _pages = <Widget>[
       //main page
-      Home(),
+      HomePage2(),
       //medication
       Mediaction(),
       //statistic
