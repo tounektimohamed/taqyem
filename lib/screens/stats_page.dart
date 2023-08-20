@@ -1,14 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
-class Statistic extends StatefulWidget {
-  const Statistic({super.key});
-
-  @override
-  State<Statistic> createState() => _StatisticState();
+void main() {
+  runApp(const MyApp());
 }
 
-class _StatisticState extends State<Statistic> {
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: StatusBar(),
+    );
+  }
+}
+
+class StatusBar extends StatefulWidget {
+  @override
+  _StatusBarState createState() => _StatusBarState();
+}
+
+class _StatusBarState extends State<StatusBar> {
   late List<GDPData> _chartData;
   late List<_ChartDataW> data;
   late TooltipBehavior _tooltip;
@@ -101,27 +114,29 @@ class _StatisticState extends State<Statistic> {
       ),
     );
   }
+}
 
-  List<GDPData> getChartData() {
-    final List<GDPData> chartData = [
-      GDPData('Taken', 10),
-      GDPData('Missed', 5),
-    ];
-    return chartData;
-  }
+List<GDPData> getChartData() {
+  final List<GDPData> chartData = [
+    GDPData('Taken', 10),
+    GDPData('Missed', 5),
+  ];
 
-  List<_ChartDataW> getChartDataW() {
-    final List<_ChartDataW> data = [
-      _ChartDataW('MON', 12, 5),
-      _ChartDataW('TUE', 15, 34),
-      _ChartDataW('WED', 30, 45),
-      _ChartDataW('THU', 6, 2),
-      _ChartDataW('FRI', 14, 3),
-      _ChartDataW('SAT', 12, 8),
-      _ChartDataW('SUN', 15, 6),
-    ];
-    return data;
-  }
+  return chartData;
+}
+
+List<_ChartDataW> getChartDataW() {
+  final List<_ChartDataW> data = [
+    _ChartDataW('MON', 12, 5),
+    _ChartDataW('TUE', 15, 34),
+    _ChartDataW('WED', 30, 45),
+    _ChartDataW('THU', 6, 2),
+    _ChartDataW('FRI', 14, 3),
+    _ChartDataW('SAT', 12, 8),
+    _ChartDataW('SUN', 15, 6),
+  ];
+
+  return data;
 }
 
 class GDPData {
@@ -132,6 +147,7 @@ class GDPData {
 
 class _ChartDataW {
   _ChartDataW(this.x, this.y, this.y1);
+
   final String x;
   final double y;
   final double y1;

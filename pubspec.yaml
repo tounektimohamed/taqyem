@@ -49,6 +49,7 @@ dependencies:
   flutter_svg: ^1.1.6
   flutter_spinner_picker: ^0.0.7
   day_night_time_picker: 
+  syncfusion_flutter_charts: ^22.2.9
 
 dev_dependencies:
   flutter_test:
