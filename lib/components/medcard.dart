@@ -34,22 +34,64 @@ class MedCard extends StatelessWidget {
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
           if (snapshot.hasData) {
-            Map<String, dynamic> data =
-                snapshot.data!.data() as Map<String, dynamic>;
+            Map<String, dynamic>? med_data = snapshot.data!.data() != null
+                ? snapshot.data!.data() as Map<String, dynamic>
+                : <String, dynamic>{};
+
             return Column(
               children: [
                 // Text('Medication name: ${data['medname']}'),
                 // Text('Dosage: ${data['strength']} ${data['strength_unit']}'),
                 // Text('Frequency: ${data['frequency']}'),
                 // Text('$selectedDate'),
-                TimeLine(
-                    isFirst: index == 0 ? true : false,
-                    isLast: index == size - 1,
-                    isPast: true,
-                    medName: data['medname'],
-                    dosage: '${data['strength']} ${data['strength_unit']}',
-                    time: 'time',
-                    isTaken: true),
+                // Text('Taken? : ${data['isTaken']}'),
+
+                FutureBuilder(
+                  future: medications
+                      .doc(documentID)
+                      .collection('Logs')
+                      .doc('$selectedDate')
+                      .get(const GetOptions(source: Source.server)),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.done) {
+                      if (snapshot.hasData) {
+                        Map<String, dynamic>? log_data =
+                            snapshot.data!.data() != null
+                                ? snapshot.data!.data() as Map<String, dynamic>
+                                : <String, dynamic>{};
+
+                        // print(snapshot.data!.data());
+                        if (snapshot.data!.data() == null) {
+                          // print('No medications for ${selectedDate}');
+                        } else {
+                          // print('${log_data['isTaken']}');
+                          // print(
+                          // '${med_data['medname']} ${med_data['strength']} ${med_data['strength_unit']}');
+                          return TimeLine(
+                            isFirst: index == 0 ? true : false,
+                            isLast: index == size - 1,
+                            isPast: true,
+                            medName: med_data['medname'],
+                            dosage:
+                                '${med_data['strength']} ${med_data['strength_unit']}',
+                            time: med_data['times'],
+                            isTaken: log_data['isTaken'],
+                          );
+                        }
+                      }
+                    }
+                    return Container(
+                      width: double.infinity,
+                      height: 120.0,
+                      margin: const EdgeInsets.fromLTRB(50, 20, 25, 20),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20.0),
+                        color: Colors.grey.shade300,
+                      ),
+                    );
+                  },
+                )
               ],
             );
           } else if (snapshot.hasError) {
@@ -61,6 +103,20 @@ class MedCard extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20.0),
                 color: Colors.grey.shade300,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Icon(Icons.signal_wifi_off_rounded,
+                      color: Colors.grey.shade600),
+                  const SizedBox(
+                    width: 20,
+                  ),
+                  Text(
+                    'Network Error',
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
+                ],
               ),
             );
           }

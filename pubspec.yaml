@@ -46,6 +46,16 @@ dependencies:
   timeline_tile: ^2.0.0
   flutter_timeline_calendar: ^1.0.9
   shimmer: ^3.0.0
+  image_picker: ^1.0.2
+  image_cropper: ^5.0.0
+  permission_handler: ^10.4.3
+  floating_snackbar: ^1.0.3+1
+  geolocator: ^9.0.2
+  maps_launcher: ^2.2.0
+  syncfusion_flutter_charts: ^22.2.9
+  settings_ui: ^2.0.2
+  flutter_svg: ^1.1.6
+  day_night_time_picker: 
 
 dev_dependencies:
   flutter_test:
@@ -80,6 +90,28 @@ flutter:
     - lib/assets/icon.png
     - lib/assets/icon_small.png
     - lib/assets/user.png
+
+    - lib/assets/images/medication.gif  
+    - lib/assets/icons/cream.gif
+    - lib/assets/icons/drops.gif
+    - lib/assets/icons/foam.gif
+    - lib/assets/icons/herbal.gif
+    - lib/assets/icons/spray.gif
+    - lib/assets/icons/nutrients.gif
+    - lib/assets/icons/patch.gif
+    - lib/assets/icons/pill.gif
+    - lib/assets/icons/pills.gif
+    - lib/assets/icons/pills (1).gif
+    - lib/assets/icons/powder.gif
+    - lib/assets/icons/liquid.gif
+    - lib/assets/icons/lotion.gif
+    - lib/assets/icons/inhalator.gif
+    - lib/assets/icons/nasalspray.gif
+    - lib/assets/icons/suppository.gif
+    - lib/assets/icons/syringe.gif
+    - lib/assets/icons/syringe.gif
+    - lib/assets/icons/tablet.gif
+    - lib/assets/icons/tube.gif
 
 
   # An image asset can refer to one or more resolution-specific "variants", see

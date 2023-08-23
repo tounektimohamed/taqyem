@@ -22,11 +22,11 @@ class _HomePage2State extends State<HomePage2> {
 
   User? currentUser = FirebaseAuth.instance.currentUser;
 
-  //document IDs
+  //document IDs of medicatiions
   List<String> docIds = [];
 
-  //get docIDs
-  Future getDocIDs() async {
+  //get docID sof medicatiions
+  Future<List<String>> getDocIDs() async {
     await FirebaseFirestore.instance
         .collection('Users')
         .doc(currentUser!.email)
@@ -34,12 +34,37 @@ class _HomePage2State extends State<HomePage2> {
         .get()
         .then(
           (snapshot) => snapshot.docs.forEach(
-            (document) {
-              print(document.reference);
-              docIds.add(document.reference.id);
+            (document) async {
+              print('Medications Doc ID: ${document.reference.id}');
+
+              await FirebaseFirestore.instance
+                  .collection('Users')
+                  .doc(currentUser!.email)
+                  .collection('Medications')
+                  .doc(document.reference.id)
+                  .collection('Logs')
+                  .get()
+                  .then(
+                    (snapshot1) => snapshot1.docs.forEach(
+                      (document1) async {
+                        print('Date ID: ${document1.reference.id}');
+
+                        if (document1.reference.id ==
+                            _selectedDate.value.toString()) {
+                          docIds.add(document.reference.id);
+                          print(
+                              '${document.reference.id} added for list on ${_selectedDate.value.toString()}');
+                          print('Array LENGTH: ${docIds.length}');
+                        } else {
+                          print('Not added to list');
+                        }
+                      },
+                    ),
+                  );
             },
           ),
         );
+    return docIds;
   }
 
   @override
@@ -133,6 +158,8 @@ class _HomePage2State extends State<HomePage2> {
                         headerTextColor: Colors.black),
                     onChangeDateTime: (date) {
                       setState(() {
+                        // docIds = [];
+                        // print('List restted');y
                         _selectedDate.value = date;
                       });
                     },
@@ -157,8 +184,6 @@ class _HomePage2State extends State<HomePage2> {
                   children: [
                     //title
                     Text(
-                      // _currentDate.toString().substring(0, 10),
-                      // '$_selectedDate',
                       _selectedDate.value.toString().substring(0, 10),
                       style: GoogleFonts.roboto(
                         fontSize: 30,
@@ -191,18 +216,19 @@ class _HomePage2State extends State<HomePage2> {
               axisDirection: AxisDirection.down,
               color: const Color.fromARGB(255, 7, 83, 96),
               child: SingleChildScrollView(
-                physics: ScrollPhysics(),
+                physics: const ScrollPhysics(),
                 child: Padding(
-                  padding: EdgeInsets.fromLTRB(20, 0, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
                   child: Column(
                     children: [
                       FutureBuilder(
                         future: getDocIDs(),
                         builder: (context, snapshot) {
+                          print('array length: ${docIds.length}');
                           return ListView.builder(
                             itemCount: docIds.length,
                             shrinkWrap: true,
-                            physics: NeverScrollableScrollPhysics(),
+                            physics: const NeverScrollableScrollPhysics(),
                             itemBuilder: (context, index) {
                               return ValueListenableBuilder<CalendarDateTime>(
                                 valueListenable: _selectedDate,

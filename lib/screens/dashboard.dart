@@ -3,13 +3,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mymeds_app/screens/account_settings.dart';
+import 'package:mymeds_app/screens/add_medication1.dart';
 import 'package:mymeds_app/screens/home.dart';
 import 'package:mymeds_app/screens/homepage.dart';
 import 'package:mymeds_app/screens/homepage2.dart';
 import 'package:mymeds_app/screens/medication.dart';
 import 'package:mymeds_app/screens/statistic.dart';
 import 'package:mymeds_app/screens/user_profile.dart';
-import 'package:mymeds_app/screens/settings.dart';
+import 'package:mymeds_app/screens/more.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -59,7 +60,7 @@ class _DashboardState extends State<Dashboard> {
       //statistic
       Statistic(),
       //settings
-      AppSettings(),
+      More(),
     ];
 
     //scaffold
@@ -76,13 +77,21 @@ class _DashboardState extends State<Dashboard> {
       //floating action button
       floatingActionButton: isFABvisible
           ? FloatingActionButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AddMedication1(),
+                  ),
+                );
+              },
               child: const Icon(Icons.add),
               // shape: const RoundedRectangleBorder(
               //   borderRadius: BorderRadius.all(
               //     Radius.circular(50.0),
               //   ),
               // ),
+
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Theme.of(context).colorScheme.background,
             )
@@ -97,7 +106,6 @@ class _DashboardState extends State<Dashboard> {
           NavigationDestination(
             icon: Icon(
               Icons.home_outlined,
-              color: Color.fromRGBO(7, 82, 96, 1),
             ),
             label: 'Home',
             selectedIcon: Icon(
