@@ -11,6 +11,8 @@ import 'package:mymeds_app/screens/medication.dart';
 import 'package:mymeds_app/screens/statistic.dart';
 import 'package:mymeds_app/screens/user_profile.dart';
 import 'package:mymeds_app/screens/more.dart';
+import 'package:mymeds_app/screens/settings.dart';
+import 'package:mymeds_app/screens/add_medication1.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
