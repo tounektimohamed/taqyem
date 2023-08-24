@@ -1,14 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'package:flutter_spinner_picker/flutter_spinner_picker.dart';
-// import 'add_medication2.dart';
-// import 'package:time_picker_spinner/time_picker_spinner.dart';
-
 import 'package:day_night_time_picker/day_night_time_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_holo_date_picker/flutter_holo_date_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mymeds_app/components/text_field.dart';
+import 'package:mymeds_app/screens/add_medi_frequency.dart';
 
 class AddMedication2 extends StatefulWidget {
   const AddMedication2({Key? key}) : super(key: key);
@@ -75,14 +70,83 @@ class _AddMedication1State extends State<AddMedication2> {
           child: ListView(
             children: [
               SizedBox(height: 16),
-              Text_Field(
-                label: 'Medication Freqency',
-                hint: 'Everyday',
-                isPassword: false,
-                keyboard: TextInputType.text,
-                txtEditController: _medicationNameController,
+              ElevatedButton(
+                onPressed: () {
+                  //navigate to add_medi_frequency.dart
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AddMediFrequency(),
+                    ),
+                  );
+                },
+                child: Text('Add Medication Frequency'),
               ),
 
+              SizedBox(height: 24),
+              //this a title
+              Text(
+                'Medication Details',
+                style: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+
+              SizedBox(height: 16),
+              TextField(
+                onTap: () async {
+                  final DateTime? picked = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2015, 8),
+                    lastDate: DateTime(2101),
+                  );
+                  if (picked != null && picked != startDate)
+                    setState(() {
+                      startDate = picked;
+                      _startingDateController = TextEditingController(
+                          text: startDate.toString().substring(0, 10));
+                    });
+                },
+                controller: _startingDateController,
+                readOnly: true,
+                style: GoogleFonts.poppins(
+                  height: 2,
+                  color: const Color.fromARGB(255, 16, 15, 15),
+                ),
+                cursorColor: const Color.fromARGB(255, 7, 82, 96),
+                decoration: InputDecoration(
+                  hintText: 'Select the Date',
+                  labelText: 'Starting Date',
+                  labelStyle: GoogleFonts.poppins(
+                    color: const Color.fromARGB(255, 16, 15, 15),
+                  ),
+                  filled: true,
+                  floatingLabelBehavior: FloatingLabelBehavior.auto,
+                  // fillColor: Colors.white,
+                  focusedBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(
+                        20,
+                      ),
+                    ),
+                    borderSide: BorderSide(
+                      color: Color.fromARGB(255, 7, 82, 96),
+                    ),
+                  ),
+                  enabledBorder: const OutlineInputBorder(
+                    borderRadius: BorderRadius.all(
+                      Radius.circular(
+                        20,
+                      ),
+                    ),
+                    borderSide: BorderSide(
+                      color: Colors.transparent,
+                    ),
+                  ),
+                ),
+              ),
               SizedBox(height: 16),
               TextField(
                 onTap: () {
@@ -150,76 +214,6 @@ class _AddMedication1State extends State<AddMedication2> {
                 ),
               ),
 
-              SizedBox(height: 16),
-              TextField(
-                onTap: () async {
-                  var datePicked = await DatePicker.showSimpleDatePicker(
-                    context,
-                    titleText: 'Select the Starting Date',
-                    initialDate: DateTime.now(),
-                    firstDate: DateTime(2020),
-                    lastDate: DateTime(2099),
-                    dateFormat: "dd-MMMM-yyyy",
-                    locale: DateTimePickerLocale.en_us,
-                    looping: true,
-                  );
-                  String date =
-                      '${datePicked!.day}-${datePicked.month}-${datePicked.year}';
-
-                  setState(() {
-                    _startingDateController = TextEditingController(text: date);
-                  });
-                },
-                controller: _startingDateController,
-                readOnly: true,
-                style: GoogleFonts.roboto(
-                  height: 2,
-                  color: const Color.fromARGB(255, 16, 15, 15),
-                ),
-                cursorColor: const Color.fromARGB(255, 7, 82, 96),
-                decoration: InputDecoration(
-                  hintText: 'DD-MM-YYYY',
-                  labelText: 'Starting Date',
-                  labelStyle: GoogleFonts.roboto(
-                    color: const Color.fromARGB(255, 16, 15, 15),
-                  ),
-                  filled: true,
-                  floatingLabelBehavior: FloatingLabelBehavior.auto,
-                  // fillColor: Colors.white,
-                  focusedBorder: const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(
-                      Radius.circular(
-                        20,
-                      ),
-                    ),
-                    borderSide: BorderSide(
-                      color: Color.fromARGB(255, 7, 82, 96),
-                    ),
-                  ),
-                  enabledBorder: const OutlineInputBorder(
-                    borderRadius: BorderRadius.all(
-                      Radius.circular(
-                        20,
-                      ),
-                    ),
-                    borderSide: BorderSide(
-                      color: Colors.transparent,
-                    ),
-                  ),
-                ),
-              ),
-
-              // SizedBox(height: 16),
-              // TextFormField(
-              //   controller: _medicationReminderController,
-              //   decoration: InputDecoration(labelText: 'Medication Reminder'),
-              //   validator: (value) {
-              //     if (value == null || value.isEmpty) {
-              //       return 'Please enter the medication reminder';
-              //     }
-              //     return null;
-              //   },
-              // ),
               SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () async {
