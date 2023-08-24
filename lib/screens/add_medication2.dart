@@ -1,9 +1,27 @@
+// ignore_for_file: use_build_context_synchronously
+
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_holo_date_picker/flutter_holo_date_picker.dart';
+// import 'package:flutter_holo_date_picker/flutter_holo_date_picker.dart';
+// import 'package:flutter_spinner_picker/flutter_spinner_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:mymeds_app/components/text_field.dart';
+// import 'package:flutter_spinner_picker/flutter_spinner_picker.dart';
+// import 'add_medication2.dart';
+// import 'package:time_picker_spinner/time_picker_spinner.dart';
+
+import 'package:day_night_time_picker/day_night_time_picker.dart';
+
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:day_night_time_picker/day_night_time_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mymeds_app/screens/add_medi_frequency.dart';
+
 
 class AddMedication2 extends StatefulWidget {
   const AddMedication2({Key? key}) : super(key: key);
@@ -39,6 +57,13 @@ class _AddMedication1State extends State<AddMedication2> {
     });
   }
 
+  // var time = DateTime.now();
+
+  void _openImagePicker() {
+    // Implement your image picker logic here
+    // This function will be called when the image is clicked
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -70,6 +95,7 @@ class _AddMedication1State extends State<AddMedication2> {
           child: ListView(
             children: [
               SizedBox(height: 16),
+
               ElevatedButton(
                 onPressed: () {
                   //navigate to add_medi_frequency.dart
@@ -91,10 +117,12 @@ class _AddMedication1State extends State<AddMedication2> {
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                 ),
+
               ),
 
               SizedBox(height: 16),
               TextField(
+
                 onTap: () async {
                   final DateTime? picked = await showDatePicker(
                     context: context,
@@ -110,6 +138,7 @@ class _AddMedication1State extends State<AddMedication2> {
                     });
                 },
                 controller: _startingDateController,
+
                 readOnly: true,
                 style: GoogleFonts.poppins(
                   height: 2,
@@ -117,8 +146,10 @@ class _AddMedication1State extends State<AddMedication2> {
                 ),
                 cursorColor: const Color.fromARGB(255, 7, 82, 96),
                 decoration: InputDecoration(
+
                   hintText: 'Select the Date',
                   labelText: 'Starting Date',
+
                   labelStyle: GoogleFonts.poppins(
                     color: const Color.fromARGB(255, 16, 15, 15),
                   ),
@@ -147,6 +178,7 @@ class _AddMedication1State extends State<AddMedication2> {
                   ),
                 ),
               ),
+
               SizedBox(height: 16),
               TextField(
                 onTap: () {
@@ -178,14 +210,17 @@ class _AddMedication1State extends State<AddMedication2> {
                 controller: _medicationTimeOfDayController,
                 readOnly: true,
                 style: GoogleFonts.poppins(
+
                   height: 2,
                   color: const Color.fromARGB(255, 16, 15, 15),
                 ),
                 cursorColor: const Color.fromARGB(255, 7, 82, 96),
                 decoration: InputDecoration(
+
                   hintText: 'Select the Time',
                   labelText: 'Medication Time of Day',
                   labelStyle: GoogleFonts.poppins(
+
                     color: const Color.fromARGB(255, 16, 15, 15),
                   ),
                   filled: true,

@@ -19,6 +19,10 @@ class TopCalendar extends StatelessWidget {
         viewType: ViewType.DAILY,
         toggleViewType: false,
         headerMonthElevation: 0,
+        weekStartDate:
+            DateTime(today.year, today.month, today.day - (today.weekday - 1)),
+        weekEndDate:
+            DateTime(today.year, today.month, today.day - today.weekday % 7),
         // headerMonthShadowColor: Theme.of(context).colorScheme.secondary,
         // headerMonthBackColor: Theme.of(context).colorScheme.primary,
         // weekStartDate: today.subtract(
