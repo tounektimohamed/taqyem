@@ -1,20 +1,14 @@
-// ignore_for_file: use_build_context_synchronously
-
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_holo_date_picker/flutter_holo_date_picker.dart';
-// import 'package:flutter_holo_date_picker/flutter_holo_date_picker.dart';
-// import 'package:flutter_spinner_picker/flutter_spinner_picker.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:mymeds_app/components/text_field.dart';
 // import 'package:flutter_spinner_picker/flutter_spinner_picker.dart';
 // import 'add_medication2.dart';
 // import 'package:time_picker_spinner/time_picker_spinner.dart';
 
 import 'package:day_night_time_picker/day_night_time_picker.dart';
-
-// import 'package:show_time_picker/show_time_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_holo_date_picker/flutter_holo_date_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:mymeds_app/components/text_field.dart';
 
 class AddMedication2 extends StatefulWidget {
   const AddMedication2({Key? key}) : super(key: key);
@@ -40,17 +34,14 @@ class _AddMedication1State extends State<AddMedication2> {
   Time _time = Time(hour: 11, minute: 30, second: 20);
   bool iosStyle = true;
 
+  var endDate;
+
+  var startDate;
+
   void onTimeChanged(Time newTime) {
     setState(() {
       _time = newTime;
     });
-  }
-
-  // var time = DateTime.now();
-
-  void _openImagePicker() {
-    // Implement your image picker logic here
-    // This function will be called when the image is clicked
   }
 
   @override
@@ -104,6 +95,19 @@ class _AddMedication1State extends State<AddMedication2> {
                       duskSpanInMinutes: 120, // optional
                       onChange: onTimeChanged,
                       iosStylePicker: iosStyle,
+                      is24HrFormat: false,
+                      blurredBackground: true,
+                      // Optional onChange to receive value as DateTime
+                      //just the hour and minute as integers
+                      onChangeDateTime: (DateTime dateTime) {
+                        setState(() {
+                          _medicationTimeOfDayController =
+                              TextEditingController(
+                                  text: TimeOfDay.fromDateTime(dateTime)
+                                      .format(context));
+                        });
+                        print(dateTime);
+                      },
                     ),
                   );
                 },
