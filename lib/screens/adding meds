@@ -215,8 +215,8 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
   }
 }
 
-void main() {
-  runApp(MaterialApp(
-    home: AddMediFrequency(),
-  ));
-}
+// void main() {
+//   runApp(MaterialApp(
+//     home: AddMediFrequency(),
+//   ));
+// }
