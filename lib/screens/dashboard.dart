@@ -1,18 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:mymeds_app/screens/account_settings.dart';
 import 'package:mymeds_app/screens/add_medication1.dart';
-import 'package:mymeds_app/screens/home.dart';
-import 'package:mymeds_app/screens/homepage.dart';
 import 'package:mymeds_app/screens/homepage2.dart';
 import 'package:mymeds_app/screens/medication.dart';
-import 'package:mymeds_app/screens/statistic.dart';
-import 'package:mymeds_app/screens/user_profile.dart';
 import 'package:mymeds_app/screens/more.dart';
-import 'package:mymeds_app/screens/settings.dart';
-import 'package:mymeds_app/screens/add_medication1.dart';
+import 'package:mymeds_app/screens/statistic.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
