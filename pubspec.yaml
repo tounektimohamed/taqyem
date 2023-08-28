@@ -57,6 +57,7 @@ dependencies:
   settings_ui: ^2.0.2
   flutter_svg: ^1.1.6
   flutter_spinner_picker: ^0.0.7
+
   day_night_time_picker:
   custom_date_range_picker: ^1.0.10
   custom_radio_grouped_button: ^2.2.0
@@ -64,6 +65,8 @@ dependencies:
   weekday_selector: ^1.1.0
   direct_select: ^2.0.0
   flutter_awesome_alert_box: ^2.0.0
+  syncfusion_flutter_charts: ^22.2.9
+
 
 dev_dependencies:
   flutter_test:

@@ -1,14 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
-class Statistic extends StatefulWidget {
-  const Statistic({super.key});
-
-  @override
-  State<Statistic> createState() => _StatisticState();
+void main() {
+  runApp(const MyApp());
 }
 
-class _StatisticState extends State<Statistic> {
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: StatusBar(),
+    );
+  }
+}
+
+class StatusBar extends StatefulWidget {
+  @override
+  _StatusBarState createState() => _StatusBarState();
+}
+
+class _StatusBarState extends State<StatusBar> {
   late List<GDPData> _chartData;
   late List<_ChartDataW> data;
   late TooltipBehavior _tooltip;
@@ -20,15 +33,8 @@ class _StatisticState extends State<Statistic> {
     _chartData = getChartData();
     data = getChartDataW();
     _tooltip = TooltipBehavior(enable: true);
-
-    takenColor =
-        const Color.fromARGB(255, 6, 129, 151); // Color for "Taken" series
-    missedColor =
-        const Color.fromARGB(255, 183, 197, 200); // Color for "Missed" series
-
-//     takenColor = Color.fromRGBO(8, 142, 255, 1); // Color for "Taken" series
-//     missedColor = Color.fromRGBO(255, 8, 136, 1); // Color for "Missed" series
-
+    takenColor = Color.fromRGBO(8, 142, 255, 1); // Color for "Taken" series
+    missedColor = Color.fromRGBO(255, 8, 136, 1); // Color for "Missed" series
     super.initState();
   }
 
@@ -36,25 +42,13 @@ class _StatisticState extends State<Statistic> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
-
-        body: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SfCircularChart(
+        body: Column(
+          children: [
+            Expanded(
+              child: SfCircularChart(
                 title: ChartTitle(
                   text: 'Daily Dosage Usage',
-                  textStyle: TextStyle(fontSize: 15),
-
-//         body: Column(
-//           children: [
-//             Expanded(
-//               child: SfCircularChart(
-//                 title: ChartTitle(
-//                   text: 'Daily Dosage Usage',
-//                   textStyle: TextStyle(fontSize: 20),
-
+                  textStyle: TextStyle(fontSize: 20),
                 ),
                 legend: Legend(
                   isVisible: true,
@@ -82,31 +76,20 @@ class _StatisticState extends State<Statistic> {
                   ),
                 ],
               ),
-
-              SfCartesianChart(
-                title: ChartTitle(
-                  text: 'Weekly Dosage Usage',
-                  textStyle: TextStyle(fontSize: 15),
-
             ),
             Expanded(
               child: SfCartesianChart(
                 title: ChartTitle(
                   text: 'Weekly Dosage Usage',
                   textStyle: TextStyle(fontSize: 20),
-
                 ),
                 legend: Legend(
                   isVisible: true,
                   overflowMode: LegendItemOverflowMode.wrap,
                 ),
                 primaryXAxis: CategoryAxis(),
-
-                primaryYAxis: NumericAxis(minimum: 0, maximum: 20, interval: 5),
-
                 primaryYAxis:
-//                     NumericAxis(minimum: 0, maximum: 40, interval: 10),
-
+                    NumericAxis(minimum: 0, maximum: 40, interval: 10),
                 tooltipBehavior: _tooltip,
                 series: <ChartSeries<_ChartDataW, String>>[
                   ColumnSeries<_ChartDataW, String>(
@@ -125,44 +108,35 @@ class _StatisticState extends State<Statistic> {
                   ),
                 ],
               ),
-
-            ],
-          ),
-
-//             ),
-//           ],
-
+            ),
+          ],
         ),
       ),
     );
   }
+}
 
-  List<GDPData> getChartData() {
-    final List<GDPData> chartData = [
-      GDPData('Taken', 10),
-      GDPData('Missed', 5),
-    ];
-    return chartData;
-  }
+List<GDPData> getChartData() {
+  final List<GDPData> chartData = [
+    GDPData('Taken', 10),
+    GDPData('Missed', 5),
+  ];
 
-  List<_ChartDataW> getChartDataW() {
-    final List<_ChartDataW> data = [
-      _ChartDataW('MON', 12, 5),
+  return chartData;
+}
 
-      _ChartDataW('TUE', 15, 4),
-      _ChartDataW('WED', 10, 5),
-      _ChartDataW('THU', 8, 2),
+List<_ChartDataW> getChartDataW() {
+  final List<_ChartDataW> data = [
+    _ChartDataW('MON', 12, 5),
+    _ChartDataW('TUE', 15, 34),
+    _ChartDataW('WED', 30, 45),
+    _ChartDataW('THU', 6, 2),
+    _ChartDataW('FRI', 14, 3),
+    _ChartDataW('SAT', 12, 8),
+    _ChartDataW('SUN', 15, 6),
+  ];
 
-//       _ChartDataW('TUE', 15, 34),
-//       _ChartDataW('WED', 30, 45),
-//       _ChartDataW('THU', 6, 2),
-
-      _ChartDataW('FRI', 14, 3),
-      _ChartDataW('SAT', 12, 8),
-      _ChartDataW('SUN', 15, 6),
-    ];
-    return data;
-  }
+  return data;
 }
 
 class GDPData {
@@ -173,6 +147,7 @@ class GDPData {
 
 class _ChartDataW {
   _ChartDataW(this.x, this.y, this.y1);
+
   final String x;
   final double y;
   final double y1;
