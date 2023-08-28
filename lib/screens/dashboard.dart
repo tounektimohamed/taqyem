@@ -4,7 +4,6 @@ import 'package:mymeds_app/screens/add_medication1.dart';
 import 'package:mymeds_app/screens/homepage2.dart';
 import 'package:mymeds_app/screens/medication.dart';
 import 'package:mymeds_app/screens/more.dart';
-import 'package:mymeds_app/screens/statistic.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -52,7 +51,7 @@ class _DashboardState extends State<Dashboard> {
       //medication
       Mediaction(),
       //statistic
-      Statistic(),
+      // Statistic(),
       //settings
       More(),
     ];

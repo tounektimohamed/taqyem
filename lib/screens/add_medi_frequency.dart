@@ -10,19 +10,28 @@ class AddMediFrequency extends StatefulWidget {
 }
 
 List<bool> values = List.filled(7, false);
-bool showMessage = false; // Initially hidden
-Key gifKey = UniqueKey(); // Key for the Image widget
 
 class _AddMediFrequencyState extends State<AddMediFrequency> {
   final _formKey = GlobalKey<FormState>();
   final _medicationTimeOfDayController = TextEditingController();
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   bool showFrequencySection = false;
   bool showDaysSection = false;
 
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         title: const Text(
           'Frequency',
@@ -63,16 +72,8 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
                   ElevatedButton(
                     onPressed: () async {
                       if (_formKey.currentState!.validate()) {
-                        setState(() {
-                          showMessage = true;
-                          gifKey = UniqueKey(); // Generate a new key
-                          Future.delayed(Duration(seconds: 2), () {
-                            setState(() {
-                              showMessage = false;
-                            });
-                            Navigator.pop(context);
-                          });
-                        });
+                        _showSnackBar('Saved Successfully');
+                        Navigator.pop(context);
                       }
                     },
                     child: Text('Done'),
@@ -178,35 +179,6 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
                   values: values,
                 ),
               ],
-              SizedBox(height: 50),
-              if (showMessage)
-                Column(
-                  children: [
-                    Visibility(
-                      visible: showMessage,
-                      child: TextFormField(
-                        initialValue: "Saved Successfully",
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        readOnly: true,
-                        textAlign: TextAlign.center,
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    AnimatedSwitcher(
-                      duration: Duration(seconds: 3),
-                      child: Image.asset(
-                        'lib/assets/images/done.gif', // Change this path to your actual GIF image
-                        key: gifKey,
-                      ),
-                    ),
-                  ],
-                ),
             ],
           ),
         ),
@@ -215,8 +187,8 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
   }
 }
 
-// void main() {
-//   runApp(MaterialApp(
-//     home: AddMediFrequency(),
-//   ));
-// }
+void main() {
+  runApp(MaterialApp(
+    home: AddMediFrequency(),
+  ));
+}
