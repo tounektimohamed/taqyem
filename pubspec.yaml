@@ -65,7 +65,6 @@ dependencies:
   weekday_selector: ^1.1.0
   direct_select: ^2.0.0
   flutter_awesome_alert_box: ^2.0.0
-  syncfusion_flutter_charts: ^22.2.9
 
 
 dev_dependencies:
