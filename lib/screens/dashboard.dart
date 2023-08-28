@@ -1,14 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:mymeds_app/screens/account_settings.dart';
-import 'package:mymeds_app/screens/home.dart';
-import 'package:mymeds_app/screens/medication.dart';
-import 'package:mymeds_app/screens/statistic.dart';
-import 'package:mymeds_app/screens/user_profile.dart';
-import 'package:mymeds_app/screens/settings.dart';
 import 'package:mymeds_app/screens/add_medication1.dart';
+import 'package:mymeds_app/screens/homepage2.dart';
+import 'package:mymeds_app/screens/medication.dart';
+import 'package:mymeds_app/screens/more.dart';
+import 'package:mymeds_app/screens/statistic.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -52,13 +48,13 @@ class _DashboardState extends State<Dashboard> {
     //pages
     final List<Widget> _pages = <Widget>[
       //main page
-      Home(),
+      HomePage2(),
       //medication
       Mediaction(),
       //statistic
       Statistic(),
       //settings
-      AppSettings(),
+      More(),
     ];
 
     //scaffold
@@ -89,6 +85,7 @@ class _DashboardState extends State<Dashboard> {
               //     Radius.circular(50.0),
               //   ),
               // ),
+
               backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Theme.of(context).colorScheme.background,
             )
@@ -103,7 +100,6 @@ class _DashboardState extends State<Dashboard> {
           NavigationDestination(
             icon: Icon(
               Icons.home_outlined,
-              color: Color.fromRGBO(7, 82, 96, 1),
             ),
             label: 'Home',
             selectedIcon: Icon(
