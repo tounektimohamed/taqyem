@@ -1,5 +1,10 @@
 import 'package:custom_radio_grouped_button/custom_radio_grouped_button.dart';
+
+// import 'package:direct_select_flutter/direct_select_item.dart';
+// import 'package:direct_select_flutter/direct_select_list.dart';
 import 'package:flutter/material.dart';
+import 'package:multi_dropdown/multiselect_dropdown.dart';
+
 import 'package:weekday_selector/weekday_selector.dart';
 
 class AddMediFrequency extends StatefulWidget {
@@ -10,19 +15,29 @@ class AddMediFrequency extends StatefulWidget {
 }
 
 List<bool> values = List.filled(7, false);
-bool showMessage = false; // Initially hidden
-Key gifKey = UniqueKey(); // Key for the Image widget
 
 class _AddMediFrequencyState extends State<AddMediFrequency> {
   final _formKey = GlobalKey<FormState>();
-  final _medicationTimeOfDayController = TextEditingController();
 
-  bool showFrequencySection = false;
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  bool showFrequencySection = true;
+
   bool showDaysSection = false;
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         title: const Text(
           'Frequency',
@@ -63,16 +78,8 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
                   ElevatedButton(
                     onPressed: () async {
                       if (_formKey.currentState!.validate()) {
-                        setState(() {
-                          showMessage = true;
-                          gifKey = UniqueKey(); // Generate a new key
-                          Future.delayed(Duration(seconds: 2), () {
-                            setState(() {
-                              showMessage = false;
-                            });
-                            Navigator.pop(context);
-                          });
-                        });
+                        _showSnackBar('Saved Successfully');
+                        Navigator.pop(context);
                       }
                     },
                     child: Text('Done'),
@@ -114,7 +121,9 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
               if (showFrequencySection) ...[
                 SizedBox(height: 16),
                 Text(
-                  'Select the Frequency',
+
+                  'Choose the Interval',
+
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -122,40 +131,33 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
                   ),
                 ),
                 SizedBox(height: 16),
-                TextField(
-                  onTap: () async {},
-                  controller: _medicationTimeOfDayController,
-                  readOnly: true,
-                  style: TextStyle(
-                    height: 2,
-                    color: const Color.fromARGB(255, 16, 15, 15),
-                  ),
-                  cursorColor: const Color.fromARGB(255, 7, 82, 96),
-                  decoration: InputDecoration(
-                    hintText: 'Choose from the list',
-                    labelText: 'Select the Frequency',
-                    labelStyle: TextStyle(
-                      color: const Color.fromARGB(255, 16, 15, 15),
-                    ),
-                    filled: true,
-                    floatingLabelBehavior: FloatingLabelBehavior.auto,
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(
-                        Radius.circular(20),
-                      ),
-                      borderSide: BorderSide(
-                        color: Color.fromARGB(255, 7, 82, 96),
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.all(
-                        Radius.circular(20),
-                      ),
-                      borderSide: BorderSide(
-                        color: Colors.transparent,
-                      ),
-                    ),
-                  ),
+
+                MultiSelectDropDown(
+                  onOptionSelected: (List<ValueItem> selectedOptions) {},
+                  options: const <ValueItem>[
+                    ValueItem(label: 'Every Day', value: '1'),
+                    ValueItem(label: 'Every 2 Days', value: '2'),
+                    ValueItem(label: 'Every 3 Days', value: '3'),
+                    ValueItem(label: 'Every 4 Days', value: '4'),
+                    ValueItem(label: 'Every 5 Days', value: '5'),
+                    ValueItem(label: 'Every 6 Days', value: '6'),
+                    ValueItem(label: 'Every Week (7 Days)', value: '7'),
+                    ValueItem(label: 'Every 2 Weeks (14 Days)', value: '14'),
+                    ValueItem(label: 'Every 3 Weeks (21 Days)', value: '21'),
+                    ValueItem(label: 'Every Month (30 Days)', value: '30'),
+                    ValueItem(label: 'Every 2 Months (60 Days)', value: '60'),
+                    ValueItem(label: 'Every 3 Months (90 Days)', value: '90'),
+                  ],
+                  selectionType: SelectionType.single,
+                  chipConfig: const ChipConfig(wrapType: WrapType.wrap),
+                  dropdownHeight: 300,
+                  optionTextStyle: const TextStyle(fontSize: 16),
+                  selectedOptionIcon: const Icon(Icons.check_circle),
+                  //default selected option should be everyday
+                  selectedOptions: const <ValueItem>[
+                    ValueItem(label: 'Every Day', value: '1'),
+                  ],
+
                 ),
               ],
               if (showDaysSection) ...[
@@ -178,35 +180,6 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
                   values: values,
                 ),
               ],
-              SizedBox(height: 50),
-              if (showMessage)
-                Column(
-                  children: [
-                    Visibility(
-                      visible: showMessage,
-                      child: TextFormField(
-                        initialValue: "Saved Successfully",
-                        style: TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        readOnly: true,
-                        textAlign: TextAlign.center,
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 16),
-                    AnimatedSwitcher(
-                      duration: Duration(seconds: 3),
-                      child: Image.asset(
-                        'lib/assets/images/done.gif', // Change this path to your actual GIF image
-                        key: gifKey,
-                      ),
-                    ),
-                  ],
-                ),
             ],
           ),
         ),
@@ -214,9 +187,3 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
     );
   }
 }
-
-// void main() {
-//   runApp(MaterialApp(
-//     home: AddMediFrequency(),
-//   ));
-// }
