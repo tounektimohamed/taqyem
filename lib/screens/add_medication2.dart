@@ -12,8 +12,10 @@ import 'package:mymeds_app/components/text_field.dart';
 
 import 'package:day_night_time_picker/day_night_time_picker.dart';
 
+
 // import 'package:show_time_picker/show_time_picker.dart';
 import 'package:mymeds_app/screens/add_medication3.dart';
+
 
 class AddMedication2 extends StatefulWidget {
   List<CategoryModel> categories = [];
@@ -276,6 +278,7 @@ class _AddMedication1State extends State<AddMedication2> {
                 color: Colors.grey.shade300,
               ),
               SizedBox(height: 16),
+
               const Padding(
                 padding: EdgeInsets.only(top: 20, left: 10),
                 child: Text(
@@ -284,19 +287,23 @@ class _AddMedication1State extends State<AddMedication2> {
                       color: Colors.black,
                       fontSize: 15,
                       fontWeight: FontWeight.w600),
+
                 ),
               ),
               SizedBox(height: 16),
               TextFormField(
                 controller: _medicationNoteController,
                 decoration: InputDecoration(
+
                   labelText: '   Medication Notes',
                   contentPadding:
                       EdgeInsets.symmetric(vertical: 15, horizontal: 12),
+
                 ),
                 maxLines:
                     null, // Set this to null to allow unlimited vertical flow
               ),
+
               SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () async {
