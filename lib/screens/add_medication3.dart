@@ -2,31 +2,38 @@ import 'package:day_night_time_picker/day_night_time_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mymeds_app/components/controller_data.dart';
 import 'package:mymeds_app/screens/add_medi_frequency.dart';
+import 'package:mymeds_app/screens/add_medication4.dart';
 
 class AddMedication3 extends StatefulWidget {
   const AddMedication3({Key? key}) : super(key: key);
 
   @override
-  _AddMedication1State createState() => _AddMedication1State();
+  _AddMedication3State createState() => _AddMedication3State();
 }
 
-class _AddMedication1State extends State<AddMedication3> {
+class _AddMedication3State extends State<AddMedication3> {
   final user = FirebaseAuth.instance.currentUser;
   final _formKey = GlobalKey<FormState>();
-  final _medicationNameController = TextEditingController();
-  final _medicationTypeController = TextEditingController();
+
   var _startingDateController = TextEditingController(
     text: DateTime.now().toString().substring(0, 10),
   );
 
-  final _medicationQuantityController = TextEditingController();
-  final _medicationDosageController = TextEditingController();
-  final _medicationFrequencyController = TextEditingController();
-  var _medicationTimeOfDayController = TextEditingController();
-  final _medicationReminderController = TextEditingController();
-  final _medicationNoteController = TextEditingController();
-  final _medicationPhotoController = TextEditingController();
+  // var _medicationTimeOfDayController = TextEditingController();
+  // final _medicationNumberOfTimesController = TextEditingController();
+  // final _medicationStartingDateController = TextEditingController();
+  // final _medicationEndingDateController = TextEditingController();
+
+  TextEditingController _medicationTimeOfDayController =
+      MedicationControllerData().medicationDosageValueController;
+  TextEditingController _medicationNumberOfTimesController =
+      MedicationControllerData().medicationNumberOfTimesController;
+  TextEditingController _medicationStartingDateController =
+      MedicationControllerData().medicationStartingDateController;
+  TextEditingController _medicationEndingDateController =
+      MedicationControllerData().medicationEndingDateController;
 
   Time _time = Time(hour: 11, minute: 30, second: 20);
   bool iosStyle = true;
@@ -40,6 +47,7 @@ class _AddMedication1State extends State<AddMedication3> {
   void onTimeChanged(Time newTime) {
     setState(() {
       _time = newTime;
+      _medicationNumberOfTimesController.text = selectedTimes.length.toString();
     });
   }
 
@@ -108,7 +116,7 @@ class _AddMedication1State extends State<AddMedication3> {
                             duskSpanInMinutes: 120, // optional
                             onChange: onTimeChanged,
                             iosStylePicker: iosStyle,
-                            is24HrFormat: false,
+                            is24HrFormat: true,
                             blurredBackground: true,
                             onChangeDateTime: (DateTime dateTime) {
                               setState(() {
@@ -370,6 +378,22 @@ class _AddMedication1State extends State<AddMedication3> {
                     ),
                   ),
                 ),
+              SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () async {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AddMedication4(),
+                    ),
+                  );
+                  //Print in Debug Console
+                  print(_medicationTimeOfDayController.text);
+                  print(_medicationStartingDateController.text);
+                  print(_medicationEndingDateController.text);
+                },
+                child: Text('Next'),
+              ),
             ],
           ),
         ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:multi_dropdown/multiselect_dropdown.dart';
 import 'package:mymeds_app/components/category_model.dart';
+import 'package:mymeds_app/components/controller_data.dart';
 import 'package:mymeds_app/components/text_field.dart';
 import 'package:mymeds_app/screens/add_medication2.dart';
 
@@ -13,76 +14,18 @@ class AddMedication1 extends StatefulWidget {
   _AddMedication1State createState() => _AddMedication1State();
 }
 
-enum Units {
-  mg,
-  mcg,
-  g,
-  ml,
-  percentage,
-  IU,
-  oz,
-  tsp,
-  tbsp,
-  cup,
-  pt,
-  qt,
-  gal,
-  lb,
-  mg_per_ml,
-}
-
-String unitToString(Units unit) {
-  switch (unit) {
-    case Units.mg:
-      return 'mg';
-    case Units.mcg:
-      return 'mcg';
-    case Units.g:
-      return 'g';
-    case Units.ml:
-      return 'ml';
-    case Units.percentage:
-      return '%';
-    case Units.IU:
-      return 'IU';
-    case Units.oz:
-      return 'oz';
-    case Units.tsp:
-      return 'tsp';
-    case Units.tbsp:
-      return 'tbsp';
-    case Units.cup:
-      return 'cup';
-    case Units.pt:
-      return 'pt';
-    case Units.qt:
-      return 'qt';
-    case Units.gal:
-      return 'gal';
-    case Units.lb:
-      return 'lb';
-    case Units.mg_per_ml:
-      return 'mg/mL';
-    default:
-      return '';
-  }
-}
-
-Units? _units;
-
 class _AddMedication1State extends State<AddMedication1> {
   final user = FirebaseAuth.instance.currentUser;
   final _formKey = GlobalKey<FormState>();
-  final _medicationNameController = TextEditingController();
-  final _medicationTypeController = TextEditingController();
-  final _medicationStrengthController = TextEditingController();
-  final _medicationQuantityController = TextEditingController();
-  final _medicationDosageController = TextEditingController();
-  final _medicationFrequencyController = TextEditingController();
-  var _medicationTimeOfDayController = TextEditingController();
-  final _medicationStrengthValueController = TextEditingController();
-  final _medicationNoteController = TextEditingController();
-  final _medicationPhotoController = TextEditingController();
+
+  TextEditingController _medicationNameController =
+      MedicationControllerData().medicationNameController;
+  TextEditingController _medicationTypeController =
+      MedicationControllerData().medicationTypeController;
+  TextEditingController _medicationStrengthValueController =
+      MedicationControllerData().medicationStrengthValueController;
+  TextEditingController _medicationStrengthController =
+      MedicationControllerData().medicationStrengthController;
 
   int _selectedCategoryIndex = -1;
 
@@ -121,19 +64,48 @@ class _AddMedication1State extends State<AddMedication1> {
           padding: const EdgeInsets.all(16),
           child: ListView(
             children: [
-              GestureDetector(
-                onTap: _openImagePicker,
-                child: Container(
-                  margin: const EdgeInsets.only(
-                      left: 20, right: 20, top: 16, bottom: 10),
-                  height: 100,
-                  width: 100,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment
+                    .center, // Align children vertically in the center
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text(
+                          'Add each medicine separately',
+                          style: GoogleFonts.poppins(
+                              fontSize: 11, color: Colors.teal),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 6),
+                        Image.asset(
+                          'lib/assets/icons/medicine.gif',
+                          width: 30,
+                          height: 30,
+                          fit: BoxFit.fitHeight,
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Icon(Icons.add_a_photo, size: 50),
-                ),
+                  // SizedBox(width: 20),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: _openImagePicker,
+                      child: Container(
+                        margin: const EdgeInsets.only(
+                            left: 40, right: 40, top: 10, bottom: 10),
+                        height: 80,
+                        width: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(Icons.add_a_photo, size: 50),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const Padding(
                 padding: EdgeInsets.only(top: 16, left: 10),
@@ -299,7 +271,18 @@ class _AddMedication1State extends State<AddMedication1> {
                   SizedBox(width: 8),
                   Expanded(
                     child: MultiSelectDropDown(
-                      onOptionSelected: (List<ValueItem> selectedOptions) {},
+                      onOptionSelected: (List<ValueItem> selectedOptions) {
+                        if (selectedOptions.isNotEmpty) {
+                          // Assuming you want to concatenate selected options into a single string
+                          String selectedValue = selectedOptions
+                              .map((option) => option.value)
+                              .join(', ');
+                          _medicationStrengthController.text = selectedValue;
+                        } else {
+                          // Handle the case where no options are selected
+                          _medicationStrengthController.text = '';
+                        }
+                      },
                       options: const <ValueItem>[
                         ValueItem(label: 'mg', value: 'mg'),
                         ValueItem(label: 'mcg', value: 'mcg'),
@@ -343,6 +326,11 @@ class _AddMedication1State extends State<AddMedication1> {
                       builder: (context) => AddMedication2(),
                     ),
                   );
+                  //print all controller values
+                  print(_medicationNameController.text);
+                  print(_medicationTypeController.text);
+                  print(_medicationStrengthValueController.text +
+                      _medicationStrengthController.text);
                 },
                 child: Text('Next'),
               ),

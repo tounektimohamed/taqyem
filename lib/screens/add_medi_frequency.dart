@@ -70,6 +70,7 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
                 children: [
                   ElevatedButton(
                     onPressed: () {
+                      _clearSelectionAndResetControllers();
                       Navigator.pop(context);
                     },
                     child: Text('Cancel'),
@@ -185,5 +186,15 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
         ),
       ),
     );
+  }
+
+  void _clearSelectionAndResetControllers() {
+    setState(() {
+      // Clear selected states
+      values = List.filled(7, false);
+
+      // Reset controllers to default values
+      // _medicationFrequencyController.clear();
+    });
   }
 }
