@@ -1,17 +1,10 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:multi_dropdown/multiselect_dropdown.dart';
 import 'package:mymeds_app/components/category_model.dart';
+import 'package:mymeds_app/components/controller_data.dart';
 import 'package:mymeds_app/components/text_field.dart';
-// import 'package:flutter_spinner_picker/flutter_spinner_picker.dart';
-// import 'add_medication2.dart';
-// import 'package:time_picker_spinner/time_picker_spinner.dart';
-
-import 'package:day_night_time_picker/day_night_time_picker.dart';
-
 // import 'package:show_time_picker/show_time_picker.dart';
 import 'package:mymeds_app/screens/add_medication3.dart';
 
@@ -23,93 +16,28 @@ class AddMedication2 extends StatefulWidget {
   }
 
   @override
-  _AddMedication1State createState() => _AddMedication1State();
+  _AddMedication2State createState() => _AddMedication2State();
 }
 
-enum Units {
-  pills,
-  mg,
-  mcg,
-  g,
-  ml,
-  percentage, // Instead of %
-  IU,
-  oz,
-  tsp,
-  tbsp,
-  cup,
-  pt,
-  qt,
-  gal,
-  lb,
-  mg_per_ml // Instead of mg/mL
-}
-
-String unitToString(Units unit) {
-  switch (unit) {
-    case Units.pills:
-      return 'pills';
-    case Units.mg:
-      return 'mg';
-    case Units.mcg:
-      return 'mcg';
-    case Units.g:
-      return 'g';
-    case Units.ml:
-      return 'ml';
-    case Units.percentage:
-      return '%';
-    case Units.IU:
-      return 'IU';
-    case Units.oz:
-      return 'oz';
-    case Units.tsp:
-      return 'tsp';
-    case Units.tbsp:
-      return 'tbsp';
-    case Units.cup:
-      return 'cup';
-    case Units.pt:
-      return 'pt';
-    case Units.qt:
-      return 'qt';
-    case Units.gal:
-      return 'gal';
-    case Units.lb:
-      return 'lb';
-    case Units.mg_per_ml:
-      return 'mg/mL';
-    default:
-      return ''; // Handle any unexpected cases
-  }
-}
-
-Units? _units;
 bool isPillCountRequired = false;
 
-class _AddMedication1State extends State<AddMedication2> {
+class _AddMedication2State extends State<AddMedication2> {
   final user = FirebaseAuth.instance.currentUser;
   final _formKey = GlobalKey<FormState>();
-  final _medicationNameController = TextEditingController();
-  final _medicationTypeController = TextEditingController();
-  final _medicationStrengthController = TextEditingController();
-  final _medicationQuantityController = TextEditingController();
-  final _medicationDosageController = TextEditingController();
-  final _medicationFrequencyController = TextEditingController();
-  var _medicationTimeOfDayController = TextEditingController();
-  final _medicationStrengthValueController = TextEditingController();
-  final _medicationNoteController = TextEditingController();
-  final _medicationPhotoController = TextEditingController();
+
+  TextEditingController _medicationDosageValueController =
+      MedicationControllerData().medicationDosageValueController;
+  TextEditingController _medicationDosageController =
+      MedicationControllerData().medicationDosageController;
+  TextEditingController _medicationCountController =
+      MedicationControllerData().medicationCountController;
+  TextEditingController _medicationNoteController =
+      MedicationControllerData().medicationNoteController;
 
   @override
   void initState() {
     super.initState();
     widget._getInitialInfo();
-  }
-
-  void _openImagePicker() {
-    // Implement your image picker logic here
-    // This function will be called when the image is clicked
   }
 
   @override
@@ -158,7 +86,7 @@ class _AddMedication1State extends State<AddMedication2> {
                 children: [
                   Expanded(
                     child: TextFormField(
-                      controller: _medicationStrengthValueController,
+                      controller: _medicationDosageValueController,
                       validator: (value) {
                         if (value == null || value.isEmpty) {
                           return 'Please select the dosage per intake';
@@ -197,7 +125,18 @@ class _AddMedication1State extends State<AddMedication2> {
                   SizedBox(width: 8), // Add spacing between the two text fields
                   Expanded(
                     child: MultiSelectDropDown(
-                      onOptionSelected: (List<ValueItem> selectedOptions) {},
+                      onOptionSelected: (List<ValueItem> selectedOptions) {
+                        if (selectedOptions.isNotEmpty) {
+                          // Assuming you want to concatenate selected options into a single string
+                          String selectedValue = selectedOptions
+                              .map((option) => option.value)
+                              .join(', ');
+                          _medicationDosageController.text = selectedValue;
+                        } else {
+                          // Handle the case where no options are selected
+                          _medicationDosageController.text = '';
+                        }
+                      },
                       options: const <ValueItem>[
                         ValueItem(label: 'pill', value: 'pill'),
                         ValueItem(label: 'tsp', value: 'tsp'),
@@ -266,7 +205,7 @@ class _AddMedication1State extends State<AddMedication2> {
                   hint: '30',
                   isPassword: false,
                   keyboard: TextInputType.number,
-                  txtEditController: _medicationNameController,
+                  txtEditController: _medicationCountController,
                 ),
               SizedBox(height: 24),
               Container(
@@ -306,6 +245,11 @@ class _AddMedication1State extends State<AddMedication2> {
                       builder: (context) => AddMedication3(),
                     ),
                   );
+                  //Print in Debug Console
+                  print(_medicationDosageValueController.text);
+                  print(_medicationDosageController.text);
+                  print(_medicationCountController.text);
+                  print(_medicationNoteController.text);
                 },
                 child: Text('Next'),
               ),

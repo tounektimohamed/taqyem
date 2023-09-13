@@ -1,42 +1,167 @@
-import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:mymeds_app/auth/main_page.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:mymeds_app/screens/medication.dart';
+// ignore_for_file: use_build_context_synchronously
 
-class AddMedication1 extends StatefulWidget {
-  const AddMedication1({Key? key}) : super(key: key);
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:mymeds_app/components/category_model.dart';
+import 'package:mymeds_app/components/text_field.dart';
+import 'package:mymeds_app/screens/add_medication3.dart';
+// import 'package:time_picker_spinner/time_picker_spinner.dart';
+// import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
+// import 'package:show_time_picker/show_time_picker.dart';
+
+class AddMedication2 extends StatefulWidget {
+  // List<Category> categories = [
+  //   Category('Pill', Icons.medication),
+  //   Category('Liquid', Icons.medication),
+  //   Category('Inhaler', Icons.medication),
+  //   Category('Injection', Icons.medication),
+  //   Category('Cream', Icons.medication),
+  //   Category('Patch', Icons.medication),
+  //   Category('Suppository', Icons.medication),
+  //   Category('Other', Icons.medication),
+  // ];
+
+  List<CategoryModel> categories = [];
+
+  void _getInitialInfo() {
+    categories = CategoryModel.getCategories();
+  }
+
+  // void _getCategories() {
+  //   categories = CategoryModel.getCategories();
+  // }
 
   @override
   _AddMedication1State createState() => _AddMedication1State();
 }
 
-class _AddMedication1State extends State<AddMedication1> {
+enum Units {
+  pills,
+  mg,
+  mcg,
+  g,
+  ml,
+  percentage, // Instead of %
+  IU,
+  oz,
+  tsp,
+  tbsp,
+  cup,
+  pt,
+  qt,
+  gal,
+  lb,
+  mg_per_ml // Instead of mg/mL
+}
+
+String unitToString(Units unit) {
+  switch (unit) {
+    case Units.pills:
+      return 'pills';
+    case Units.mg:
+      return 'mg';
+    case Units.mcg:
+      return 'mcg';
+    case Units.g:
+      return 'g';
+    case Units.ml:
+      return 'ml';
+    case Units.percentage:
+      return '%';
+    case Units.IU:
+      return 'IU';
+    case Units.oz:
+      return 'oz';
+    case Units.tsp:
+      return 'tsp';
+    case Units.tbsp:
+      return 'tbsp';
+    case Units.cup:
+      return 'cup';
+    case Units.pt:
+      return 'pt';
+    case Units.qt:
+      return 'qt';
+    case Units.gal:
+      return 'gal';
+    case Units.lb:
+      return 'lb';
+    case Units.mg_per_ml:
+      return 'mg/mL';
+    default:
+      return ''; // Handle any unexpected cases
+  }
+}
+
+Units? _units;
+bool isPillCountRequired = false;
+
+// class Category {
+//   final String name;
+//   final String iconPath;
+//   Color boxColor;
+//   bool isSelected;
+
+//   Category({
+//     required this.name,
+//     required this.iconPath,
+//     this.boxColor = Colors.white,
+//     this.isSelected = false,
+//   });
+// }
+
+// class CategoriesWidget extends StatefulWidget {
+//   final List<Category> categories;
+
+//   CategoriesWidget({required this.categories});
+
+//   @override
+//   _AddMedication1State createState() => _AddMedication1State();
+// }
+
+class _AddMedication1State extends State<AddMedication2> {
   final user = FirebaseAuth.instance.currentUser;
   final _formKey = GlobalKey<FormState>();
   final _medicationNameController = TextEditingController();
   final _medicationTypeController = TextEditingController();
+  final _medicationStrengthController = TextEditingController();
   final _medicationQuantityController = TextEditingController();
   final _medicationDosageController = TextEditingController();
   final _medicationFrequencyController = TextEditingController();
-  final _medicationTimeOfDayController = TextEditingController();
-  final _medicationReminderController = TextEditingController();
+  var _medicationTimeOfDayController = TextEditingController();
+  final _medicationStrengthValueController = TextEditingController();
   final _medicationNoteController = TextEditingController();
   final _medicationPhotoController = TextEditingController();
 
+  // var time = DateTime.now();
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    widget._getInitialInfo();
+  }
+
+  void _openImagePicker() {
+    // Implement your image picker logic here
+    // This function will be called when the image is clicked
+  }
+
   @override
   Widget build(BuildContext context) {
+    widget._getInitialInfo();
     return Scaffold(
       appBar: AppBar(
+<<<<<<< Updated upstream
         title: const Text('Add Medication',
             style: TextStyle(
               color: Colors.black,
               fontWeight: FontWeight.w600,
             )),
         backgroundColor: Color.fromARGB(255, 172, 218, 226),
-        leading: IconButton(
-          icon: const Icon(
+=======
+        title: const Text(
+          'Add Medication',
             Icons.arrow_back_ios,
             color: Colors.black,
           ),
@@ -44,13 +169,13 @@ class _AddMedication1State extends State<AddMedication1> {
           onPressed: () {
             Navigator.pop(context);
           },
-        ),
         centerTitle: true,
       ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
+<<<<<<< Updated upstream
           children: [
             TextFormField(
               controller: _medicationNameController,
@@ -185,11 +310,289 @@ class _AddMedication1State extends State<AddMedication1> {
               child: const Text('Add Medication'),
             ),
           ],
+=======
+          child: ListView(
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 20, left: 10),
+                child: Text(
+                  'Dosage per Intake',
+                  style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600),
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _medicationStrengthValueController,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please select the dosage per intake';
+                        }
+                        return null;
+                      },
+                      keyboardType: TextInputType.number,
+                      cursorColor: const Color.fromARGB(255, 7, 82, 96),
+                      decoration: InputDecoration(
+                        hintText: '1',
+                        labelText: 'Count',
+                        labelStyle: GoogleFonts.poppins(
+                          color: const Color.fromARGB(255, 16, 15, 15),
+                        ),
+                        filled: true,
+                        floatingLabelBehavior: FloatingLabelBehavior.auto,
+                        focusedBorder: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(20),
+                          ),
+                          borderSide: BorderSide(
+                            color: Color.fromARGB(255, 7, 82, 96),
+                          ),
+                        ),
+                        enabledBorder: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(20),
+                          ),
+                          borderSide: BorderSide(
+                            color: Colors.transparent,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 8), // Add spacing between the two text fields
+                  Expanded(
+                    child: TextFormField(
+                      onTap: () => showDialog(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            title: Text(
+                              'Select Unit',
+                              style: GoogleFonts.poppins(
+                                color: const Color.fromARGB(255, 16, 15, 15),
+                              ),
+                            ),
+                            content: StatefulBuilder(
+                              builder: (BuildContext context,
+                                  void Function(void Function()) setState) {
+                                return SingleChildScrollView(
+                                  child: Column(
+                                    children: [
+                                      for (Units unit in Units.values)
+                                        RadioListTile<Units>(
+                                          title: Text(
+                                            unitToString(unit),
+                                            style: GoogleFonts.poppins(
+                                              color: const Color.fromARGB(
+                                                  255, 16, 15, 15),
+                                            ),
+                                          ),
+                                          value: unit,
+                                          groupValue: _units,
+                                          onChanged: (Units? value) {
+                                            setState(() {
+                                              _units = value;
+                                              _medicationStrengthController
+                                                  .text = unitToString(value!);
+                                              Navigator.pop(
+                                                  context); // Close the dialog
+                                            });
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                            actions: [
+                              // ... OK and Cancel buttons ...
+                              //by clicking on the cancel button the dialog will be closed and the selected value should be cleared
+
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                },
+                                child: Text(
+                                  'Cancel',
+                                  style: GoogleFonts.poppins(
+                                    color:
+                                        const Color.fromARGB(255, 16, 15, 15),
+                                  ),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                },
+                                child: Text(
+                                  'Ok',
+                                  style: GoogleFonts.poppins(
+                                    color:
+                                        const Color.fromARGB(255, 16, 15, 15),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      controller: _medicationStrengthController,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter the dosage per intake';
+                        }
+                        return null;
+                      },
+                      readOnly: true, // Prevent direct input
+                      cursorColor: const Color.fromARGB(255, 7, 82, 96),
+                      decoration: InputDecoration(
+                        labelText: 'Unit',
+                        labelStyle: GoogleFonts.poppins(
+                          color: const Color.fromARGB(255, 16, 15, 15),
+                        ),
+                        filled: true,
+                        floatingLabelBehavior: FloatingLabelBehavior.auto,
+                        focusedBorder: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(20),
+                          ),
+                          borderSide: BorderSide(
+                            color: Color.fromARGB(255, 7, 82, 96),
+                          ),
+                        ),
+                        enabledBorder: const OutlineInputBorder(
+                          borderRadius: BorderRadius.all(
+                            Radius.circular(20),
+                          ),
+                          borderSide: BorderSide(
+                            color: Colors.transparent,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+              Padding(
+                padding: EdgeInsets.only(top: 16),
+                child: Row(
+                  children: [
+                    Align(
+                      alignment: Alignment.centerLeft, // Align to the left
+                      child: Checkbox(
+                        value: isPillCountRequired,
+                        onChanged: (newValue) {
+                          setState(() {
+                            isPillCountRequired = newValue!;
+                          });
+                        },
+                      ),
+                    ),
+                    Text(
+                      'Available Pill Count (Optional)',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              if (isPillCountRequired)
+                Text_Field(
+                  label: 'Total Pill Count',
+                  hint: '30',
+                  isPassword: false,
+                  keyboard: TextInputType.number,
+                  txtEditController: _medicationNameController,
+                ),
+
+              SizedBox(height: 24),
+              //Horizontal Line
+              Container(
+                margin: EdgeInsets.symmetric(vertical: 10),
+                width: double.infinity,
+                height: 3,
+                color: Colors.grey.shade300,
+              ),
+              SizedBox(height: 16),
+              const Padding(
+                padding: EdgeInsets.only(top: 20, left: 10),
+                child: Text(
+                  'Takes Notes If Needed',
+                  style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextFormField(
+                controller: _medicationNoteController,
+                decoration: InputDecoration(
+                  labelText: '   Medication Notes',
+                  contentPadding:
+                      EdgeInsets.symmetric(vertical: 15, horizontal: 12),
+                ),
+                maxLines:
+                    null, // Set this to null to allow unlimited vertical flow
+              ),
+
+              SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () async {
+                  // if (_formKey.currentState!.validate()) {
+                  //   await FirebaseFirestore.instance
+                  //       .collection('users')
+                  //       .doc(user!.uid)
+                  //       .collection('medications')
+                  //       .add({
+                  //     'medicationName': _medicationNameController.text,
+                  //     'medicationType': _medicationTypeController.text,
+                  //     'medicationQuantity': _medicationQuantityController.text,
+                  //     'medicationDosage': _medicationDosageController.text,
+                  //     'medicationFrequency':
+                  //         _medicationFrequencyController.text,
+                  //     'medicationTimeOfDay':
+                  //         _medicationTimeOfDayController.text,
+                  //     'medicationReminder': _medicationReminderController.text,
+                  //     'medicationNote': _medicationNoteController.text,
+                  //     'medicationPhoto': _medicationPhotoController.text,
+                  //   });
+                  //   //navigate to add_medicine2
+                  //   Navigator.push(
+                  //     context,
+                  //     MaterialPageRoute(
+                  //       builder: (context) => AddMedication2(),
+                  //     ),
+                  //   );
+                  // }
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AddMedication3(),
+                    ),
+                  );
+                },
+                child: Text('Next'),
+              ),
+            ],
+          ),
+>>>>>>> Stashed changes
         ),
       ),
     );
   }
 }
+<<<<<<< Updated upstream
 
 
 
@@ -400,3 +803,5 @@ onTap: () => showDialog(
                   });
                     
                     
+=======
+>>>>>>> Stashed changes

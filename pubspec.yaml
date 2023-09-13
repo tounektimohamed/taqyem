@@ -115,6 +115,8 @@ flutter:
     - lib/assets/icons/syringe.gif
     - lib/assets/icons/tablet.gif
     - lib/assets/icons/tube.gif
+    - lib/assets/icons/medicine.gif
+    - lib/assets/icons/summerymedicine.gif
 
     # - lib/assets/icons/pill.svg
     # - lib/assets/icons/ico.png
