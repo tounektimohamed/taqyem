@@ -1,138 +1,24 @@
-// ignore_for_file: use_build_context_synchronously
-
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:custom_radio_grouped_button/custom_radio_grouped_button.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:mymeds_app/components/category_model.dart';
-import 'package:mymeds_app/components/text_field.dart';
-import 'package:mymeds_app/screens/add_medication3.dart';
-// import 'package:time_picker_spinner/time_picker_spinner.dart';
-// import 'package:flutter_time_picker_spinner/flutter_time_picker_spinner.dart';
-// import 'package:show_time_picker/show_time_picker.dart';
+import 'package:weekday_selector/weekday_selector.dart';
 
-class AddMedication2 extends StatefulWidget {
-  // List<Category> categories = [
-  //   Category('Pill', Icons.medication),
-  //   Category('Liquid', Icons.medication),
-  //   Category('Inhaler', Icons.medication),
-  //   Category('Injection', Icons.medication),
-  //   Category('Cream', Icons.medication),
-  //   Category('Patch', Icons.medication),
-  //   Category('Suppository', Icons.medication),
-  //   Category('Other', Icons.medication),
-  // ];
-
-  List<CategoryModel> categories = [];
-
-  void _getInitialInfo() {
-    categories = CategoryModel.getCategories();
-  }
-
-  // void _getCategories() {
-  //   categories = CategoryModel.getCategories();
-  // }
+class AddMediFrequency extends StatefulWidget {
+  const AddMediFrequency({Key? key}) : super(key: key);
 
   @override
-  _AddMedication1State createState() => _AddMedication1State();
+  _AddMediFrequencyState createState() => _AddMediFrequencyState();
 }
 
-enum Units {
-  pills,
-  mg,
-  mcg,
-  g,
-  ml,
-  percentage, // Instead of %
-  IU,
-  oz,
-  tsp,
-  tbsp,
-  cup,
-  pt,
-  qt,
-  gal,
-  lb,
-  mg_per_ml // Instead of mg/mL
-}
+List<bool> values = List.filled(7, false);
+bool showMessage = false; // Initially hidden
+Key gifKey = UniqueKey(); // Key for the Image widget
 
-String unitToString(Units unit) {
-  switch (unit) {
-    case Units.pills:
-      return 'pills';
-    case Units.mg:
-      return 'mg';
-    case Units.mcg:
-      return 'mcg';
-    case Units.g:
-      return 'g';
-    case Units.ml:
-      return 'ml';
-    case Units.percentage:
-      return '%';
-    case Units.IU:
-      return 'IU';
-    case Units.oz:
-      return 'oz';
-    case Units.tsp:
-      return 'tsp';
-    case Units.tbsp:
-      return 'tbsp';
-    case Units.cup:
-      return 'cup';
-    case Units.pt:
-      return 'pt';
-    case Units.qt:
-      return 'qt';
-    case Units.gal:
-      return 'gal';
-    case Units.lb:
-      return 'lb';
-    case Units.mg_per_ml:
-      return 'mg/mL';
-    default:
-      return ''; // Handle any unexpected cases
-  }
-}
-
-Units? _units;
-bool isPillCountRequired = false;
-
-// class Category {
-//   final String name;
-//   final String iconPath;
-//   Color boxColor;
-//   bool isSelected;
-
-//   Category({
-//     required this.name,
-//     required this.iconPath,
-//     this.boxColor = Colors.white,
-//     this.isSelected = false,
-//   });
-// }
-
-// class CategoriesWidget extends StatefulWidget {
-//   final List<Category> categories;
-
-//   CategoriesWidget({required this.categories});
-
-//   @override
-//   _AddMedication1State createState() => _AddMedication1State();
-// }
-
-class _AddMedication1State extends State<AddMedication2> {
-  final user = FirebaseAuth.instance.currentUser;
+class _AddMediFrequencyState extends State<AddMediFrequency> {
   final _formKey = GlobalKey<FormState>();
-  final _medicationNameController = TextEditingController();
-  final _medicationTypeController = TextEditingController();
-  final _medicationStrengthController = TextEditingController();
-  final _medicationQuantityController = TextEditingController();
-  final _medicationDosageController = TextEditingController();
-  final _medicationFrequencyController = TextEditingController();
-  var _medicationTimeOfDayController = TextEditingController();
-  final _medicationStrengthValueController = TextEditingController();
-  final _medicationNoteController = TextEditingController();
-  final _medicationPhotoController = TextEditingController();
+  final _medicationTimeOfDayController = TextEditingController();
+
+  bool showFrequencySection = false;
+  bool showDaysSection = false;
 
   // var time = DateTime.now();
   @override
@@ -152,16 +38,17 @@ class _AddMedication1State extends State<AddMedication2> {
     widget._getInitialInfo();
     return Scaffold(
       appBar: AppBar(
-<<<<<<< Updated upstream
-        title: const Text('Add Medication',
-            style: TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.w600,
-            )),
-        backgroundColor: Color.fromARGB(255, 172, 218, 226),
-=======
+
         title: const Text(
-          'Add Medication',
+          'Frequency',
+          style: TextStyle(
+            color: Colors.black,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        leading: IconButton(
+          icon: const Icon(
+
             Icons.arrow_back_ios,
             color: Colors.black,
           ),
@@ -170,147 +57,64 @@ class _AddMedication1State extends State<AddMedication2> {
             Navigator.pop(context);
           },
         centerTitle: true,
+        backgroundColor: Colors.white,
       ),
       body: Form(
         key: _formKey,
-        child: ListView(
+        child: Padding(
           padding: const EdgeInsets.all(16),
-<<<<<<< Updated upstream
-          children: [
-            TextFormField(
-              controller: _medicationNameController,
-              decoration: const InputDecoration(
-                labelText: 'Medication Name',
+          child: ListView(
+            children: <Widget>[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text('Cancel'),
+                    style: ElevatedButton.styleFrom(),
+                  ),
+                  ElevatedButton(
+                    onPressed: () async {
+                      if (_formKey.currentState!.validate()) {
+                        setState(() {
+                          showMessage = true;
+                          gifKey = UniqueKey(); // Generate a new key
+                          Future.delayed(Duration(seconds: 2), () {
+                            setState(() {
+                              showMessage = false;
+                            });
+                            Navigator.pop(context);
+                          });
+                        });
+                      }
+                    },
+                    child: Text('Done'),
+                  ),
+                ],
+
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter the medication name';
-                }
-                return null;
-              },
-            ),
-            TextFormField(
-              controller: _medicationTypeController,
-              decoration: const InputDecoration(
-                labelText: 'Medication Type',
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter the medication type';
-                }
-                return null;
-              },
-            ),
-            TextFormField(
-              controller: _medicationQuantityController,
-              decoration: const InputDecoration(
-                labelText: 'Medication Quantity',
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter the medication quantity';
-                }
-                return null;
-              },
-            ),
-            TextFormField(
-              controller: _medicationDosageController,
-              decoration: const InputDecoration(
-                labelText: 'Medication Dosage',
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter the medication dosage';
-                }
-                return null;
-              },
-            ),
-            TextFormField(
-              controller: _medicationFrequencyController,
-              decoration: const InputDecoration(
-                labelText: 'Medication Frequency',
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter the medication frequency';
-                }
-                return null;
-              },
-            ),
-            TextFormField(
-              controller: _medicationTimeOfDayController,
-              decoration: const InputDecoration(
-                labelText: 'Medication Time of Day',
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter the medication time of day';
-                }
-                return null;
-              },
-            ),
-            TextFormField(
-              controller: _medicationReminderController,
-              decoration: const InputDecoration(
-                labelText: 'Medication Reminder',
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter the medication reminder';
-                }
-                return null;
-              },
-            ),
-            TextFormField(
-              controller: _medicationNoteController,
-              decoration: const InputDecoration(
-                labelText: 'Medication Note',
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter the medication note';
-                }
-                return null;
-              },
-            ),
-            TextFormField(
-              controller: _medicationPhotoController,
-              decoration: const InputDecoration(
-                labelText: 'Medication Photo',
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter the medication photo';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () async {
-                if (_formKey.currentState!.validate()) {
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(user!.uid)
-                      .collection('medications')
-                      .add({
-                    'medicationName': _medicationNameController.text,
-                    'medicationType': _medicationTypeController.text,
-                    'medicationQuantity': _medicationQuantityController.text,
-                    'medicationDosage': _medicationDosageController.text,
-                    'medicationFrequency': _medicationFrequencyController.text,
-                    'medicationTimeOfDay': _medicationTimeOfDayController.text,
-                    'medicationReminder': _medicationReminderController.text,
-                    'medicationNote': _medicationNoteController.text,
-                    'medicationPhoto': _medicationPhotoController.text,
+              CustomRadioButton(
+                elevation: 4,
+                unSelectedColor: Theme.of(context).canvasColor,
+                buttonLables: [
+                  'At Regular Intervals',
+                  'On Specific Days of the Week',
+                ],
+                buttonValues: [
+                  "At Regular Intervals",
+                  "On Specific Days of the Week",
+                ],
+                buttonTextStyle: ButtonTextStyle(
+                    selectedColor: Colors.white,
+                    unSelectedColor: Colors.black,
+                    textStyle: TextStyle(fontSize: 16)),
+                radioButtonValue: (value) {
+                  setState(() {
+                    showFrequencySection = value == "At Regular Intervals";
+                    showDaysSection = value == "On Specific Days of the Week";
                   });
-                  Navigator.of(context).pop();
-                }
-              },
-              child: const Text('Add Medication'),
-            ),
-          ],
-=======
           child: ListView(
             children: [
               const Padding(
@@ -412,7 +216,6 @@ class _AddMedication1State extends State<AddMedication2> {
                             actions: [
                               // ... OK and Cancel buttons ...
                               //by clicking on the cancel button the dialog will be closed and the selected value should be cleared
-
                               TextButton(
                                 onPressed: () {
                                   Navigator.pop(context);
@@ -500,105 +303,121 @@ class _AddMedication1State extends State<AddMedication2> {
                         color: Colors.black,
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
+                },
+                selectedColor: Theme.of(context).colorScheme.secondary,
+                unSelectedBorderColor: Theme.of(context).colorScheme.secondary,
+                selectedBorderColor: Theme.of(context).colorScheme.secondary,
+                padding: 5,
+                height: 50,
+                width: 150,
+                enableShape: true,
+                enableButtonWrap: true,
+                wrapAlignment: WrapAlignment.center,
+                horizontal: true,
+              ),
+              if (showFrequencySection) ...[
+                SizedBox(height: 16),
+                Text(
+                  'Select the Frequency',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: const Color.fromARGB(255, 16, 15, 15),
+                  ),
+                ),
+                SizedBox(height: 16),
+                TextField(
+                  onTap: () async {},
+                  controller: _medicationTimeOfDayController,
+                  readOnly: true,
+                  style: TextStyle(
+                    height: 2,
+                    color: const Color.fromARGB(255, 16, 15, 15),
+                  ),
+                  cursorColor: const Color.fromARGB(255, 7, 82, 96),
+                  decoration: InputDecoration(
+                    hintText: 'Choose from the list',
+                    labelText: 'Select the Frequency',
+                    labelStyle: TextStyle(
+                      color: const Color.fromARGB(255, 16, 15, 15),
+                    ),
+                    filled: true,
+                    floatingLabelBehavior: FloatingLabelBehavior.auto,
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(
+                        Radius.circular(20),
+                      ),
+                      borderSide: BorderSide(
+                        color: Color.fromARGB(255, 7, 82, 96),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.all(
+                        Radius.circular(20),
+                      ),
+                      borderSide: BorderSide(
+                        color: Colors.transparent,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              if (showDaysSection) ...[
+                SizedBox(height: 16),
+                Text(
+                  'Select the Days',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: const Color.fromARGB(255, 16, 15, 15),
+                  ),
+                ),
+                SizedBox(height: 16),
+                WeekdaySelector(
+                  onChanged: (int day) {
+                    setState(() {
+                      values[day % 7] = !values[day % 7];
+                    });
+                  },
+                  values: values,
+                ),
+              ],
+              SizedBox(height: 50),
+              if (showMessage)
+                Column(
+                  children: [
+                    Visibility(
+                      visible: showMessage,
+                      child: TextFormField(
+                        initialValue: "Saved Successfully",
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        readOnly: true,
+                        textAlign: TextAlign.center,
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    AnimatedSwitcher(
+                      duration: Duration(seconds: 3),
+                      child: Image.asset(
+                        'lib/assets/images/done.gif', // Change this path to your actual GIF image
+                        key: gifKey,
                       ),
                     ),
                   ],
                 ),
-              ),
-
-              if (isPillCountRequired)
-                Text_Field(
-                  label: 'Total Pill Count',
-                  hint: '30',
-                  isPassword: false,
-                  keyboard: TextInputType.number,
-                  txtEditController: _medicationNameController,
-                ),
-
-              SizedBox(height: 24),
-              //Horizontal Line
-              Container(
-                margin: EdgeInsets.symmetric(vertical: 10),
-                width: double.infinity,
-                height: 3,
-                color: Colors.grey.shade300,
-              ),
-              SizedBox(height: 16),
-              const Padding(
-                padding: EdgeInsets.only(top: 20, left: 10),
-                child: Text(
-                  'Takes Notes If Needed',
-                  style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600),
-                ),
-              ),
-              SizedBox(height: 16),
-              TextFormField(
-                controller: _medicationNoteController,
-                decoration: InputDecoration(
-                  labelText: '   Medication Notes',
-                  contentPadding:
-                      EdgeInsets.symmetric(vertical: 15, horizontal: 12),
-                ),
-                maxLines:
-                    null, // Set this to null to allow unlimited vertical flow
-              ),
-
-              SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () async {
-                  // if (_formKey.currentState!.validate()) {
-                  //   await FirebaseFirestore.instance
-                  //       .collection('users')
-                  //       .doc(user!.uid)
-                  //       .collection('medications')
-                  //       .add({
-                  //     'medicationName': _medicationNameController.text,
-                  //     'medicationType': _medicationTypeController.text,
-                  //     'medicationQuantity': _medicationQuantityController.text,
-                  //     'medicationDosage': _medicationDosageController.text,
-                  //     'medicationFrequency':
-                  //         _medicationFrequencyController.text,
-                  //     'medicationTimeOfDay':
-                  //         _medicationTimeOfDayController.text,
-                  //     'medicationReminder': _medicationReminderController.text,
-                  //     'medicationNote': _medicationNoteController.text,
-                  //     'medicationPhoto': _medicationPhotoController.text,
-                  //   });
-                  //   //navigate to add_medicine2
-                  //   Navigator.push(
-                  //     context,
-                  //     MaterialPageRoute(
-                  //       builder: (context) => AddMedication2(),
-                  //     ),
-                  //   );
-                  // }
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AddMedication3(),
-                    ),
-                  );
-                },
-                child: Text('Next'),
-              ),
             ],
           ),
->>>>>>> Stashed changes
         ),
       ),
     );
   }
 }
-<<<<<<< Updated upstream
-
-
-
-
-
-
 
 onTap: () => showDialog(
                   context: context,
@@ -788,7 +607,7 @@ onTap: () => showDialog(
 
       
       
-               var timePicked = await showTimePicker(
+var timePicked = await showTimePicker(
                     context: context,
                     initialTime: TimeOfDay.now(),
                   );
@@ -803,5 +622,3 @@ onTap: () => showDialog(
                   });
                     
                     
-=======
->>>>>>> Stashed changes

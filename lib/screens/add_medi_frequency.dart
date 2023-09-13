@@ -1,8 +1,10 @@
 import 'package:custom_radio_grouped_button/custom_radio_grouped_button.dart';
+
 // import 'package:direct_select_flutter/direct_select_item.dart';
 // import 'package:direct_select_flutter/direct_select_list.dart';
 import 'package:flutter/material.dart';
 import 'package:multi_dropdown/multiselect_dropdown.dart';
+
 import 'package:weekday_selector/weekday_selector.dart';
 
 class AddMediFrequency extends StatefulWidget {
@@ -16,9 +18,11 @@ List<bool> values = List.filled(7, false);
 
 class _AddMediFrequencyState extends State<AddMediFrequency> {
   final _formKey = GlobalKey<FormState>();
+
   final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   bool showFrequencySection = true;
+
   bool showDaysSection = false;
 
   void _showSnackBar(String message) {
@@ -118,7 +122,9 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
               if (showFrequencySection) ...[
                 SizedBox(height: 16),
                 Text(
+
                   'Choose the Interval',
+
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -126,6 +132,7 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
                   ),
                 ),
                 SizedBox(height: 16),
+
                 MultiSelectDropDown(
                   onOptionSelected: (List<ValueItem> selectedOptions) {},
                   options: const <ValueItem>[
@@ -151,6 +158,7 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
                   selectedOptions: const <ValueItem>[
                     ValueItem(label: 'Every Day', value: '1'),
                   ],
+
                 ),
               ],
               if (showDaysSection) ...[

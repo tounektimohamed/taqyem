@@ -20,6 +20,15 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorSchemeSeed: const Color.fromRGBO(7, 82, 96, 1),
+        snackBarTheme: SnackBarThemeData(
+          contentTextStyle: TextStyle(fontSize: 16), // Customize text style
+          backgroundColor: Colors.blueGrey, // Customize background color
+          elevation: 6, // Customize elevation
+          behavior: SnackBarBehavior.floating, // Customize behavior
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10), // Customize border radius
+          ),
+        ),
       ),
     );
   }
