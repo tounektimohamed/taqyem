@@ -1,10 +1,7 @@
 import 'package:custom_radio_grouped_button/custom_radio_grouped_button.dart';
-
-// import 'package:direct_select_flutter/direct_select_item.dart';
-// import 'package:direct_select_flutter/direct_select_list.dart';
 import 'package:flutter/material.dart';
 import 'package:multi_dropdown/multiselect_dropdown.dart';
-
+import 'package:mymeds_app/components/controller_data.dart';
 import 'package:weekday_selector/weekday_selector.dart';
 
 class AddMediFrequency extends StatefulWidget {
@@ -18,11 +15,12 @@ List<bool> values = List.filled(7, false);
 
 class _AddMediFrequencyState extends State<AddMediFrequency> {
   final _formKey = GlobalKey<FormState>();
-
   final _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  bool showFrequencySection = true;
+  TextEditingController _medicationFrequencyController =
+      MedicationControllerData().medicationFrequencyController;
 
+  bool showFrequencySection = true;
   bool showDaysSection = false;
 
   void _showSnackBar(String message) {
@@ -72,6 +70,10 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
                     onPressed: () {
                       _clearSelectionAndResetControllers();
                       Navigator.pop(context);
+                      //should cancel the changes and controller should be empty
+                      _medicationFrequencyController.clear();
+                      //printing the output in Debug Console
+                      print(_medicationFrequencyController.text);
                     },
                     child: Text('Cancel'),
                     style: ElevatedButton.styleFrom(),
@@ -82,6 +84,11 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
                         _showSnackBar('Saved Successfully');
                         Navigator.pop(context);
                       }
+                      if (_medicationFrequencyController.text.isEmpty) {
+                        _showSnackBar('Please select a frequency');
+                      }
+                      //printing the output in Debug Console
+                      print(_medicationFrequencyController.text);
                     },
                     child: Text('Done'),
                   ),
@@ -122,9 +129,7 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
               if (showFrequencySection) ...[
                 SizedBox(height: 16),
                 Text(
-
                   'Choose the Interval',
-
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -132,9 +137,19 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
                   ),
                 ),
                 SizedBox(height: 16),
-
                 MultiSelectDropDown(
-                  onOptionSelected: (List<ValueItem> selectedOptions) {},
+                  onOptionSelected: (List<ValueItem> selectedOptions) {
+                    if (selectedOptions.isNotEmpty) {
+                      // Assuming you want to concatenate selected options into a single string
+                      String selectedValue = selectedOptions
+                          .map((option) => option.value)
+                          .join(', ');
+                      _medicationFrequencyController.text = selectedValue;
+                    } else {
+                      // Handle the case where no options are selected
+                      _medicationFrequencyController.text = '';
+                    }
+                  },
                   options: const <ValueItem>[
                     ValueItem(label: 'Every Day', value: '1'),
                     ValueItem(label: 'Every 2 Days', value: '2'),
@@ -158,7 +173,6 @@ class _AddMediFrequencyState extends State<AddMediFrequency> {
                   selectedOptions: const <ValueItem>[
                     ValueItem(label: 'Every Day', value: '1'),
                   ],
-
                 ),
               ],
               if (showDaysSection) ...[
