@@ -74,7 +74,7 @@ class _AddMedication1State extends State<AddMedication1> {
                       children: [
                         Text(
                           'Add each medicine separately',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.roboto(
                               fontSize: 11, color: Colors.teal),
                           textAlign: TextAlign.center,
                         ),
@@ -244,7 +244,7 @@ class _AddMedication1State extends State<AddMedication1> {
                       decoration: InputDecoration(
                         hintText: '0.0',
                         labelText: 'Strength Value',
-                        labelStyle: GoogleFonts.poppins(
+                        labelStyle: GoogleFonts.roboto(
                           color: const Color.fromARGB(255, 16, 15, 15),
                         ),
                         filled: true,

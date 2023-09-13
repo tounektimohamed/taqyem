@@ -94,7 +94,7 @@ class _AddMedication3State extends State<AddMedication3> {
               // This is a title
               Text(
                 'Times of the Day',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.roboto(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                 ),
@@ -133,7 +133,7 @@ class _AddMedication3State extends State<AddMedication3> {
                       },
                       controller: _medicationTimeOfDayController,
                       readOnly: true,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.roboto(
                         height: 2,
                         color: const Color.fromARGB(255, 16, 15, 15),
                       ),
@@ -141,7 +141,7 @@ class _AddMedication3State extends State<AddMedication3> {
                       decoration: InputDecoration(
                         hintText: 'Select the Time and add it',
                         labelText: 'Medication Times',
-                        labelStyle: GoogleFonts.poppins(
+                        labelStyle: GoogleFonts.roboto(
                           color: const Color.fromARGB(255, 16, 15, 15),
                         ),
                         filled: true,
@@ -234,7 +234,7 @@ class _AddMedication3State extends State<AddMedication3> {
               SizedBox(height: 16),
               Text(
                 'When will you take this?',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.roboto(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                 ),
@@ -273,7 +273,7 @@ class _AddMedication3State extends State<AddMedication3> {
                 },
                 controller: _startingDateController,
                 readOnly: true,
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.roboto(
                   height: 2,
                   color: const Color.fromARGB(255, 16, 15, 15),
                 ),
@@ -281,7 +281,7 @@ class _AddMedication3State extends State<AddMedication3> {
                 decoration: InputDecoration(
                   hintText: 'Select the Date',
                   labelText: 'Starting Date',
-                  labelStyle: GoogleFonts.poppins(
+                  labelStyle: GoogleFonts.roboto(
                     color: const Color.fromARGB(255, 16, 15, 15),
                   ),
                   filled: true,
@@ -347,7 +347,7 @@ class _AddMedication3State extends State<AddMedication3> {
                   },
                   controller: _startingDateController,
                   readOnly: true,
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.roboto(
                     height: 2,
                     color: const Color.fromARGB(255, 16, 15, 15),
                   ),
@@ -355,7 +355,7 @@ class _AddMedication3State extends State<AddMedication3> {
                   decoration: InputDecoration(
                     hintText: 'Select the Date',
                     labelText: 'Ending Date',
-                    labelStyle: GoogleFonts.poppins(
+                    labelStyle: GoogleFonts.roboto(
                       color: const Color.fromARGB(255, 16, 15, 15),
                     ),
                     filled: true,

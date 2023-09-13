@@ -98,7 +98,7 @@ class _AddMedication2State extends State<AddMedication2> {
                       decoration: InputDecoration(
                         hintText: '1',
                         labelText: 'Count',
-                        labelStyle: GoogleFonts.poppins(
+                        labelStyle: GoogleFonts.roboto(
                           color: const Color.fromARGB(255, 16, 15, 15),
                         ),
                         filled: true,
