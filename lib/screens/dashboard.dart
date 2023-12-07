@@ -3,12 +3,13 @@ import 'dart:async';
 import 'package:alarm/alarm.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:mymeds_app/components/language_constants.dart';
 import 'package:mymeds_app/screens/add_medication1.dart';
 import 'package:mymeds_app/screens/alarm_ring.dart';
 import 'package:mymeds_app/screens/homepage2.dart';
 import 'package:mymeds_app/screens/medication.dart';
-import 'package:mymeds_app/screens/statistic.dart';
 import 'package:mymeds_app/screens/more.dart';
+import 'package:mymeds_app/screens/statistic.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -125,13 +126,13 @@ class _DashboardState extends State<Dashboard> {
       //bottom navigation
       bottomNavigationBar: NavigationBar(
         backgroundColor: const Color.fromARGB(255, 242, 253, 255),
-        destinations: const [
+        destinations: [
           //home
           NavigationDestination(
             icon: Icon(
               Icons.home_outlined,
             ),
-            label: 'Home',
+            label: translation(context).home,
             selectedIcon: Icon(
               Icons.home_rounded,
               color: Color.fromRGBO(7, 82, 96, 1),
@@ -142,7 +143,7 @@ class _DashboardState extends State<Dashboard> {
             icon: Icon(
               Icons.medication_outlined,
             ),
-            label: 'Medications',
+            label: translation(context).medications,
             selectedIcon: Icon(
               Icons.medication,
               color: Color.fromRGBO(7, 82, 96, 1),
@@ -153,7 +154,7 @@ class _DashboardState extends State<Dashboard> {
             icon: Icon(
               Icons.analytics_outlined,
             ),
-            label: 'Statistics',
+            label: translation(context).statistics,
             selectedIcon: Icon(
               Icons.analytics_rounded,
               color: Color.fromRGBO(7, 82, 96, 1),
@@ -164,7 +165,7 @@ class _DashboardState extends State<Dashboard> {
             icon: Icon(
               Icons.dashboard_customize_outlined,
             ),
-            label: 'More',
+            label: translation(context).more,
             selectedIcon: Icon(
               Icons.dashboard_customize_rounded,
               color: Color.fromRGBO(7, 82, 96, 1),

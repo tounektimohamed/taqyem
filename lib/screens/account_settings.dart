@@ -1,5 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:mymeds_app/components/language.dart';
+import 'package:mymeds_app/components/language_constants.dart';
+import 'package:mymeds_app/main.dart';
 import 'package:mymeds_app/screens/user_profile.dart';
 import 'package:settings_ui/settings_ui.dart';
 
@@ -16,41 +19,6 @@ class _SettingPageUIState extends State<SettingsPageUI> {
   bool ValueNotify1 = false;
   bool ValueNotify2 = false;
   // bool ValueNotify3 = false;
-
-  void _showLanguageSelectionDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return SimpleDialog(
-          title: const Text('Select Language'),
-          children: [
-            SimpleDialogOption(
-              onPressed: () {
-                Navigator.pop(context, 'සිංහල');
-              },
-              child: const Text('සිංහල'),
-            ),
-            SimpleDialogOption(
-              onPressed: () {
-                Navigator.pop(context, 'English');
-              },
-              child: const Text('English'),
-            ),
-            SimpleDialogOption(
-              onPressed: () {
-                Navigator.pop(context, 'தமிழ்');
-              },
-              child: const Text('தமிழ்'),
-            ),
-          ],
-        );
-      },
-    ).then((selectedLanguage) {
-      if (selectedLanguage != null) {
-        print('Selected language: $selectedLanguage');
-      }
-    });
-  }
 
   // @override
   // Widget build(BuildContext context) {
@@ -91,8 +59,8 @@ class _SettingPageUIState extends State<SettingsPageUI> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          "Settings",
+        title: Text(
+          translation(context).settings,
           style: TextStyle(
             fontSize: 22,
           ),
@@ -290,7 +258,7 @@ class _SettingPageUIState extends State<SettingsPageUI> {
         sections: [
           SettingsSection(
             title: Text(
-              'Account Settings',
+              translation(context).accountSettings,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.w600,
@@ -299,7 +267,7 @@ class _SettingPageUIState extends State<SettingsPageUI> {
             tiles: <SettingsTile>[
               SettingsTile.navigation(
                 leading: const Icon(Icons.account_circle_outlined),
-                title: const Text('Edit Profile'),
+                title: Text(translation(context).editProfile),
                 onPressed: (context) {
                   Navigator.push(
                     context,
@@ -312,7 +280,7 @@ class _SettingPageUIState extends State<SettingsPageUI> {
           ),
           SettingsSection(
             title: Text(
-              'App Settings',
+              translation(context).appSettings,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.w600,
@@ -321,17 +289,42 @@ class _SettingPageUIState extends State<SettingsPageUI> {
             tiles: <SettingsTile>[
               SettingsTile.navigation(
                 leading: const Icon(Icons.notifications_active_outlined),
-                title: const Text('Notification Settings'),
+                title: Text(translation(context).notificationSettings),
               ),
               SettingsTile.navigation(
                 leading: const Icon(Icons.language_rounded),
-                title: const Text('Language'),
+                title: Text(translation(context).language),
+                onPressed: (BuildContext context) {
+                  showModalBottomSheet(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return Container(
+                        child: Wrap(
+                          children: Language.languageList().map((language) {
+                            return ListTile(
+                              leading: Text(
+                                language.flag,
+                                style: const TextStyle(fontSize: 30),
+                              ),
+                              title: Text(language.name),
+                              onTap: () async {
+                                Locale _locale =
+                                    await setLocale(language.languageCode);
+                                MyApp.setLocale(context, _locale);
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ],
           ),
           SettingsSection(
             title: Text(
-              'Other',
+              translation(context).other,
               style: TextStyle(
                 color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.w600,
@@ -340,11 +333,11 @@ class _SettingPageUIState extends State<SettingsPageUI> {
             tiles: <SettingsTile>[
               SettingsTile.navigation(
                 leading: const Icon(Icons.help_outline_outlined),
-                title: const Text('Help Center'),
+                title: Text(translation(context).helpCenter),
               ),
               SettingsTile.navigation(
                 leading: const Icon(Icons.description_outlined),
-                title: const Text('Terms and Conditions'),
+                title: Text(translation(context).termsNconditions),
               ),
             ],
           ),
@@ -353,7 +346,8 @@ class _SettingPageUIState extends State<SettingsPageUI> {
             tiles: <SettingsTile>[
               SettingsTile.navigation(
                 leading: const Icon(Icons.login_rounded),
-                title: const Text('Sign Out'),
+                // title: const Text('Sign Out'),
+                title: Text(translation(context).signOut),
                 onPressed: (context) {
                   FirebaseAuth.instance.signOut();
                   Navigator.pop(context);

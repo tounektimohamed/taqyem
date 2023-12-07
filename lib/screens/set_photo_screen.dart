@@ -1,12 +1,14 @@
 import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mymeds_app/components/language_constants.dart';
 import 'package:mymeds_app/screens/select_photo_options.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 
 import '../components/constants.dart';
 
@@ -30,10 +32,18 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
 
   String? url;
 
-  Future<String> getPhotoUrl() async {
-    url = await storageRef.getDownloadURL();
-    print(url);
-    return url!;
+  Future<String?> getPhotoUrl() async {
+    try {
+      url = await storageRef.getDownloadURL();
+      print(url);
+      return url;
+    } catch (e) {
+      if (e is FirebaseException && e.code == 'object-not-found') {
+        print('No object exists at the desired reference.');
+      } else {
+        rethrow;
+      }
+    }
   }
 
   //image
@@ -180,10 +190,12 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Save a photo of your prescription',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
+        title: SizedBox(
+          child: Text(
+            translation(context).presImg,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         elevation: 5.0,
@@ -204,7 +216,7 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              const Column(
+              Column(
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -214,7 +226,7 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
                         width: 10,
                       ),
                       Text(
-                        'Upload a clear photo of your prescription',
+                        translation(context).photoText1,
                         style: kHeadSubtitleTextStyle,
                       ),
                     ],
