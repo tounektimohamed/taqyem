@@ -105,114 +105,114 @@ class _MediactionState extends State<Mediaction> {
       //   // backgroundColor: Color.fromARGB(163, 206, 240, 247)
       //   // backgroundColor: Colors.white,
       // ),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-        child: Column(
-          children: [
-            //app logo and user icon
-            Container(
-              alignment: Alignment.topCenter,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  //logo and name
-                  const Column(
-                    children: [
-                      //logo
-                      Image(
-                        image: AssetImage('lib/assets/icon_small.png'),
-                        height: 50,
-                      ),
-                      //app name
-                      // Text(
-                      //   'MyMeds',
-                      //   style: GoogleFonts.poppins(
-                      //     fontSize: 20,
-                      //     fontWeight: FontWeight.w600,
-                      //     color: const Color.fromRGBO(7, 82, 96, 1),
-                      //   ),
-                      // ),
-                    ],
-                  ),
-
-                  // user icon widget
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) {
-                                return const SettingsPageUI();
-                              },
-                            ),
-                          );
-                        },
-                        // child: currentUser!.photoURL!.isEmpty
-                        //     ? CircleAvatar(
-                        //         radius: 20,
-                        //         backgroundColor:
-                        //             Theme.of(context).colorScheme.primary,
-                        //         foregroundColor:
-                        //             Theme.of(context).colorScheme.surface,
-                        //         child: const Icon(Icons.person_outlined),
-                        //       )
-                        //     : CircleAvatar(
-                        //         radius: 20,
-                        //         backgroundImage:
-                        //             NetworkImage(currentUser!.photoURL!),
-                        //         backgroundColor: Colors.transparent,
-                        //       ),
-                        child: (currentUser?.photoURL?.isEmpty ?? true)
-                            ? CircleAvatar(
-                                radius: 20,
-                                backgroundColor:
-                                    Theme.of(context).colorScheme.primary,
-                                foregroundColor:
-                                    Theme.of(context).colorScheme.surface,
-                                child: const Icon(Icons.person_outlined),
-                              )
-                            : CircleAvatar(
-                                radius: 20,
-                                backgroundImage:
-                                    NetworkImage(currentUser!.photoURL!),
-                              ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
+      body: Column(
+        children: [
+          //app logo and user icon
+          Container(
+            alignment: Alignment.topCenter,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                //title
-                // Text(
-                //   'Medications',
-                //   textAlign: TextAlign.center,
-                //   style: GoogleFonts.roboto(
-                //     fontSize: 30,
-                //     fontWeight: FontWeight.w600,
-                //   ),
-                // ),
-                //medication gif
-                Image.asset(
-                  height: MediaQuery.of(context).size.height * 0.20,
-                  'lib/assets/images/medication.gif',
-                  color: const Color.fromARGB(255, 241, 250, 251),
-                  colorBlendMode: BlendMode.darken,
+                //logo and name
+                const Column(
+                  children: [
+                    //logo
+                    Image(
+                      image: AssetImage('lib/assets/icon_small.png'),
+                      height: 50,
+                    ),
+                    //app name
+                    // Text(
+                    //   'MyMeds',
+                    //   style: GoogleFonts.poppins(
+                    //     fontSize: 20,
+                    //     fontWeight: FontWeight.w600,
+                    //     color: const Color.fromRGBO(7, 82, 96, 1),
+                    //   ),
+                    // ),
+                  ],
+                ),
+
+                // user icon widget
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) {
+                              return const SettingsPageUI();
+                            },
+                          ),
+                        );
+                      },
+                      // child: currentUser!.photoURL!.isEmpty
+                      //     ? CircleAvatar(
+                      //         radius: 20,
+                      //         backgroundColor:
+                      //             Theme.of(context).colorScheme.primary,
+                      //         foregroundColor:
+                      //             Theme.of(context).colorScheme.surface,
+                      //         child: const Icon(Icons.person_outlined),
+                      //       )
+                      //     : CircleAvatar(
+                      //         radius: 20,
+                      //         backgroundImage:
+                      //             NetworkImage(currentUser!.photoURL!),
+                      //         backgroundColor: Colors.transparent,
+                      //       ),
+                      child: (currentUser?.photoURL?.isEmpty ?? true)
+                          ? CircleAvatar(
+                              radius: 20,
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
+                              foregroundColor:
+                                  Theme.of(context).colorScheme.surface,
+                              child: const Icon(Icons.person_outlined),
+                            )
+                          : CircleAvatar(
+                              radius: 20,
+                              backgroundImage:
+                                  NetworkImage(currentUser!.photoURL!),
+                            ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            Expanded(
-              child: GlowingOverscrollIndicator(
-                axisDirection: AxisDirection.down,
-                color: const Color.fromARGB(255, 7, 83, 96),
-                child: SingleChildScrollView(
-                  physics: const ScrollPhysics(),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              //title
+              // Text(
+              //   'Medications',
+              //   textAlign: TextAlign.center,
+              //   style: GoogleFonts.roboto(
+              //     fontSize: 30,
+              //     fontWeight: FontWeight.w600,
+              //   ),
+              // ),
+              //medication gif
+              Image.asset(
+                height: MediaQuery.of(context).size.height * 0.20,
+                'lib/assets/images/medication.gif',
+                color: const Color.fromARGB(255, 241, 250, 251),
+                colorBlendMode: BlendMode.darken,
+              ),
+            ],
+          ),
+          Expanded(
+            child: GlowingOverscrollIndicator(
+              axisDirection: AxisDirection.down,
+              color: const Color.fromARGB(255, 7, 83, 96),
+              child: SingleChildScrollView(
+                physics: const ScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
                   child: Column(
                     children: [
                       FutureBuilder(
@@ -309,8 +309,8 @@ class _MediactionState extends State<Mediaction> {
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

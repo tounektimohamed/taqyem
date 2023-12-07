@@ -73,8 +73,8 @@ class _BMIState extends State<BMI> {
           selectedHeightUnit == 'ft' ? height * 30.48 : height * 2.54;
 
       double idealWeight = 50 + 0.91 * (heightInCm - 152.4);
-      idealWeightMessage = translation(context).bmiText5 +
-          '${idealWeight.toStringAsFixed(2)} kg';
+      idealWeightMessage =
+          '${translation(context).bmiText5}${idealWeight.toStringAsFixed(2)} kg';
     });
   }
 
@@ -92,7 +92,7 @@ class _BMIState extends State<BMI> {
       appBar: AppBar(
         title: Text(
           translation(context).bmiCal,
-          style: TextStyle(fontWeight: FontWeight.w600),
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         elevation: 5.0,
       ),
@@ -135,10 +135,10 @@ class _BMIState extends State<BMI> {
                     ],
                   ),
                   Padding(
-                    padding: EdgeInsets.symmetric(vertical: 16.0),
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
                     child: Text(
                       translation(context).bmiText,
-                      style: TextStyle(fontSize: 16.0),
+                      style: const TextStyle(fontSize: 16.0),
                     ),
                   ),
                   const SizedBox(
@@ -199,8 +199,11 @@ class _BMIState extends State<BMI> {
                                 ),
                               ),
                             ),
-                            SizedBox(width: 10),
+                            const SizedBox(width: 10),
                             DropdownButton<String>(
+                              borderRadius: BorderRadius.circular(10),
+                              dropdownColor:
+                                  const Color.fromARGB(255, 220, 228, 232),
                               value: selectedWeightUnit,
                               items: weightUnits.map((String unit) {
                                 return DropdownMenuItem<String>(
@@ -269,9 +272,12 @@ class _BMIState extends State<BMI> {
                                 ),
                               ),
                             ),
-                            SizedBox(width: 10),
+                            const SizedBox(width: 10),
                             DropdownButton<String>(
                               value: selectedHeightUnit,
+                              borderRadius: BorderRadius.circular(10),
+                              dropdownColor:
+                                  const Color.fromARGB(255, 220, 228, 232),
                               items: heightUnits.map((String? unit) {
                                 return DropdownMenuItem<String>(
                                   value: unit,
@@ -302,9 +308,10 @@ class _BMIState extends State<BMI> {
                         if (_weightController.text == '') {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              backgroundColor: Color.fromARGB(255, 7, 83, 96),
+                              backgroundColor:
+                                  const Color.fromARGB(255, 7, 83, 96),
                               behavior: SnackBarBehavior.floating,
-                              duration: Duration(seconds: 2),
+                              duration: const Duration(seconds: 2),
                               content: Text(
                                 translation(context).bmiText6,
                               ),
@@ -313,9 +320,10 @@ class _BMIState extends State<BMI> {
                         } else if (_heightController.text == '') {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              backgroundColor: Color.fromARGB(255, 7, 83, 96),
+                              backgroundColor:
+                                  const Color.fromARGB(255, 7, 83, 96),
                               behavior: SnackBarBehavior.floating,
-                              duration: Duration(seconds: 2),
+                              duration: const Duration(seconds: 2),
                               content: Text(
                                 translation(context).bmiText7,
                               ),
