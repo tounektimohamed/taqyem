@@ -123,12 +123,12 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
         getPhotoUrl();
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           backgroundColor: Color.fromARGB(255, 7, 83, 96),
           behavior: SnackBarBehavior.floating,
           duration: Duration(seconds: 2),
           content: Text(
-            'Prescription image uploaded successfully',
+            translation(context).pSAI,
           ),
         ),
       );
@@ -142,12 +142,12 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
       });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           backgroundColor: Color.fromARGB(255, 7, 83, 96),
           behavior: SnackBarBehavior.floating,
           duration: Duration(seconds: 3),
           content: Text(
-            'Please select an image first',
+            translation(context).pSAI,
           ),
         ),
       );
@@ -195,6 +195,7 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
             translation(context).presImg,
             style: TextStyle(
               fontWeight: FontWeight.w600,
+              fontSize: 22,
             ),
           ),
         ),
@@ -225,9 +226,11 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
                       SizedBox(
                         width: 10,
                       ),
-                      Text(
-                        translation(context).photoText1,
-                        style: kHeadSubtitleTextStyle,
+                      Flexible(
+                        child: Text(
+                          translation(context).photoText1,
+                          style: kHeadSubtitleTextStyle,
+                        ),
                       ),
                     ],
                   ),
@@ -298,8 +301,8 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
                                         }
                                       },
                                     )
-                                  : const Text(
-                                      'No image selected',
+                                  : Text(
+                                      translation(context).nIS,
                                       style: TextStyle(fontSize: 20),
                                     ))
                               : Image.file(
@@ -383,7 +386,7 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
                         ),
                       ),
                       label: Text(
-                        'Add a Photo',
+                        translation(context).photoBtn1,
                         style: GoogleFonts.roboto(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,

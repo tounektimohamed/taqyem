@@ -48,6 +48,13 @@
     "photoBtn3": "Browse Gallery",
     "photoBtn4": "Use Camera",
     "photoText2": "or",
+    "nIS": "No image selected",
+    "pSAI": "Please select an image first",
+    "pIAS": "Prescription image uploaded successfully",
+
+    "upload": "Upload",
+    "dUpload": "Done uploading",
+    
 
     "bmiCal": "BMI Calculator",
     "bmiText": "Body Mass Index(BMI) is a metric of body fat percentage commonly used to estimate risk levels of potential health problems.",
