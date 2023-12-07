@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:mymeds_app/components/language_constants.dart';
 
 class EditProfilePage extends StatelessWidget {
+  const EditProfilePage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(translation(context).yourProfile),
+        title: const Text("Edit Profile"),
       ),
       body: Center(
           child: Column(

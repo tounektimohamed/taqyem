@@ -28,12 +28,12 @@
     "medications": "Medications",
     "statistics": "Statistics",
     "more": "More",
-    "dashText1": "Your medication reminders will be displayed here.",
+    "dashText1": "Your medication reminders\n will be displayed here.",
     "dashText2": "You have no medication reminders.",
-    "medicationText1": "Your medications will be displayed here.",
+    "medicationText1": "Your medications\n will be displayed here.",
     "medicationText2": "You have no medications.",
     "buttonText": "Add a Medication",
-    "dashText3": "Your medication alarms will be displayed here",
+    "dashText3": "Your medication alarms\n will be displayed here",
 
     "presImg": "Prescription Image",
     "nearby": "Nearby Pharmacies & Hospitals",
@@ -181,5 +181,8 @@
     "nTS": "No time selected",
     "maxMedTPD": "Maximum medication times per day is 24",
     "bSD": "Bottom sheet data: ",
-    "aLDT": "Added log dates and times"
+    "aLDT": "Added log dates and times",
+
+    "today": "Today",
+    "thisWeek": "This week"
 }

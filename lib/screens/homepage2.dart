@@ -404,12 +404,20 @@ class _HomePage2State extends State<HomePage2> {
                       //             NetworkImage(currentUser!.photoURL!),
                       //         backgroundColor: Colors.transparent,
                       //       ),
-                      child: CircleAvatar(
-                        radius: 20,
-                        backgroundColor: Theme.of(context).colorScheme.primary,
-                        foregroundColor: Theme.of(context).colorScheme.surface,
-                        child: const Icon(Icons.person_outlined),
-                      ),
+                      child: (currentUser?.photoURL?.isEmpty ?? true)
+                          ? CircleAvatar(
+                              radius: 20,
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.primary,
+                              foregroundColor:
+                                  Theme.of(context).colorScheme.surface,
+                              child: const Icon(Icons.person_outlined),
+                            )
+                          : CircleAvatar(
+                              radius: 20,
+                              backgroundImage:
+                                  NetworkImage(currentUser!.photoURL!),
+                            ),
                     ),
                   ],
                 ),

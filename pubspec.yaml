@@ -73,6 +73,8 @@ dependencies:
   weekday_selector: ^1.1.0
   custom_radio_grouped_button: ^2.2.0
   intl_translation: 
+  week_of_year: ^2.2.0
+  webview_flutter: ^4.4.2
 
 dev_dependencies:
   flutter_test:

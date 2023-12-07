@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:mymeds_app/components/language_constants.dart';
 import 'package:mymeds_app/screens/add_medication1.dart';
 import 'package:mymeds_app/screens/alarm_ring.dart';
+import 'package:mymeds_app/screens/chatbot.dart';
 import 'package:mymeds_app/screens/homepage2.dart';
 import 'package:mymeds_app/screens/medication.dart';
 import 'package:mymeds_app/screens/more.dart';
@@ -25,7 +26,8 @@ class _DashboardState extends State<Dashboard> {
   int _selectedIndex = 0;
 
   //Floating Action Button
-  bool isFABvisible = false;
+  bool isFABvisible = true;
+  bool chatBot = true;
 
   //alarm list
   late List<AlarmSettings> alarms;
@@ -103,12 +105,19 @@ class _DashboardState extends State<Dashboard> {
       floatingActionButton: isFABvisible
           ? FloatingActionButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AddMedication1(),
-                  ),
-                );
+                !chatBot
+                    ? Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AddMedication1(),
+                        ),
+                      )
+                    : Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChatBot(),
+                        ),
+                      );
               },
               // shape: const RoundedRectangleBorder(
               //   borderRadius: BorderRadius.all(
@@ -116,9 +125,11 @@ class _DashboardState extends State<Dashboard> {
               //   ),
               // ),
 
-              backgroundColor: Theme.of(context).colorScheme.primary,
+              backgroundColor: const Color.fromARGB(255, 14, 149, 173),
               foregroundColor: Theme.of(context).colorScheme.background,
-              child: const Icon(Icons.add),
+              child: !chatBot
+                  ? const Icon(Icons.add)
+                  : const Icon(Icons.smart_toy_outlined),
             )
           : null,
       // floatingActionButtonLocation:
@@ -129,44 +140,44 @@ class _DashboardState extends State<Dashboard> {
         destinations: [
           //home
           NavigationDestination(
-            icon: Icon(
+            icon: const Icon(
               Icons.home_outlined,
             ),
             label: translation(context).home,
-            selectedIcon: Icon(
+            selectedIcon: const Icon(
               Icons.home_rounded,
               color: Color.fromRGBO(7, 82, 96, 1),
             ),
           ),
           //medications
           NavigationDestination(
-            icon: Icon(
+            icon: const Icon(
               Icons.medication_outlined,
             ),
             label: translation(context).medications,
-            selectedIcon: Icon(
+            selectedIcon: const Icon(
               Icons.medication,
               color: Color.fromRGBO(7, 82, 96, 1),
             ),
           ),
           //history
           NavigationDestination(
-            icon: Icon(
+            icon: const Icon(
               Icons.analytics_outlined,
             ),
             label: translation(context).statistics,
-            selectedIcon: Icon(
+            selectedIcon: const Icon(
               Icons.analytics_rounded,
               color: Color.fromRGBO(7, 82, 96, 1),
             ),
           ),
           //settings
           NavigationDestination(
-            icon: Icon(
+            icon: const Icon(
               Icons.dashboard_customize_outlined,
             ),
             label: translation(context).more,
-            selectedIcon: Icon(
+            selectedIcon: const Icon(
               Icons.dashboard_customize_rounded,
               color: Color.fromRGBO(7, 82, 96, 1),
             ),
@@ -181,13 +192,21 @@ class _DashboardState extends State<Dashboard> {
         selectedIndex: _selectedIndex,
         onDestinationSelected: (int) {
           switch (int) {
+            case 0:
+              isFABvisible = true;
+              chatBot = true;
+              break;
             case 1: //home
               //show FAB in medication page
               isFABvisible = true;
+              chatBot = false;
               break;
-            case 0:
             case 2:
+              isFABvisible = false;
+              chatBot = false;
+              break;
             case 3:
+              chatBot = false;
               isFABvisible = false;
               break;
           }

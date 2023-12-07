@@ -65,9 +65,9 @@ class _AddMedication1State extends State<AddMedication1> {
     } else if (_selectedCategoryIndex < 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: Color.fromARGB(255, 7, 83, 96),
+          backgroundColor: const Color.fromARGB(255, 7, 83, 96),
           behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
           content: Text(
             translation(context).pstMedCategory,
           ),
@@ -78,9 +78,9 @@ class _AddMedication1State extends State<AddMedication1> {
           _medicationStrengthController.text.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: Color.fromARGB(255, 7, 83, 96),
+            backgroundColor: const Color.fromARGB(255, 7, 83, 96),
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
             content: Text(
               translation(context).pstStrType,
             ),
@@ -90,9 +90,9 @@ class _AddMedication1State extends State<AddMedication1> {
           _medicationStrengthController.text.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: Color.fromARGB(255, 7, 83, 96),
+            backgroundColor: const Color.fromARGB(255, 7, 83, 96),
             behavior: SnackBarBehavior.floating,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
             content: Text(
               translation(context).pstStrType,
             ),
@@ -120,7 +120,7 @@ class _AddMedication1State extends State<AddMedication1> {
       appBar: AppBar(
         title: Text(
           translation(context).addMed,
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.w600,
           ),
@@ -133,7 +133,7 @@ class _AddMedication1State extends State<AddMedication1> {
           key: _formKey,
           child: ListView(
             children: [
-              Row(
+              const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment
                     .center, // Align children vertically in the center
@@ -158,22 +158,22 @@ class _AddMedication1State extends State<AddMedication1> {
                   //   ),
                   // ),
                   // SizedBox(width: 20),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: _openImagePicker,
-                      child: Container(
-                        margin: const EdgeInsets.only(
-                            left: 40, right: 40, top: 10, bottom: 10),
-                        height: 80,
-                        width: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.add_a_photo_outlined, size: 50),
-                      ),
-                    ),
-                  ),
+                  // Expanded(
+                  //   child: GestureDetector(
+                  //     onTap: _openImagePicker,
+                  //     child: Container(
+                  //       margin: const EdgeInsets.only(
+                  //           left: 40, right: 40, top: 10, bottom: 10),
+                  //       height: 80,
+                  //       width: 80,
+                  //       decoration: BoxDecoration(
+                  //         color: Colors.grey[300],
+                  //         borderRadius: BorderRadius.circular(10),
+                  //       ),
+                  //       child: const Icon(Icons.add_a_photo_outlined, size: 50),
+                  //     ),
+                  //   ),
+                  // ),
                 ],
               ),
               const SizedBox(
@@ -182,7 +182,7 @@ class _AddMedication1State extends State<AddMedication1> {
               //medication name
               Text(
                 translation(context).medName,
-                style: TextStyle(
+                style: const TextStyle(
                     color: Colors.black,
                     fontSize: 18,
                     fontWeight: FontWeight.w600),
@@ -208,7 +208,7 @@ class _AddMedication1State extends State<AddMedication1> {
               const SizedBox(height: 20),
               Text(
                 translation(context).cat,
-                style: TextStyle(
+                style: const TextStyle(
                     color: Colors.black,
                     fontSize: 18,
                     fontWeight: FontWeight.w600),
@@ -282,7 +282,7 @@ class _AddMedication1State extends State<AddMedication1> {
                               ),
                               Text(
                                 widget.categories[index].name,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontWeight: FontWeight.w400,
                                   color: Colors.black,
                                   fontSize: 14,
@@ -308,14 +308,14 @@ class _AddMedication1State extends State<AddMedication1> {
                 children: [
                   Text(
                     translation(context).strength,
-                    style: TextStyle(
+                    style: const TextStyle(
                         color: Colors.black,
                         fontSize: 18,
                         fontWeight: FontWeight.w600),
                   ),
                   Text(
                     translation(context).optional,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.black,
                       fontSize: 15,
                     ),
@@ -347,7 +347,7 @@ class _AddMedication1State extends State<AddMedication1> {
                       focusNode: focusNode_medStrengthValue,
                       keyboardType: TextInputType.number,
                       cursorColor: const Color.fromARGB(255, 7, 82, 96),
-                      style: TextStyle(
+                      style: const TextStyle(
                         height: 2,
                       ),
                       decoration: InputDecoration(

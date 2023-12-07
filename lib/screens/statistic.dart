@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mymeds_app/components/language_constants.dart';
 import 'package:mymeds_app/screens/account_settings.dart';
 import 'package:mymeds_app/screens/add_medication1.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -371,14 +372,20 @@ class _StatisticState extends State<Statistic> {
                               ),
                             );
                           },
-                          child: CircleAvatar(
-                            radius: 20,
-                            backgroundColor:
-                                Theme.of(context).colorScheme.primary,
-                            foregroundColor:
-                                Theme.of(context).colorScheme.surface,
-                            child: const Icon(Icons.person_outlined),
-                          ),
+                          child: (currentUser?.photoURL?.isEmpty ?? true)
+                              ? CircleAvatar(
+                                  radius: 20,
+                                  backgroundColor:
+                                      Theme.of(context).colorScheme.primary,
+                                  foregroundColor:
+                                      Theme.of(context).colorScheme.surface,
+                                  child: const Icon(Icons.person_outlined),
+                                )
+                              : CircleAvatar(
+                                  radius: 20,
+                                  backgroundImage:
+                                      NetworkImage(currentUser!.photoURL!),
+                                ),
                         ),
                       ],
                     ),
@@ -396,7 +403,7 @@ class _StatisticState extends State<Statistic> {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       Text(
-                        'Today',
+                        translation(context).today,
                         style: GoogleFonts.roboto(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
@@ -524,7 +531,7 @@ class _StatisticState extends State<Statistic> {
                         height: 20,
                       ),
                       Text(
-                        'This week',
+                        translation(context).thisWeek,
                         style: GoogleFonts.roboto(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,

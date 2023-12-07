@@ -44,6 +44,7 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
         rethrow;
       }
     }
+    return null;
   }
 
   //image
@@ -124,9 +125,9 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: Color.fromARGB(255, 7, 83, 96),
+          backgroundColor: const Color.fromARGB(255, 7, 83, 96),
           behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
           content: Text(
             translation(context).pSAI,
           ),
@@ -143,9 +144,9 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: Color.fromARGB(255, 7, 83, 96),
+          backgroundColor: const Color.fromARGB(255, 7, 83, 96),
           behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 3),
+          duration: const Duration(seconds: 3),
           content: Text(
             translation(context).pSAI,
           ),
@@ -193,7 +194,7 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
         title: SizedBox(
           child: Text(
             translation(context).presImg,
-            style: TextStyle(
+            style: const TextStyle(
               fontWeight: FontWeight.w600,
               fontSize: 22,
             ),
@@ -222,8 +223,8 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.info_outline_rounded),
-                      SizedBox(
+                      const Icon(Icons.info_outline_rounded),
+                      const SizedBox(
                         width: 10,
                       ),
                       Flexible(
@@ -289,7 +290,84 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
                                               },
                                             );
                                           } else {
-                                            return const Text('No image');
+                                            return Center(
+                                              child: Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  const SizedBox(
+                                                    height: 20,
+                                                  ),
+                                                  ClipRRect(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            50),
+                                                    child: Image.asset(
+                                                      'lib/assets/icons/image-.gif',
+                                                      color:
+                                                          const Color.fromARGB(
+                                                              255,
+                                                              241,
+                                                              250,
+                                                              251),
+                                                      colorBlendMode:
+                                                          BlendMode.darken,
+                                                      height: 100.0,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(
+                                                    height: 20,
+                                                  ),
+                                                  Text(
+                                                    'Your prescription image\n will be displayed here',
+                                                    textAlign: TextAlign.center,
+                                                    style: GoogleFonts.roboto(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontSize: 16,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(
+                                                    height: 20,
+                                                  ),
+                                                  FilledButton(
+                                                    onPressed: () =>
+                                                        _showSelectPhotoOptions(
+                                                            context),
+                                                    style: const ButtonStyle(
+                                                      backgroundColor:
+                                                          MaterialStatePropertyAll(
+                                                              Color.fromARGB(
+                                                                  255,
+                                                                  217,
+                                                                  237,
+                                                                  239)),
+                                                      foregroundColor:
+                                                          MaterialStatePropertyAll(
+                                                              Color.fromRGBO(7,
+                                                                  82, 96, 1)),
+                                                      shape:
+                                                          MaterialStatePropertyAll(
+                                                        RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius.all(
+                                                            Radius.circular(20),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    child: Text(
+                                                      'Add an image',
+                                                      style: GoogleFonts.roboto(
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 16,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
                                           }
                                         } else if (snapshot.connectionState ==
                                             ConnectionState.waiting) {
@@ -303,7 +381,7 @@ class _SetPhotoScreenState extends State<SetPhotoScreen> {
                                     )
                                   : Text(
                                       translation(context).nIS,
-                                      style: TextStyle(fontSize: 20),
+                                      style: const TextStyle(fontSize: 20),
                                     ))
                               : Image.file(
                                   _image!,
