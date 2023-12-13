@@ -23,8 +23,7 @@ class ChatBot extends StatelessWidget {
         },
       ),
     )
-    ..loadRequest(
-        Uri.parse("https://e91a-2a09-bac5-4867-18be-00-277-52.ngrok-free.app"));
+    ..loadRequest(Uri.parse("https://d154-45-121-88-48.ngrok-free.app"));
 
   @override
   Widget build(BuildContext context) {

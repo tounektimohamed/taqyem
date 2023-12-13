@@ -110,77 +110,80 @@ class _MediactionState extends State<Mediaction> {
           //app logo and user icon
           Container(
             alignment: Alignment.topCenter,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                //logo and name
-                const Column(
-                  children: [
-                    //logo
-                    Image(
-                      image: AssetImage('lib/assets/icon_small.png'),
-                      height: 50,
-                    ),
-                    //app name
-                    // Text(
-                    //   'MyMeds',
-                    //   style: GoogleFonts.poppins(
-                    //     fontSize: 20,
-                    //     fontWeight: FontWeight.w600,
-                    //     color: const Color.fromRGBO(7, 82, 96, 1),
-                    //   ),
-                    // ),
-                  ],
-                ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  //logo and name
+                  const Column(
+                    children: [
+                      //logo
+                      Image(
+                        image: AssetImage('lib/assets/icon_small.png'),
+                        height: 50,
+                      ),
+                      //app name
+                      // Text(
+                      //   'MyMeds',
+                      //   style: GoogleFonts.poppins(
+                      //     fontSize: 20,
+                      //     fontWeight: FontWeight.w600,
+                      //     color: const Color.fromRGBO(7, 82, 96, 1),
+                      //   ),
+                      // ),
+                    ],
+                  ),
 
-                // user icon widget
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) {
-                              return const SettingsPageUI();
-                            },
-                          ),
-                        );
-                      },
-                      // child: currentUser!.photoURL!.isEmpty
-                      //     ? CircleAvatar(
-                      //         radius: 20,
-                      //         backgroundColor:
-                      //             Theme.of(context).colorScheme.primary,
-                      //         foregroundColor:
-                      //             Theme.of(context).colorScheme.surface,
-                      //         child: const Icon(Icons.person_outlined),
-                      //       )
-                      //     : CircleAvatar(
-                      //         radius: 20,
-                      //         backgroundImage:
-                      //             NetworkImage(currentUser!.photoURL!),
-                      //         backgroundColor: Colors.transparent,
-                      //       ),
-                      child: (currentUser?.photoURL?.isEmpty ?? true)
-                          ? CircleAvatar(
-                              radius: 20,
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.primary,
-                              foregroundColor:
-                                  Theme.of(context).colorScheme.surface,
-                              child: const Icon(Icons.person_outlined),
-                            )
-                          : CircleAvatar(
-                              radius: 20,
-                              backgroundImage:
-                                  NetworkImage(currentUser!.photoURL!),
+                  // user icon widget
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) {
+                                return const SettingsPageUI();
+                              },
                             ),
-                    ),
-                  ],
-                ),
-              ],
+                          );
+                        },
+                        // child: currentUser!.photoURL!.isEmpty
+                        //     ? CircleAvatar(
+                        //         radius: 20,
+                        //         backgroundColor:
+                        //             Theme.of(context).colorScheme.primary,
+                        //         foregroundColor:
+                        //             Theme.of(context).colorScheme.surface,
+                        //         child: const Icon(Icons.person_outlined),
+                        //       )
+                        //     : CircleAvatar(
+                        //         radius: 20,
+                        //         backgroundImage:
+                        //             NetworkImage(currentUser!.photoURL!),
+                        //         backgroundColor: Colors.transparent,
+                        //       ),
+                        child: (currentUser?.photoURL?.isEmpty ?? true)
+                            ? CircleAvatar(
+                                radius: 20,
+                                backgroundColor:
+                                    Theme.of(context).colorScheme.primary,
+                                foregroundColor:
+                                    Theme.of(context).colorScheme.surface,
+                                child: const Icon(Icons.person_outlined),
+                              )
+                            : CircleAvatar(
+                                radius: 20,
+                                backgroundImage:
+                                    NetworkImage(currentUser!.photoURL!),
+                              ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           Column(
@@ -212,7 +215,7 @@ class _MediactionState extends State<Mediaction> {
               child: SingleChildScrollView(
                 physics: const ScrollPhysics(),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
                   child: Column(
                     children: [
                       FutureBuilder(
@@ -295,7 +298,12 @@ class _MediactionState extends State<Mediaction> {
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
                                 itemBuilder: (context, index) {
-                                  return MedCard2(medID: docIds[index]);
+                                  return MedCard2(
+                                    medID: docIds[index],
+                                    refreshCallback: () {
+                                      setState(() {});
+                                    },
+                                  );
                                 },
                               );
                             }

@@ -238,7 +238,7 @@ class _SignInState extends State<SignIn> {
                             try {
                               var a = await FirebaseFirestore.instance
                                   .collection('Users')
-                                  .doc(userEmail)
+                                  .doc(user.user!.email)
                                   .get();
                               if (a.exists) {
                                 print('Already Registered user');

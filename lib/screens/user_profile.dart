@@ -18,6 +18,7 @@ enum Genders { male, female, other }
 class _UserProfileState extends State<UserProfile> {
   //current user
   final currentUser = FirebaseAuth.instance.currentUser;
+  bool isLoading = false;
 
   //controllers - keep track what types
   final _nameController = TextEditingController();
@@ -28,6 +29,42 @@ class _UserProfileState extends State<UserProfile> {
   final _mobileController = TextEditingController();
 
   Genders? _genderSelected;
+
+  Future<void> update() async {
+    setState(() {
+      isLoading = true;
+    });
+    await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUser!.email)
+        .set(
+      {
+        'name': _nameController.text,
+        'dob': _dobController.text,
+        'gender': _genderController.text,
+        'nic': _nicController.text,
+        'address': _addressController.text,
+        'mobile': _mobileController.text,
+      },
+    ).then((value) {
+      setState(() {
+        isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Color.fromARGB(255, 7, 83, 96),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+          content: Text(
+            'Your data updated successfully',
+          ),
+        ),
+      );
+    });
+    setState(() {
+      isLoading = false;
+    });
+  }
 
   // for memory mgt
   @override
@@ -384,9 +421,7 @@ class _UserProfileState extends State<UserProfile> {
                       width: double.infinity,
                       height: 55,
                       child: FilledButton(
-                        onPressed: () {
-                          //todo update
-                        },
+                        onPressed: update,
                         style: const ButtonStyle(
                           elevation: MaterialStatePropertyAll(2),
                           // backgroundColor: MaterialStatePropertyAll(
@@ -400,13 +435,17 @@ class _UserProfileState extends State<UserProfile> {
                             ),
                           ),
                         ),
-                        child: Text(
-                          'Save',
-                          style: GoogleFonts.roboto(
-                            fontSize: 25,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        child: !isLoading
+                            ? Text(
+                                'Save',
+                                style: GoogleFonts.roboto(
+                                  fontSize: 25,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              )
+                            : const CircularProgressIndicator(
+                                color: Colors.white,
+                              ),
                       ),
                     ),
                     const SizedBox(

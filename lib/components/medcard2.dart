@@ -7,10 +7,12 @@ import 'package:shimmer/shimmer.dart';
 class MedCard2 extends StatelessWidget {
   User? currentUser = FirebaseAuth.instance.currentUser;
   final String medID;
+  final VoidCallback refreshCallback;
 
   MedCard2({
     super.key,
     required this.medID,
+    required this.refreshCallback,
   });
 
   Future<DocumentSnapshot> getMedData() async {
@@ -84,101 +86,155 @@ class MedCard2 extends StatelessWidget {
             String? strength = medData['strength'] != null
                 ? '${medData['strength']} ${medData['strength_unit']}'
                 : null;
-            return Container(
-              margin: const EdgeInsets.all(15.0),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                color: const Color.fromARGB(255, 76, 112, 117),
-                boxShadow: const [
-                  BoxShadow(
-                      color: Color.fromARGB(255, 174, 194, 197),
-                      blurRadius: 5.0,
-                      offset: Offset(0, 2))
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  //category icon
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Image.asset(
-                        categoryImagePath(category!),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(
-                    width: 20,
-                  ),
-                  //medication name
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      //medication name
-                      Text(
-                        medname!,
-                        style: GoogleFonts.roboto(
-                          fontSize: 25,
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.surface,
-                        ),
-                      ),
-                      const SizedBox(
-                        height: 5,
-                      ),
-                      //dosage
-                      Visibility(
-                        visible: strength != null,
-                        child: Column(
-                          children: [
-                            Text(
-                              strength.toString(),
-                              style: GoogleFonts.roboto(
-                                fontSize: 15,
-                                color: Theme.of(context).colorScheme.surface,
+            return GestureDetector(
+              onLongPress: () {
+                showDialog(
+                  context: context,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: Text('Are you sure want to delete "$medname"?'),
+                      actions: [
+                        TextButton(
+                          child: Text(
+                            'OK',
+                            style: GoogleFonts.roboto(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          onPressed: () async {
+                            await FirebaseFirestore.instance
+                                .collection('Users')
+                                .doc(currentUser!.email)
+                                .collection('Medications')
+                                .doc(medID)
+                                .delete();
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                backgroundColor:
+                                    const Color.fromARGB(255, 7, 83, 96),
+                                behavior: SnackBarBehavior.floating,
+                                duration: const Duration(seconds: 2),
+                                content: Text(
+                                  '"$medname" deleted successfully',
+                                ),
                               ),
+                            );
+
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                        TextButton(
+                          child: Text(
+                            'Cancel',
+                            style: GoogleFonts.roboto(
+                              fontWeight: FontWeight.w600,
                             ),
-                            const SizedBox(
-                              height: 5,
-                            ),
-                          ],
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+              child: Container(
+                margin: const EdgeInsets.all(15.0),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: const Color.fromARGB(255, 76, 112, 117),
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Color.fromARGB(255, 174, 194, 197),
+                        blurRadius: 5.0,
+                        offset: Offset(0, 2))
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    //category icon
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Image.asset(
+                          categoryImagePath(category!),
                         ),
                       ),
-                      //dosage
-                      Text(
-                        '$medcount $category(s) $frequency',
-                        maxLines: 2,
-                        overflow: TextOverflow.clip,
-                        style: GoogleFonts.roboto(
-                          fontSize: 15,
-                          color: Theme.of(context).colorScheme.surface,
+                    ),
+                    const SizedBox(
+                      width: 20,
+                    ),
+                    //medication name
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        //medication name
+                        Text(
+                          medname!,
+                          style: GoogleFonts.roboto(
+                            fontSize: 25,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.surface,
+                          ),
                         ),
-                      ),
-                      const SizedBox(
-                        height: 5,
-                      ),
-                      //times
-                      Text(
-                        times!,
-                        maxLines: 8,
-                        overflow: TextOverflow.clip,
-                        style: GoogleFonts.roboto(
-                          fontSize: 15,
-                          color: Theme.of(context).colorScheme.surface,
+                        const SizedBox(
+                          height: 5,
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        //dosage
+                        Visibility(
+                          visible: strength != null,
+                          child: Column(
+                            children: [
+                              Text(
+                                strength.toString(),
+                                style: GoogleFonts.roboto(
+                                  fontSize: 15,
+                                  color: Theme.of(context).colorScheme.surface,
+                                ),
+                              ),
+                              const SizedBox(
+                                height: 5,
+                              ),
+                            ],
+                          ),
+                        ),
+                        //dosage
+                        Text(
+                          '$medcount $category(s) $frequency',
+                          maxLines: 2,
+                          overflow: TextOverflow.clip,
+                          style: GoogleFonts.roboto(
+                            fontSize: 15,
+                            color: Theme.of(context).colorScheme.surface,
+                          ),
+                        ),
+                        const SizedBox(
+                          height: 5,
+                        ),
+                        //times
+                        Text(
+                          times!,
+                          maxLines: 8,
+                          overflow: TextOverflow.clip,
+                          style: GoogleFonts.roboto(
+                            fontSize: 15,
+                            color: Theme.of(context).colorScheme.surface,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             );
           } else if (snapshot.hasError) {
