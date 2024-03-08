@@ -64,7 +64,7 @@ dependencies:
   alarm: ^1.2.2
   build_runner: ^2.4.7
   shared_preferences: ^2.2.2
-
+  
   # awesome_notifications: any
   localstorage: ^4.0.1+4
   firebase_storage: ^11.2.6

@@ -59,11 +59,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyABabhql_JtudZZV0cbsEJqbujryrsoAvc',
-    appId: '1:983265412094:ios:a7e7106aad98c60c08f6af',
+    appId: '1:983265412094:ios:bd306a22f2a28b0a08f6af',
     messagingSenderId: '983265412094',
     projectId: 'medisync-80e70',
     storageBucket: 'medisync-80e70.appspot.com',
-    androidClientId: '983265412094-kfuq0kokjibrktnlub51bpkm12klm0k5.apps.googleusercontent.com',
+    androidClientId: '983265412094-cnekae34tbkgofonust2hfrminv1bm7h.apps.googleusercontent.com',
     iosClientId: '983265412094-lnm5usrq3udj34f02sq6s24390p5fosm.apps.googleusercontent.com',
     iosBundleId: 'health.mymeds.app.mymedsApp',
   );

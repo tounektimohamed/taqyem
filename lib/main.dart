@@ -1,5 +1,6 @@
 import 'package:alarm/alarm.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 // import 'package:awesome_notifications/awesome_notifications.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,7 +11,9 @@ import 'package:mymeds_app/components/language_constants.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await Alarm.init(showDebugLogs: true);
   // AwesomeNotifications().initialize(
   //     // set the icon to null if you want to use the default app icon
