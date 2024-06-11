@@ -22,14 +22,14 @@ List<UnbordingContent> contents = [
       description:
           "Les utilisateurs peuvent signaler facilement des problèmes de maintenance dans les propriétés du ministère et suivre l'avancement des réparations."),
   UnbordingContent(
-      title: 'Signaler des problèmes de maintenance dans les propriétés appartenant au ministère.',
-      image: 'lib/assets/icons/me/admin1.gif',
+      title: 'Demander des informations ',
+      image: 'lib/assets/icons/me/admin4.gif',
       description:
-          "Les utilisateurs peuvent signaler facilement des problèmes de maintenance dans les propriétés du ministère et suivre l'avancement des réparations."),
+          "Demander des informations sur les procédures et conditions d'accès aux services du ministère."),
   UnbordingContent(
-      title: 'Signaler des problèmes de maintenance dans les propriétés appartenant au ministère.',
+      title: 'Prendre des rendez-vous',
       image: 'lib/assets/icons/me/admin1.gif',
       description:
-          "Les utilisateurs peuvent signaler facilement des problèmes de maintenance dans les propriétés du ministère et suivre l'avancement des réparations."),
+          "Permettez aux utilisateurs de réserver des rendez-vous en ligne pour rencontrer des responsables du ministère à des dates et heures convenables."),
   
 ];
