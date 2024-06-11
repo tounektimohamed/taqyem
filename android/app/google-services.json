@@ -1,49 +1,34 @@
 {
   "project_info": {
-    "project_number": "983265412094",
-    "project_id": "medisync-80e70",
-    "storage_bucket": "medisync-80e70.appspot.com"
+    "project_number": "1027057481100",
+    "project_id": "portfolio-8d8de",
+    "storage_bucket": "portfolio-8d8de.appspot.com"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:983265412094:android:7334abf06ca550ad08f6af",
+        "mobilesdk_app_id": "1:1027057481100:android:755dbe7236b5be105512a9",
         "android_client_info": {
-          "package_name": "health.mymeds.app.mymeds_app"
+          "package_name": "com.example.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "983265412094-cnekae34tbkgofonust2hfrminv1bm7h.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "health.mymeds.app.mymeds_app",
-            "certificate_hash": "ba0cebf3dd83c5b8e853b04d8fcb91d6bd0921fd"
-          }
-        },
-        {
-          "client_id": "983265412094-4i7lo645jda4m8vt6c00r2hu87o7k3qf.apps.googleusercontent.com",
+          "client_id": "1027057481100-qtrb28a1nj8tf0rfvmor48avapm6vsnm.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyBVvaiKb2iQmaMQJIMPlX31xpKWd0kUFGc"
+          "current_key": "AIzaSyDtbONJqrRL5n9EQh7Dtd84mL2O_d7wBs8"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "983265412094-4i7lo645jda4m8vt6c00r2hu87o7k3qf.apps.googleusercontent.com",
+              "client_id": "1027057481100-qtrb28a1nj8tf0rfvmor48avapm6vsnm.apps.googleusercontent.com",
               "client_type": 3
-            },
-            {
-              "client_id": "983265412094-lnm5usrq3udj34f02sq6s24390p5fosm.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "health.mymeds.app.mymedsApp"
-              }
             }
           ]
         }

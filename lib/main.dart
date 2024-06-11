@@ -5,8 +5,8 @@ import 'firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:mymeds_app/auth/main_page.dart';
-import 'package:mymeds_app/components/language_constants.dart';
+import 'package:DREHATT_app/auth/main_page.dart';
+import 'package:DREHATT_app/components/language_constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,7 +17,7 @@ void main() async {
   await Alarm.init(showDebugLogs: true);
   // AwesomeNotifications().initialize(
   //     // set the icon to null if you want to use the default app icon
-  //     'resource://drawable/ic_stat_icon_small',
+  //     'resource://drawable/ic_stat_/me/logo.png',
   //     [
   //       NotificationChannel(
   //           channelGroupKey: 'basic_channel_group',

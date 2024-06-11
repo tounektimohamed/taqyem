@@ -3,23 +3,21 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>983265412094-lnm5usrq3udj34f02sq6s24390p5fosm.apps.googleusercontent.com</string>
+	<string>481214437178-inm7fmbvk8lluq8l3m2me2dcqb6o0fkb.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.983265412094-lnm5usrq3udj34f02sq6s24390p5fosm</string>
-	<key>ANDROID_CLIENT_ID</key>
-	<string>983265412094-kfuq0kokjibrktnlub51bpkm12klm0k5.apps.googleusercontent.com</string>
+	<string>com.googleusercontent.apps.481214437178-inm7fmbvk8lluq8l3m2me2dcqb6o0fkb</string>
 	<key>API_KEY</key>
-	<string>AIzaSyABabhql_JtudZZV0cbsEJqbujryrsoAvc</string>
+	<string>AIzaSyDET3kC7HQioMga3nHev52GC5g-i0ckUg4</string>
 	<key>GCM_SENDER_ID</key>
-	<string>983265412094</string>
+	<string>481214437178</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>health.mymeds.app.mymedsApp</string>
+	<string>com.example.app</string>
 	<key>PROJECT_ID</key>
-	<string>medisync-80e70</string>
+	<string>zoom-3c767</string>
 	<key>STORAGE_BUCKET</key>
-	<string>medisync-80e70.appspot.com</string>
+	<string>zoom-3c767.appspot.com</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -31,6 +29,8 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:983265412094:ios:a7e7106aad98c60c08f6af</string>
+	<string>1:481214437178:ios:579c40ede36882d6412203</string>
+	<key>DATABASE_URL</key>
+	<string>https://zoom-3c767-default-rtdb.firebaseio.com</string>
 </dict>
 </plist>

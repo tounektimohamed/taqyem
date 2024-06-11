@@ -1,0 +1,101 @@
+Flutter crash report.
+Please report a bug at https://github.com/flutter/flutter/issues.
+
+## command
+
+flutter --no-color run --machine --track-widget-creation --device-id=adb-0619625134005129-dHK7QM._adb-tls-connect._tcp --start-paused --dart-define=flutter.inspector.structuredErrors=true lib/main.dart
+
+## exception
+
+FileSystemException: FileSystemException: Failed to decode data using encoding 'utf-8', path = '/home/med/MyMeds/android/local.properties'
+
+```
+#0      _File._tryDecode (dart:io/file_impl.dart:615:7)
+#1      _File.readAsStringSync (dart:io/file_impl.dart:624:7)
+#2      ForwardingFile.readAsStringSync (package:file/src/forwarding/forwarding_file.dart:99:16)
+#3      ErrorHandlingFile.readAsStringSync.<anonymous closure> (package:flutter_tools/src/base/error_handling_io.dart:217:22)
+#4      _runSync (package:flutter_tools/src/base/error_handling_io.dart:587:14)
+#5      ErrorHandlingFile.readAsStringSync (package:flutter_tools/src/base/error_handling_io.dart:216:12)
+#6      new SettingsFile.parseFromFile (package:flutter_tools/src/base/utils.dart:156:36)
+#7      updateLocalProperties (package:flutter_tools/src/android/gradle_utils.dart:714:29)
+#8      AndroidProject.ensureReadyForPlatformSpecificTooling (package:flutter_tools/src/project.dart:695:12)
+#9      FlutterProject.ensureReadyForPlatformSpecificTooling (package:flutter_tools/src/project.dart:371:21)
+<asynchronous suspension>
+#10     FlutterCommand.verifyThenRunCommand (package:flutter_tools/src/runner/flutter_command.dart:1743:7)
+<asynchronous suspension>
+#11     FlutterCommand.run.<anonymous closure> (package:flutter_tools/src/runner/flutter_command.dart:1389:27)
+<asynchronous suspension>
+#12     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:153:19)
+<asynchronous suspension>
+#13     CommandRunner.runCommand (package:args/command_runner.dart:212:13)
+<asynchronous suspension>
+#14     FlutterCommandRunner.runCommand.<anonymous closure> (package:flutter_tools/src/runner/flutter_command_runner.dart:355:9)
+<asynchronous suspension>
+#15     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:153:19)
+<asynchronous suspension>
+#16     FlutterCommandRunner.runCommand (package:flutter_tools/src/runner/flutter_command_runner.dart:295:5)
+<asynchronous suspension>
+#17     run.<anonymous closure>.<anonymous closure> (package:flutter_tools/runner.dart:119:9)
+<asynchronous suspension>
+#18     AppContext.run.<anonymous closure> (package:flutter_tools/src/base/context.dart:153:19)
+<asynchronous suspension>
+#19     main (package:flutter_tools/executable.dart:90:3)
+<asynchronous suspension>
+```
+
+## flutter doctor
+
+```
+[!] Flutter (Channel stable, 3.19.4, on Ubuntu 23.10 6.5.0-26-generic, locale fr_FR.UTF-8)
+    • Flutter version 3.19.4 on channel stable at /home/med/Téléchargements/flutter
+    ! Warning: `dart` on your path resolves to /usr/lib/dart/bin/dart, which is not inside your current Flutter SDK checkout at /home/med/Téléchargements/flutter. Consider adding /home/med/Téléchargements/flutter/bin to the front of your path.
+    • Upstream repository https://github.com/flutter/flutter.git
+    • Framework revision 68bfaea224 (il y a 12 jours), 2024-03-20 15:36:31 -0700
+    • Engine revision a5c24f538d
+    • Dart version 3.3.2
+    • DevTools version 2.31.1
+    • If those were intentional, you can disregard the above warnings; however it is recommended to use "git" directly to perform update checks and upgrades.
+
+[!] Android toolchain - develop for Android devices (Android SDK version 34.0.0)
+    • Android SDK at /home/med/Android/Sdk
+    • Platform android-34, build-tools 34.0.0
+    • ANDROID_HOME = /home/med/Android/Sdk
+    • ANDROID_SDK_ROOT = /home/med/Android/Sdk
+    • Java binary at: /snap/android-studio/151/jbr/bin/java
+    • Java version OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
+    ✗ Android license status unknown.
+      Run `flutter doctor --android-licenses` to accept the SDK licenses.
+      See https://flutter.dev/docs/get-started/install/linux#android-setup for more details.
+
+[✓] Chrome - develop for the web
+    • Chrome at google-chrome
+
+[✗] Linux toolchain - develop for Linux desktop
+    • Ubuntu clang version 16.0.6 (15)
+    • cmake version 3.27.4
+    • ninja version 1.11.1
+    • pkg-config version 1.8.1
+    ✗ GTK 3.0 development libraries are required for Linux development.
+      They are likely available from your distribution (e.g.: apt install libgtk-3-dev)
+
+[✓] Android Studio (version 2023.2)
+    • Android Studio at /snap/android-studio/151
+    • Flutter plugin version 78.4.1
+    • Dart plugin can be installed from:
+      🔨 https://plugins.jetbrains.com/plugin/6351-dart
+    • Java version OpenJDK Runtime Environment (build 17.0.9+0-17.0.9b1087.7-11185874)
+
+[✓] VS Code (version 1.87.2)
+    • VS Code at /snap/code/current/usr/share/code
+    • Flutter extension version 3.84.0
+
+[✓] Connected device (3 available)
+    • Infinix X688B (mobile) • adb-0619625134005129-dHK7QM._adb-tls-connect._tcp • android-arm64  • Android 11 (API 30)
+    • Linux (desktop)        • linux                                             • linux-x64      • Ubuntu 23.10 6.5.0-26-generic
+    • Chrome (web)           • chrome                                            • web-javascript • Google Chrome 122.0.6261.128
+
+[✓] Network resources
+    • All expected network resources are available.
+
+! Doctor found issues in 3 categories.
+```

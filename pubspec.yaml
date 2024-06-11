@@ -1,4 +1,4 @@
-name: mymeds_app
+name: DREHATT_app
 description: Medication Reminder Mobile Application
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -30,7 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  provider: ^5.0.0
+  provider: ^6.1.2
 
   flutter_localizations:
     sdk: flutter
@@ -40,34 +40,34 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
-  firebase_auth: ^4.7.2
-  firebase_core : ^2.15.0
-  google_fonts: ^5.1.0
+  firebase_auth: ^5.0.0
+  firebase_core : ^3.0.0
+  google_fonts: ^6.2.1
   font_awesome_flutter: ^10.5.0
   google_sign_in: ^6.1.4
   flutter_holo_date_picker: ^1.1.0
-  cloud_firestore: ^4.8.4
+  cloud_firestore: ^5.0.0
   timeline_tile: ^2.0.0
   flutter_timeline_calendar: ^1.0.9
   shimmer: ^3.0.0
   image_picker: ^1.0.2
-  image_cropper: ^5.0.0
-  permission_handler: ^10.4.3
+  image_cropper: ^7.0.4
+  permission_handler: ^11.3.1
   floating_snackbar: ^1.0.3+1
-  geolocator: ^9.0.2
+  geolocator: ^12.0.0
   maps_launcher: ^2.2.0
-  syncfusion_flutter_charts: ^22.2.9
+  syncfusion_flutter_charts: ^25.2.7
   settings_ui: ^2.0.2
-  flutter_svg: ^1.1.6
+  flutter_svg: ^2.0.10+1
   day_night_time_picker: 
   text_scroll: ^0.2.0
-  alarm: ^1.2.2
+  alarm: ^3.1.4
   build_runner: ^2.4.7
   shared_preferences: ^2.2.2
   
   # awesome_notifications: any
-  localstorage: ^4.0.1+4
-  firebase_storage: ^11.2.6
+  localstorage: ^5.0.0
+  firebase_storage: ^12.0.0
   url_launcher: ^6.1.12
   multi_dropdown: ^2.0.1
   weekday_selector: ^1.1.0
@@ -85,7 +85,7 @@ dev_dependencies:
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^2.0.0
+  flutter_lints: ^4.0.0
   flutter_launcher_icons: ^0.13.1
   flutter_native_splash: ^2.3.2
 
@@ -103,19 +103,19 @@ flutter_native_splash:
   # size of the app. Only one parameter can be used, color and background_image cannot both be set.
   # color: "#00677a"
   color: "#f1fafb"
-  # background_image: "lib/assets/icon_small.png"
+  # background_image: "lib/assets//icons/me/logo.png"
 
   # Optional parameters are listed below.  To enable a parameter, uncomment the line by removing
   # the leading # character.
 
   # The image parameter allows you to specify an image used in the splash screen.  It must be a
   # png file and should be sized for 4x pixel density.
-  image: assets/images/MyMeds.png
+  image: assets/images/DREHATT.png
 
   # The branding property allows you to specify an image used as branding in the splash screen.
   # It must be a png file. It is supported for Android, iOS and the Web.  For Android 12,
   # see the Android 12 section below.
-  # branding: assets/images/MyMeds.gif
+  # branding: assets/images/DREHATT.gif
 
   # To position the branding image at the bottom of the screen you can use bottom, bottomRight,
   # and bottomLeft. The default values is bottom if not specified or specified something else.
@@ -128,7 +128,7 @@ flutter_native_splash:
   # set.
   color_dark: "#f1fafb"
   #background_image_dark: "assets/dark-background.png"
-  image_dark: assets/images/icon_small.png
+  image_dark: assets/images//icons/me/logo.png
   #branding_dark: assets/dart_dark.png
 
   # Android 12 handles the splash screen differently than previous versions.  Please visit
@@ -142,7 +142,7 @@ flutter_native_splash:
     # 640 pixels in diameter.
     # App icon without an icon background: This should be 1152×1152 pixels, and fit within a circle
     # 768 pixels in diameter.
-    image: assets/images/icon_small.png
+    image: assets/images//icons/me/logo.png
 
     # Splash screen background color.
     color: "#f1fafb"
@@ -156,7 +156,7 @@ flutter_native_splash:
     # The image_dark, color_dark, icon_background_color_dark, and branding_dark set values that
     # apply when the device is in dark mode. If they are not specified, the app will use the
     # parameters from above.
-    image_dark: assets/images/icon_small.png
+    image_dark: assets/images//icons/me/logo.png
     color_dark: "#f1fafb"
     #icon_background_color_dark: "#eeeeee"
 
@@ -231,7 +231,7 @@ flutter_native_splash:
 
 
 flutter_launcher_icons:
-  image_path: "lib/assets/icon_small.png"
+  image_path: "lib/assets//icons/me/logo.png"
   android: "launcher_icon"
   ios: true
 
@@ -251,6 +251,7 @@ flutter:
     - lib/assets/
     - lib/assets/images/ 
     - lib/assets/icons/
+    - lib/assets/icons/me/
     - lib/l10n/
     # - assets/audio/
     

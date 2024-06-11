@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -49,22 +46,32 @@ class DefaultFirebaseOptions {
     }
   }
 
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyCuzZQDt6eBErRHZK3ZAInanLqHE4iw3oE',
+    appId: '1:1027057481100:web:0730b43a791acb845512a9',
+    messagingSenderId: '1027057481100',
+    projectId: 'portfolio-8d8de',
+    authDomain: 'portfolio-8d8de.firebaseapp.com',
+    storageBucket: 'portfolio-8d8de.appspot.com',
+    measurementId: 'G-6F9E00FKLZ',
+  );
+
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyBVvaiKb2iQmaMQJIMPlX31xpKWd0kUFGc',
-    appId: '1:983265412094:android:7334abf06ca550ad08f6af',
-    messagingSenderId: '983265412094',
-    projectId: 'medisync-80e70',
-    storageBucket: 'medisync-80e70.appspot.com',
+    apiKey: 'AIzaSyDtbONJqrRL5n9EQh7Dtd84mL2O_d7wBs8',
+    appId: '1:1027057481100:android:755dbe7236b5be105512a9',
+    messagingSenderId: '1027057481100',
+    projectId: 'portfolio-8d8de',
+    storageBucket: 'portfolio-8d8de.appspot.com',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyABabhql_JtudZZV0cbsEJqbujryrsoAvc',
-    appId: '1:983265412094:ios:bd306a22f2a28b0a08f6af',
-    messagingSenderId: '983265412094',
-    projectId: 'medisync-80e70',
-    storageBucket: 'medisync-80e70.appspot.com',
-    androidClientId: '983265412094-cnekae34tbkgofonust2hfrminv1bm7h.apps.googleusercontent.com',
-    iosClientId: '983265412094-lnm5usrq3udj34f02sq6s24390p5fosm.apps.googleusercontent.com',
-    iosBundleId: 'health.mymeds.app.mymedsApp',
+    apiKey: 'AIzaSyDET3kC7HQioMga3nHev52GC5g-i0ckUg4',
+    appId: '1:481214437178:ios:579c40ede36882d6412203',
+    messagingSenderId: '481214437178',
+    projectId: 'zoom-3c767',
+    databaseURL: 'https://zoom-3c767-default-rtdb.firebaseio.com',
+    storageBucket: 'zoom-3c767.appspot.com',
+    iosClientId: '481214437178-inm7fmbvk8lluq8l3m2me2dcqb6o0fkb.apps.googleusercontent.com',
+    iosBundleId: 'com.example.app',
   );
 }

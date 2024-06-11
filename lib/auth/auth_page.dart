@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:mymeds_app/screens/onboarding.dart';
-import 'package:mymeds_app/screens/sign_in.dart';
-import 'package:mymeds_app/screens/sign_up.dart';
+import 'package:DREHATT_app/screens2/onboarding.dart';
+import 'package:DREHATT_app/screens2/sign_in.dart';
+import 'package:DREHATT_app/screens2/sign_up.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});

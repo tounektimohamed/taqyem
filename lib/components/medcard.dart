@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_timeline_calendar/timeline/model/datetime.dart';
-import 'package:mymeds_app/components/time_line.dart';
+import 'package:DREHATT_app/components/time_line.dart';
 import 'package:shimmer/shimmer.dart';
 
 class MedCard extends StatelessWidget {

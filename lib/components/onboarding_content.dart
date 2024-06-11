@@ -12,23 +12,24 @@ class UnbordingContent {
 
 List<UnbordingContent> contents = [
   UnbordingContent(
-      title: 'Never forget your medicine again!',
-      image: 'lib/assets/icons/1.gif',
+      title: 'Remplir des formulaires de demande de logement.!',
+      image: 'lib/assets/icons/me/service.gif',
       description:
-          "Remember what to take, when to take, when to refill. Never miss a dose again."),
+          "Permettez aux utilisateurs de remplir et soumettre facilement des demandes de logement en ligne et de suivre l'état de leur demande en temps réel."),
   UnbordingContent(
-      title: 'Multiple users & multiple devices at the same time!',
-      image: 'lib/assets/icons/2.gif',
+      title: 'Signaler des problèmes de maintenance dans les propriétés appartenant au ministère.',
+      image: 'lib/assets/icons/me/admin1.gif',
       description:
-          "No matter where you are, you can always access your medicine schedule. Sync your medication shedule across all your devices."),
+          "Les utilisateurs peuvent signaler facilement des problèmes de maintenance dans les propriétés du ministère et suivre l'avancement des réparations."),
   UnbordingContent(
-      title: 'Find the best and nearest services!',
-      image: 'lib/assets/icons/3.gif',
+      title: 'Signaler des problèmes de maintenance dans les propriétés appartenant au ministère.',
+      image: 'lib/assets/icons/me/admin1.gif',
       description:
-          "Find the nearest helpline with ease. Find the nearest hospital and pharmacy. All on your fingertips"),
+          "Les utilisateurs peuvent signaler facilement des problèmes de maintenance dans les propriétés du ministère et suivre l'avancement des réparations."),
   UnbordingContent(
-      title: 'Track your progress!',
-      image: 'lib/assets/icons/4.gif',
+      title: 'Signaler des problèmes de maintenance dans les propriétés appartenant au ministère.',
+      image: 'lib/assets/icons/me/admin1.gif',
       description:
-          "Take control of your medication. Never miss a dose again. Stay organized. Stay healthy!"),
+          "Les utilisateurs peuvent signaler facilement des problèmes de maintenance dans les propriétés du ministère et suivre l'avancement des réparations."),
+  
 ];
