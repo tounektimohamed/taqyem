@@ -129905,8 +129905,8 @@ r($,"bwl","aVs",()=>B.Np)
 s($,"bxt","b_s",()=>new A.awy())
 s($,"btr","Pq",()=>{var q=null
 return new A.au5(A.h5(q),A.h5(q),A.h5(q),A.h5(q),A.h5(q),A.h5(q),A.h5(q),A.h5(q),A.h5(q),A.h5(q),A.h5(q),A.h5(q),A.h5(q),A.h5(q),A.h5(q),A.h5(q),A.h5(q),A.h5(q))})
-r($,"bwZ","b_e",()=>{var q="Signaler des probl\xe8mes de maintenance dans les propri\xe9t\xe9s appartenant au minist\xe8re.",p="lib/assets/icons/me/admin1.gif",o="Les utilisateurs peuvent signaler facilement des probl\xe8mes de maintenance dans les propri\xe9t\xe9s du minist\xe8re et suivre l'avancement des r\xe9parations."
-return A.a([A.aDi("Permettez aux utilisateurs de remplir et soumettre facilement des demandes de logement en ligne et de suivre l'\xe9tat de leur demande en temps r\xe9el.","lib/assets/icons/me/service.gif","Remplir des formulaires de demande de logement.!"),A.aDi(o,p,q),A.aDi(o,p,q),A.aDi(o,p,q)],A.al("E<a1e>"))})
+r($,"bwZ","b_e",()=>{var q="lib/assets/icons/me/admin1.gif"
+return A.a([A.aDi("Permettez aux utilisateurs de remplir et soumettre facilement des demandes de logement en ligne et de suivre l'\xe9tat de leur demande en temps r\xe9el.","lib/assets/icons/me/service.gif","Remplir des formulaires de demande de logement.!"),A.aDi("Les utilisateurs peuvent signaler facilement des probl\xe8mes de maintenance dans les propri\xe9t\xe9s du minist\xe8re et suivre l'avancement des r\xe9parations.",q,"Signaler des probl\xe8mes de maintenance dans les propri\xe9t\xe9s appartenant au minist\xe8re."),A.aDi("Demander des informations sur les proc\xe9dures et conditions d'acc\xe8s aux services du minist\xe8re.","lib/assets/icons/me/admin4.gif","Demander des informations "),A.aDi("Permettez aux utilisateurs de r\xe9server des rendez-vous en ligne pour rencontrer des responsables du minist\xe8re \xe0 des dates et heures convenables.",q,"Prendre des rendez-vous")],A.al("E<a1e>"))})
 r($,"br9","Py",()=>A.bJ(7,!1,!1,t.y))
 s($,"brf","Pd",()=>A.a0s(null,null,null,A.al("i6")))
 s($,"bvz","baV",()=>new A.K())
