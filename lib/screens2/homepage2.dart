@@ -8,9 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_timeline_calendar/timeline/flutter_timeline_calendar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:DREHATT_app/components/language_constants.dart';
-import 'package:DREHATT_app/components/medcard.dart';
+//import 'package:DREHATT_app/components/medcard.dart';
 import 'package:DREHATT_app/screens2/account_settings.dart';
-import 'package:DREHATT_app/screens2/add_medication1.dart';
+//import 'package:DREHATT_app/screens2/add_medication1.dart';
 // import 'package:awesome_notifications/awesome_notifications.dart';
 
 class HomePage2 extends StatefulWidget {
@@ -582,125 +582,125 @@ class _HomePage2State extends State<HomePage2> {
           ),
 
           //timeline widget
-          Expanded(
-            child: GlowingOverscrollIndicator(
-              axisDirection: AxisDirection.down,
-              color: const Color.fromARGB(255, 7, 83, 96),
-              child: SingleChildScrollView(
-                physics: const ScrollPhysics(),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-                  child: Column(
-                    children: [
-                      FutureBuilder(
-                        future: getDocIDs(),
-                        builder: (context, snapshot) {
-                          // print('${snapshot.hasData}');
-                          // print(snapshot);
-                          if (snapshot.connectionState ==
-                              ConnectionState.done) {
-                            // print('Building cards');
-                            // print('DocID Array Length: ${docIds.length}');
-                            if (docIds.isEmpty) {
-                              // print('No reminders');
-                              //no reminders widget
-                              return Column(
-                                children: [
-                                  const SizedBox(
-                                    height: 40,
-                                  ),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(50),
-                                    child: Image.asset(
-                                      'lib/assets/icons/no_reminders.gif',
-                                      color: const Color.fromARGB(
-                                          255, 241, 250, 251),
-                                      colorBlendMode: BlendMode.darken,
-                                      height: 100.0,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    height: 20,
-                                  ),
-                                  Text(
-                                    translation(context).dashText1,
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.roboto(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 18,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    height: 20,
-                                  ),
-                                  FilledButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              AddMedication1(),
-                                        ),
-                                      );
-                                    },
-                                    style: const ButtonStyle(
-                                      backgroundColor: MaterialStatePropertyAll(
-                                          Color.fromARGB(255, 217, 237, 239)),
-                                      foregroundColor: MaterialStatePropertyAll(
-                                          Color.fromRGBO(7, 82, 96, 1)),
-                                      shape: MaterialStatePropertyAll(
-                                        RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.all(
-                                            Radius.circular(20),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      translation(context).buttonText,
-                                      style: GoogleFonts.roboto(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            } else {
-                              return ListView.builder(
-                                itemCount: docIds.length,
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemBuilder: (context, index) {
-                                  return ValueListenableBuilder<
-                                          CalendarDateTime>(
-                                      valueListenable: _selectedDate,
-                                      builder: (context, value, child) {
-                                        return MedCard(
-                                          documentID: docIds[index],
-                                          dateID: dateIds[index],
-                                          timeID: timeIds[index],
-                                          index: index,
-                                          size: docIds.length,
-                                          selectedDate: value,
-                                          refreshCallback: refresh,
-                                        );
-                                      });
-                                },
-                              );
-                            }
-                          } else {
-                            return const LinearProgressIndicator();
-                          }
-                        },
-                      )
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+        //   Expanded(
+        //     child: GlowingOverscrollIndicator(
+        //       axisDirection: AxisDirection.down,
+        //       color: const Color.fromARGB(255, 7, 83, 96),
+        //       child: SingleChildScrollView(
+        //         physics: const ScrollPhysics(),
+        //         child: Padding(
+        //           padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+        //           child: Column(
+        //             children: [
+        //               FutureBuilder(
+        //                 future: getDocIDs(),
+        //                 builder: (context, snapshot) {
+        //                   // print('${snapshot.hasData}');
+        //                   // print(snapshot);
+        //                   if (snapshot.connectionState ==
+        //                       ConnectionState.done) {
+        //                     // print('Building cards');
+        //                     // print('DocID Array Length: ${docIds.length}');
+        //                     if (docIds.isEmpty) {
+        //                       // print('No reminders');
+        //                       //no reminders widget
+        //                       return Column(
+        //                         children: [
+        //                           const SizedBox(
+        //                             height: 40,
+        //                           ),
+        //                           ClipRRect(
+        //                             borderRadius: BorderRadius.circular(50),
+        //                             child: Image.asset(
+        //                               'lib/assets/icons/no_reminders.gif',
+        //                               color: const Color.fromARGB(
+        //                                   255, 241, 250, 251),
+        //                               colorBlendMode: BlendMode.darken,
+        //                               height: 100.0,
+        //                             ),
+        //                           ),
+        //                           const SizedBox(
+        //                             height: 20,
+        //                           ),
+        //                           Text(
+        //                             translation(context).dashText1,
+        //                             textAlign: TextAlign.center,
+        //                             style: GoogleFonts.roboto(
+        //                               fontWeight: FontWeight.w600,
+        //                               fontSize: 18,
+        //                             ),
+        //                           ),
+        //                           const SizedBox(
+        //                             height: 20,
+        //                           ),
+        //                          // FilledButton(
+        //                           //   onPressed: () {
+        //                           //     Navigator.push(
+        //                           //       context,
+        //                           //       MaterialPageRoute(
+        //                           //         builder: (context) =>
+        //                           //             AddMedication1(),
+        //                           //       ),
+        //                           //     );
+        //                           //   },
+        //                           //   style: const ButtonStyle(
+        //                           //     backgroundColor: MaterialStatePropertyAll(
+        //                           //         Color.fromARGB(255, 217, 237, 239)),
+        //                           //     foregroundColor: MaterialStatePropertyAll(
+        //                           //         Color.fromRGBO(7, 82, 96, 1)),
+        //                           //     shape: MaterialStatePropertyAll(
+        //                           //       RoundedRectangleBorder(
+        //                           //         borderRadius: BorderRadius.all(
+        //                           //           Radius.circular(20),
+        //                           //         ),
+        //                           //       ),
+        //                           //     ),
+        //                           //   ),
+        //                           //   child: Text(
+        //                           //     translation(context).buttonText,
+        //                           //     style: GoogleFonts.roboto(
+        //                           //       fontWeight: FontWeight.w600,
+        //                           //       fontSize: 16,
+        //                           //     ),
+        //                           //   ),
+        //                           // ),
+        //                         ],
+        //                       );
+        //                     } else {
+        //                       return ListView.builder(
+        //                         itemCount: docIds.length,
+        //                         shrinkWrap: true,
+        //                         physics: const NeverScrollableScrollPhysics(),
+        //                         itemBuilder: (context, index) {
+        //                           return ValueListenableBuilder<
+        //                                   CalendarDateTime>(
+        //                               valueListenable: _selectedDate,
+        //                               builder: (context, value, child) {
+        //                                 return MedCard(
+        //                                   documentID: docIds[index],
+        //                                   dateID: dateIds[index],
+        //                                   timeID: timeIds[index],
+        //                                   index: index,
+        //                                   size: docIds.length,
+        //                                   selectedDate: value,
+        //                                   refreshCallback: refresh,
+        //                                 );
+        //                               });
+        //                         },
+        //                       );
+        //                     }
+        //                   } else {
+        //                     return const LinearProgressIndicator();
+        //                   }
+        //                 },
+        //               )
+        //             ],
+        //           ),
+        //         ),
+        //       ),
+        //     ),
+        //   ),
+         ],
       ),
     );
   }

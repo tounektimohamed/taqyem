@@ -18,7 +18,7 @@ class TermsOfServices extends StatelessWidget {
             height: 20,
           ),
           const Text(
-            "This mobile app serve a different purpose than documents like privacy policies or disclaimers.",
+            "text here",
             style: TextStyle(fontSize: 20),
             textAlign: TextAlign.center,
           )

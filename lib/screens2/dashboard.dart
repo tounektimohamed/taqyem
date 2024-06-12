@@ -117,27 +117,27 @@ class _DashboardState extends State<Dashboard> {
             ),
           ),
           //medications
-          NavigationDestination(
-            icon: const Icon(
-              Icons.medication_outlined,
-            ),
-            label: translation(context).medications,
-            selectedIcon: const Icon(
-              Icons.medication,
-              color: Color.fromRGBO(7, 82, 96, 1),
-            ),
-          ),
+          // NavigationDestination(
+          //   icon: const Icon(
+          //     Icons.medication_outlined,
+          //   ),
+          //   label: translation(context).medications,
+          //   selectedIcon: const Icon(
+          //     Icons.medication,
+          //     color: Color.fromRGBO(7, 82, 96, 1),
+          //   ),
+          // ),
           //history
-          NavigationDestination(
-            icon: const Icon(
-              Icons.analytics_outlined,
-            ),
-            label: translation(context).statistics,
-            selectedIcon: const Icon(
-              Icons.analytics_rounded,
-              color: Color.fromRGBO(7, 82, 96, 1),
-            ),
-          ),
+          // NavigationDestination(
+          //   icon: const Icon(
+          //     Icons.analytics_outlined,
+          //   ),
+          //   label: translation(context).statistics,
+          //   selectedIcon: const Icon(
+          //     Icons.analytics_rounded,
+          //     color: Color.fromRGBO(7, 82, 96, 1),
+          //   ),
+          // ),
           //settings
           NavigationDestination(
             icon: const Icon(
