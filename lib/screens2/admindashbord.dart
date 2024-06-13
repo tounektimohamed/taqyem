@@ -1,3 +1,4 @@
+import 'package:DREHATT_app/screens2/gerenews.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -55,8 +56,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       backgroundImage: currentUser?.photoURL != null
                           ? NetworkImage(currentUser!.photoURL!)
                           : null,
-                      backgroundColor:
-                          Theme.of(context).colorScheme.primary,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       child: currentUser?.photoURL == null
                           ? const Icon(Icons.person_outlined)
                           : null,
@@ -81,8 +81,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 dayOptions: DayOptions(
                   compactMode: true,
                   dayFontSize: 15,
-                  weekDaySelectedColor:
-                      Theme.of(context).colorScheme.primary,
+                  weekDaySelectedColor: Theme.of(context).colorScheme.primary,
                   selectedBackgroundColor:
                       Theme.of(context).colorScheme.primary,
                   disableDaysBeforeNow: false,
@@ -91,8 +90,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 headerOptions: HeaderOptions(
                   weekDayStringType: WeekDayStringTypes.SHORT,
                   monthStringType: MonthStringTypes.FULL,
-                  backgroundColor:
-                      const Color.fromARGB(255, 241, 250, 251),
+                  backgroundColor: const Color.fromARGB(255, 241, 250, 251),
                   headerTextColor: Colors.black,
                 ),
                 onChangeDateTime: (date) {
@@ -150,10 +148,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                   buildDashboardItem(
                     context,
-                    'View Reports',
+                    'View News',
                     'lib/assets/icons/me/admin1.gif',
                     () {
-                      // Ajouter l'action pour visualiser les rapports
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>  GereListPage(),
+                        ),
+                      );
                     },
                   ),
                   buildDashboardItem(
@@ -182,8 +185,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget buildDashboardItem(
-      BuildContext context, String title, String iconPath, VoidCallback onPressed) {
+  Widget buildDashboardItem(BuildContext context, String title, String iconPath,
+      VoidCallback onPressed) {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
