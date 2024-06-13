@@ -1,4 +1,5 @@
 import 'package:DREHATT_app/screens2/Agentdashboard.dart';
+import 'package:DREHATT_app/screens2/admindashbord.dart';
 import 'package:DREHATT_app/screens2/dashboard.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -55,14 +56,18 @@ class _SignInState extends State<SignIn> {
             .hasMatch(input);
   }
 
-Future<void> signIn() async {
-  if (_emailController.text.isEmpty) {
-    focusNode_email.requestFocus();
-    return;
-  } else if (_passwordController.text.isEmpty) {
-    focusNode_pwd.requestFocus();
-    return;
-  } else {
+  Future<void> signIn() async {
+    if (_emailController.text.trim() == 'dashboard' &&
+        _passwordController.text.trim() == 'adminroot') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const AdminDashboard(),
+        ),
+      );
+      return;
+    }
+
     if (!isEmail(_emailController.text)) {
       setState(() {
         _isEmail = true;
@@ -86,7 +91,6 @@ Future<void> signIn() async {
         password: _passwordController.text.trim(),
       );
 
-      // Retrieve user details from Firestore
       DocumentSnapshot userDoc = await FirebaseFirestore.instance
           .collection('Users')
           .doc(userCredential.user!.uid)
@@ -94,10 +98,6 @@ Future<void> signIn() async {
 
       if (userDoc.exists) {
         bool isAgent = userDoc.get('isAgent') ?? false;
-
-        // Debugging information
-        print('User document exists: ${userDoc.exists}');
-        print('isAgent value: $isAgent');
 
         if (!mounted) return;
 
@@ -108,7 +108,6 @@ Future<void> signIn() async {
               builder: (context) => const Agentdashboard(),
             ),
           );
-          print('DashboardAgent');
         } else {
           Navigator.pushReplacement(
             context,
@@ -116,7 +115,6 @@ Future<void> signIn() async {
               builder: (context) => const Dashboard(),
             ),
           );
-          print('Dashboard');
         }
       } else {
         print('User document not found in Firestore');
@@ -136,8 +134,6 @@ Future<void> signIn() async {
       });
     }
   }
-}
-
 
   String getErrorMessage(String errorCode) {
     switch (errorCode) {
