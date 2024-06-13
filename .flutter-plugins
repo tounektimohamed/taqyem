@@ -49,6 +49,7 @@ shared_preferences_foundation=/home/med/.pub-cache/hosted/pub.dev/shared_prefere
 shared_preferences_linux=/home/med/.pub-cache/hosted/pub.dev/shared_preferences_linux-2.3.2/
 shared_preferences_web=/home/med/.pub-cache/hosted/pub.dev/shared_preferences_web-2.3.0/
 shared_preferences_windows=/home/med/.pub-cache/hosted/pub.dev/shared_preferences_windows-2.3.2/
+sqflite=/home/med/.pub-cache/hosted/pub.dev/sqflite-2.3.3+1/
 url_launcher=/home/med/.pub-cache/hosted/pub.dev/url_launcher-6.3.0/
 url_launcher_android=/home/med/.pub-cache/hosted/pub.dev/url_launcher_android-6.3.3/
 url_launcher_ios=/home/med/.pub-cache/hosted/pub.dev/url_launcher_ios-6.3.0/

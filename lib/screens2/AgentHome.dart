@@ -1,3 +1,4 @@
+import 'package:DREHATT_app/screens2/add_news_screen.dart';
 import 'package:flutter/material.dart';
 
 class AgentHome extends StatelessWidget {
@@ -17,13 +18,14 @@ class AgentHome extends StatelessWidget {
               'Welcome, Agent!',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 20),
-            ElevatedButton(
+            IconButton(
+              icon: Icon(Icons.add),
               onPressed: () {
-                // Implement your agent-specific functionality here
-                // For example, navigating to another screen
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => AddNewsScreen()),
+                );
               },
-              child: Text('Agent-specific Action'),
             ),
           ],
         ),
