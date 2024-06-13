@@ -1,16 +1,18 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:DREHATT_app/screens2/Agentdashboard.dart';
+import 'package:DREHATT_app/screens2/dashboard.dart';
 import 'package:flutter/material.dart';
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:DREHATT_app/components/text_field.dart';
 import 'package:DREHATT_app/screens2/password_reset.dart';
+//import 'package:DREHATT_app/screens2/homepage2.dart';
 import 'package:DREHATT_app/services2/auth_service.dart';
 
 class SignIn extends StatefulWidget {
-  const SignIn({super.key, required this.showSignUpScreen});
+  const SignIn({Key? key, required this.showSignUpScreen}) : super(key: key);
 
   final void Function()? showSignUpScreen;
 
@@ -19,9 +21,8 @@ class SignIn extends StatefulWidget {
 }
 
 class _SignInState extends State<SignIn> {
-  //controllers - keep track what types
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   late FocusNode focusNode_email;
   late FocusNode focusNode_pwd;
 
@@ -32,14 +33,6 @@ class _SignInState extends State<SignIn> {
   bool _isError = false;
   String errorMsg = '';
 
-  bool isName(String input) => RegExp('[a-zA-Z]').hasMatch(input);
-  bool isEmail(String input) => RegExp(
-          r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
-      .hasMatch(input);
-  bool isPhone(String input) =>
-      RegExp(r'^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$')
-          .hasMatch(input);
-
   @override
   void initState() {
     super.initState();
@@ -47,94 +40,6 @@ class _SignInState extends State<SignIn> {
     focusNode_pwd = FocusNode();
   }
 
-  Future signIn() async {
-    if (_emailController.text.isEmpty) {
-      // showDialog(
-      //   context: context,
-      //   builder: (context) {
-      //     return const Alert_Dialog(
-      //       isError: true,
-      //       alertTitle: 'Error',
-      //       errorMessage: 'Email or password can\'t be empty.',
-      //       buttonText: 'Cancel',
-      //     );
-      //   },
-      // );
-      focusNode_email.requestFocus();
-    } else if (_passwordController.text.isEmpty) {
-      focusNode_pwd.requestFocus();
-    } else {
-      if (!isEmail(_emailController.text)) {
-        setState(() {
-          _isEmail = true;
-        });
-      } else {
-        setState(() {
-          _isEmail = false;
-        });
-        try {
-          setState(() {
-            isLoading = true;
-          });
-          // //loading circle
-          // showDialog(
-          //   context: context,
-          //   builder: (context) {
-          //     return const Center(
-          //       child: CircularProgressIndicator(
-          //         color: Color.fromRGBO(7, 82, 96, 1),
-          //       ),
-          //     );
-          //   },
-          // );
-
-          await FirebaseAuth.instance.signInWithEmailAndPassword(
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
-          );
-
-          // if (!mounted) {
-          //   return;
-          // }
-          // //pop loading cicle
-          // Navigator.of(context).pop();
-        } on FirebaseAuthException catch (e) {
-          print(e.code);
-          setState(() {
-            isLoading = false;
-          });
-          // if (!mounted) {
-          //   return;
-          // }
-
-          // //pop loading cicle
-          // Navigator.of(context).pop();
-
-          // showDialog(
-          //   context: context,
-          //   builder: (context) {
-          //     return Alert_Dialog(
-          //       isError: true,
-          //       alertTitle: 'Error',
-          //       errorMessage: getErrorMessage(e.code),
-          //       buttonText: 'Cancel',
-          //     );
-          //   },
-          // );
-
-          setState(() {
-            _isError = true;
-            errorMsg = getErrorMessage(e.code);
-          });
-        }
-      }
-    }
-    setState(() {
-      isLoading = false;
-    });
-  }
-
-  // for memory mgt
   @override
   void dispose() {
     _emailController.dispose();
@@ -144,14 +49,133 @@ class _SignInState extends State<SignIn> {
     super.dispose();
   }
 
+  bool isEmail(String input) {
+    return input == 'dashboard' ||
+        RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
+            .hasMatch(input);
+  }
+
+Future<void> signIn() async {
+  if (_emailController.text.isEmpty) {
+    focusNode_email.requestFocus();
+    return;
+  } else if (_passwordController.text.isEmpty) {
+    focusNode_pwd.requestFocus();
+    return;
+  } else {
+    if (!isEmail(_emailController.text)) {
+      setState(() {
+        _isEmail = true;
+        errorMsg = 'Enter valid email address';
+      });
+      return;
+    } else {
+      setState(() {
+        _isEmail = false;
+      });
+    }
+
+    try {
+      setState(() {
+        isLoading = true;
+      });
+
+      UserCredential userCredential =
+          await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      // Retrieve user details from Firestore
+      DocumentSnapshot userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(userCredential.user!.uid)
+          .get();
+
+      if (userDoc.exists) {
+        bool isAgent = userDoc.get('isAgent') ?? false;
+
+        // Debugging information
+        print('User document exists: ${userDoc.exists}');
+        print('isAgent value: $isAgent');
+
+        if (!mounted) return;
+
+        if (isAgent) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const Agentdashboard(),
+            ),
+          );
+          print('DashboardAgent');
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const Dashboard(),
+            ),
+          );
+          print('Dashboard');
+        }
+      } else {
+        print('User document not found in Firestore');
+      }
+    } on FirebaseAuthException catch (e) {
+      print(e.code);
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+        _isError = true;
+        errorMsg = getErrorMessage(e.code);
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+}
+
+
+  String getErrorMessage(String errorCode) {
+    switch (errorCode) {
+      case "ERROR_EMAIL_ALREADY_IN_USE":
+      case "account-exists-with-different-credential":
+      case "email-already-in-use":
+        return "Email already used. Go to login page.";
+      case "ERROR_WRONG_PASSWORD":
+      case "wrong-password":
+        return "Incorrect email or password.";
+      case "ERROR_USER_NOT_FOUND":
+      case "user-not-found":
+        return "No user found with this email.";
+      case "ERROR_USER_DISABLED":
+      case "user-disabled":
+        return "User disabled.";
+      case "ERROR_TOO_MANY_REQUESTS":
+      case "operation-not-allowed":
+        return "Too many requests to log into this account.";
+      case "ERROR_OPERATION_NOT_ALLOWED":
+      case "operation-not-allowed":
+        return "Server error, please try again later.";
+      case "ERROR_INVALID_EMAIL":
+      case "invalid-email":
+        return "Incorrect email or password.";
+      case 'network-request-failed':
+        return 'Network error.';
+      default:
+        return "Sign in failed. Please try again.";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(0),
         child: AppBar(
-          // systemOverlayStyle: const SystemUiOverlayStyle(
-          //     statusBarColor: Color.fromARGB(255, 233, 237, 237)),
           elevation: 0,
           iconTheme: const IconThemeData(
             color: Color.fromRGBO(7, 82, 96, 1),
@@ -170,12 +194,10 @@ class _SignInState extends State<SignIn> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    //logo
                     const Image(
                       image: AssetImage('lib/assets/icons/me/logo.png'),
                       height: 80,
                     ),
-                    //app name
                     Text(
                       'DREHATT',
                       style: GoogleFonts.poppins(
@@ -187,7 +209,6 @@ class _SignInState extends State<SignIn> {
                     const SizedBox(
                       height: 40,
                     ),
-                    //text
                     Text(
                       'Welcome back!',
                       style: GoogleFonts.roboto(
@@ -198,9 +219,7 @@ class _SignInState extends State<SignIn> {
                     const SizedBox(
                       height: 30,
                     ),
-                    //FORM
                     FormUI(),
-
                     const SizedBox(
                       height: 15,
                     ),
@@ -214,26 +233,19 @@ class _SignInState extends State<SignIn> {
                     const SizedBox(
                       height: 15,
                     ),
-                    //sign in with google buttton
                     SizedBox(
                       width: double.infinity,
                       height: 55,
                       child: FilledButton.tonalIcon(
-                        //sign in with google
-                        // onPressed: () {},
                         onPressed: () async {
                           setState(() {
-                            isLoadingGoogle = false;
+                            isLoadingGoogle = true;
                           });
                           try {
                             UserCredential user =
                                 await AuthService().signInWithGoogle(context);
                             String? userEmail = user.user!.email;
                             print('Email : $userEmail');
-
-                            setState(() {
-                              isLoadingGoogle = true;
-                            });
 
                             try {
                               var a = await FirebaseFirestore.instance
@@ -279,32 +291,31 @@ class _SignInState extends State<SignIn> {
                             ),
                           ),
                         ),
-                        icon: const FaIcon(
-                          FontAwesomeIcons.google,
-                          color: Color.fromARGB(255, 7, 82, 96),
-                          size: 20,
-                        ),
-                        label: !isLoadingGoogle
-                            ? Text(
-                                'Continue with Google',
-                                style: GoogleFonts.roboto(
-                                  fontSize: 20,
-                                  color: const Color.fromARGB(255, 7, 82, 96),
-                                ),
+                        icon: !isLoadingGoogle
+                            ? const FaIcon(
+                                FontAwesomeIcons.google,
+                                color: Colors.red,
                               )
                             : const CircularProgressIndicator(
-                                color: Color.fromARGB(255, 7, 82, 96),
+                                color: Colors.white,
                               ),
+                        label: !isLoadingGoogle
+                            ? Text(
+                                'Sign In with Google',
+                                style: GoogleFonts.roboto(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              )
+                            : const Text(''),
                       ),
                     ),
                     const SizedBox(
                       height: 10,
                     ),
-                    //link to sign up
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        //text
                         Text(
                           'Don\'t have an account? ',
                           style: GoogleFonts.roboto(
@@ -312,7 +323,6 @@ class _SignInState extends State<SignIn> {
                             color: const Color.fromARGB(255, 67, 63, 63),
                           ),
                         ),
-                        //sign up button
                         ElevatedButton(
                           onPressed: widget.showSignUpScreen,
                           style: ButtonStyle(
@@ -334,7 +344,6 @@ class _SignInState extends State<SignIn> {
                             style: GoogleFonts.roboto(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              // color: const Color.fromARGB(255, 7, 82, 96),
                             ),
                           ),
                         ),
@@ -353,7 +362,6 @@ class _SignInState extends State<SignIn> {
   Widget FormUI() {
     return Column(
       children: [
-        //email
         Text_Field(
           label: 'Email',
           hint: 'name@email.com',
@@ -365,7 +373,6 @@ class _SignInState extends State<SignIn> {
         const SizedBox(
           height: 5,
         ),
-        //text not a valid email
         Visibility(
           visible: _isEmail,
           maintainSize: true,
@@ -376,7 +383,7 @@ class _SignInState extends State<SignIn> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 0, 0),
               child: Text(
-                'Enter valid email address',
+                errorMsg,
                 style: GoogleFonts.roboto(
                   fontSize: 12,
                   color: const Color.fromRGBO(255, 16, 15, 15),
@@ -389,7 +396,6 @@ class _SignInState extends State<SignIn> {
         const SizedBox(
           height: 5,
         ),
-        //password
         Text_Field(
           label: 'Password',
           hint: 'Password',
@@ -398,12 +404,10 @@ class _SignInState extends State<SignIn> {
           txtEditController: _passwordController,
           focusNode: focusNode_pwd,
         ),
-        //forgot password
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           mainAxisSize: MainAxisSize.max,
           children: [
-            //firebase error message
             Visibility(
               visible: _isError,
               maintainSize: false,
@@ -418,22 +422,13 @@ class _SignInState extends State<SignIn> {
                     color: const Color.fromRGBO(255, 16, 15, 15),
                     child: Row(
                       mainAxisSize: MainAxisSize.max,
-                      children: [
-                        const Icon(
+                      children: const [
+                        Icon(
                           Icons.error_outline_rounded,
                           color: Color.fromRGBO(255, 16, 15, 15),
                         ),
-                        const SizedBox(
+                        SizedBox(
                           width: 3,
-                        ),
-                        Text(
-                          errorMsg,
-                          style: GoogleFonts.roboto(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                            color: const Color.fromRGBO(255, 16, 15, 15),
-                          ),
-                          textAlign: TextAlign.start,
                         ),
                       ],
                     ),
@@ -441,12 +436,10 @@ class _SignInState extends State<SignIn> {
                 ),
               ),
             ),
-            //forgot pwd button
             ElevatedButton(
               onPressed: () {
                 Navigator.push(
                   context,
-                  //password reset screen
                   MaterialPageRoute(
                     builder: (context) {
                       return const PasswordReset();
@@ -474,14 +467,11 @@ class _SignInState extends State<SignIn> {
                 'Forgot password?',
                 style: GoogleFonts.roboto(
                   fontSize: 15,
-                  // color: const Color.fromARGB(255, 7, 82, 96),
                 ),
               ),
             ),
           ],
         ),
-
-        //sign in button
         SizedBox(
           width: double.infinity,
           height: 55,
@@ -510,44 +500,5 @@ class _SignInState extends State<SignIn> {
         ),
       ],
     );
-  }
-
-  String getErrorMessage(String errorCode) {
-    switch (errorCode) {
-      case "ERROR_EMAIL_ALREADY_IN_USE":
-      case "account-exists-with-different-credential":
-      case "email-already-in-use":
-        return "Email already used. Go to login page.";
-        break;
-      case "ERROR_WRONG_PASSWORD":
-      case "wrong-password":
-        return "Incorrect email or password.";
-        break;
-      case "ERROR_USER_NOT_FOUND":
-      case "user-not-found":
-        return "No user found with this email.";
-        break;
-      case "ERROR_USER_DISABLED":
-      case "user-disabled":
-        return "User disabled.";
-        break;
-      case "ERROR_TOO_MANY_REQUESTS":
-      case "operation-not-allowed":
-        return "Too many requests to log into this account.";
-        break;
-      case "ERROR_OPERATION_NOT_ALLOWED":
-      case "operation-not-allowed":
-        return "Server error, please try again later.";
-        break;
-      case "ERROR_INVALID_EMAIL":
-      case "invalid-email":
-        return "Incorrect email or password.E";
-        break;
-      case 'network-request-failed':
-        return 'Network error.';
-      default:
-        return "Sign in failed. Please try again.";
-        break;
-    }
   }
 }

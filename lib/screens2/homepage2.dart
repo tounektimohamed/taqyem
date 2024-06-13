@@ -7,7 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_timeline_calendar/timeline/flutter_timeline_calendar.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:DREHATT_app/components/language_constants.dart';
+//import 'package:DREHATT_app/components/language_constants.dart';
 //import 'package:DREHATT_app/components/medcard.dart';
 import 'package:DREHATT_app/screens2/account_settings.dart';
 //import 'package:DREHATT_app/screens2/add_medication1.dart';
