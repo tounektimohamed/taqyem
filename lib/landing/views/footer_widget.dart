@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FooterWidget extends StatelessWidget {
+  final TextEditingController _emailController = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -20,6 +23,7 @@ class FooterWidget extends StatelessWidget {
                   ? Column(
                       children: [
                         TextField(
+                          controller: _emailController,
                           decoration: InputDecoration(
                             hintText: 'Enter your email address',
                             filled: true,
@@ -32,7 +36,9 @@ class FooterWidget extends StatelessWidget {
                         ),
                         SizedBox(height: 10),
                         ElevatedButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            _subscribeToNewsletter(context);
+                          },
                           style: ElevatedButton.styleFrom(
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
@@ -49,6 +55,7 @@ class FooterWidget extends StatelessWidget {
                         Container(
                           width: 300,
                           child: TextField(
+                            controller: _emailController,
                             decoration: InputDecoration(
                               hintText: 'Enter your email address',
                               filled: true,
@@ -62,7 +69,9 @@ class FooterWidget extends StatelessWidget {
                         ),
                         SizedBox(width: 10),
                         ElevatedButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            _subscribeToNewsletter(context);
+                          },
                           style: ElevatedButton.styleFrom(
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
@@ -106,6 +115,53 @@ class FooterWidget extends StatelessWidget {
         );
       },
     );
+  }
+
+  void _subscribeToNewsletter(BuildContext context) async {
+    try {
+      if (_emailController.text.isNotEmpty) {
+        await FirebaseFirestore.instance.collection('subscribers').add({
+          'email': _emailController.text.trim(),
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+
+        _emailController.clear();
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Subscription Successful'),
+            content: Text('Thank you for subscribing to our newsletter!'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Error'),
+            content: Text('Please enter your email address.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      print('Error subscribing to newsletter: $e');
+    }
   }
 }
 

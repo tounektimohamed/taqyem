@@ -1773,6 +1773,9 @@ file:///home/med/MyMeds/lib/components/onboarding_content.dart
 file:///home/med/MyMeds/lib/components/re_usable_select_photo_button.dart
 file:///home/med/MyMeds/lib/components/text_field.dart
 file:///home/med/MyMeds/lib/firebase_options.dart
+file:///home/med/MyMeds/lib/landing/views/footer_widget.dart
+file:///home/med/MyMeds/lib/landing/views/header_widget.dart
+file:///home/med/MyMeds/lib/landing/views/home_page.dart
 file:///home/med/MyMeds/lib/main.dart
 file:///home/med/MyMeds/lib/screens2/AgentHome.dart
 file:///home/med/MyMeds/lib/screens2/Agentdashboard.dart
