@@ -20,7 +20,7 @@ class _AddNewsScreenState extends State<AddNewsScreen> {
     if (_formKey.currentState!.validate()) {
       String title = _titleController.text;
       String content = _contentController.text;
-      String author = FirebaseAuth.instance.currentUser!.email!;
+      String author = FirebaseAuth.instance.currentUser!.displayName!;
 
       setState(() {
         isLoading = true;

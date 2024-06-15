@@ -1,3 +1,5 @@
+import 'package:DREHATT_app/screens2/AccessLogsPage.dart';
+import 'package:DREHATT_app/screens2/SubscribersPage.dart';
 import 'package:DREHATT_app/screens2/gerenews.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -154,25 +156,35 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>  GereListPage(),
+                          builder: (context) => GereListPage(),
                         ),
                       );
                     },
                   ),
                   buildDashboardItem(
                     context,
-                    'System Settings',
+                    'View Access Logs',
                     'lib/assets/icons/me/admin1.gif',
                     () {
-                      // Ajouter l'action pour les paramètres du système
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AccessLogsPage(),
+                        ),
+                      );
                     },
                   ),
                   buildDashboardItem(
                     context,
-                    'Logout',
-                    'lib/assets/icons/me/logout.gif',
+                    'View  subscriber',
+                    'lib/assets/icons/me/subscribers.gif',
                     () {
-                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SubscribersPage(),
+                        ),
+                      );
                     },
                   ),
                   // Ajoutez d'autres éléments ici si nécessaire

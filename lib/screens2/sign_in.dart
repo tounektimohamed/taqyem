@@ -16,7 +16,6 @@ import 'package:DREHATT_app/services2/auth_service.dart';
 class SignIn extends StatefulWidget {
   const SignIn({Key? key}) : super(key: key);
 
-
   @override
   State<SignIn> createState() => _SignInState();
 }
@@ -97,6 +96,12 @@ class _SignInState extends State<SignIn> {
           .get();
 
       if (userDoc.exists) {
+        await FirebaseFirestore.instance.collection('access_logs').add({
+          'userId': userCredential.user!.uid,
+          'email': userCredential.user!.email,
+          'name': userDoc.get('name'), // Récupérer le nom de l'utilisateur
+          'timestamp': Timestamp.now(),
+        });
         bool isAgent = userDoc.get('isAgent') ?? false;
 
         if (!mounted) return;

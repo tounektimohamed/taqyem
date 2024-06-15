@@ -1,0 +1,3 @@
+/home/med/MyMeds/build/linux/x64/debug/CMakeFiles/CMakeScratch/TryCompile-T9m3Bc/CMakeFiles/cmTC_b7a15.dir
+/home/med/MyMeds/build/linux/x64/debug/CMakeFiles/CMakeScratch/TryCompile-T9m3Bc/CMakeFiles/edit_cache.dir
+/home/med/MyMeds/build/linux/x64/debug/CMakeFiles/CMakeScratch/TryCompile-T9m3Bc/CMakeFiles/rebuild_cache.dir

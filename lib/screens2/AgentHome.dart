@@ -23,7 +23,7 @@ class AgentHome extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => AddNewsScreen()),
+                  MaterialPageRoute(builder: (context) => const AddNewsScreen()),
                 );
               },
             ),

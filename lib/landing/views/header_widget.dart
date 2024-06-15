@@ -20,7 +20,7 @@ class HeaderWidget extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            Image.asset('lib/assets/icons/me/logo.png',
+                            Image.asset('lib/assets/icons/me/cigle-meh.png',
                                 height: 40),
                             SizedBox(width: 10),
                             Text('DREHATT',
@@ -40,13 +40,25 @@ class HeaderWidget extends StatelessWidget {
                     Row(
                       children: [
                         TextButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const SignUp()),
+                            );
+                          },
                           child: Text('SIGNUP',
                               style: TextStyle(color: Colors.white)),
                         ),
                         SizedBox(width: 10),
                         ElevatedButton(
-                          onPressed: () {},
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const SignIn()),
+                            );
+                          },
                           child: Text('LOGIN'),
                         ),
                       ],
@@ -58,7 +70,7 @@ class HeaderWidget extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Image.asset('lib/assets//icons/me/logo.png',
+                        Image.asset('lib/assets//icons/me/cigle-meh.png',
                             height: 40),
                         SizedBox(width: 10),
                         Text('DREHATT',
@@ -72,7 +84,8 @@ class HeaderWidget extends StatelessWidget {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const SignUp()),
+                              MaterialPageRoute(
+                                  builder: (context) => const SignUp()),
                             );
                           },
                           child: Text('SIGNUP',
@@ -80,10 +93,11 @@ class HeaderWidget extends StatelessWidget {
                         ),
                         SizedBox(width: 10),
                         ElevatedButton(
-                           onPressed: () {
+                          onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(builder: (context) => const SignIn()),
+                              MaterialPageRoute(
+                                  builder: (context) => const SignIn()),
                             );
                           },
                           child: Text('LOGIN'),
