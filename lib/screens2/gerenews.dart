@@ -8,6 +8,7 @@ class News {
   final String content;
   final String author;
   final DateTime timestamp;
+ // final String name;
 
   News({
     required this.id,
@@ -15,6 +16,7 @@ class News {
     required this.content,
     required this.author,
     required this.timestamp,
+  //  required this.name,
   });
 }
 
@@ -42,6 +44,7 @@ class GereListPage extends StatelessWidget {
               id: document.id,
               title: document['title'],
               content: document['content'],
+              //name: document['name'] ?? '', // Potential issue causing the error
               author: document['author'],
               timestamp: timestamp.toDate(),
             );
@@ -55,7 +58,8 @@ class GereListPage extends StatelessWidget {
                 margin: EdgeInsets.all(10),
                 child: ListTile(
                   title: Text(news.title),
-                  subtitle: Text('${news.author} - ${_formatTimestamp(news.timestamp)}'),
+                  subtitle: Text(
+                      '${news.author} - ${_formatTimestamp(news.timestamp)}'),
                   trailing: IconButton(
                     icon: Icon(Icons.delete),
                     onPressed: () async {
@@ -63,7 +67,8 @@ class GereListPage extends StatelessWidget {
                         context: context,
                         builder: (context) => AlertDialog(
                           title: Text('Confirm Delete'),
-                          content: Text('Are you sure you want to delete this news?'),
+                          content: Text(
+                              'Are you sure you want to delete this news?'),
                           actions: <Widget>[
                             TextButton(
                               child: Text('Cancel'),

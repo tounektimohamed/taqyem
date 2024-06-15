@@ -20,7 +20,8 @@ class _AddNewsScreenState extends State<AddNewsScreen> {
     if (_formKey.currentState!.validate()) {
       String title = _titleController.text;
       String content = _contentController.text;
-      String author = FirebaseAuth.instance.currentUser!.displayName!;
+      String author = FirebaseAuth.instance.currentUser!.email!;
+      String name = FirebaseAuth.instance.currentUser!.displayName ?? '';
 
       setState(() {
         isLoading = true;
@@ -32,6 +33,7 @@ class _AddNewsScreenState extends State<AddNewsScreen> {
           'content': content,
           'author': author,
           'timestamp': FieldValue.serverTimestamp(),
+          'name': name,
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -149,7 +151,8 @@ class _AddNewsScreenState extends State<AddNewsScreen> {
                   ),
                   child: isLoading
                       ? CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
                         )
                       : Text(
                           'Submit',
