@@ -1,3 +1,4 @@
+import 'package:DREHATT_app/screens2/sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -8,9 +9,8 @@ import '../components/text_field.dart';
 import '../services2/auth_service.dart';
 
 class SignUp extends StatefulWidget {
-  const SignUp({super.key, required this.showSignInScreen});
+  const SignUp({super.key});
 
-  final void Function()? showSignInScreen;
   @override
   State<SignUp> createState() => _SignUpState();
 }
@@ -582,7 +582,17 @@ Future signUp() async {
                           ),
                         ),
                         ElevatedButton(
-                          onPressed: widget.showSignInScreen,
+                      //
+                       onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) {
+                                  return const SignIn();
+                                },
+                              ),
+                            );
+                          },
                           style: ButtonStyle(
                             elevation: const MaterialStatePropertyAll(0),
                             backgroundColor: const MaterialStatePropertyAll(

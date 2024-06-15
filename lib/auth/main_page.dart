@@ -7,7 +7,7 @@ import 'package:DREHATT_app/screens2/dashboard.dart';
 import 'package:DREHATT_app/screens2/email_verify.dart';
 
 class MainPage extends StatelessWidget {
-  const MainPage({Key? key});
+  const MainPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +16,7 @@ class MainPage extends StatelessWidget {
         stream: FirebaseAuth.instance.userChanges(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
+            return const Center(
               child: CircularProgressIndicator(),
             );
           }
@@ -27,7 +27,7 @@ class MainPage extends StatelessWidget {
               future: FirebaseFirestore.instance.collection('Users').doc(user.uid).get(),
               builder: (context, userDocSnapshot) {
                 if (userDocSnapshot.connectionState == ConnectionState.waiting) {
-                  return Center(
+                  return const Center(
                     child: CircularProgressIndicator(),
                   );
                 }
@@ -36,28 +36,22 @@ class MainPage extends StatelessWidget {
                   bool isEmailVerified = user.emailVerified;
                   bool isAgent = userDocSnapshot.data!.get('isAgent') ?? false;
 
-                  // Debugging information
-                  print('User document exists: ${userDocSnapshot.data!.exists}');
-                  print('isAgent value: $isAgent');
-
                   if (isEmailVerified) {
-                    if (isAgent) {
-                      return const Agentdashboard();
-                    } else {
-                      return const Dashboard();
-                    }
+                    return isAgent ? const Agentdashboard() : const Dashboard();
                   } else {
                     return const EmailVerificationScreen();
                   }
                 } else {
-                  // User document not found or error fetching data
-                  return const AuthPage(); // Go to authentication page
+                  // Log de débogage
+                  print('Erreur lors de la récupération du document utilisateur ou document introuvable.');
+                  // Redirigez vers la page d'authentification si le document utilisateur n'est pas trouvé ou une erreur se produit
+                  return const AuthPage();
                 }
               },
             );
           } else {
-            // No user logged in
-            return const AuthPage(); // Go to authentication page
+            // Aucun utilisateur connecté
+            return const AuthPage();
           }
         },
       ),

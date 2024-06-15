@@ -255,6 +255,8 @@ flutter:
     - lib/assets/icons/
     - lib/assets/icons/me/
     - lib/l10n/
+    - assets/icons/
+    - assets/images/
     # - assets/audio/
     
 

@@ -3,8 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:DREHATT_app/components/onboarding_content.dart';
 
 class Onboarding extends StatefulWidget {
-  final void Function()? showSignInScreen;
-  const Onboarding({super.key, required this.showSignInScreen});
+  final void Function()? goToHomePage; // Ajoutez cette ligne pour la redirection vers MyHomePage
+  const Onboarding({super.key, required this.goToHomePage});
 
   @override
   State<Onboarding> createState() => _OnboardingState();
@@ -28,8 +28,6 @@ class _OnboardingState extends State<Onboarding> {
 
   @override
   Widget build(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-
     return Scaffold(
       appBar: PreferredSize(
           preferredSize: const Size.fromHeight(0), child: AppBar()),
@@ -152,16 +150,11 @@ class _OnboardingState extends State<Onboarding> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // TextButton(
-                  //   onPressed: widget.showSignInScreen,
-                  //   child: const Text('Skip'),
-                  //   // screenWidth: screenWidth,
-                  // ),
                   SizedBox(
                     height: 50,
                     width: 140,
                     child: TextButton(
-                      onPressed: widget.showSignInScreen,
+                      onPressed: widget.goToHomePage, // Redirection directe vers MyHomePage
                       style: const ButtonStyle(
                         backgroundColor: MaterialStatePropertyAll(
                             Color.fromARGB(255, 217, 237, 239)),
@@ -216,16 +209,6 @@ class _OnboardingState extends State<Onboarding> {
                             ),
                           ),
                         ),
-
-                        // child: FilledButton(
-                        //   onPressed: () {
-                        //     pageController.nextPage(
-                        //         duration: const Duration(milliseconds: 500),
-                        //         curve: Curves.decelerate);
-                        //     // }
-                        //   },
-                        //   child: const Text('Next'),
-                        // ),
                       ),
                       Visibility(
                         visible: (currentIndex == 3),
@@ -233,7 +216,7 @@ class _OnboardingState extends State<Onboarding> {
                           height: 50,
                           width: 140,
                           child: FilledButton(
-                            onPressed: widget.showSignInScreen,
+                            onPressed: widget.goToHomePage, // Appelle la méthode pour aller à MyHomePage
                             style: const ButtonStyle(
                               elevation: MaterialStatePropertyAll(2),
                               shape: MaterialStatePropertyAll(
@@ -253,11 +236,6 @@ class _OnboardingState extends State<Onboarding> {
                             ),
                           ),
                         ),
-
-                        // child: FilledButton(
-                        //   onPressed: widget.showSignInScreen,
-                        //   child: const Text('Continue'),
-                        // ),
                       ),
                     ],
                   ),

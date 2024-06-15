@@ -76,7 +76,7 @@ class _MyAppState extends State<MyApp> {
       home: const MainPage(),
       theme: ThemeData(
         useMaterial3: true,
-        // scaffoldBackgroundColor: Colors.white,
+        //scaffoldBackgroundColor: Colors.white,
         scaffoldBackgroundColor: const Color.fromRGBO(241, 250, 251, 1),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color.fromARGB(255, 241, 250, 251),
