@@ -1,4 +1,3 @@
-import 'package:DREHATT_app/screens2/Claim.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
@@ -264,45 +263,267 @@ class _HomePage2State extends State<HomePage2> {
   }
 }
 
-class ClaimsListPage extends StatelessWidget {
+class ClaimFormPage extends StatefulWidget {
+  @override
+  _ClaimFormPageState createState() => _ClaimFormPageState();
+}
+
+class _ClaimFormPageState extends State<ClaimFormPage> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _contentController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  XFile? _image;
+  String? _imageUrl;
+  Position? _position;
+  bool _isLoading = false;
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        _image = pickedFile;
+        if (kIsWeb) {
+          _imageUrl = pickedFile.path;
+        }
+      });
+    }
+  }
+
+  Future<void> _getCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Location services are disabled.');
+    }
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        return Future.error('Location permissions are denied');
+      }
+    }
+
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error(
+          'Location permissions are permanently denied, we cannot request permissions.');
+    }
+
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+    setState(() {
+      _position = position;
+    });
+  }
+
+  Future<void> _submitClaim() async {
+    if (_formKey.currentState!.validate() &&
+        (_image != null || _imageUrl != null) &&
+        _position != null) {
+      setState(() {
+        _isLoading = true;
+      });
+
+      try {
+        String imageUrl;
+        if (!kIsWeb) {
+          // Upload the image to Firebase Storage for non-web platforms
+          String fileName = '${DateTime.now().millisecondsSinceEpoch}.jpg';
+          UploadTask uploadTask = FirebaseStorage.instance
+              .ref()
+              .child('claims')
+              .child(fileName)
+              .putFile(File(_image!.path));
+
+          TaskSnapshot taskSnapshot = await uploadTask;
+          imageUrl = await taskSnapshot.ref.getDownloadURL();
+        } else {
+          imageUrl = _imageUrl!;
+        }
+
+        // Save the claim details to Firestore
+        await FirebaseFirestore.instance.collection('claims').add({
+          'userId': FirebaseAuth.instance.currentUser!.uid,
+          'title': _titleController.text,
+          'content': _contentController.text,
+          'phone': _phoneController.text,
+          'email': _emailController.text,
+          'imageUrl': imageUrl,
+          'position': GeoPoint(_position!.latitude, _position!.longitude),
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Claim submitted successfully')),
+        );
+
+        _formKey.currentState!.reset();
+        setState(() {
+          _image = null;
+          _imageUrl = null;
+          _position = null;
+        });
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error submitting claim: $e')),
+        );
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                'Please fill all fields, add a photo, and select a location')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Claims List'),
+        title: Text('Submit a Claim'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
       ),
-      body: StreamBuilder(
-        stream: FirebaseFirestore.instance.collection('claims').snapshots(),
-        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-
-          return ListView.builder(
-            itemCount: snapshot.data!.docs.length,
-            itemBuilder: (context, index) {
-              Claim claim = Claim.fromFirestore(snapshot.data!.docs[index]);
-
-              return ListTile(
-                title: Text(claim.title),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Content: ${claim.content}'),
-                    if (claim.position != null) // Check if position is not null
-                      Text('Location: ${claim.position!.latitude}, ${claim.position!.longitude}'),
-                    Text('Date: ${claim.timestamp.toDate().toString()}'),
-                  ],
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  labelText: 'Title',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
-                // Add other UI elements as needed
-              );
-            },
-          );
-        },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a title';
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: 10),
+              TextFormField(
+                controller: _contentController,
+                decoration: InputDecoration(
+                  labelText: 'Content',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                maxLines: 5,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter content';
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: 10),
+              TextFormField(
+                controller: _phoneController,
+                decoration: InputDecoration(
+                  labelText: 'Phone Number',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your phone number';
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: 10),
+              TextFormField(
+                controller: _emailController,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                keyboardType: TextInputType.emailAddress,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email';
+                  } else if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
+                    return 'Please enter a valid email address';
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: 10),
+              _image == null && _imageUrl == null
+                  ? Text('No image selected.')
+                  : kIsWeb
+                      ? Image.network(_imageUrl!)
+                      : Image.file(File(_image!.path)),
+              ElevatedButton.icon(
+                onPressed: _pickImage,
+                icon: Icon(Icons.image),
+                label: Text('Pick Image'),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              SizedBox(height: 10),
+              ElevatedButton.icon(
+                onPressed: _getCurrentLocation,
+                icon: Icon(Icons.location_on),
+                label: Text('Get Current Location'),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              _position == null
+                  ? Text('No location selected.')
+                  : Text(
+                      'Location: ${_position!.latitude}, ${_position!.longitude}'),
+              SizedBox(height: 20),
+              _isLoading
+                  ? CircularProgressIndicator()
+                  : ElevatedButton(
+                      onPressed: _submitClaim,
+                      child: Text('Submit Claim'),
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: Theme.of(context).colorScheme.primary,
+                        padding: EdgeInsets.symmetric(vertical: 15),
+                        textStyle: TextStyle(fontSize: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+            ],
+          ),
+        ),
       ),
     );
   }

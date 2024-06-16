@@ -10,7 +10,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:DREHATT_app/components/text_field.dart';
 import 'package:DREHATT_app/screens2/password_reset.dart';
-//import 'package:DREHATT_app/screens2/homepage2.dart';
 import 'package:DREHATT_app/services2/auth_service.dart';
 
 class SignIn extends StatefulWidget {
@@ -28,10 +27,10 @@ class _SignInState extends State<SignIn> {
 
   bool isLoading = false;
   bool isLoadingGoogle = false;
-
   bool _isEmail = false;
   bool _isError = false;
   String errorMsg = '';
+  bool _isPasswordVisible = false; // New variable for password visibility
 
   @override
   void initState() {
@@ -99,7 +98,7 @@ class _SignInState extends State<SignIn> {
         await FirebaseFirestore.instance.collection('access_logs').add({
           'userId': userCredential.user!.uid,
           'email': userCredential.user!.email,
-          'name': userDoc.get('name'), // Récupérer le nom de l'utilisateur
+          'name': userDoc.get('name'),
           'timestamp': Timestamp.now(),
         });
         bool isAgent = userDoc.get('isAgent') ?? false;
@@ -406,13 +405,26 @@ class _SignInState extends State<SignIn> {
         const SizedBox(
           height: 5,
         ),
-        Text_Field(
-          label: 'Password',
-          hint: 'Password',
-          isPassword: true,
-          keyboard: TextInputType.visiblePassword,
-          txtEditController: _passwordController,
+        TextField(
+          controller: _passwordController,
           focusNode: focusNode_pwd,
+          obscureText:
+              !_isPasswordVisible, // Updated line for password visibility
+          decoration: InputDecoration(
+            labelText: 'Password',
+            hintText: 'Password',
+            suffixIcon: IconButton(
+              icon: Icon(
+                _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+              ),
+              onPressed: () {
+                setState(() {
+                  _isPasswordVisible =
+                      !_isPasswordVisible; // Toggle password visibility
+                });
+              },
+            ),
+          ),
         ),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -187,7 +187,7 @@ class _SettingsState extends State<MoreUser> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) =>  ClaimsListPage(),
+                                builder: (context) =>  ClaimFormPage(),
                               ),
                             );
                           },

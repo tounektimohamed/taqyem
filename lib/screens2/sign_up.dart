@@ -53,7 +53,7 @@ class _SignUpState extends State<SignUp> {
           r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
       .hasMatch(input);
   bool isPassword(String input) =>
-      RegExp(r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[!@#\$&*~]).{8,}$')
+      RegExp(r'^.{8,}$')
           .hasMatch(input);
 
   @override

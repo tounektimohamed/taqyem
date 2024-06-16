@@ -1,56 +1,119 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:DREHATT_app/screens2/Claim.dart'; // Assurez-vous que le chemin est correct
 
 class ClaimsListPage extends StatelessWidget {
+  Future<void> _deleteClaim(BuildContext context, String claimId) async {
+    try {
+      await FirebaseFirestore.instance.collection('claims').doc(claimId).delete();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Claim deleted successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting claim: $e')),
+      );
+    }
+  }
+
+  void _openMap(BuildContext context, double latitude, double longitude) {
+    final url = 'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude';
+    _launchURL(context, url);
+  }
+
+  Future<void> _launchURL(BuildContext context, String url) async {
+    if (await canLaunch(url)) {
+      await launch(url);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not launch $url')),
+      );
+    }
+  }
+
+  Widget _buildImage(String imageUrl) {
+    // Check if the URL is valid
+    if (Uri.tryParse(imageUrl)?.isAbsolute ?? false) {
+      return Image.network(
+        imageUrl,
+        errorBuilder: (context, error, stackTrace) {
+          return Image.asset('assets/images/placeholder.png'); // Default image asset
+        },
+      );
+    } else {
+      return Image.asset('assets/images/placeholder.png'); // Default image asset
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('List of Claims'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+        title: Text('Claims List'),
+        backgroundColor: Colors.teal,
       ),
-      body: StreamBuilder<QuerySnapshot>(
+      body: StreamBuilder(
         stream: FirebaseFirestore.instance.collection('claims').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-
+        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          var claims = snapshot.data!.docs;
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
 
           return ListView.builder(
-            itemCount: claims.length,
+            itemCount: snapshot.data!.docs.length,
             itemBuilder: (context, index) {
-              var claim = claims[index].data() as Map<String, dynamic>;
-              var title = claim['title'] ?? 'No Title';
-              var content = claim['content'] ?? 'No Content';
-              var phone = claim['phone'] ?? 'No Phone';
-              var email = claim['email'] ?? 'No Email';
-              var imageUrl = claim['imageUrl'] ?? '';
-              var latitude = claim['position']['latitude'] ?? 0.0;
-              var longitude = claim['position']['longitude'] ?? 0.0;
+              Claim claim = Claim.fromFirestore(snapshot.data!.docs[index]);
 
               return Card(
-                margin: EdgeInsets.all(10),
-                child: ListTile(
-                  leading: imageUrl.isNotEmpty
-                      ? Image.network(imageUrl, width: 50, height: 50, fit: BoxFit.cover)
-                      : Icon(Icons.image_not_supported, size: 50),
-                  title: Text(title),
-                  subtitle: Column(
+                elevation: 5,
+                margin: EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(content),
-                      SizedBox(height: 5),
-                      Text('Phone: $phone'),
-                      SizedBox(height: 5),
-                      Text('Email: $email'),
-                      SizedBox(height: 5),
-                      Text('Location: $latitude, $longitude'),
+                      Text(
+                        claim.title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text('Content: ${claim.content}'),
+                      SizedBox(height: 4),
+                      Text('Phone: ${claim.phone}'),
+                      SizedBox(height: 4),
+                      Text('Email: ${claim.email}'),
+                      SizedBox(height: 4),
+                      if (claim.position != null)
+                        Text(
+                          'Location: ${claim.position!.latitude}, ${claim.position!.longitude}',
+                        ),
+                      SizedBox(height: 4),
+                      Text('Date: ${claim.timestamp.toDate()}'),
+                      SizedBox(height: 8),
+                      _buildImage(claim.imageUrl),
+                      ButtonBar(
+                        alignment: MainAxisAlignment.start,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _deleteClaim(context, claim.id),
+                          ),
+                          if (claim.position != null)
+                            IconButton(
+                              icon: Icon(Icons.map, color: const Color.fromRGBO(33, 150, 243, 1)),
+                              onPressed: () => _openMap(context, claim.position!.latitude, claim.position!.longitude),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
