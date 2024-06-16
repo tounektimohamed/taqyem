@@ -115,7 +115,7 @@ class _SettingsState extends State<More> {
                           image: AssetImage('lib/assets//icons/me/logo.png'),
                           height: 50,
                         ),
-                        //app name
+                        // app name
                         // Text(
                         //   'DREHATT',
                         //   style: GoogleFonts.poppins(

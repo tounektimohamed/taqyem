@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:DREHATT_app/screens2/moreUser.dart';
 import 'package:alarm/alarm.dart';
 import 'package:alarm/model/alarm_settings.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -85,7 +86,7 @@ class _DashboardState extends State<Dashboard> {
      // const Mediaction(),
       //statistic
       //settings
-      const More(),
+      const MoreUser(),
     ];
 
     //scaffold

@@ -315,6 +315,12 @@ abstract class AppLocalizations {
   /// **'Emergency Calls'**
   String get emgcall;
 
+  /// No description provided for @reclamation.
+  ///
+  /// In en, this message translates to:
+  /// **'Reclamation'**
+  String get reclamation;
+
   /// No description provided for @photoHeading.
   ///
   /// In en, this message translates to:

@@ -116,6 +116,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get emgcall => 'Emergency Calls';
 
   @override
+  String get reclamation => 'Reclamation';
+
+  @override
   String get photoHeading => 'Save a photo of your prescription';
 
   @override

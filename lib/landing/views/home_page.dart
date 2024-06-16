@@ -316,7 +316,7 @@ class NewsSection extends StatelessWidget {
                             'Published on: ${date.toLocal().toString().substring(0, 16)}',
                             style: GoogleFonts.roboto(
                               fontSize: 12,
-                              color: Colors.grey,
+                              color: const Color.fromARGB(255, 165, 159, 159),
                             ),
                           ),
                         ],

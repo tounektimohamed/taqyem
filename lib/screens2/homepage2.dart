@@ -1,8 +1,14 @@
+import 'package:DREHATT_app/screens2/Claim.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_timeline_calendar/timeline/flutter_timeline_calendar.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:geolocator/geolocator.dart';
+import 'dart:io';
 import 'account_settings.dart';
 
 class HomePage2 extends StatefulWidget {
@@ -250,8 +256,53 @@ class _HomePage2State extends State<HomePage2> {
                 ),
               ],
             ),
+           
           ],
         ),
+      ),
+    );
+  }
+}
+
+class ClaimsListPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Claims List'),
+      ),
+      body: StreamBuilder(
+        stream: FirebaseFirestore.instance.collection('claims').snapshots(),
+        builder: (context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          return ListView.builder(
+            itemCount: snapshot.data!.docs.length,
+            itemBuilder: (context, index) {
+              Claim claim = Claim.fromFirestore(snapshot.data!.docs[index]);
+
+              return ListTile(
+                title: Text(claim.title),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Content: ${claim.content}'),
+                    if (claim.position != null) // Check if position is not null
+                      Text('Location: ${claim.position!.latitude}, ${claim.position!.longitude}'),
+                    Text('Date: ${claim.timestamp.toDate().toString()}'),
+                  ],
+                ),
+                // Add other UI elements as needed
+              );
+            },
+          );
+        },
       ),
     );
   }
