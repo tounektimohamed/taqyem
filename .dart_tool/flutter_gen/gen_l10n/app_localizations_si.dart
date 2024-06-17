@@ -119,6 +119,9 @@ class AppLocalizationsSi extends AppLocalizations {
   String get reclamation => 'Reclamation';
 
   @override
+  String get housingApplicationForm => 'Housing Form';
+
+  @override
   String get photoHeading => 'ඔබගේ බෙහෙත් වට්ටෝරුවෙහි ඡායාරූපයක් සුරකින්න';
 
   @override

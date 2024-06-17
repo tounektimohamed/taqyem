@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:DREHATT_app/screens2/AgentHome.dart';
+import 'package:DREHATT_app/screens2/Agentdashbord.dart';
 import 'package:alarm/alarm.dart';
 import 'package:alarm/model/alarm_settings.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -81,7 +82,7 @@ class _DashboardState extends State<Agentdashboard> {
     //pages
     final List<Widget> pages = <Widget>[
       //main page
-      const AgentHome(),
+      const AgentDashboard(),
       //medication
      // const Mediaction(),
       //statistic

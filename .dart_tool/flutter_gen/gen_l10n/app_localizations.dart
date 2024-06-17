@@ -321,6 +321,12 @@ abstract class AppLocalizations {
   /// **'Reclamation'**
   String get reclamation;
 
+  /// No description provided for @housingApplicationForm.
+  ///
+  /// In en, this message translates to:
+  /// **'Housing Form'**
+  String get housingApplicationForm;
+
   /// No description provided for @photoHeading.
   ///
   /// In en, this message translates to:

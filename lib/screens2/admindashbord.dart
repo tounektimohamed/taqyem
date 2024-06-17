@@ -1,5 +1,7 @@
 import 'package:DREHATT_app/screens2/AccessLogsPage.dart';
 import 'package:DREHATT_app/screens2/ClaimsListPage.dart';
+import 'package:DREHATT_app/screens2/HousingApplicationForm.dart';
+import 'package:DREHATT_app/screens2/HousingApplicationListPage.dart';
 import 'package:DREHATT_app/screens2/SubscribersPage.dart';
 import 'package:DREHATT_app/screens2/gerenews.dart';
 import 'package:flutter/material.dart';
@@ -202,7 +204,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       );
                     },
                   ),
-                  
+                   // Ajoutez d'autres éléments ici si nécessaire
+                   buildDashboardItem(
+                    context,
+                    'Claims List Page',
+                    'lib/assets/icons/me/maps.gif',
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>   HousingApplicationListPage(),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),

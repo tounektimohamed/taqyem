@@ -119,6 +119,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reclamation => 'Reclamation';
 
   @override
+  String get housingApplicationForm => 'Housing Form';
+
+  @override
   String get photoHeading => 'Save a photo of your prescription';
 
   @override

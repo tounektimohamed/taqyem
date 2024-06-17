@@ -1,3 +1,4 @@
+import 'package:DREHATT_app/screens2/HousingApplicationForm.dart';
 import 'package:DREHATT_app/screens2/homepage2.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -217,6 +218,49 @@ class _SettingsState extends State<MoreUser> {
                                 height: 10,
                               ),
                               Text(translation(context).reclamation,
+                                  textAlign: TextAlign.center),
+                            ],
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.12,
+                        width: MediaQuery.of(context).size.width * 0.4,
+                        child: FilledButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>  const HousingApplicationForm(),
+                              ),
+                            );
+                          },
+                          style: const ButtonStyle(
+                            backgroundColor: MaterialStatePropertyAll(
+                                Color.fromARGB(255, 217, 237, 239)),
+                            foregroundColor: MaterialStatePropertyAll(
+                                Color.fromRGBO(7, 82, 96, 1)),
+                            shape: MaterialStatePropertyAll(
+                              RoundedRectangleBorder(
+                                borderRadius: BorderRadius.all(
+                                  Radius.circular(20),
+                                ),
+                              ),
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                height: 5,
+                              ),
+                              Icon(
+                                Icons.maps_home_work,
+                              ),
+                              SizedBox(
+                                height: 10,
+                              ),
+                              Text(translation(context).housingApplicationForm,
                                   textAlign: TextAlign.center),
                             ],
                           ),

@@ -1,4 +1,4 @@
-import 'package:DREHATT_app/screens2/Agentdashboard.dart';
+import 'package:DREHATT_app/screens2/TABAgentdashboard.dart';
 import 'package:DREHATT_app/screens2/admindashbord.dart';
 import 'package:DREHATT_app/screens2/dashboard.dart';
 import 'package:DREHATT_app/screens2/sign_up.dart';
