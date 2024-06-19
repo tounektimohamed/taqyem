@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+
 class HousingApplicationForm extends StatefulWidget {
   const HousingApplicationForm({super.key});
 
@@ -46,7 +47,7 @@ class _HousingApplicationFormState extends State<HousingApplicationForm> {
     final email = _emailController.text.trim();
 
     // Check if all required fields are filled
-    if (name.isEmpty || address.isEmpty  || phone.isEmpty || email.isEmpty) {
+    if (name.isEmpty || address.isEmpty || phone.isEmpty || email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill all required fields')),
       );
@@ -67,48 +68,47 @@ class _HousingApplicationFormState extends State<HousingApplicationForm> {
     };
 
     // Add data to Firestore
-    FirebaseFirestore.instance.collection('applications').add(applicationData)
+    FirebaseFirestore.instance
+        .collection('applications')
+        .add(applicationData)
         .then((value) {
-          // Clear the form
-          _nameController.clear();
-          _addressController.clear();
-          _phoneController.clear();
-          _emailController.clear();
-          _selectedLocation = null;
-          _selectedFile = null;
-          _selectedSector = null;
+      // Clear the form
+      _nameController.clear();
+      _addressController.clear();
+      _phoneController.clear();
+      _emailController.clear();
+      _selectedLocation = null;
+      _selectedFile = null;
+      _selectedSector = null;
 
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Application submitted successfully!')),
-          );
-        })
-        .catchError((error) {
-          // Show error message if submission fails
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to submit application: $error')),
-          );
-        });
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Application submitted successfully!')),
+      );
+    }).catchError((error) {
+      // Show error message if submission fails
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to submit application: $error')),
+      );
+    });
   }
 
-Future<void> pickFile() async {
-  FilePickerResult? result = await FilePicker.platform.pickFiles();
-  if (result != null) {
-    if (kIsWeb) {
-      // On web platform, use `bytes` instead of `path`
-      List<int> bytes = result.files.single.bytes!;
-      // Process `bytes` as needed
-    } else {
-      // On mobile platforms (iOS and Android), use `path`
-      File file = File(result.files.single.path!);
-      setState(() {
-        _selectedFile = file;
-      });
+  Future<void> pickFile() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+    if (result != null) {
+      if (kIsWeb) {
+        // On web platform, use `bytes` instead of `path`
+        List<int> bytes = result.files.single.bytes!;
+        // Process `bytes` as needed
+      } else {
+        // On mobile platforms (iOS and Android), use `path`
+        File file = File(result.files.single.path!);
+        setState(() {
+          _selectedFile = file;
+        });
+      }
     }
   }
-}
-
-
 
   void _onMapCreated(GoogleMapController controller) {
     _mapController = controller;
@@ -132,7 +132,6 @@ Future<void> pickFile() async {
               controller: _addressController,
               decoration: const InputDecoration(labelText: 'Address'),
             ),
-           
             TextField(
               controller: _phoneController,
               decoration: const InputDecoration(labelText: 'Phone Number'),
@@ -148,8 +147,8 @@ Future<void> pickFile() async {
               child: GoogleMap(
                 onMapCreated: _onMapCreated,
                 initialCameraPosition: const CameraPosition(
-                  target: LatLng(37.7749, -122.4194),
-                  zoom: 10,
+                  target: LatLng(33.8869, 9.5375),
+                  zoom: 6,
                 ),
                 markers: _selectedLocation != null
                     ? {
@@ -171,7 +170,8 @@ Future<void> pickFile() async {
               onPressed: pickFile,
               child: const Text('Upload Plan'),
             ),
-            if (_selectedFile != null) Text('File selected: ${_selectedFile!.path}'),
+            if (_selectedFile != null)
+              Text('File selected: ${_selectedFile!.path}'),
             const SizedBox(height: 20),
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Select Sector'),
