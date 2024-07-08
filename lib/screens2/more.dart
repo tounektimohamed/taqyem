@@ -6,7 +6,6 @@ import 'package:maps_launcher/maps_launcher.dart';
 import 'package:DREHATT_app/components/language_constants.dart';
 import 'package:DREHATT_app/screens2/account_settings.dart';
 import 'package:DREHATT_app/screens2/alarm_settings.dart';
-import 'package:DREHATT_app/screens2/bmi.dart';
 import 'package:DREHATT_app/screens2/emergency.dart';
 import 'package:DREHATT_app/screens2/set_photo_screen.dart';
 
