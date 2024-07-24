@@ -1,14 +1,20 @@
+import 'package:DREHATT_app/landing/views/ManageCarouselItemsPage.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_timeline_calendar/timeline/flutter_timeline_calendar.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
+import 'package:image_picker/image_picker.dart';
+
+// Importez les autres fichiers nécessaires
 import 'package:DREHATT_app/screens2/AccessLogsPage.dart';
 import 'package:DREHATT_app/screens2/ClaimsListPage.dart';
 import 'package:DREHATT_app/screens2/HousingApplicationForm.dart';
 import 'package:DREHATT_app/screens2/HousingApplicationListPage.dart';
 import 'package:DREHATT_app/screens2/SubscribersPage.dart';
 import 'package:DREHATT_app/screens2/gerenews.dart';
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter_timeline_calendar/timeline/flutter_timeline_calendar.dart';
-import 'package:DREHATT_app/screens2/User%20Management.dart';
+import 'package:DREHATT_app/screens2/User Management.dart';
 import 'account_settings.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -179,7 +185,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                   buildDashboardItem(
                     context,
-                    'View  subscriber',
+                    'View Subscribers',
                     'lib/assets/icons/me/subscribers.gif',
                     () {
                       Navigator.push(
@@ -190,8 +196,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       );
                     },
                   ),
-                  // Ajoutez d'autres éléments ici si nécessaire
-                   buildDashboardItem(
+                  buildDashboardItem(
                     context,
                     'Claims List Page',
                     'lib/assets/icons/me/subscribers.gif',
@@ -204,16 +209,29 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       );
                     },
                   ),
-                   // Ajoutez d'autres éléments ici si nécessaire
-                   buildDashboardItem(
+                  buildDashboardItem(
                     context,
-                    'Claims List Page',
+                    'Housing Applications',
                     'lib/assets/icons/me/maps.gif',
                     () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) =>   HousingApplicationListPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  // Nouvelle entrée pour gérer le carrousel
+                  buildDashboardItem(
+                    context,
+                    'Manage Carousel',
+                    'lib/assets/icons/me/Instagram-Carousels.svg',
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ManageCarouselItemsPage(),
                         ),
                       );
                     },

@@ -1,8 +1,10 @@
+
+import 'package:carousel_slider/carousel_slider.dart'; // Importez la bibliothèque carousel_slider
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'header_widget.dart'; // Import your header widget
-import 'footer_widget.dart'; // Import your footer widget
+import 'header_widget.dart'; // Importez votre widget d'en-tête
+import 'footer_widget.dart'; // Importez votre widget de pied de page
 
 class MyHomePage extends StatelessWidget {
   const MyHomePage({super.key});
@@ -13,10 +15,11 @@ class MyHomePage extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            HeaderWidget(), // Add your HeaderWidget here
+            HeaderWidget(), // Ajoutez votre HeaderWidget ici
+            CarouselSection(), // Ajoutez le carrousel ici
             MainContent(),
-            NewsSection(), // Assuming you want to add new functionality
-            FooterWidget(), // Add your FooterWidget here
+            NewsSection(), // Supposons que vous souhaitez ajouter une nouvelle fonctionnalité
+            FooterWidget(), // Ajoutez votre FooterWidget ici
           ],
         ),
       ),
@@ -30,7 +33,7 @@ class MainContent extends StatelessWidget {
     return Column(
       children: [
         SectionOne(),
-        SectionTwo(),
+      //  SectionTwo(),
       ],
     );
   }
@@ -237,7 +240,54 @@ class FeatureCard extends StatelessWidget {
   }
 }
 
-// NewWidget is the new widget you want to add, integrate it accordingly
+class CarouselSection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(vertical: 20, horizontal: 20),
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('carouselItems').snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return Center(child: CircularProgressIndicator());
+          }
+
+          var carouselItems = snapshot.data!.docs;
+
+          return CarouselSlider(
+            options: CarouselOptions(
+              height: 400,
+              autoPlay: true,
+              autoPlayInterval: Duration(seconds: 3),
+              enlargeCenterPage: true,
+              aspectRatio: 16 / 9,
+              viewportFraction: 0.8,
+            ),
+            items: carouselItems.map((item) {
+              var data = item.data() as Map<String, dynamic>;
+              var url = data['url'];
+              return Builder(
+                builder: (BuildContext context) {
+                  return Container(
+                    width: MediaQuery.of(context).size.width,
+                    margin: EdgeInsets.symmetric(horizontal: 5.0),
+                    decoration: BoxDecoration(
+                      color: Colors.grey,
+                      image: DecorationImage(
+                        image: NetworkImage(url),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  );
+                },
+              );
+            }).toList(),
+          );
+        },
+      ),
+    );
+  }
+}
 
 class NewsSection extends StatelessWidget {
   @override
@@ -250,7 +300,7 @@ class NewsSection extends StatelessWidget {
           const SizedBox(
             height: 10,
           ),
-          // Title for the news section
+          // Titre pour la section des nouvelles
           Text(
             'News',
             selectionColor: Colors.yellow,
@@ -262,7 +312,7 @@ class NewsSection extends StatelessWidget {
           const SizedBox(
             height: 10,
           ),
-          // StreamBuilder to fetch the latest news
+          // StreamBuilder pour récupérer les dernières nouvelles
           StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('news')
@@ -288,38 +338,13 @@ class NewsSection extends StatelessWidget {
                   var date = timestamp.toDate();
 
                   return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 10),
+                    margin: const EdgeInsets.symmetric(vertical: 8),
                     child: ListTile(
-                      leading: Image.asset(
-                        'lib/assets/icons/me/news.gif', // Replace with your relative PNG file path
-                        width: 130, // Desired image size
-                        height: 100,
-                      ),
-                      title: Text(
-                        title,
-                        style: GoogleFonts.roboto(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            content,
-                            style: GoogleFonts.roboto(
-                              fontSize: 14,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            'Published on: ${date.toLocal().toString().substring(0, 16)}',
-                            style: GoogleFonts.roboto(
-                              fontSize: 12,
-                              color: const Color.fromARGB(255, 165, 159, 159),
-                            ),
-                          ),
-                        ],
+                      title: Text(title, style: GoogleFonts.roboto(fontWeight: FontWeight.w600)),
+                      subtitle: Text(content),
+                      trailing: Text(
+                        '${date.day}/${date.month}/${date.year}',
+                        style: GoogleFonts.roboto(fontSize: 12),
                       ),
                     ),
                   );
