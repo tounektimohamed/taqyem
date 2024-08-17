@@ -5,271 +5,271 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get settings => 'Settings';
+  String get settings => 'Paramètres';
 
   @override
-  String get accountSettings => 'Account Settings';
+  String get accountSettings => 'Paramètres du compte';
 
   @override
-  String get editProfile => 'Edit Profile';
+  String get editProfile => 'Modifier le profil';
 
   @override
-  String get appSettings => 'App Settings';
+  String get appSettings => 'Paramètres de l\'application';
 
   @override
-  String get notificationSettings => 'Notification Settings';
+  String get notificationSettings => 'Paramètres de notification';
 
   @override
-  String get language => 'Language';
+  String get language => 'Langue';
 
   @override
-  String get other => 'Other';
+  String get other => 'Autre';
 
   @override
-  String get helpCenter => 'Help Center';
+  String get helpCenter => 'Centre d\'aide';
 
   @override
-  String get termsNconditions => 'Terms and Conditions';
+  String get termsNconditions => 'Termes et Conditions';
 
   @override
-  String get signOut => 'Sign Out';
+  String get signOut => 'Se déconnecter';
 
   @override
-  String get yourProfile => 'Your Profile';
+  String get yourProfile => 'Votre profil';
 
   @override
-  String get basicInfo => 'Basic Info';
+  String get basicInfo => 'Informations de base';
 
   @override
-  String get name => 'Name';
+  String get name => 'Nom';
 
   @override
-  String get dob => 'Date of Birth';
+  String get dob => 'Date de naissance';
 
   @override
-  String get gender => 'Gender';
+  String get gender => 'Sexe';
 
   @override
-  String get nic => 'NIC';
+  String get nic => 'CIN';
 
   @override
-  String get contactInfo => 'Contact Info';
+  String get contactInfo => 'Informations de contact';
 
   @override
-  String get address => 'Address';
+  String get address => 'Adresse';
 
   @override
-  String get mobileNo => 'Mobile Number';
+  String get mobileNo => 'Numéro de mobile';
 
   @override
-  String get save => 'Confirm';
+  String get save => 'Confirmer';
 
   @override
-  String get profileText1 => 'In here you can edit your profile settings.';
+  String get profileText1 => 'Ici, vous pouvez modifier les paramètres de votre profil.';
 
   @override
-  String get profileText2 => 'If you forget your password relax and try to remember your password.';
+  String get profileText2 => 'Si vous oubliez votre mot de passe, détendez-vous et essayez de vous en souvenir.';
 
   @override
-  String get home => 'Home';
+  String get home => 'Accueil';
 
   @override
-  String get medications => 'Medications';
+  String get medications => 'Médicaments';
 
   @override
-  String get statistics => 'Statistics';
+  String get statistics => 'Statistiques';
 
   @override
-  String get more => 'More';
+  String get more => 'Plus';
 
   @override
-  String get dashText1 => 'Your medication reminders\n will be displayed here.';
+  String get dashText1 => 'Vos rappels de médicaments\n seront affichés ici.';
 
   @override
-  String get dashText2 => 'You have no medication reminders.';
+  String get dashText2 => 'Vous n\'avez pas de rappels de médicaments.';
 
   @override
-  String get medicationText1 => 'Your medications\n will be displayed here.';
+  String get medicationText1 => 'Vos médicaments\n seront affichés ici.';
 
   @override
-  String get medicationText2 => 'You have no medications.';
+  String get medicationText2 => 'Vous n\'avez pas de médicaments.';
 
   @override
-  String get buttonText => 'Add a Medication';
+  String get buttonText => 'Ajouter un médicament';
 
   @override
-  String get dashText3 => 'Your medication alarms\n will be displayed here';
+  String get dashText3 => 'Vos alarmes de médicaments\n seront affichées ici';
 
   @override
-  String get presImg => 'Prescription Image';
+  String get presImg => 'Image d\'ordonnance';
 
   @override
-  String get nearby => 'Nearby Pharmacies & Hospitals';
+  String get nearby => 'Pharmacies & Hôpitaux à proximité';
 
   @override
-  String get bmi => 'Check your BMI';
+  String get bmi => 'Vérifiez votre IMC';
 
   @override
-  String get upalarm => 'Upcoming Alarms';
+  String get upalarm => 'Alarmes à venir';
 
   @override
-  String get emgcall => 'Emergency Calls';
+  String get emgcall => 'Appels d\'urgence';
 
   @override
-  String get reclamation => 'Reclamation';
+  String get reclamation => 'Réclamation';
 
   @override
-  String get housingApplicationForm => 'Housing Form';
+  String get housingApplicationForm => 'Formulaire de demande de logement';
 
   @override
-  String get photoHeading => 'Save a photo of your prescription';
+  String get photoHeading => 'Enregistrez une photo de votre ordonnance';
 
   @override
-  String get photoText1 => 'Upload a clear photo of your prescription';
+  String get photoText1 => 'Téléchargez une photo claire de votre ordonnance';
 
   @override
-  String get photoBtn1 => 'Add a Photo';
+  String get photoBtn1 => 'Ajouter une photo';
 
   @override
-  String get photoBtn2 => 'Upload';
+  String get photoBtn2 => 'Télécharger';
 
   @override
-  String get photoBtn3 => 'Browse Gallery';
+  String get photoBtn3 => 'Parcourir la galerie';
 
   @override
-  String get photoBtn4 => 'Use Camera';
+  String get photoBtn4 => 'Utiliser la caméra';
 
   @override
-  String get photoText2 => 'or';
+  String get photoText2 => 'ou';
 
   @override
-  String get nIS => 'No image selected';
+  String get nIS => 'Aucune image sélectionnée';
 
   @override
-  String get pSAI => 'Please select an image first';
+  String get pSAI => 'Veuillez d\'abord sélectionner une image';
 
   @override
-  String get pIAS => 'Prescription image uploaded successfully';
+  String get pIAS => 'Image d\'ordonnance téléchargée avec succès';
 
   @override
-  String get upload => 'Upload';
+  String get upload => 'Télécharger';
 
   @override
-  String get dUpload => 'Done uploading';
+  String get dUpload => 'Téléchargement terminé';
 
   @override
-  String get bmiCal => 'BMI Calculator';
+  String get bmiCal => 'Calculateur d\'IMC';
 
   @override
-  String get bmiText => 'Body Mass Index(BMI) is a metric of body fat percentage commonly used to estimate risk levels of potential health problems.';
+  String get bmiText => 'L\'indice de masse corporelle (IMC) est une mesure du pourcentage de graisse corporelle couramment utilisée pour estimer les niveaux de risque de problèmes de santé potentiels.';
 
   @override
-  String get bmiform1 => 'Weight';
+  String get bmiform1 => 'Poids';
 
   @override
-  String get bmiform2 => 'Height';
+  String get bmiform2 => 'Taille';
 
   @override
-  String get bmiButton => 'Calculate';
+  String get bmiButton => 'Calculer';
 
   @override
-  String get bmiText1 => 'Your BMI Value is: ';
+  String get bmiText1 => 'Votre valeur IMC est : ';
 
   @override
-  String get bmiText2 => 'You\'re Underweight!';
+  String get bmiText2 => 'Vous êtes en sous-poids !';
 
   @override
-  String get bmiText3 => 'You\'re Healthy!';
+  String get bmiText3 => 'Vous êtes en bonne santé !';
 
   @override
-  String get bmiText4 => 'You\'re Overweight!';
+  String get bmiText4 => 'Vous êtes en surpoids !';
 
   @override
-  String get bmiText5 => 'Ideal weight: ';
+  String get bmiText5 => 'Poids idéal : ';
 
   @override
-  String get bmiText6 => 'Please enter your weight';
+  String get bmiText6 => 'Veuillez entrer votre poids';
 
   @override
-  String get bmiText7 => 'Please enter your height';
+  String get bmiText7 => 'Veuillez entrer votre taille';
 
   @override
-  String get ssa => 'Suwa Seriya Ambulance';
+  String get ssa => 'Ambulance Suwa Seriya';
 
   @override
-  String get as => 'Accident Service';
+  String get as => 'Service d\'accidents';
 
   @override
-  String get pi => 'Police Emergency';
+  String get pi => 'Urgence Police';
 
   @override
-  String get fi => 'Fire & Rescue';
+  String get fi => 'Incendie & Sauvetage';
 
   @override
-  String get gv => 'Government Information Center';
+  String get gv => 'Centre d\'information gouvernemental';
 
   @override
-  String get eps => 'Emergency Police Squad';
+  String get eps => 'Escouade de Police d\'Urgence';
 
   @override
-  String get ctL => 'Cannot launch';
+  String get ctL => 'Impossible de lancer';
 
   @override
-  String get ddUsage => 'Daily Dosage Usage';
+  String get ddUsage => 'Usage quotidien';
 
   @override
-  String get wdUsage => 'Weekly Dosage Usage';
+  String get wdUsage => 'Usage hebdomadaire';
 
   @override
-  String get addMed => 'Add Medication';
+  String get addMed => 'Ajouter un médicament';
 
   @override
-  String get medName => 'Medication Name';
+  String get medName => 'Nom du médicament';
 
   @override
-  String get vitaminC => 'Vitamin C';
+  String get vitaminC => 'Vitamine C';
 
   @override
-  String get cat => 'Category';
+  String get cat => 'Catégorie';
 
   @override
-  String get strength => 'Strength ';
+  String get strength => 'Force';
 
   @override
-  String get clear => 'Clear';
+  String get clear => 'Effacer';
 
   @override
-  String get stVal => 'Strength Value';
+  String get stVal => 'Valeur de la force';
 
   @override
   String get type => 'Type';
 
   @override
-  String get optional => '(Optional)';
+  String get optional => '(Optionnel)';
 
   @override
-  String get next => 'Next';
+  String get next => 'Suivant';
 
   @override
   String get capsule => 'Capsule';
 
   @override
-  String get tablet => 'Tablet';
+  String get tablet => 'Comprimé';
 
   @override
-  String get liquid => 'Liquid';
+  String get liquid => 'Liquide';
 
   @override
-  String get topical => 'Topical';
+  String get topical => 'Topique';
 
   @override
-  String get cream => 'Cream';
+  String get cream => 'Crème';
 
   @override
-  String get drops => 'Drops';
+  String get drops => 'Gouttes';
 
   @override
-  String get foam => 'Foam';
+  String get foam => 'Mousse';
 
   @override
   String get gel => 'Gel';
@@ -278,7 +278,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get herbal => 'Herbal';
 
   @override
-  String get inhaler => 'Inhaler';
+  String get inhaler => 'Inhalateur';
 
   @override
   String get injection => 'Injection';
@@ -287,224 +287,224 @@ class AppLocalizationsEn extends AppLocalizations {
   String get lotion => 'Lotion';
 
   @override
-  String get nasalSpray => 'Nasal Spray';
+  String get nasalSpray => 'Spray nasal';
 
   @override
-  String get ointment => 'Ointment';
+  String get ointment => 'Pommade';
 
   @override
   String get patch => 'Patch';
 
   @override
-  String get powder => 'Powder';
+  String get powder => 'Poudre';
 
   @override
   String get spray => 'Spray';
 
   @override
-  String get suppository => 'Suppository';
+  String get suppository => 'Suppositoire';
 
   @override
-  String get dpi => 'Dosage Per Intake';
+  String get dpi => 'Dosage par prise';
 
   @override
-  String get count => 'Count';
+  String get count => 'Nombre';
 
   @override
-  String get apc => 'Available Pill Count ';
+  String get apc => 'Nombre de pilules disponibles';
 
   @override
-  String get tpc => 'Total Pill Count';
+  String get tpc => 'Nombre total de pilules';
 
   @override
-  String get medNote => 'Medication Note ';
+  String get medNote => 'Note de médicament';
 
   @override
-  String get ufi => 'Using for illness';
+  String get ufi => 'Utilisé pour la maladie';
 
   @override
-  String get medTimes => 'Medication Times';
+  String get medTimes => 'Heures de prise';
 
   @override
-  String get tpd => 'time(s) per day';
+  String get tpd => 'fois par jour';
 
   @override
-  String get addTime => 'Add a time';
+  String get addTime => 'Ajouter une heure';
 
   @override
-  String get whenWYTT => 'When will you take this?';
+  String get whenWYTT => 'Quand allez-vous prendre ceci?';
 
   @override
-  String get medFreq => 'Medication Frequency';
+  String get medFreq => 'Fréquence du médicament';
 
   @override
-  String get sDate => 'Start Date';
+  String get sDate => 'Date de début';
 
   @override
-  String get eDate => 'End Date';
+  String get eDate => 'Date de fin';
 
   @override
-  String get aRI => 'At Regular Intervals';
+  String get aRI => 'À intervalles réguliers';
 
   @override
-  String get oSDW => 'On Specific Days of the Week';
+  String get oSDW => 'Les jours spécifiques de la semaine';
 
   @override
-  String get cTI => 'Choose the Interval';
+  String get cTI => 'Choisissez l\'intervalle';
 
   @override
-  String get freq => 'Frequency';
+  String get freq => 'Fréquence';
 
   @override
-  String get cancel => 'Cancel';
+  String get cancel => 'Annuler';
 
   @override
-  String get done => 'Done';
+  String get done => 'Terminé';
 
   @override
-  String get enable => 'Enable';
+  String get enable => 'Activer';
 
   @override
-  String get loc => 'Enable Location Services';
+  String get loc => 'Activer les services de localisation';
 
   @override
-  String get locSe => 'Please enable location services to use this app.';
+  String get locSe => 'Veuillez activer les services de localisation pour utiliser cette application.';
 
   @override
-  String get locD => 'User denied permissions to access the device location.';
+  String get locD => 'L\'utilisateur a refusé les autorisations d\'accès à la localisation de l\'appareil.';
 
   @override
-  String get eD => 'Every Day';
+  String get eD => 'Tous les jours';
 
   @override
-  String get e2D => 'Every 2 Days';
+  String get e2D => 'Tous les 2 jours';
 
   @override
-  String get e3D => 'Every 3 Days';
+  String get e3D => 'Tous les 3 jours';
 
   @override
-  String get e4D => 'Every 4 Days';
+  String get e4D => 'Tous les 4 jours';
 
   @override
-  String get e5D => 'Every 5 Days';
+  String get e5D => 'Tous les 5 jours';
 
   @override
-  String get e6D => 'Every 6 Days';
+  String get e6D => 'Tous les 6 jours';
 
   @override
-  String get eW => 'Every Week (7 Days)';
+  String get eW => 'Toutes les semaines (7 jours)';
 
   @override
-  String get e2W => 'Every 2 Weeks (14 Days)';
+  String get e2W => 'Toutes les 2 semaines (14 jours)';
 
   @override
-  String get e3W => 'Every 3 Weeks (21 Days)';
+  String get e3W => 'Toutes les 3 semaines (21 jours)';
 
   @override
-  String get eM => 'Every Month (30 Days)';
+  String get eM => 'Tous les mois (30 jours)';
 
   @override
-  String get e2M => 'Every 2 Months (60 Days)';
+  String get e2M => 'Tous les 2 mois (60 jours)';
 
   @override
-  String get e3M => 'Every 3 Months (90 Days)';
+  String get e3M => 'Tous les 3 mois (90 jours)';
 
   @override
-  String get sTD => 'Select the Days';
+  String get sTD => 'Sélectionnez les jours';
 
   @override
-  String get su => 'Sun';
+  String get su => 'Dim';
 
   @override
-  String get m => 'Mon';
+  String get m => 'Lun';
 
   @override
-  String get t => 'Tue';
+  String get t => 'Mar';
 
   @override
-  String get w => 'Wed';
+  String get w => 'Mer';
 
   @override
-  String get th => 'Thu';
+  String get th => 'Jeu';
 
   @override
-  String get f => 'Fri';
+  String get f => 'Ven';
 
   @override
-  String get s => 'Sat';
+  String get s => 'Sam';
 
   @override
-  String get summary => 'Summary';
+  String get summary => 'Résumé';
 
   @override
-  String get medDetails => 'MEDICATION DETAILS';
+  String get medDetails => 'DÉTAILS DU MÉDICAMENT';
 
   @override
-  String get medIntake => 'MEDICATION INTAKE';
+  String get medIntake => 'PRISE DU MÉDICAMENT';
 
   @override
-  String get medFreQ => 'MEDICATION FREQUENCY';
+  String get medFreQ => 'FRÉQUENCE DU MÉDICAMENT';
 
   @override
-  String get freQ => 'FREQUENCY';
+  String get freQ => 'FRÉQUENCE';
 
   @override
-  String get sInt => 'Select Interval';
+  String get sInt => 'Sélectionnez l\'intervalle';
 
   @override
-  String get sDays => 'Select Day(s)';
+  String get sDays => 'Sélectionnez le(s) jour(s)';
 
   @override
-  String get sMedFreq => 'Select Medication Frequency';
+  String get sMedFreq => 'Sélectionnez la fréquence du médicament';
 
   @override
-  String get aOneMedTime => 'Add at least one medication time';
+  String get aOneMedTime => 'Ajoutez au moins un temps de médicament';
 
   @override
-  String get mAddedSuccess => 'Medication added successfully';
+  String get mAddedSuccess => 'Médicament ajouté avec succès';
 
   @override
-  String get pstMedName => 'Please select medication name';
+  String get pstMedName => 'Veuillez sélectionner le nom du médicament';
 
   @override
-  String get pstMedCategory => 'Please select medication category';
+  String get pstMedCategory => 'Veuillez sélectionner la catégorie du médicament';
 
   @override
-  String get pstStrType => 'Please select strength type';
+  String get pstStrType => 'Veuillez sélectionner le type de force';
 
   @override
-  String get pstStrVal => 'Please enter strength value';
+  String get pstStrVal => 'Veuillez entrer la valeur de la force';
 
   @override
-  String get apcGd => 'Available pill count should be greater than the dosage';
+  String get apcGd => 'Le nombre de pilules disponibles doit être supérieur au dosage';
 
   @override
-  String get sMedSDate => 'Select medication starting date';
+  String get sMedSDate => 'Sélectionnez la date de début du médicament';
 
   @override
-  String get t12H => 'Times in 12 Hour: ';
+  String get t12H => 'Heures au format 12 heures : ';
 
   @override
-  String get eDMBAFu => 'Ending date must be a future date';
+  String get eDMBAFu => 'La date de fin doit être une date future';
 
   @override
-  String get st24H => 'Selected time in 24-hour format: ';
+  String get st24H => 'Heure sélectionnée au format 24 heures : ';
 
   @override
-  String get nTS => 'No time selected';
+  String get nTS => 'Aucune heure sélectionnée';
 
   @override
-  String get maxMedTPD => 'Maximum medication times per day is 24';
+  String get maxMedTPD => 'Nombre maximum de prises de médicaments par jour est de 24';
 
   @override
-  String get bSD => 'Bottom sheet data: ';
+  String get bSD => 'Données de la feuille inférieure : ';
 
   @override
-  String get aLDT => 'Added log dates and times';
+  String get aLDT => 'Dates et heures des journaux ajoutés';
 
   @override
-  String get today => 'Today';
+  String get today => 'Aujourd\'hui';
 
   @override
-  String get thisWeek => 'This week';
+  String get thisWeek => 'Cette semaine';
 }

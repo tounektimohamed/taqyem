@@ -1,1 +1,0 @@
- /home/med/MyMeds/.dart_tool/flutter_gen/gen_l10n/app_localizations_en.dart /home/med/MyMeds/.dart_tool/flutter_gen/gen_l10n/app_localizations_si.dart /home/med/MyMeds/.dart_tool/flutter_gen/gen_l10n/app_localizations.dart:  /home/med/MyMeds/l10n.yaml /home/med/MyMeds/lib/l10n/app_en.arb /home/med/MyMeds/lib/l10n/app_si.arb

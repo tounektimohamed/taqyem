@@ -96,475 +96,475 @@ abstract class AppLocalizations {
   /// No description provided for @settings.
   ///
   /// In en, this message translates to:
-  /// **'Settings'**
+  /// **'Paramètres'**
   String get settings;
 
   /// No description provided for @accountSettings.
   ///
   /// In en, this message translates to:
-  /// **'Account Settings'**
+  /// **'Paramètres du compte'**
   String get accountSettings;
 
   /// No description provided for @editProfile.
   ///
   /// In en, this message translates to:
-  /// **'Edit Profile'**
+  /// **'Modifier le profil'**
   String get editProfile;
 
   /// No description provided for @appSettings.
   ///
   /// In en, this message translates to:
-  /// **'App Settings'**
+  /// **'Paramètres de l\'application'**
   String get appSettings;
 
   /// No description provided for @notificationSettings.
   ///
   /// In en, this message translates to:
-  /// **'Notification Settings'**
+  /// **'Paramètres de notification'**
   String get notificationSettings;
 
   /// No description provided for @language.
   ///
   /// In en, this message translates to:
-  /// **'Language'**
+  /// **'Langue'**
   String get language;
 
   /// No description provided for @other.
   ///
   /// In en, this message translates to:
-  /// **'Other'**
+  /// **'Autre'**
   String get other;
 
   /// No description provided for @helpCenter.
   ///
   /// In en, this message translates to:
-  /// **'Help Center'**
+  /// **'Centre d\'aide'**
   String get helpCenter;
 
   /// No description provided for @termsNconditions.
   ///
   /// In en, this message translates to:
-  /// **'Terms and Conditions'**
+  /// **'Termes et Conditions'**
   String get termsNconditions;
 
   /// No description provided for @signOut.
   ///
   /// In en, this message translates to:
-  /// **'Sign Out'**
+  /// **'Se déconnecter'**
   String get signOut;
 
   /// No description provided for @yourProfile.
   ///
   /// In en, this message translates to:
-  /// **'Your Profile'**
+  /// **'Votre profil'**
   String get yourProfile;
 
   /// No description provided for @basicInfo.
   ///
   /// In en, this message translates to:
-  /// **'Basic Info'**
+  /// **'Informations de base'**
   String get basicInfo;
 
   /// No description provided for @name.
   ///
   /// In en, this message translates to:
-  /// **'Name'**
+  /// **'Nom'**
   String get name;
 
   /// No description provided for @dob.
   ///
   /// In en, this message translates to:
-  /// **'Date of Birth'**
+  /// **'Date de naissance'**
   String get dob;
 
   /// No description provided for @gender.
   ///
   /// In en, this message translates to:
-  /// **'Gender'**
+  /// **'Sexe'**
   String get gender;
 
   /// No description provided for @nic.
   ///
   /// In en, this message translates to:
-  /// **'NIC'**
+  /// **'CIN'**
   String get nic;
 
   /// No description provided for @contactInfo.
   ///
   /// In en, this message translates to:
-  /// **'Contact Info'**
+  /// **'Informations de contact'**
   String get contactInfo;
 
   /// No description provided for @address.
   ///
   /// In en, this message translates to:
-  /// **'Address'**
+  /// **'Adresse'**
   String get address;
 
   /// No description provided for @mobileNo.
   ///
   /// In en, this message translates to:
-  /// **'Mobile Number'**
+  /// **'Numéro de mobile'**
   String get mobileNo;
 
   /// No description provided for @save.
   ///
   /// In en, this message translates to:
-  /// **'Confirm'**
+  /// **'Confirmer'**
   String get save;
 
   /// No description provided for @profileText1.
   ///
   /// In en, this message translates to:
-  /// **'In here you can edit your profile settings.'**
+  /// **'Ici, vous pouvez modifier les paramètres de votre profil.'**
   String get profileText1;
 
   /// No description provided for @profileText2.
   ///
   /// In en, this message translates to:
-  /// **'If you forget your password relax and try to remember your password.'**
+  /// **'Si vous oubliez votre mot de passe, détendez-vous et essayez de vous en souvenir.'**
   String get profileText2;
 
   /// No description provided for @home.
   ///
   /// In en, this message translates to:
-  /// **'Home'**
+  /// **'Accueil'**
   String get home;
 
   /// No description provided for @medications.
   ///
   /// In en, this message translates to:
-  /// **'Medications'**
+  /// **'Médicaments'**
   String get medications;
 
   /// No description provided for @statistics.
   ///
   /// In en, this message translates to:
-  /// **'Statistics'**
+  /// **'Statistiques'**
   String get statistics;
 
   /// No description provided for @more.
   ///
   /// In en, this message translates to:
-  /// **'More'**
+  /// **'Plus'**
   String get more;
 
   /// No description provided for @dashText1.
   ///
   /// In en, this message translates to:
-  /// **'Your medication reminders\n will be displayed here.'**
+  /// **'Vos rappels de médicaments\n seront affichés ici.'**
   String get dashText1;
 
   /// No description provided for @dashText2.
   ///
   /// In en, this message translates to:
-  /// **'You have no medication reminders.'**
+  /// **'Vous n\'avez pas de rappels de médicaments.'**
   String get dashText2;
 
   /// No description provided for @medicationText1.
   ///
   /// In en, this message translates to:
-  /// **'Your medications\n will be displayed here.'**
+  /// **'Vos médicaments\n seront affichés ici.'**
   String get medicationText1;
 
   /// No description provided for @medicationText2.
   ///
   /// In en, this message translates to:
-  /// **'You have no medications.'**
+  /// **'Vous n\'avez pas de médicaments.'**
   String get medicationText2;
 
   /// No description provided for @buttonText.
   ///
   /// In en, this message translates to:
-  /// **'Add a Medication'**
+  /// **'Ajouter un médicament'**
   String get buttonText;
 
   /// No description provided for @dashText3.
   ///
   /// In en, this message translates to:
-  /// **'Your medication alarms\n will be displayed here'**
+  /// **'Vos alarmes de médicaments\n seront affichées ici'**
   String get dashText3;
 
   /// No description provided for @presImg.
   ///
   /// In en, this message translates to:
-  /// **'Prescription Image'**
+  /// **'Image d\'ordonnance'**
   String get presImg;
 
   /// No description provided for @nearby.
   ///
   /// In en, this message translates to:
-  /// **'Nearby Pharmacies & Hospitals'**
+  /// **'Pharmacies & Hôpitaux à proximité'**
   String get nearby;
 
   /// No description provided for @bmi.
   ///
   /// In en, this message translates to:
-  /// **'Check your BMI'**
+  /// **'Vérifiez votre IMC'**
   String get bmi;
 
   /// No description provided for @upalarm.
   ///
   /// In en, this message translates to:
-  /// **'Upcoming Alarms'**
+  /// **'Alarmes à venir'**
   String get upalarm;
 
   /// No description provided for @emgcall.
   ///
   /// In en, this message translates to:
-  /// **'Emergency Calls'**
+  /// **'Appels d\'urgence'**
   String get emgcall;
 
   /// No description provided for @reclamation.
   ///
   /// In en, this message translates to:
-  /// **'Reclamation'**
+  /// **'Réclamation'**
   String get reclamation;
 
   /// No description provided for @housingApplicationForm.
   ///
   /// In en, this message translates to:
-  /// **'Housing Form'**
+  /// **'Formulaire de demande de logement'**
   String get housingApplicationForm;
 
   /// No description provided for @photoHeading.
   ///
   /// In en, this message translates to:
-  /// **'Save a photo of your prescription'**
+  /// **'Enregistrez une photo de votre ordonnance'**
   String get photoHeading;
 
   /// No description provided for @photoText1.
   ///
   /// In en, this message translates to:
-  /// **'Upload a clear photo of your prescription'**
+  /// **'Téléchargez une photo claire de votre ordonnance'**
   String get photoText1;
 
   /// No description provided for @photoBtn1.
   ///
   /// In en, this message translates to:
-  /// **'Add a Photo'**
+  /// **'Ajouter une photo'**
   String get photoBtn1;
 
   /// No description provided for @photoBtn2.
   ///
   /// In en, this message translates to:
-  /// **'Upload'**
+  /// **'Télécharger'**
   String get photoBtn2;
 
   /// No description provided for @photoBtn3.
   ///
   /// In en, this message translates to:
-  /// **'Browse Gallery'**
+  /// **'Parcourir la galerie'**
   String get photoBtn3;
 
   /// No description provided for @photoBtn4.
   ///
   /// In en, this message translates to:
-  /// **'Use Camera'**
+  /// **'Utiliser la caméra'**
   String get photoBtn4;
 
   /// No description provided for @photoText2.
   ///
   /// In en, this message translates to:
-  /// **'or'**
+  /// **'ou'**
   String get photoText2;
 
   /// No description provided for @nIS.
   ///
   /// In en, this message translates to:
-  /// **'No image selected'**
+  /// **'Aucune image sélectionnée'**
   String get nIS;
 
   /// No description provided for @pSAI.
   ///
   /// In en, this message translates to:
-  /// **'Please select an image first'**
+  /// **'Veuillez d\'abord sélectionner une image'**
   String get pSAI;
 
   /// No description provided for @pIAS.
   ///
   /// In en, this message translates to:
-  /// **'Prescription image uploaded successfully'**
+  /// **'Image d\'ordonnance téléchargée avec succès'**
   String get pIAS;
 
   /// No description provided for @upload.
   ///
   /// In en, this message translates to:
-  /// **'Upload'**
+  /// **'Télécharger'**
   String get upload;
 
   /// No description provided for @dUpload.
   ///
   /// In en, this message translates to:
-  /// **'Done uploading'**
+  /// **'Téléchargement terminé'**
   String get dUpload;
 
   /// No description provided for @bmiCal.
   ///
   /// In en, this message translates to:
-  /// **'BMI Calculator'**
+  /// **'Calculateur d\'IMC'**
   String get bmiCal;
 
   /// No description provided for @bmiText.
   ///
   /// In en, this message translates to:
-  /// **'Body Mass Index(BMI) is a metric of body fat percentage commonly used to estimate risk levels of potential health problems.'**
+  /// **'L\'indice de masse corporelle (IMC) est une mesure du pourcentage de graisse corporelle couramment utilisée pour estimer les niveaux de risque de problèmes de santé potentiels.'**
   String get bmiText;
 
   /// No description provided for @bmiform1.
   ///
   /// In en, this message translates to:
-  /// **'Weight'**
+  /// **'Poids'**
   String get bmiform1;
 
   /// No description provided for @bmiform2.
   ///
   /// In en, this message translates to:
-  /// **'Height'**
+  /// **'Taille'**
   String get bmiform2;
 
   /// No description provided for @bmiButton.
   ///
   /// In en, this message translates to:
-  /// **'Calculate'**
+  /// **'Calculer'**
   String get bmiButton;
 
   /// No description provided for @bmiText1.
   ///
   /// In en, this message translates to:
-  /// **'Your BMI Value is: '**
+  /// **'Votre valeur IMC est : '**
   String get bmiText1;
 
   /// No description provided for @bmiText2.
   ///
   /// In en, this message translates to:
-  /// **'You\'re Underweight!'**
+  /// **'Vous êtes en sous-poids !'**
   String get bmiText2;
 
   /// No description provided for @bmiText3.
   ///
   /// In en, this message translates to:
-  /// **'You\'re Healthy!'**
+  /// **'Vous êtes en bonne santé !'**
   String get bmiText3;
 
   /// No description provided for @bmiText4.
   ///
   /// In en, this message translates to:
-  /// **'You\'re Overweight!'**
+  /// **'Vous êtes en surpoids !'**
   String get bmiText4;
 
   /// No description provided for @bmiText5.
   ///
   /// In en, this message translates to:
-  /// **'Ideal weight: '**
+  /// **'Poids idéal : '**
   String get bmiText5;
 
   /// No description provided for @bmiText6.
   ///
   /// In en, this message translates to:
-  /// **'Please enter your weight'**
+  /// **'Veuillez entrer votre poids'**
   String get bmiText6;
 
   /// No description provided for @bmiText7.
   ///
   /// In en, this message translates to:
-  /// **'Please enter your height'**
+  /// **'Veuillez entrer votre taille'**
   String get bmiText7;
 
   /// No description provided for @ssa.
   ///
   /// In en, this message translates to:
-  /// **'Suwa Seriya Ambulance'**
+  /// **'Ambulance Suwa Seriya'**
   String get ssa;
 
   /// No description provided for @as.
   ///
   /// In en, this message translates to:
-  /// **'Accident Service'**
+  /// **'Service d\'accidents'**
   String get as;
 
   /// No description provided for @pi.
   ///
   /// In en, this message translates to:
-  /// **'Police Emergency'**
+  /// **'Urgence Police'**
   String get pi;
 
   /// No description provided for @fi.
   ///
   /// In en, this message translates to:
-  /// **'Fire & Rescue'**
+  /// **'Incendie & Sauvetage'**
   String get fi;
 
   /// No description provided for @gv.
   ///
   /// In en, this message translates to:
-  /// **'Government Information Center'**
+  /// **'Centre d\'information gouvernemental'**
   String get gv;
 
   /// No description provided for @eps.
   ///
   /// In en, this message translates to:
-  /// **'Emergency Police Squad'**
+  /// **'Escouade de Police d\'Urgence'**
   String get eps;
 
   /// No description provided for @ctL.
   ///
   /// In en, this message translates to:
-  /// **'Cannot launch'**
+  /// **'Impossible de lancer'**
   String get ctL;
 
   /// No description provided for @ddUsage.
   ///
   /// In en, this message translates to:
-  /// **'Daily Dosage Usage'**
+  /// **'Usage quotidien'**
   String get ddUsage;
 
   /// No description provided for @wdUsage.
   ///
   /// In en, this message translates to:
-  /// **'Weekly Dosage Usage'**
+  /// **'Usage hebdomadaire'**
   String get wdUsage;
 
   /// No description provided for @addMed.
   ///
   /// In en, this message translates to:
-  /// **'Add Medication'**
+  /// **'Ajouter un médicament'**
   String get addMed;
 
   /// No description provided for @medName.
   ///
   /// In en, this message translates to:
-  /// **'Medication Name'**
+  /// **'Nom du médicament'**
   String get medName;
 
   /// No description provided for @vitaminC.
   ///
   /// In en, this message translates to:
-  /// **'Vitamin C'**
+  /// **'Vitamine C'**
   String get vitaminC;
 
   /// No description provided for @cat.
   ///
   /// In en, this message translates to:
-  /// **'Category'**
+  /// **'Catégorie'**
   String get cat;
 
   /// No description provided for @strength.
   ///
   /// In en, this message translates to:
-  /// **'Strength '**
+  /// **'Force'**
   String get strength;
 
   /// No description provided for @clear.
   ///
   /// In en, this message translates to:
-  /// **'Clear'**
+  /// **'Effacer'**
   String get clear;
 
   /// No description provided for @stVal.
   ///
   /// In en, this message translates to:
-  /// **'Strength Value'**
+  /// **'Valeur de la force'**
   String get stVal;
 
   /// No description provided for @type.
@@ -576,13 +576,13 @@ abstract class AppLocalizations {
   /// No description provided for @optional.
   ///
   /// In en, this message translates to:
-  /// **'(Optional)'**
+  /// **'(Optionnel)'**
   String get optional;
 
   /// No description provided for @next.
   ///
   /// In en, this message translates to:
-  /// **'Next'**
+  /// **'Suivant'**
   String get next;
 
   /// No description provided for @capsule.
@@ -594,37 +594,37 @@ abstract class AppLocalizations {
   /// No description provided for @tablet.
   ///
   /// In en, this message translates to:
-  /// **'Tablet'**
+  /// **'Comprimé'**
   String get tablet;
 
   /// No description provided for @liquid.
   ///
   /// In en, this message translates to:
-  /// **'Liquid'**
+  /// **'Liquide'**
   String get liquid;
 
   /// No description provided for @topical.
   ///
   /// In en, this message translates to:
-  /// **'Topical'**
+  /// **'Topique'**
   String get topical;
 
   /// No description provided for @cream.
   ///
   /// In en, this message translates to:
-  /// **'Cream'**
+  /// **'Crème'**
   String get cream;
 
   /// No description provided for @drops.
   ///
   /// In en, this message translates to:
-  /// **'Drops'**
+  /// **'Gouttes'**
   String get drops;
 
   /// No description provided for @foam.
   ///
   /// In en, this message translates to:
-  /// **'Foam'**
+  /// **'Mousse'**
   String get foam;
 
   /// No description provided for @gel.
@@ -642,7 +642,7 @@ abstract class AppLocalizations {
   /// No description provided for @inhaler.
   ///
   /// In en, this message translates to:
-  /// **'Inhaler'**
+  /// **'Inhalateur'**
   String get inhaler;
 
   /// No description provided for @injection.
@@ -660,13 +660,13 @@ abstract class AppLocalizations {
   /// No description provided for @nasalSpray.
   ///
   /// In en, this message translates to:
-  /// **'Nasal Spray'**
+  /// **'Spray nasal'**
   String get nasalSpray;
 
   /// No description provided for @ointment.
   ///
   /// In en, this message translates to:
-  /// **'Ointment'**
+  /// **'Pommade'**
   String get ointment;
 
   /// No description provided for @patch.
@@ -678,7 +678,7 @@ abstract class AppLocalizations {
   /// No description provided for @powder.
   ///
   /// In en, this message translates to:
-  /// **'Powder'**
+  /// **'Poudre'**
   String get powder;
 
   /// No description provided for @spray.
@@ -690,415 +690,415 @@ abstract class AppLocalizations {
   /// No description provided for @suppository.
   ///
   /// In en, this message translates to:
-  /// **'Suppository'**
+  /// **'Suppositoire'**
   String get suppository;
 
   /// No description provided for @dpi.
   ///
   /// In en, this message translates to:
-  /// **'Dosage Per Intake'**
+  /// **'Dosage par prise'**
   String get dpi;
 
   /// No description provided for @count.
   ///
   /// In en, this message translates to:
-  /// **'Count'**
+  /// **'Nombre'**
   String get count;
 
   /// No description provided for @apc.
   ///
   /// In en, this message translates to:
-  /// **'Available Pill Count '**
+  /// **'Nombre de pilules disponibles'**
   String get apc;
 
   /// No description provided for @tpc.
   ///
   /// In en, this message translates to:
-  /// **'Total Pill Count'**
+  /// **'Nombre total de pilules'**
   String get tpc;
 
   /// No description provided for @medNote.
   ///
   /// In en, this message translates to:
-  /// **'Medication Note '**
+  /// **'Note de médicament'**
   String get medNote;
 
   /// No description provided for @ufi.
   ///
   /// In en, this message translates to:
-  /// **'Using for illness'**
+  /// **'Utilisé pour la maladie'**
   String get ufi;
 
   /// No description provided for @medTimes.
   ///
   /// In en, this message translates to:
-  /// **'Medication Times'**
+  /// **'Heures de prise'**
   String get medTimes;
 
   /// No description provided for @tpd.
   ///
   /// In en, this message translates to:
-  /// **'time(s) per day'**
+  /// **'fois par jour'**
   String get tpd;
 
   /// No description provided for @addTime.
   ///
   /// In en, this message translates to:
-  /// **'Add a time'**
+  /// **'Ajouter une heure'**
   String get addTime;
 
   /// No description provided for @whenWYTT.
   ///
   /// In en, this message translates to:
-  /// **'When will you take this?'**
+  /// **'Quand allez-vous prendre ceci?'**
   String get whenWYTT;
 
   /// No description provided for @medFreq.
   ///
   /// In en, this message translates to:
-  /// **'Medication Frequency'**
+  /// **'Fréquence du médicament'**
   String get medFreq;
 
   /// No description provided for @sDate.
   ///
   /// In en, this message translates to:
-  /// **'Start Date'**
+  /// **'Date de début'**
   String get sDate;
 
   /// No description provided for @eDate.
   ///
   /// In en, this message translates to:
-  /// **'End Date'**
+  /// **'Date de fin'**
   String get eDate;
 
   /// No description provided for @aRI.
   ///
   /// In en, this message translates to:
-  /// **'At Regular Intervals'**
+  /// **'À intervalles réguliers'**
   String get aRI;
 
   /// No description provided for @oSDW.
   ///
   /// In en, this message translates to:
-  /// **'On Specific Days of the Week'**
+  /// **'Les jours spécifiques de la semaine'**
   String get oSDW;
 
   /// No description provided for @cTI.
   ///
   /// In en, this message translates to:
-  /// **'Choose the Interval'**
+  /// **'Choisissez l\'intervalle'**
   String get cTI;
 
   /// No description provided for @freq.
   ///
   /// In en, this message translates to:
-  /// **'Frequency'**
+  /// **'Fréquence'**
   String get freq;
 
   /// No description provided for @cancel.
   ///
   /// In en, this message translates to:
-  /// **'Cancel'**
+  /// **'Annuler'**
   String get cancel;
 
   /// No description provided for @done.
   ///
   /// In en, this message translates to:
-  /// **'Done'**
+  /// **'Terminé'**
   String get done;
 
   /// No description provided for @enable.
   ///
   /// In en, this message translates to:
-  /// **'Enable'**
+  /// **'Activer'**
   String get enable;
 
   /// No description provided for @loc.
   ///
   /// In en, this message translates to:
-  /// **'Enable Location Services'**
+  /// **'Activer les services de localisation'**
   String get loc;
 
   /// No description provided for @locSe.
   ///
   /// In en, this message translates to:
-  /// **'Please enable location services to use this app.'**
+  /// **'Veuillez activer les services de localisation pour utiliser cette application.'**
   String get locSe;
 
   /// No description provided for @locD.
   ///
   /// In en, this message translates to:
-  /// **'User denied permissions to access the device location.'**
+  /// **'L\'utilisateur a refusé les autorisations d\'accès à la localisation de l\'appareil.'**
   String get locD;
 
   /// No description provided for @eD.
   ///
   /// In en, this message translates to:
-  /// **'Every Day'**
+  /// **'Tous les jours'**
   String get eD;
 
   /// No description provided for @e2D.
   ///
   /// In en, this message translates to:
-  /// **'Every 2 Days'**
+  /// **'Tous les 2 jours'**
   String get e2D;
 
   /// No description provided for @e3D.
   ///
   /// In en, this message translates to:
-  /// **'Every 3 Days'**
+  /// **'Tous les 3 jours'**
   String get e3D;
 
   /// No description provided for @e4D.
   ///
   /// In en, this message translates to:
-  /// **'Every 4 Days'**
+  /// **'Tous les 4 jours'**
   String get e4D;
 
   /// No description provided for @e5D.
   ///
   /// In en, this message translates to:
-  /// **'Every 5 Days'**
+  /// **'Tous les 5 jours'**
   String get e5D;
 
   /// No description provided for @e6D.
   ///
   /// In en, this message translates to:
-  /// **'Every 6 Days'**
+  /// **'Tous les 6 jours'**
   String get e6D;
 
   /// No description provided for @eW.
   ///
   /// In en, this message translates to:
-  /// **'Every Week (7 Days)'**
+  /// **'Toutes les semaines (7 jours)'**
   String get eW;
 
   /// No description provided for @e2W.
   ///
   /// In en, this message translates to:
-  /// **'Every 2 Weeks (14 Days)'**
+  /// **'Toutes les 2 semaines (14 jours)'**
   String get e2W;
 
   /// No description provided for @e3W.
   ///
   /// In en, this message translates to:
-  /// **'Every 3 Weeks (21 Days)'**
+  /// **'Toutes les 3 semaines (21 jours)'**
   String get e3W;
 
   /// No description provided for @eM.
   ///
   /// In en, this message translates to:
-  /// **'Every Month (30 Days)'**
+  /// **'Tous les mois (30 jours)'**
   String get eM;
 
   /// No description provided for @e2M.
   ///
   /// In en, this message translates to:
-  /// **'Every 2 Months (60 Days)'**
+  /// **'Tous les 2 mois (60 jours)'**
   String get e2M;
 
   /// No description provided for @e3M.
   ///
   /// In en, this message translates to:
-  /// **'Every 3 Months (90 Days)'**
+  /// **'Tous les 3 mois (90 jours)'**
   String get e3M;
 
   /// No description provided for @sTD.
   ///
   /// In en, this message translates to:
-  /// **'Select the Days'**
+  /// **'Sélectionnez les jours'**
   String get sTD;
 
   /// No description provided for @su.
   ///
   /// In en, this message translates to:
-  /// **'Sun'**
+  /// **'Dim'**
   String get su;
 
   /// No description provided for @m.
   ///
   /// In en, this message translates to:
-  /// **'Mon'**
+  /// **'Lun'**
   String get m;
 
   /// No description provided for @t.
   ///
   /// In en, this message translates to:
-  /// **'Tue'**
+  /// **'Mar'**
   String get t;
 
   /// No description provided for @w.
   ///
   /// In en, this message translates to:
-  /// **'Wed'**
+  /// **'Mer'**
   String get w;
 
   /// No description provided for @th.
   ///
   /// In en, this message translates to:
-  /// **'Thu'**
+  /// **'Jeu'**
   String get th;
 
   /// No description provided for @f.
   ///
   /// In en, this message translates to:
-  /// **'Fri'**
+  /// **'Ven'**
   String get f;
 
   /// No description provided for @s.
   ///
   /// In en, this message translates to:
-  /// **'Sat'**
+  /// **'Sam'**
   String get s;
 
   /// No description provided for @summary.
   ///
   /// In en, this message translates to:
-  /// **'Summary'**
+  /// **'Résumé'**
   String get summary;
 
   /// No description provided for @medDetails.
   ///
   /// In en, this message translates to:
-  /// **'MEDICATION DETAILS'**
+  /// **'DÉTAILS DU MÉDICAMENT'**
   String get medDetails;
 
   /// No description provided for @medIntake.
   ///
   /// In en, this message translates to:
-  /// **'MEDICATION INTAKE'**
+  /// **'PRISE DU MÉDICAMENT'**
   String get medIntake;
 
   /// No description provided for @medFreQ.
   ///
   /// In en, this message translates to:
-  /// **'MEDICATION FREQUENCY'**
+  /// **'FRÉQUENCE DU MÉDICAMENT'**
   String get medFreQ;
 
   /// No description provided for @freQ.
   ///
   /// In en, this message translates to:
-  /// **'FREQUENCY'**
+  /// **'FRÉQUENCE'**
   String get freQ;
 
   /// No description provided for @sInt.
   ///
   /// In en, this message translates to:
-  /// **'Select Interval'**
+  /// **'Sélectionnez l\'intervalle'**
   String get sInt;
 
   /// No description provided for @sDays.
   ///
   /// In en, this message translates to:
-  /// **'Select Day(s)'**
+  /// **'Sélectionnez le(s) jour(s)'**
   String get sDays;
 
   /// No description provided for @sMedFreq.
   ///
   /// In en, this message translates to:
-  /// **'Select Medication Frequency'**
+  /// **'Sélectionnez la fréquence du médicament'**
   String get sMedFreq;
 
   /// No description provided for @aOneMedTime.
   ///
   /// In en, this message translates to:
-  /// **'Add at least one medication time'**
+  /// **'Ajoutez au moins un temps de médicament'**
   String get aOneMedTime;
 
   /// No description provided for @mAddedSuccess.
   ///
   /// In en, this message translates to:
-  /// **'Medication added successfully'**
+  /// **'Médicament ajouté avec succès'**
   String get mAddedSuccess;
 
   /// No description provided for @pstMedName.
   ///
   /// In en, this message translates to:
-  /// **'Please select medication name'**
+  /// **'Veuillez sélectionner le nom du médicament'**
   String get pstMedName;
 
   /// No description provided for @pstMedCategory.
   ///
   /// In en, this message translates to:
-  /// **'Please select medication category'**
+  /// **'Veuillez sélectionner la catégorie du médicament'**
   String get pstMedCategory;
 
   /// No description provided for @pstStrType.
   ///
   /// In en, this message translates to:
-  /// **'Please select strength type'**
+  /// **'Veuillez sélectionner le type de force'**
   String get pstStrType;
 
   /// No description provided for @pstStrVal.
   ///
   /// In en, this message translates to:
-  /// **'Please enter strength value'**
+  /// **'Veuillez entrer la valeur de la force'**
   String get pstStrVal;
 
   /// No description provided for @apcGd.
   ///
   /// In en, this message translates to:
-  /// **'Available pill count should be greater than the dosage'**
+  /// **'Le nombre de pilules disponibles doit être supérieur au dosage'**
   String get apcGd;
 
   /// No description provided for @sMedSDate.
   ///
   /// In en, this message translates to:
-  /// **'Select medication starting date'**
+  /// **'Sélectionnez la date de début du médicament'**
   String get sMedSDate;
 
   /// No description provided for @t12H.
   ///
   /// In en, this message translates to:
-  /// **'Times in 12 Hour: '**
+  /// **'Heures au format 12 heures : '**
   String get t12H;
 
   /// No description provided for @eDMBAFu.
   ///
   /// In en, this message translates to:
-  /// **'Ending date must be a future date'**
+  /// **'La date de fin doit être une date future'**
   String get eDMBAFu;
 
   /// No description provided for @st24H.
   ///
   /// In en, this message translates to:
-  /// **'Selected time in 24-hour format: '**
+  /// **'Heure sélectionnée au format 24 heures : '**
   String get st24H;
 
   /// No description provided for @nTS.
   ///
   /// In en, this message translates to:
-  /// **'No time selected'**
+  /// **'Aucune heure sélectionnée'**
   String get nTS;
 
   /// No description provided for @maxMedTPD.
   ///
   /// In en, this message translates to:
-  /// **'Maximum medication times per day is 24'**
+  /// **'Nombre maximum de prises de médicaments par jour est de 24'**
   String get maxMedTPD;
 
   /// No description provided for @bSD.
   ///
   /// In en, this message translates to:
-  /// **'Bottom sheet data: '**
+  /// **'Données de la feuille inférieure : '**
   String get bSD;
 
   /// No description provided for @aLDT.
   ///
   /// In en, this message translates to:
-  /// **'Added log dates and times'**
+  /// **'Dates et heures des journaux ajoutés'**
   String get aLDT;
 
   /// No description provided for @today.
   ///
   /// In en, this message translates to:
-  /// **'Today'**
+  /// **'Aujourd\'hui'**
   String get today;
 
   /// No description provided for @thisWeek.
   ///
   /// In en, this message translates to:
-  /// **'This week'**
+  /// **'Cette semaine'**
   String get thisWeek;
 }
 

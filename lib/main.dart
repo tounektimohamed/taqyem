@@ -11,34 +11,19 @@ import 'package:DREHATT_app/components/language_constants.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('Firebase initialized successfully');
+  } catch (e) {
+    print('Error initializing Firebase: $e');
+  }
   await Alarm.init(showDebugLogs: true);
-  // AwesomeNotifications().initialize(
-  //     // set the icon to null if you want to use the default app icon
-  //     'resource://drawable/ic_stat_/me/logo.png',
-  //     [
-  //       NotificationChannel(
-  //           channelGroupKey: 'basic_channel_group',
-  //           channelKey: 'basic_channel',
-  //           channelName: 'Basic notifications',
-  //           channelDescription: 'Notification channel for basic tests',
-  //           defaultColor: const Color.fromRGBO(7, 82, 96, 1),
-  //           channelShowBadge: true,
-  //           importance: NotificationImportance.Max,
-  //           ledColor: Colors.white)
-  //     ],
-  //     // Channel groups are only visual and are not required
-  //     channelGroups: [
-  //       NotificationChannelGroup(
-  //           channelGroupKey: 'basic_channel_group',
-  //           channelGroupName: 'Basic group')
-  //     ],
-  //     debug: true);
-
   runApp(const MyApp());
 }
+
+
 
 class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);

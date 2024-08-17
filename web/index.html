@@ -1,19 +1,6 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
@@ -21,42 +8,49 @@
   <meta name="description" content="A new Flutter project.">
   <meta name="google-signin-client_id" content="VOTRE_ID_CLIENT.apps.googleusercontent.com">
 
-  <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="app">
   <link rel="apple-touch-icon" href="icons/cigle-meh.png">
-
-  <!-- Favicon -->
   <link rel="icon" type="image/png" href="cigle-meh.png"/>
 
   <title>DREHATT</title>
   <link rel="manifest" href="manifest.json">
-   <!-- 
 
-   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAdJg582WrPb-1vojpBPiOFTOFLXPN3OY0"></script>   -->
-    <!-- 
-  <script
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAdJg582WrPb-1vojpBPiOFTOFLXPN3OY0&callback=initMap&v=weekly&libraries=marker"
-defer
-></script>
--->
-<script async
-    src="https://maps.googleapis.com/maps/api/js?v=weekly
-        &key=AIzaSyAdJg582WrPb-1vojpBPiOFTOFLXPN3OY0&callback=initMap">
-</script>
+  <!-- Firebase App (the core Firebase SDK) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
+
+  <!-- Add Firebase products that you want to use -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage.js"></script>
 
   <script>
-    // The value below is injected by flutter build, do not touch.
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: 'AIzaSyCuzZQDt6eBErRHZK3ZAInanLqHE4iw3oE',
+    appId: '1:1027057481100:web:0730b43a791acb845512a9',
+    messagingSenderId: '1027057481100',
+    projectId: 'portfolio-8d8de',
+    authDomain: 'portfolio-8d8de.firebaseapp.com',
+    storageBucket: 'portfolio-8d8de.appspot.com',
+    measurementId: 'G-6F9E00FKLZ',
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+  </script>
+
+  <!-- Google Maps API -->
+  <script async src="https://maps.googleapis.com/maps/api/js?v=weekly&key=AIzaSyAdJg582WrPb-1vojpBPiOFTOFLXPN3OY0&callback=initMap"></script>
+
+  <script>
     const serviceWorkerVersion = null;
   </script>
-  <!-- This script adds the flutter initialization JS code -->
   <script src="flutter.js" defer></script>
 </head>
 <body>
   <script>
     window.addEventListener('load', function(ev) {
-      // Download main.dart.js
       _flutter.loader.loadEntrypoint({
         serviceWorker: {
           serviceWorkerVersion: serviceWorkerVersion,
