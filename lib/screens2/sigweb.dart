@@ -1,11 +1,9 @@
-
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_geojson/flutter_map_geojson.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 
 class SigWeb extends StatefulWidget {
@@ -18,73 +16,118 @@ class SigWeb extends StatefulWidget {
 }
 
 class _SigWebState extends State<SigWeb> {
-  GeoJsonParser geoJsonParser = GeoJsonParser(
-    defaultMarkerColor: const Color.fromARGB(255, 56, 47, 46),
-    defaultPolygonBorderColor: Color.fromARGB(255, 212, 105, 43),
-    defaultPolygonFillColor: const Color.fromARGB(255, 53, 49, 49).withOpacity(0.5),
-    defaultCircleMarkerColor: const Color.fromARGB(255, 29, 28, 28).withOpacity(0.25),
-  );
-
   bool loadingData = false;
-  LatLngBounds? bounds;
-  late MapController mapController;
-  String _selectedTileLayer = 'OSM';
-  String? _selectedGeoJsonDocumentId;
+  GoogleMapController? mapController;
+  String _selectedGeoJsonDocumentId = '';
+  Set<Polygon> polygons = {};
+  MapType _currentMapType = MapType.normal;
 
-  bool myFilterFunction(Map<String, dynamic> properties) {
-    return true;
+  final Map<String, Color> layerColorMap = {
+    'EQUIP': Color(0xff0e38c0),
+    '1 UAa1': Color(0xffdb7979),
+    '1 E': Colors.red,
+    '1 UAa4': Color(0xff4caf50),
+    '1 UVa': Color(0xff2196f3),
+    '1 NAa': Color(0xffff9800),
+    '1 UVb': Color(0xff9c27b0),
+    '1 UBa': Color(0xffe91e63),
+    '0 fonts': Color(0xff93C572),
+  };
+
+  void _onMapCreated(GoogleMapController controller) {
+    mapController = controller;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showGeoJsonSelectionDialog();
+    });
   }
 
-  void onTapMarkerFunction(Map<String, dynamic> map) {
-    print('onTapMarkerFunction: $map');
-  }
-
-  LatLngBounds calculateBoundingBox(List<List<LatLng>> polygons) {
+  LatLngBounds calculateBoundingBox(List<LatLng> points) {
     double? minLat, maxLat, minLon, maxLon;
 
-    for (var polygon in polygons) {
-      for (var point in polygon) {
-        if (minLat == null || point.latitude < minLat) minLat = point.latitude;
-        if (maxLat == null || point.latitude > maxLat) maxLat = point.latitude;
-        if (minLon == null || point.longitude < minLon) minLon = point.longitude;
-        if (maxLon == null || point.longitude > maxLon) maxLon = point.longitude;
-      }
+    for (var point in points) {
+      if (minLat == null || point.latitude < minLat) minLat = point.latitude;
+      if (maxLat == null || point.latitude > maxLat) maxLat = point.latitude;
+      if (minLon == null || point.longitude < minLon) minLon = point.longitude;
+      if (maxLon == null || point.longitude > maxLon) maxLon = point.longitude;
     }
 
     return LatLngBounds(
-      LatLng(minLat ?? 0, minLon ?? 0),
-      LatLng(maxLat ?? 0, maxLon ?? 0),
+      southwest: LatLng(minLat ?? 0, minLon ?? 0),
+      northeast: LatLng(maxLat ?? 0, maxLon ?? 0),
     );
   }
 
   Future<void> loadGeoJsonFromFirestore(String documentId) async {
+    if (mapController == null) {
+      print('Map controller is not initialized');
+      return;
+    }
+
     try {
       setState(() {
         loadingData = true;
       });
 
       final firestore = FirebaseFirestore.instance;
-      final docSnapshot = await firestore.collection('geojson_files').doc(documentId).get();
+      final docSnapshot =
+          await firestore.collection('geojson_files').doc(documentId).get();
 
       if (docSnapshot.exists) {
         final geoJsonData = docSnapshot.data()?['geojson'] as String?;
         if (geoJsonData != null) {
-          geoJsonParser.parseGeoJsonAsString(geoJsonData);
+          final decodedGeoJson = json.decode(geoJsonData);
 
-          List<List<LatLng>> allPolygons = geoJsonParser.polygons
-              .map((p) => p.points.map((e) => LatLng(e.latitude, e.longitude)).toList())
-              .toList();
+          final Set<Polygon> newPolygons = {};
 
-          LatLngBounds? newBounds;
-          if (allPolygons.isNotEmpty) {
-            newBounds = calculateBoundingBox(allPolygons);
+          for (var feature in decodedGeoJson['features']) {
+            if (feature['geometry']['type'] == 'MultiPolygon') {
+              final String layer = feature['properties']['Layer'] ?? 'default';
+              final String? fillHex = feature['properties']['fill'];
+              final double fillOpacity =
+                  feature['properties']['fill-opacity'] ?? 0.5;
+              final Color fillColor = fillHex != null
+                  ? Color(int.parse(fillHex.replaceFirst('#', '0xFF')))
+                  : Colors.transparent;
+
+              final List<LatLng> points = [];
+              for (var polygon in feature['geometry']['coordinates']) {
+                for (var ring in polygon) {
+                  for (var coord in ring) {
+                    points.add(LatLng(coord[1], coord[0]));
+                  }
+                }
+              }
+
+              newPolygons.add(
+                Polygon(
+                  polygonId: PolygonId(
+                      feature['properties']['EntityHand'] ?? 'polygon_id'),
+                  points: points,
+                  strokeColor: feature['properties']['stroke'] != null
+                      ? Color(int.parse(feature['properties']['stroke']
+                          .replaceFirst('#', '0xFF')))
+                      : Colors.black,
+                  strokeWidth:
+                      feature['properties']['stroke-width']?.toDouble() ?? 2.0,
+                  fillColor: fillColor.withOpacity(fillOpacity),
+                  onTap: () {
+                    _showPolygonInfo(feature['properties']);
+                  },
+                ),
+              );
+            }
           }
 
-          if (newBounds != null) {
-            setState(() {
-              bounds = newBounds;
-            });
-            mapController.fitBounds(bounds!);
+          setState(() {
+            polygons = newPolygons;
+          });
+
+          if (newPolygons.isNotEmpty) {
+            final bounds = calculateBoundingBox(
+                newPolygons.expand((polygon) => polygon.points).toList());
+            mapController!.animateCamera(
+              CameraUpdate.newLatLngBounds(bounds, 50),
+            );
           }
 
           print('GeoJSON loaded and parsed successfully');
@@ -103,7 +146,8 @@ class _SigWebState extends State<SigWeb> {
     }
   }
 
-  Future<void> uploadGeoJsonToFirestore(String documentId, String geoJsonData) async {
+  Future<void> uploadGeoJsonToFirestore(
+      String documentId, String geoJsonData) async {
     try {
       final firestore = FirebaseFirestore.instance;
       await firestore.collection('geojson_files').doc(documentId).set({
@@ -131,12 +175,12 @@ class _SigWebState extends State<SigWeb> {
             child: ListView(
               children: documents.map((doc) {
                 final documentId = doc.id;
-                final fileName = documentId; // Modify if you have a different field for names
+                final fileName = documentId;
 
                 return ListTile(
                   title: Text(fileName),
                   onTap: () {
-                    Navigator.of(context).pop();
+                    Navigator.of(context).pop(); // Close the dialog
                     _selectGeoJson(documentId);
                   },
                 );
@@ -158,7 +202,8 @@ class _SigWebState extends State<SigWeb> {
 
   Future<void> _uploadGeoJsonFile() async {
     try {
-      final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['geojson']);
+      final result = await FilePicker.platform
+          .pickFiles(type: FileType.custom, allowedExtensions: ['geojson']);
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
 
@@ -177,140 +222,151 @@ class _SigWebState extends State<SigWeb> {
     }
   }
 
+  void _changeMapType(MapType mapType) {
+    setState(() {
+      _currentMapType = mapType;
+    });
+  }
+
+  void _showMapTypeSelectionDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Select Map Type'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                title: Text('Normal'),
+                onTap: () {
+                  _changeMapType(MapType.normal);
+                  Navigator.of(context).pop(); // Ferme le dialogue
+                },
+              ),
+              ListTile(
+                title: Text('Satellite'),
+                onTap: () {
+                  _changeMapType(MapType.satellite);
+                  Navigator.of(context).pop(); // Ferme le dialogue
+                },
+              ),
+              ListTile(
+                title: Text('Terrain'),
+                onTap: () {
+                  _changeMapType(MapType.terrain);
+                  Navigator.of(context).pop(); // Ferme le dialogue
+                },
+              ),
+              ListTile(
+                title: Text('Hybrid'),
+                onTap: () {
+                  _changeMapType(MapType.hybrid);
+                  Navigator.of(context).pop(); // Ferme le dialogue
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+void _showPolygonInfo(Map<String, dynamic> properties) {
+  String layerName = properties['Layer'] ?? 'Unknown Layer'; // Default text if 'Layer' is not available
+  Color polygonColor = Colors.white; // Default color
+
+  // Extract color if 'fill' property exists
+  if (properties.containsKey('fill')) {
+    String? fillHex = properties['fill'];
+    if (fillHex != null) {
+      polygonColor = Color(int.parse(fillHex.replaceFirst('#', '0xFF')));
+    }
+  }
+
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text('Polygon Info'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                height: 50.0,
+                color: polygonColor,
+                child: Center(
+                  child: Text(
+                    layerName,
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16.0),
+              ...properties.entries.map((entry) {
+                return Text('${entry.key}: ${entry.value}');
+              }).toList(),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            child: Text('OK'),
+            onPressed: () {
+              Navigator.of(context).pop(); // Close the dialog
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
   @override
   void initState() {
     super.initState();
-    mapController = MapController();
-    geoJsonParser.setDefaultMarkerTapCallback(onTapMarkerFunction);
-    geoJsonParser.filterFunction = myFilterFunction;
-    loadingData = true;
-    _showGeoJsonSelectionDialog().then((_) {
-      setState(() {
-        loadingData = false;
-      });
-    });
+    Firebase.initializeApp();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-      title: Text('Suivie des PauS'), // Changer le titre ici
+        title: Text('Suivi des PAUS'),
         actions: [
           IconButton(
-            icon: Icon(Icons.file_upload),
+            icon: Icon(Icons.upload_file),
             onPressed: _uploadGeoJsonFile,
           ),
           IconButton(
-            icon: Icon(Icons.file_download),
+            icon: Icon(Icons.file_open),
             onPressed: _showGeoJsonSelectionDialog,
+          ),
+          IconButton(
+            icon: Icon(Icons.layers),
+            onPressed: _showMapTypeSelectionDialog,
           ),
         ],
       ),
       body: Stack(
         children: [
-          FlutterMap(
-            mapController: mapController,
-            options: MapOptions(
-              center: LatLng(33.10, 10.25),
+          GoogleMap(
+            onMapCreated: _onMapCreated,
+            polygons: polygons,
+            mapType: _currentMapType,
+            initialCameraPosition: CameraPosition(
+              target: LatLng(
+                  32.9295, 10.4518), // Position initiale à Tataouine, Tunisie
               zoom: 12,
-              maxZoom: 100,
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: _getTileUrl(_selectedTileLayer),
-                userAgentPackageName: 'dev.fleaflet.flutter_map.example',
-              ),
-              if (!loadingData) PolygonLayer(polygons: geoJsonParser.polygons),
-            ],
-          ),
-          Positioned(
-            bottom: 10,
-            left: 10,
-            child: FloatingActionButton(
-              onPressed: () {
-                _showLayerSelectionMenu(context);
-              },
-              child: Icon(Icons.layers),
             ),
           ),
-          Positioned(
-            bottom: 10,
-            right: 10,
-            child: Column(
-              children: [
-                FloatingActionButton(
-                  onPressed: () {
-                    mapController.move(mapController.center, mapController.zoom + 1);
-                  },
-                  child: Icon(Icons.zoom_in),
-                  heroTag: null,
-                ),
-                SizedBox(height: 10),
-                FloatingActionButton(
-                  onPressed: () {
-                    mapController.move(mapController.center, mapController.zoom - 1);
-                  },
-                  child: Icon(Icons.zoom_out),
-                  heroTag: null,
-                ),
-              ],
+          if (loadingData)
+            Center(
+              child: CircularProgressIndicator(),
             ),
-          ),
         ],
       ),
-    );
-  }
-
-  String _getTileUrl(String layer) {
-    switch (layer) {
-      case 'Satellite':
-        return 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
-      case 'Terrain':
-        return 'https://tile.stamen.com/terrain/{z}/{x}/{y}.png';
-      case 'OSM':
-      default:
-        return 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-    }
-  }
-
-  void _showLayerSelectionMenu(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: Text('Satellite'),
-              onTap: () {
-                setState(() {
-                  _selectedTileLayer = 'Satellite';
-                });
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              title: Text('Terrain'),
-              onTap: () {
-                setState(() {
-                  _selectedTileLayer = 'Terrain';
-                });
-                Navigator.pop(context);
-              },
-            ),
-            ListTile(
-              title: Text('OSM'),
-              onTap: () {
-                setState(() {
-                  _selectedTileLayer = 'OSM';
-                });
-                Navigator.pop(context);
-              },
-            ),
-          ],
-        );
-      },
     );
   }
 }
