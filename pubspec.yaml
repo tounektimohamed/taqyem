@@ -93,6 +93,9 @@ dependencies:
   get: ^4.6.6
   video_player: ^2.9.1
   google_places_flutter: ^2.0.9
+  proj4dart: ^2.1.0
+  utm: ^0.1.2
+  path_provider: ^2.0.0  # Assurez-vous d'utiliser la dernière version compatible
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:DREHATT_app/screens2/convertiseur%20json/convertGeoJson.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -56,95 +57,94 @@ class _SigWebState extends State<SigWeb> {
       northeast: LatLng(maxLat ?? 0, maxLon ?? 0),
     );
   }
+Future<void> loadGeoJsonFromFirestore(String documentId) async {
+  if (mapController == null) {
+    print('Map controller is not initialized');
+    return;
+  }
 
-  Future<void> loadGeoJsonFromFirestore(String documentId) async {
-    if (mapController == null) {
-      print('Map controller is not initialized');
-      return;
-    }
+  try {
+    setState(() {
+      loadingData = true;
+    });
 
-    try {
-      setState(() {
-        loadingData = true;
-      });
+    final firestore = FirebaseFirestore.instance;
+    final docSnapshot = await firestore.collection('geojson_files').doc(documentId).get();
 
-      final firestore = FirebaseFirestore.instance;
-      final docSnapshot =
-          await firestore.collection('geojson_files').doc(documentId).get();
+    if (docSnapshot.exists) {
+      final geoJsonData = docSnapshot.data()?['geojson'] as String?;
+      if (geoJsonData != null) {
+        final decodedGeoJson = json.decode(geoJsonData);
+        final Set<Polygon> newPolygons = {};
 
-      if (docSnapshot.exists) {
-        final geoJsonData = docSnapshot.data()?['geojson'] as String?;
-        if (geoJsonData != null) {
-          final decodedGeoJson = json.decode(geoJsonData);
-
-          final Set<Polygon> newPolygons = {};
-
-          for (var feature in decodedGeoJson['features']) {
-            if (feature['geometry']['type'] == 'MultiPolygon') {
-              final String layer = feature['properties']['Layer'] ?? 'default';
-              final String? fillHex = feature['properties']['fill'];
-              final double fillOpacity =
-                  feature['properties']['fill-opacity'] ?? 0.5;
-              final Color fillColor = fillHex != null
-                  ? Color(int.parse(fillHex.replaceFirst('#', '0xFF')))
-                  : Colors.transparent;
-
-              final List<LatLng> points = [];
-              for (var polygon in feature['geometry']['coordinates']) {
-                for (var ring in polygon) {
-                  for (var coord in ring) {
-                    points.add(LatLng(coord[1], coord[0]));
-                  }
+        int index = 0; // Initialize index for unique ID
+        for (var feature in decodedGeoJson['features']) {
+          if (feature['geometry']['type'] == 'MultiPolygon') {
+            final List<LatLng> points = [];
+            for (var polygon in feature['geometry']['coordinates']) {
+              for (var ring in polygon) {
+                for (var coord in ring) {
+                  points.add(LatLng(coord[1], coord[0]));
                 }
               }
-
-              newPolygons.add(
-                Polygon(
-                  polygonId: PolygonId(
-                      feature['properties']['EntityHand'] ?? 'polygon_id'),
-                  points: points,
-                  strokeColor: feature['properties']['stroke'] != null
-                      ? Color(int.parse(feature['properties']['stroke']
-                          .replaceFirst('#', '0xFF')))
-                      : Colors.black,
-                  strokeWidth:
-                      feature['properties']['stroke-width']?.toDouble() ?? 2.0,
-                  fillColor: fillColor.withOpacity(fillOpacity),
-                  onTap: () {
-                    _showPolygonInfo(feature['properties']);
-                  },
-                ),
-              );
             }
-          }
 
-          setState(() {
-            polygons = newPolygons;
-          });
+            // Generate unique ID using index
+            final polygonId = PolygonId('polygon_$index');
+            index++; // Increment index for next polygon
 
-          if (newPolygons.isNotEmpty) {
-            final bounds = calculateBoundingBox(
-                newPolygons.expand((polygon) => polygon.points).toList());
-            mapController!.animateCamera(
-              CameraUpdate.newLatLngBounds(bounds, 50),
+            // Extract fill color if exists
+            final String? fillHex = feature['properties']['fill'];
+            final double fillOpacity = feature['properties']['fill-opacity'] ?? 0.5;
+            final Color fillColor = fillHex != null
+                ? Color(int.parse(fillHex.replaceFirst('#', '0xFF')))
+                : Color.fromARGB(0, 236, 125, 125);
+
+            newPolygons.add(
+              Polygon(
+                polygonId: polygonId,
+                points: points,
+                strokeColor: feature['properties']['stroke'] != null
+                    ? Color(int.parse(feature['properties']['stroke']
+                        .replaceFirst('#', '0xFF')))
+                    : Colors.black,
+                strokeWidth: feature['properties']['stroke-width']?.toDouble() ?? 2.0,
+                fillColor: fillColor.withOpacity(fillOpacity),
+                onTap: () {
+                  _showPolygonInfo(feature['properties']);
+                },
+              ),
             );
           }
-
-          print('GeoJSON loaded and parsed successfully');
-        } else {
-          print('Field "geojson" does not exist in the document');
         }
+
+        setState(() {
+          polygons = newPolygons;
+        });
+
+        if (newPolygons.isNotEmpty) {
+          final bounds = calculateBoundingBox(
+            newPolygons.expand((polygon) => polygon.points).toList(),
+          );
+          mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
+        }
+
+        print('GeoJSON loaded and parsed successfully');
       } else {
-        print('Document does not exist');
+        print('Field "geojson" does not exist in the document');
       }
-    } catch (e) {
-      print('Error loading GeoJSON: $e');
-    } finally {
-      setState(() {
-        loadingData = false;
-      });
+    } else {
+      print('Document does not exist');
     }
+  } catch (e) {
+    print('Error loading GeoJSON: $e');
+  } finally {
+    setState(() {
+      loadingData = false;
+    });
   }
+}
+
 
   Future<void> uploadGeoJsonToFirestore(
       String documentId, String geoJsonData) async {
@@ -271,57 +271,60 @@ class _SigWebState extends State<SigWeb> {
       },
     );
   }
-void _showPolygonInfo(Map<String, dynamic> properties) {
-  String layerName = properties['Layer'] ?? 'Unknown Layer'; // Default text if 'Layer' is not available
-  Color polygonColor = Colors.white; // Default color
 
-  // Extract color if 'fill' property exists
-  if (properties.containsKey('fill')) {
-    String? fillHex = properties['fill'];
-    if (fillHex != null) {
-      polygonColor = Color(int.parse(fillHex.replaceFirst('#', '0xFF')));
+  void _showPolygonInfo(Map<String, dynamic> properties) {
+    String layerName = properties['Layer'] ??
+        'Unknown Layer'; // Default text if 'Layer' is not available
+    Color polygonColor = Colors.white; // Default color
+
+    // Extract color if 'fill' property exists
+    if (properties.containsKey('fill')) {
+      String? fillHex = properties['fill'];
+      if (fillHex != null) {
+        polygonColor = Color(int.parse(fillHex.replaceFirst('#', '0xFF')));
+      }
     }
-  }
 
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text('Polygon Info'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                height: 50.0,
-                color: polygonColor,
-                child: Center(
-                  child: Text(
-                    layerName,
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Polygon Info'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  height: 50.0,
+                  color: polygonColor,
+                  child: Center(
+                    child: Text(
+                      layerName,
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
-              ),
-              SizedBox(height: 16.0),
-              ...properties.entries.map((entry) {
-                return Text('${entry.key}: ${entry.value}');
-              }).toList(),
-            ],
+                SizedBox(height: 16.0),
+                ...properties.entries.map((entry) {
+                  return Text('${entry.key}: ${entry.value}');
+                }).toList(),
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            child: Text('OK'),
-            onPressed: () {
-              Navigator.of(context).pop(); // Close the dialog
-            },
-          ),
-        ],
-      );
-    },
-  );
-}
+          actions: [
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   void initState() {
@@ -337,9 +340,18 @@ void _showPolygonInfo(Map<String, dynamic> properties) {
         actions: [
           IconButton(
             icon: Icon(Icons.upload_file),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => GeoJsonConverterPage()),
+              );
+            },
+          ),
+         IconButton(
+            icon: Icon(Icons.file_upload),
             onPressed: _uploadGeoJsonFile,
           ),
-          IconButton(
+           IconButton(
             icon: Icon(Icons.file_open),
             onPressed: _showGeoJsonSelectionDialog,
           ),
