@@ -96,6 +96,7 @@ dependencies:
   proj4dart: ^2.1.0
   utm: ^0.1.2
   path_provider: ^2.0.0  # Assurez-vous d'utiliser la dernière version compatible
+  xml: ^6.5.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

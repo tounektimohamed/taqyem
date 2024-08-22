@@ -1,7 +1,9 @@
-import 'package:DREHATT_app/screens2/ShapeDetailsDialog.dart';
-import 'package:DREHATT_app/screens2/SubdivisionPlanPage.dart';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:xml/xml.dart';
+import 'dart:typed_data'; // Pour utiliser les bytes
 import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -9,17 +11,19 @@ enum DrawShape { polygon, circle, line }
 
 enum MapLayer { normal, satellite, terrain, hybrid }
 
-class MapDrawingPage2 extends StatefulWidget {
+class CombinedMapPage extends StatefulWidget {
   @override
-  _MapDrawingPage2State createState() => _MapDrawingPage2State();
+  _CombinedMapPageState createState() => _CombinedMapPageState();
 }
 
-class _MapDrawingPage2State extends State<MapDrawingPage2> {
-  GoogleMapController? mapController;
-  List<LatLng> shapePoints = [];
+class _CombinedMapPageState extends State<CombinedMapPage> {
+  GoogleMapController? _mapController;
   Set<Polygon> polygons = {};
   Set<Polyline> polylines = {};
   Set<Circle> circles = {};
+  bool loadingData = false;
+  MapType _currentMapType = MapType.normal;
+  List<LatLng> shapePoints = [];
   DrawShape selectedShape = DrawShape.polygon;
   MapLayer selectedLayer = MapLayer.normal;
   bool isDrawing = false;
@@ -27,7 +31,101 @@ class _MapDrawingPage2State extends State<MapDrawingPage2> {
   String displayText = '';
 
   void _onMapCreated(GoogleMapController controller) {
-    mapController = controller;
+    _mapController = controller;
+  }
+
+  Future<void> _pickKmlFile() async {
+    setState(() {
+      loadingData = true;
+    });
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['kml'],
+    );
+
+    if (result != null && result.files.single.bytes != null) {
+      final kmlBytes = result.files.single.bytes!;
+      final kmlDoc = loadKmlFromBytes(kmlBytes);
+      final extractedPolygons = extractPolygonsFromKml(kmlDoc);
+
+      setState(() {
+        polygons = extractedPolygons;
+        loadingData = false;
+      });
+
+      // Move camera to the first polygon for better visibility
+      if (polygons.isNotEmpty) {
+        final firstPolygon = polygons.first;
+        final bounds = LatLngBounds(
+          southwest: LatLng(
+            firstPolygon.points
+                .map((point) => point.latitude)
+                .reduce((a, b) => a < b ? a : b),
+            firstPolygon.points
+                .map((point) => point.longitude)
+                .reduce((a, b) => a < b ? a : b),
+          ),
+          northeast: LatLng(
+            firstPolygon.points
+                .map((point) => point.latitude)
+                .reduce((a, b) => a > b ? a : b),
+            firstPolygon.points
+                .map((point) => point.longitude)
+                .reduce((a, b) => a > b ? a : b),
+          ),
+        );
+
+        _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
+      }
+    } else {
+      setState(() {
+        loadingData = false;
+      });
+    }
+  }
+
+  XmlDocument loadKmlFromBytes(Uint8List kmlBytes) {
+    final kmlString = String.fromCharCodes(kmlBytes);
+    return XmlDocument.parse(kmlString);
+  }
+
+  Set<Polygon> extractPolygonsFromKml(XmlDocument kmlDoc) {
+    final polygonSet = <Polygon>{};
+    final placemarks = kmlDoc.findAllElements('Placemark');
+
+    int polygonIdCounter = 1;
+
+    for (final placemark in placemarks) {
+      final coordinates =
+          placemark.findAllElements('coordinates').expand((node) {
+        return node.text.trim().split(' ').map((coordinate) {
+          final parts = coordinate.split(',');
+          if (parts.length >= 2) {
+            final latitude = double.parse(parts[1]);
+            final longitude = double.parse(parts[0]);
+            return LatLng(latitude, longitude);
+          }
+          return LatLng(0, 0); // Valeur par défaut en cas d'erreur
+        }).toList();
+      }).toList();
+
+      if (coordinates.isNotEmpty) {
+        polygonSet.add(
+          Polygon(
+            polygonId: PolygonId('polygon_$polygonIdCounter'),
+            points: coordinates,
+            strokeWidth: 2,
+            strokeColor: Colors.red, // Couleur du contour pour la visibilité
+            fillColor: Colors.yellow
+                .withOpacity(0.5), // Couleur de remplissage pour la visibilité
+          ),
+        );
+        polygonIdCounter++;
+      }
+    }
+
+    return polygonSet;
   }
 
   void _startDrawing() {
@@ -186,349 +284,302 @@ class _MapDrawingPage2State extends State<MapDrawingPage2> {
       double distance = _calculateDistance(shapePoints[0], shapePoints[1]);
       displayText = 'Distance: ${distance.toStringAsFixed(2)} m';
     }
-    setState(() {});
   }
 
-  void _changeMapLayer(MapLayer layer) {
-    if (mapController != null) {
-      setState(() {
-        selectedLayer = layer;
-      });
-      mapController!.setMapStyle(_getMapStyle(layer));
+
+  void _showSaveDialog() async {
+  final nameController = TextEditingController();
+  final regionController = TextEditingController();
+
+  final result = await showDialog<Map<String, String>>(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text('Save Shape'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: InputDecoration(labelText: 'Name'),
+            ),
+            TextField(
+              controller: regionController,
+              decoration: InputDecoration(labelText: 'Region'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop({
+                'name': nameController.text,
+                'region': regionController.text,
+              });
+            },
+            child: Text('Save'),
+          ),
+        ],
+      );
+    },
+  );
+
+  if (result != null) {
+    final shapeName = result['name'] ?? 'Shape_${DateTime.now().millisecondsSinceEpoch}';
+    final shapeRegion = result['region'] ?? '';
+
+    await _saveShape(shapeName, shapeRegion);
+  }
+}
+
+Future<void> _saveShape(String shapeName, String shapeRegion) async {
+  if (polygons.isNotEmpty || circles.isNotEmpty || polylines.isNotEmpty) {
+    final shapeData = {
+      'name': shapeName,
+      'region': shapeRegion,
+      'type': selectedShape.toString().split('.').last,
+      'coordinates': selectedShape == DrawShape.polygon
+          ? polygons.first.points
+              .map((point) => {
+                    'latitude': point.latitude,
+                    'longitude': point.longitude,
+                  })
+              .toList()
+          : selectedShape == DrawShape.line
+              ? polylines.first.points
+                  .map((point) => {
+                        'latitude': point.latitude,
+                        'longitude': point.longitude,
+                      })
+                  .toList()
+              : null,
+      'center': selectedShape == DrawShape.circle
+          ? {
+              'latitude': circles.first.center.latitude,
+              'longitude': circles.first.center.longitude,
+            }
+          : null,
+      'radius': selectedShape == DrawShape.circle ? circles.first.radius : null,
+    };
+
+    await FirebaseFirestore.instance.collection('shapes').add(shapeData);
+    _clearShapes();
+  }
+}
+
+
+  Future<void> _fetchSavedShapes() async {
+    setState(() {
+      loadingData = true;
+    });
+
+    final querySnapshot =
+        await FirebaseFirestore.instance.collection('shapes').get();
+    final fetchedPolygons = <Polygon>{};
+    final fetchedCircles = <Circle>{};
+    final fetchedPolylines = <Polyline>{};
+
+    for (final doc in querySnapshot.docs) {
+      final data = doc.data();
+      final shapeType = data['type'] as String?;
+
+      switch (shapeType) {
+        case 'polygon':
+          final coordinates = data['coordinates'] as List<dynamic>?;
+          final points = coordinates
+                  ?.map((point) {
+                    final lat = point['latitude'] as double?;
+                    final lng = point['longitude'] as double?;
+                    return (lat != null && lng != null)
+                        ? LatLng(lat, lng)
+                        : null;
+                  })
+                  .whereType<LatLng>()
+                  .toList() ??
+              [];
+
+          if (points.isNotEmpty) {
+            fetchedPolygons.add(
+              Polygon(
+                polygonId: PolygonId(doc.id),
+                points: points,
+                strokeWidth: 2,
+                strokeColor: Colors.green,
+                fillColor: Colors.green.withOpacity(0.3),
+              ),
+            );
+          }
+          break;
+
+        case 'circle':
+          final centerData = data['center'] as Map<String, dynamic>?;
+          final center = centerData != null
+              ? LatLng(centerData['latitude'] as double,
+                  centerData['longitude'] as double)
+              : LatLng(0, 0);
+          final radius = data['radius'] as double? ?? 0;
+
+          fetchedCircles.add(
+            Circle(
+              circleId: CircleId(doc.id),
+              center: center,
+              radius: radius,
+              strokeWidth: 2,
+              fillColor: Colors.orange.withOpacity(0.3),
+              strokeColor: Colors.orange,
+            ),
+          );
+          break;
+
+        case 'line':
+          final coordinates = data['coordinates'] as List<dynamic>?;
+          final points = coordinates
+                  ?.map((point) {
+                    final lat = point['latitude'] as double?;
+                    final lng = point['longitude'] as double?;
+                    return (lat != null && lng != null)
+                        ? LatLng(lat, lng)
+                        : null;
+                  })
+                  .whereType<LatLng>()
+                  .toList() ??
+              [];
+
+          if (points.isNotEmpty) {
+            fetchedPolylines.add(
+              Polyline(
+                polylineId: PolylineId(doc.id),
+                points: points,
+                color: Colors.purple,
+                width: 2,
+              ),
+            );
+          }
+          break;
+
+        default:
+          break;
+      }
     }
+
+    setState(() {
+      polygons = fetchedPolygons;
+      circles = fetchedCircles;
+      polylines = fetchedPolylines;
+      loadingData = false;
+    });
   }
 
-  String _getMapStyle(MapLayer layer) {
-    switch (layer) {
-      case MapLayer.satellite:
-        return '[]';
-      case MapLayer.terrain:
-        return '[{"featureType": "all","elementType": "geometry","stylers": [{"visibility": "simplified"}]}]';
-      case MapLayer.hybrid:
-        return '[]';
-      case MapLayer.normal:
-      default:
-        return '[]';
-    }
-  }
+ 
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Suivie des plans des lotissement'),
+        title: Text('Suivi des plans de lotissement'),
         actions: [
-          IconButton(
-            icon: Icon(Icons.undo),
-            onPressed: shapePoints.isNotEmpty ? _undoLastPoint : null,
-            tooltip: 'Annuler le dernier point',
-          ),
-          IconButton(
-            icon: Icon(Icons.delete),
-            onPressed: polygons.isNotEmpty ||
-                    polylines.isNotEmpty ||
-                    circles.isNotEmpty
-                ? _clearShapes
-                : null,
-            tooltip: 'Supprimer la forme',
-          ),
-          IconButton(
-            icon: Icon(Icons.save),
-            onPressed: _confirmSave,
-            tooltip: 'Save',
-          ),
-          IconButton(
-            icon: Icon(Icons.calculate),
-            onPressed: _updateDisplayText,
-            tooltip: 'Update',
-          ),
           IconButton(
             icon: Icon(Icons.refresh),
             onPressed: _fetchSavedShapes,
-            tooltip: 'Fetch Shapes',
+            tooltip: 'Fetch Saved Shapes',
           ),
         ],
       ),
-      body: Stack(
+      body: Column(
         children: [
-          GoogleMap(
-            onMapCreated: _onMapCreated,
-            initialCameraPosition: CameraPosition(
-              target: LatLng(
-                  33.1031, 10.4397), // Coordinates for Tataouine, Tunisia
-              zoom: 9.0,
+          Expanded(
+            child: GoogleMap(
+              onMapCreated: _onMapCreated,
+              onTap: _onTap,
+              mapType: _currentMapType,
+              initialCameraPosition: CameraPosition(
+                target:
+                    LatLng(33.9167, 10.1667), // Initial position (Tataouine)
+                zoom: 10,
+              ),
+              polygons: polygons,
+              polylines: polylines,
+              circles: circles,
             ),
-            polygons: polygons,
-            polylines: polylines,
-            circles: circles,
-            onTap: _onTap,
-            mapType: _getGoogleMapType(selectedLayer),
           ),
+          if (loadingData)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: CircularProgressIndicator(),
+            ),
           if (displayText.isNotEmpty)
-            Positioned(
-              bottom: 20,
-              left: 20,
-              child: Container(
-                padding: EdgeInsets.all(10),
-                color: Colors.black
-                    .withOpacity(0.6), // Background color for better contrast
-                child: Text(
-                  displayText,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.white, // Better visibility on dark background
-                  ),
-                ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(displayText),
+            ),
+          if (showSaveButton &&
+              (selectedShape == DrawShape.circle || 
+                  selectedShape == DrawShape.line || 
+                  selectedShape == DrawShape.polygon))
+            Container(
+              color: Colors.red, // Background color to test visibility
+              child: ElevatedButton(
+                onPressed: _showSaveDialog,
+                child: Text('Save Shape'),
               ),
             ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.crop_square),
-            label: 'Polygon',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.circle),
-            label: 'Circle',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.show_chart),
-            label: 'Line',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.map),
-            label: 'Layer',
-          ),
-        ],
-        currentIndex: DrawShape.values.indexOf(selectedShape),
-        onTap: (index) {
-          if (index < DrawShape.values.length) {
-            setState(() {
-              selectedShape = DrawShape.values[index];
-              _startDrawing(); // Ensure drawing is started correctly
-            });
-          } else {
-            _showLayerSelectionDialog();
-          }
-        },
-        backgroundColor: Colors.white,
-        unselectedItemColor: Colors.grey,
-        selectedItemColor: Colors.blue,
-        elevation: 8,
-        type: BottomNavigationBarType.fixed,
-      ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [],
-      ),
-    );
-  }
-
-  MapType _getGoogleMapType(MapLayer layer) {
-    switch (layer) {
-      case MapLayer.satellite:
-        return MapType.satellite;
-      case MapLayer.terrain:
-        return MapType.terrain;
-      case MapLayer.hybrid:
-        return MapType.hybrid;
-      case MapLayer.normal:
-      default:
-        return MapType.normal;
-    }
-  }
-
-  void _fetchSavedShapes() async {
-    try {
-      QuerySnapshot snapshot =
-          await FirebaseFirestore.instance.collection('shapes').get();
-
-      if (snapshot.docs.isEmpty) {
-        _showMessage('Aucune forme enregistrée.');
-        return;
-      }
-
-      List<Widget> shapeDetails = [];
-
-      for (var doc in snapshot.docs) {
-        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-        String name = data['name'] ?? 'Inconnu';
-        String shapeType = data['shapeType'] ?? 'Inconnu';
-        List<dynamic> coordinates = data['coordinates'] ?? [];
-        double surface = data['surface']?.toDouble() ?? 0;
-        String municipality = data['municipality'] ?? 'Inconnue';
-        String pau = data['pau'] ?? 'Inconnu';
-        String urbanType = data['urbanType'] ?? 'Inconnu';
-        String lotType = data['lotType'] ?? 'Inconnu';
-        int numberOfLots = data['numberOfLots']?.toInt() ?? 0;
-
-        shapeDetails.add(Card(
-          elevation: 4.0,
-          margin: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-          child: ListTile(
-            leading: Icon(Icons.location_on, color: Colors.blue),
-            title: Text(name, style: TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(
-              'Type: $shapeType\n'
-              'Coordonnées: ${coordinates.toString()}\n'
-              'Surface: ${surface.toStringAsFixed(2)} m²\n'
-              'Municipalité: $municipality\n'
-              'PAU: $pau\n'
-              'Type Urbain: $urbanType\n'
-              'Type de Lot: $lotType\n'
-              'Nombre de Lots: $numberOfLots',
-            ),
-          ),
-        ));
-      }
-
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Détails des Formes'),
-            content: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: shapeDetails,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              IconButton(
+                icon: Icon(Icons.file_upload),
+                onPressed: _pickKmlFile,
               ),
-            ),
-            actions: <Widget>[
-              TextButton(
-                child: Text('Fermer'),
-                onPressed: () => Navigator.of(context).pop(),
+        
+        
+              IconButton(
+                icon: Icon(Icons.delete),
+                onPressed: _clearShapes,
+              ),
+              DropdownButton<MapLayer>(
+                value: selectedLayer,
+                onChanged: (value) {
+                  setState(() {
+                    selectedLayer = value!;
+                    _currentMapType = MapType.values[selectedLayer.index];
+                  });
+                },
+                items: MapLayer.values.map((MapLayer layer) {
+                  return DropdownMenuItem<MapLayer>(
+                    value: layer,
+                    child: Text(layer.toString().split('.').last),
+                  );
+                }).toList(),
+              ),
+              DropdownButton<DrawShape>(
+                value: selectedShape,
+                onChanged: (value) {
+                  setState(() {
+                    selectedShape = value!;
+                    _clearShapes(); // Clear shapes when changing the drawing mode
+                  });
+                },
+                items: DrawShape.values.map((DrawShape shape) {
+                  return DropdownMenuItem<DrawShape>(
+                    value: shape,
+                    child: Text(shape.toString().split('.').last),
+                  );
+                }).toList(),
+              ),
+              ElevatedButton(
+                onPressed: isDrawing ? _stopDrawing : _startDrawing,
+                child: Text(isDrawing ? 'Stop Drawing' : 'Start Drawing'),
               ),
             ],
-          );
-        },
-      );
-    } catch (e) {
-      _showMessage('Erreur lors de la récupération des formes: $e');
-    }
-  }
-
-// Fonction utilitaire pour afficher des messages
-  void _showMessage(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Message'),
-          content: Text(message),
-          actions: <Widget>[
-            TextButton(
-              child: Text('OK'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _confirmSave() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Confirm Save'),
-          content: Text('Are you sure you want to save this shape?'),
-          actions: <Widget>[
-            TextButton(
-              child: Text('Cancel'),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-            TextButton(
-              child: Text('Save'),
-              onPressed: () {
-                Navigator.of(context).pop();
-                _showSavePage();
-              },
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _showSavePage() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (BuildContext context) => SubdivisionPlanPage(
-          shapeType: selectedShape.toString().split('.').last,
-          area: _calculateShapeArea(),
-        ),
-      ),
-    );
-  }
-
-  void _undoLastPoint() {
-    setState(() {
-      if (shapePoints.isNotEmpty) {
-        shapePoints.removeLast();
-        _updateShape();
-        if (shapePoints.isEmpty) {
-          _stopDrawing();
-        }
-      }
-    });
-  }
-
-  void _updateShape() {
-    switch (selectedShape) {
-      case DrawShape.polygon:
-        if (shapePoints.length > 2) {
-          polygons.clear();
-          polygons.add(Polygon(
-            polygonId: PolygonId('polygon'),
-            points: shapePoints,
-            strokeWidth: 2,
-            fillColor: Colors.blue.withOpacity(0.3),
-            strokeColor: Colors.blue,
-          ));
-        } else {
-          polygons.clear();
-        }
-        break;
-      case DrawShape.circle:
-        if (shapePoints.length == 1) {
-          circles.clear();
-          shapePoints.clear();
-        }
-        break;
-      case DrawShape.line:
-        if (shapePoints.length == 1) {
-          polylines.clear();
-          shapePoints.clear();
-        }
-        break;
-    }
-    _updateDisplayText();
-  }
-
-  void _showLayerSelectionDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Select Map Layer'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: MapLayer.values.map((layer) {
-              return ListTile(
-                title: Text(layer.toString().split('.').last),
-                onTap: () {
-                  _changeMapLayer(layer);
-                  Navigator.of(context).pop();
-                },
-              );
-            }).toList(),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 }

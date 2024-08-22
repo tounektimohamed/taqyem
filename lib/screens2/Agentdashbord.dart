@@ -35,7 +35,8 @@ class _AgentDashboardState extends State<AgentDashboard> {
     return Scaffold(
       body: LayoutBuilder(
         builder: (context, constraints) {
-          bool isDesktop = constraints.maxWidth > 600; // Define a breakpoint for desktop
+          bool isDesktop =
+              constraints.maxWidth > 600; // Define a breakpoint for desktop
 
           return SingleChildScrollView(
             child: Column(
@@ -68,7 +69,8 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           backgroundImage: currentUser?.photoURL != null
                               ? NetworkImage(currentUser!.photoURL!)
                               : null,
-                          backgroundColor: Theme.of(context).colorScheme.primary,
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
                           child: currentUser?.photoURL == null
                               ? const Icon(Icons.person_outlined)
                               : null,
@@ -90,13 +92,16 @@ class _AgentDashboardState extends State<AgentDashboard> {
                       viewType: ViewType.DAILY,
                       toggleViewType: true,
                       headerMonthElevation: 0,
-                      headerMonthBackColor: const Color.fromARGB(255, 241, 250, 251),
+                      headerMonthBackColor:
+                          const Color.fromARGB(255, 241, 250, 251),
                     ),
                     dayOptions: DayOptions(
                       compactMode: true,
                       dayFontSize: isDesktop ? 18 : 15,
-                      weekDaySelectedColor: Theme.of(context).colorScheme.primary,
-                      selectedBackgroundColor: Theme.of(context).colorScheme.primary,
+                      weekDaySelectedColor:
+                          Theme.of(context).colorScheme.primary,
+                      selectedBackgroundColor:
+                          Theme.of(context).colorScheme.primary,
                       disableDaysBeforeNow: false,
                       unselectedBackgroundColor: Colors.white,
                     ),
@@ -145,7 +150,9 @@ class _AgentDashboardState extends State<AgentDashboard> {
                   child: GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: isDesktop ? 4 : 2, // Adjust columns based on screen size
+                    crossAxisCount: isDesktop
+                        ? 4
+                        : 2, // Adjust columns based on screen size
                     crossAxisSpacing: isDesktop ? 24 : 16,
                     mainAxisSpacing: isDesktop ? 24 : 16,
                     children: [
@@ -183,7 +190,8 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => HousingApplicationListPage(),
+                              builder: (context) =>
+                                  HousingApplicationListPage(),
                             ),
                           );
                         },
@@ -210,7 +218,8 @@ class _AgentDashboardState extends State<AgentDashboard> {
                             context,
                             MaterialPageRoute(
                               builder: (context) => const SigWeb(
-                                  title: 'Sig web'), // Add the required title parameter
+                                  title:
+                                      'Sig web'), // Add the required title parameter
                             ),
                           );
                         },
@@ -237,8 +246,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  MapDrawingPage2(), // Add the required title parameter
+                              builder: (context) => CombinedMapPage(),
                             ),
                           );
                         },
@@ -284,7 +292,9 @@ class _AgentDashboardState extends State<AgentDashboard> {
               title,
               textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: MediaQuery.of(context).size.width > 600 ? 18 : 16, // Adjust font size for responsiveness
+                fontSize: MediaQuery.of(context).size.width > 600
+                    ? 18
+                    : 16, // Adjust font size for responsiveness
                 fontWeight: FontWeight.bold,
               ),
             ),

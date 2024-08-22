@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:DREHATT_app/screens2/convertiseur%20json/convertGeoJson.dart';
+import 'package:DREHATT_app/screens2/kml/KmlMapPage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -347,6 +348,15 @@ Future<void> loadGeoJsonFromFirestore(String documentId) async {
               );
             },
           ),
+          IconButton(
+            icon: Icon(Icons.upload_file),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => KmlMapPage()),
+              );
+            },
+          ),
          IconButton(
             icon: Icon(Icons.file_upload),
             onPressed: _uploadGeoJsonFile,
@@ -359,6 +369,8 @@ Future<void> loadGeoJsonFromFirestore(String documentId) async {
             icon: Icon(Icons.layers),
             onPressed: _showMapTypeSelectionDialog,
           ),
+          
+          
         ],
       ),
       body: Stack(

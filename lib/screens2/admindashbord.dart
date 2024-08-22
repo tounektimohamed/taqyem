@@ -303,7 +303,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  MapDrawingPage2(), // Add the required title parameter
+                                  CombinedMapPage(), // Add the required title parameter
                             ),
                           );
                         },
