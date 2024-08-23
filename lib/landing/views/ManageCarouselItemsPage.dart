@@ -114,7 +114,7 @@ class _AddCarouselItemPageState extends State<AddCarouselItemPage> {
 
   final TextEditingController urlController = TextEditingController();
 
-  Future getImage() async {
+  Future<void> getImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
 
     setState(() {

@@ -36,13 +36,13 @@ class _AgentDashboardState extends State<AgentDashboard> {
       body: LayoutBuilder(
         builder: (context, constraints) {
           bool isDesktop =
-              constraints.maxWidth > 600; // Define a breakpoint for desktop
+              constraints.maxWidth > 600; // Définir un seuil pour le bureau
 
           return SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header with logo and user icon
+                // En-tête avec logo et icône utilisateur
                 Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: isDesktop ? 40 : 20,
@@ -80,7 +80,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                   ),
                 ),
 
-                // Calendar and selected date
+                // Calendrier et date sélectionnée
                 Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: isDesktop ? 40 : 20,
@@ -129,7 +129,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                   ),
                 ),
 
-                // Selected date text
+                // Texte de la date sélectionnée
                 Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: isDesktop ? 40 : 20,
@@ -144,7 +144,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                   ),
                 ),
 
-                // Dashboard items
+                // Éléments du tableau de bord
                 Padding(
                   padding: EdgeInsets.all(isDesktop ? 32 : 16),
                   child: GridView.count(
@@ -152,13 +152,13 @@ class _AgentDashboardState extends State<AgentDashboard> {
                     physics: const NeverScrollableScrollPhysics(),
                     crossAxisCount: isDesktop
                         ? 4
-                        : 2, // Adjust columns based on screen size
+                        : 2, // Ajuster les colonnes en fonction de la taille de l'écran
                     crossAxisSpacing: isDesktop ? 24 : 16,
                     mainAxisSpacing: isDesktop ? 24 : 16,
                     children: [
                       buildDashboardItem(
                         context,
-                        'View News',
+                        'Voir les actualités',
                         'lib/assets/icons/me/news1.gif',
                         () {
                           Navigator.push(
@@ -171,7 +171,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                       ),
                       buildDashboardItem(
                         context,
-                        'Claims List Page',
+                        'Page des réclamations',
                         'lib/assets/icons/me/subscribers.gif',
                         () {
                           Navigator.push(
@@ -184,7 +184,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                       ),
                       buildDashboardItem(
                         context,
-                        'Housing Application ListPage',
+                        'Liste des demandes de permis de construire',
                         'lib/assets/icons/me/maps.gif',
                         () {
                           Navigator.push(
@@ -198,7 +198,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                       ),
                       buildDashboardItem(
                         context,
-                        'Add News',
+                        'Ajouter une actualité',
                         'lib/assets/icons/me/news.gif',
                         () {
                           Navigator.push(
@@ -219,21 +219,21 @@ class _AgentDashboardState extends State<AgentDashboard> {
                             MaterialPageRoute(
                               builder: (context) => const SigWeb(
                                   title:
-                                      'Sig web'), // Add the required title parameter
+                                      'Sig web'), // Ajouter le paramètre de titre requis
                             ),
                           );
                         },
                       ),
                       buildDashboardItem(
                         context,
-                        'Permis de batis',
+                        'Permis de construire',
                         'lib/assets/icons/me/plan.png',
                         () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  MapDrawingPage(), // Add the required title parameter
+                                  MapDrawingPage(), // Ajouter le paramètre de titre requis
                             ),
                           );
                         },
@@ -294,7 +294,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
               style: TextStyle(
                 fontSize: MediaQuery.of(context).size.width > 600
                     ? 18
-                    : 16, // Adjust font size for responsiveness
+                    : 16, // Ajuster la taille de la police pour la réactivité
                 fontWeight: FontWeight.bold,
               ),
             ),

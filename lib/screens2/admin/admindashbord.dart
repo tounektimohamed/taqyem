@@ -10,7 +10,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:image_picker/image_picker.dart';
 
-// Import other necessary files
+// Importer d'autres fichiers nécessaires
 import 'package:DREHATT_app/screens2/admin/AccessLogsPage.dart';
 import 'package:DREHATT_app/screens2/users/ClaimsListPage.dart';
 import 'package:DREHATT_app/screens2/permis%20de%20bati/HousingApplicationForm.dart';
@@ -44,13 +44,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
     return Scaffold(
       body: LayoutBuilder(
         builder: (context, constraints) {
-          bool isDesktop = constraints.maxWidth > 600; // Define a breakpoint for desktop
+          bool isDesktop = constraints.maxWidth > 600; // Définir un seuil pour le mode bureau
 
           return SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header with logo and user icon
+                // En-tête avec logo et icône utilisateur
                 Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: isDesktop ? 40 : 20,
@@ -87,7 +87,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                 ),
 
-                // Calendar and selected date
+                // Calendrier et date sélectionnée
                 Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: isDesktop ? 40 : 20,
@@ -136,7 +136,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                 ),
 
-                // Selected date text
+                // Texte de la date sélectionnée
                 Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: isDesktop ? 40 : 20,
@@ -151,19 +151,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                 ),
 
-                // Dashboard items
+                // Éléments du tableau de bord
                 Padding(
                   padding: EdgeInsets.all(isDesktop ? 32 : 16),
                   child: GridView.count(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: isDesktop ? 4 : 2, // Adjust columns based on screen size
+                    crossAxisCount: isDesktop ? 4 : 2, // Ajuster les colonnes selon la taille de l'écran
                     crossAxisSpacing: isDesktop ? 24 : 16,
                     mainAxisSpacing: isDesktop ? 24 : 16,
                     children: [
                       buildDashboardItem(
                         context,
-                        'User Management',
+                        'Gestion des utilisateurs',
                         'lib/assets/icons/me/menagment.gif',
                         () {
                           Navigator.push(
@@ -176,7 +176,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ),
                       buildDashboardItem(
                         context,
-                        'View News',
+                        'Voir les nouvelles',
                         'lib/assets/icons/me/admin1.gif',
                         () {
                           Navigator.push(
@@ -189,7 +189,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ),
                       buildDashboardItem(
                         context,
-                        'View Access Logs',
+                        'Voir les journaux d\'accès',
                         'lib/assets/icons/me/admin1.gif',
                         () {
                           Navigator.push(
@@ -202,7 +202,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ),
                       buildDashboardItem(
                         context,
-                        'View Subscribers',
+                        'Voir les abonnés',
                         'lib/assets/icons/me/subscribers.gif',
                         () {
                           Navigator.push(
@@ -215,7 +215,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ),
                       buildDashboardItem(
                         context,
-                        'Claims List Page',
+                        'Liste des réclamations',
                         'lib/assets/icons/me/subscribers.gif',
                         () {
                           Navigator.push(
@@ -228,7 +228,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ),
                       buildDashboardItem(
                         context,
-                        'Housing Applications',
+                        'Demandes de logement',
                         'lib/assets/icons/me/maps.gif',
                         () {
                           Navigator.push(
@@ -241,7 +241,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       ),
                       buildDashboardItem(
                         context,
-                        'Manage Carousel',
+                        'Gérer le carrousel',
                         'lib/assets/icons/me/caroussel.png',
                         () {
                           Navigator.push(
@@ -252,20 +252,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           );
                         },
                       ),
-                      buildDashboardItem(
-                        context,
-                        'Zone d’affichage des couches',
-                        'lib/assets/icons/me/caroussel.png',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SigWeb(
-                                  title: 'Sig web'),
-                            ),
-                          );
-                        },
-                      ),
+                    
                       buildDashboardItem(
                         context,
                         'Suivi des PAUS',
@@ -275,21 +262,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             context,
                             MaterialPageRoute(
                               builder: (context) => const SigWeb(
-                                  title: 'Sig web'), // Add the required title parameter
+                                  title: 'Sig web'), // Ajouter le paramètre de titre requis
                             ),
                           );
                         },
                       ),
                       buildDashboardItem(
                         context,
-                        'Permis de batis',
+                        'Permis de bâtir',
                         'lib/assets/icons/me/plan.png',
                         () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  MapDrawingPage(), // Add the required title parameter
+                                  MapDrawingPage(), // Ajouter le paramètre de titre requis
                             ),
                           );
                         },
@@ -303,7 +290,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  CombinedMapPage(), // Add the required title parameter
+                                  CombinedMapPage(), // Ajouter le paramètre de titre requis
                             ),
                           );
                         },
@@ -319,20 +306,24 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 
-  Widget buildDashboardItem(BuildContext context, String title, String iconPath,
-      VoidCallback onPressed) {
+  Widget buildDashboardItem(
+    BuildContext context,
+    String title,
+    String imagePath,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
-      onTap: onPressed,
+      onTap: onTap,
       child: Container(
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: [
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: const [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.5),
-              spreadRadius: 2,
-              blurRadius: 5,
-              offset: const Offset(0, 3),
+              color: Colors.grey,
+              offset: Offset(0, 2),
+              blurRadius: 4,
             ),
           ],
         ),
@@ -340,16 +331,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Image.asset(
-              iconPath,
-              width: 70,
-              height: 70,
+              imagePath,
+              height: 80,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: MediaQuery.of(context).size.width > 600 ? 18 : 16, // Adjust font size for responsiveness
+              style: const TextStyle(
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -359,4 +349,3 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 }
-

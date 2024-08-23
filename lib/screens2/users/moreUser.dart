@@ -6,7 +6,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:maps_launcher/maps_launcher.dart';
 import 'package:DREHATT_app/components/language_constants.dart';
 import 'package:DREHATT_app/screens2/login_signup/account_settings.dart';
-import 'package:DREHATT_app/screens2/app%20option%20setting/set_photo_screen.dart';
 
 class MoreUser extends StatefulWidget {
   const MoreUser({super.key});

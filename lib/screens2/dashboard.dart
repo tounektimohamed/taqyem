@@ -1,13 +1,11 @@
 import 'dart:async';
 
-import 'package:DREHATT_app/screens2/users/moreUser.dart';
 import 'package:alarm/alarm.dart';
 import 'package:alarm/model/alarm_settings.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:DREHATT_app/components/language_constants.dart';
 import 'package:DREHATT_app/screens2/homepage2.dart';
-import 'package:DREHATT_app/screens2/admin/more.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -122,16 +120,7 @@ class _DashboardState extends State<Dashboard> {
           //   ),
           // ),
           //settings
-          NavigationDestination(
-            icon: const Icon(
-              Icons.dashboard_customize_outlined,
-            ),
-            label: translation(context).more,
-            selectedIcon: const Icon(
-              Icons.dashboard_customize_rounded,
-              color: Color.fromRGBO(7, 82, 96, 1),
-            ),
-          ),
+         
         ],
         // unselectedLabelStyle: GoogleFonts.roboto(
         //   fontWeight: FontWeight.w400,

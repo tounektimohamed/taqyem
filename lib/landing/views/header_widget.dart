@@ -31,7 +31,7 @@ class HeaderWidget extends StatelessWidget {
                         IconButton(
                           icon: Icon(Icons.menu, color: Colors.white),
                           onPressed: () {
-                            // Add navigation drawer or other actions
+                            // Ajouter un tiroir de navigation ou d'autres actions
                           },
                         ),
                       ],
@@ -47,7 +47,7 @@ class HeaderWidget extends StatelessWidget {
                                   builder: (context) => const SignUp()),
                             );
                           },
-                          child: Text('SIGNUP',
+                          child: Text('S\'INSCRIRE',
                               style: TextStyle(color: Colors.white)),
                         ),
                         SizedBox(width: 10),
@@ -59,7 +59,7 @@ class HeaderWidget extends StatelessWidget {
                                   builder: (context) => const SignIn()),
                             );
                           },
-                          child: Text('LOGIN'),
+                          child: Text('CONNEXION'),
                         ),
                       ],
                     ),
@@ -70,7 +70,7 @@ class HeaderWidget extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Image.asset('lib/assets//icons/me/cigle-meh.png',
+                        Image.asset('lib/assets/icons/me/cigle-meh.png',
                             height: 40),
                         SizedBox(width: 10),
                         Text('DREHATT',
@@ -88,7 +88,7 @@ class HeaderWidget extends StatelessWidget {
                                   builder: (context) => const SignUp()),
                             );
                           },
-                          child: Text('SIGNUP',
+                          child: Text('S\'INSCRIRE',
                               style: TextStyle(color: Colors.white)),
                         ),
                         SizedBox(width: 10),
@@ -100,7 +100,7 @@ class HeaderWidget extends StatelessWidget {
                                   builder: (context) => const SignIn()),
                             );
                           },
-                          child: Text('LOGIN'),
+                          child: Text('CONNEXION'),
                         ),
                       ],
                     ),

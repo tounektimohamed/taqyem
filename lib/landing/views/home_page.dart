@@ -1,4 +1,3 @@
-
 import 'package:carousel_slider/carousel_slider.dart'; // Importez la bibliothèque carousel_slider
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -54,13 +53,13 @@ class SectionOne extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'A Perfect Landing Page To Showcase Your App',
+                          'Une Page d\'Accueil Parfaite pour Présenter Votre Application',
                           style: TextStyle(
                               fontSize: 24, fontWeight: FontWeight.bold),
                         ),
                         SizedBox(height: 10),
                         Text(
-                          'It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout.',
+                          'C\'est un fait bien établi qu\'un lecteur sera distrait par le contenu lisible d\'une page lorsqu\'il regarde sa mise en page.',
                           style: TextStyle(fontSize: 16),
                         ),
                         SizedBox(height: 20),
@@ -97,13 +96,13 @@ class SectionOne extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'A Perfect Landing Page To Showcase Your App',
+                            'Une Page d\'Accueil Parfaite pour Présenter Votre Application',
                             style: TextStyle(
                                 fontSize: 24, fontWeight: FontWeight.bold),
                           ),
                           SizedBox(height: 10),
                           Text(
-                            'It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout.',
+                            'C\'est un fait bien établi qu\'un lecteur sera distrait par le contenu lisible d\'une page lorsqu\'il regarde sa mise en page.',
                             style: TextStyle(fontSize: 16),
                           ),
                           SizedBox(height: 20),
@@ -148,7 +147,7 @@ class SectionTwo extends StatelessWidget {
           child: Column(
             children: [
               Text(
-                'Why Choose Us?',
+                'Pourquoi Nous Choisir ?',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 20),
@@ -157,19 +156,19 @@ class SectionTwo extends StatelessWidget {
                       children: [
                         FeatureCard(
                           icon: Icons.security,
-                          title: 'Secure Payment',
+                          title: 'Paiement Sécurisé',
                           description:
                               'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
                         ),
                         FeatureCard(
                           icon: Icons.payment,
-                          title: 'Payment Gateway',
+                          title: 'Passerelle de Paiement',
                           description:
                               'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
                         ),
                         FeatureCard(
                           icon: Icons.integration_instructions,
-                          title: 'Internal Integration',
+                          title: 'Intégration Interne',
                           description:
                               'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
                         ),
@@ -181,7 +180,7 @@ class SectionTwo extends StatelessWidget {
                         Expanded(
                           child: FeatureCard(
                             icon: Icons.security,
-                            title: 'Secure Payment',
+                            title: 'Paiement Sécurisé',
                             description:
                                 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
                           ),
@@ -189,7 +188,7 @@ class SectionTwo extends StatelessWidget {
                         Expanded(
                           child: FeatureCard(
                             icon: Icons.payment,
-                            title: 'Payment Gateway',
+                            title: 'Passerelle de Paiement',
                             description:
                                 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
                           ),
@@ -197,7 +196,7 @@ class SectionTwo extends StatelessWidget {
                         Expanded(
                           child: FeatureCard(
                             icon: Icons.integration_instructions,
-                            title: 'Internal Integration',
+                            title: 'Intégration Interne',
                             description:
                                 'Lorem ipsum dolor sit amet, consectetur adipiscing elit.',
                           ),
@@ -302,7 +301,7 @@ class NewsSection extends StatelessWidget {
           ),
           // Titre pour la section des nouvelles
           Text(
-            'News',
+            'Actualités',
             selectionColor: Colors.yellow,
             style: GoogleFonts.roboto(
               fontSize: 25,
@@ -332,20 +331,41 @@ class NewsSection extends StatelessWidget {
                 itemCount: newsDocs.length,
                 itemBuilder: (context, index) {
                   var news = newsDocs[index].data() as Map<String, dynamic>;
-                  var title = news['title'] ?? 'No Title';
-                  var content = news['content'] ?? 'No Content';
+                  var title = news['title'] ?? 'Pas de Titre';
+                  var content = news['content'] ?? 'Pas de Contenu';
                   var timestamp = news['timestamp'] as Timestamp;
                   var date = timestamp.toDate();
 
                   return Card(
                     margin: const EdgeInsets.symmetric(vertical: 8),
                     child: ListTile(
-                      title: Text(title, style: GoogleFonts.roboto(fontWeight: FontWeight.w600)),
-                      subtitle: Text(content),
-                      trailing: Text(
-                        '${date.day}/${date.month}/${date.year}',
-                        style: GoogleFonts.roboto(fontSize: 12),
+                      title: Text(
+                        title,
+                        style: GoogleFonts.roboto(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            content,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Publié le ${date.day}/${date.month}/${date.year}',
+                            style: GoogleFonts.roboto(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                      isThreeLine: true,
+                      contentPadding: const EdgeInsets.all(16),
                     ),
                   );
                 },

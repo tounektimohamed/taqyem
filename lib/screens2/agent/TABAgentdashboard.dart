@@ -1,14 +1,13 @@
 import 'dart:async';
 
-import 'package:DREHATT_app/screens2/agent/AgentHome.dart';
 import 'package:DREHATT_app/screens2/agent/Agentdashbord.dart';
+import 'package:DREHATT_app/screens2/login_signup/account_settings.dart';
 import 'package:alarm/alarm.dart';
 import 'package:alarm/model/alarm_settings.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:DREHATT_app/components/language_constants.dart';
 import 'package:DREHATT_app/screens2/homepage2.dart';
-import 'package:DREHATT_app/screens2/admin/more.dart';
 
 class Agentdashboard extends StatefulWidget {
   const Agentdashboard({super.key});
@@ -67,7 +66,7 @@ class _DashboardState extends State<Agentdashboard> {
      // const Mediaction(),
       //statistic
       //settings
-      const More(),
+      const SettingsPageUI(),
     ];
 
     //scaffold
@@ -123,11 +122,11 @@ class _DashboardState extends State<Agentdashboard> {
           //settings
           NavigationDestination(
             icon: const Icon(
-              Icons.dashboard_customize_outlined,
+              Icons.settings,
             ),
-            label: translation(context).more,
+            label: translation(context).settings,
             selectedIcon: const Icon(
-              Icons.dashboard_customize_rounded,
+              Icons.settings,
               color: Color.fromRGBO(7, 82, 96, 1),
             ),
           ),

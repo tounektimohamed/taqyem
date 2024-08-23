@@ -9,7 +9,7 @@ class AccessLogsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Access Logs'),
+        title: const Text('Journaux d\'accès'),
       ),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
@@ -22,11 +22,11 @@ class AccessLogsPage extends StatelessWidget {
           }
 
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(child: Text('Erreur : ${snapshot.error}'));
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No access logs available.'));
+            return const Center(child: Text('Aucun journal d\'accès disponible.'));
           }
 
           var logs = snapshot.data!.docs;
@@ -43,11 +43,11 @@ class AccessLogsPage extends StatelessWidget {
               return Card(
                 margin: const EdgeInsets.all(10),
                 child: ExpansionTile(
-                  title: Text('Week of $week'),
+                  title: Text('Semaine du $week'),
                   children: logsForWeek.map((log) {
                     var data = log.data() as Map<String, dynamic>;
-                    var name = data['name'] ?? 'No Name';
-                    var email = data['email'] ?? 'No Email';
+                    var name = data['name'] ?? 'Pas de nom';
+                    var email = data['email'] ?? 'Pas d\'email';
                     var timestamp = data['timestamp'] as Timestamp;
                     var date = timestamp.toDate();
 

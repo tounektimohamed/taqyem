@@ -45,7 +45,7 @@ class _OnboardingState extends State<Onboarding> {
                   const Image(
                     image: AssetImage('lib/assets/icons/me/logo.png'),
                   ),
-                  //app name
+                  //nom de l'application
                   Text(
                     'DREHATT',
                     style: GoogleFonts.poppins(
@@ -83,7 +83,7 @@ class _OnboardingState extends State<Onboarding> {
                             ),
                           ),
                           const SizedBox(height: 50),
-                          //title
+                          //titre
                           Text(
                             contents[i].title,
                             style: const TextStyle(
@@ -114,7 +114,7 @@ class _OnboardingState extends State<Onboarding> {
                   },
                 ),
               ),
-              //dots
+              //points
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: List.generate(
@@ -169,7 +169,7 @@ class _OnboardingState extends State<Onboarding> {
                         ),
                       ),
                       child: Text(
-                        'Skip',
+                        'Passer',
                         style: GoogleFonts.roboto(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
@@ -201,7 +201,7 @@ class _OnboardingState extends State<Onboarding> {
                               ),
                             ),
                             child: Text(
-                              'Next',
+                              'Suivant',
                               style: GoogleFonts.roboto(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w600,
@@ -228,7 +228,7 @@ class _OnboardingState extends State<Onboarding> {
                               ),
                             ),
                             child: Text(
-                              'Continue',
+                              'Continuer',
                               style: GoogleFonts.roboto(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w600,

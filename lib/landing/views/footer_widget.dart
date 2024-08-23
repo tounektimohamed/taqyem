@@ -15,7 +15,7 @@ class FooterWidget extends StatelessWidget {
           child: Column(
             children: [
               Text(
-                'Don\'t miss out, Stay updated',
+                'Ne manquez pas, restez informé',
                 style: TextStyle(color: Colors.white, fontSize: 24),
               ),
               SizedBox(height: 20),
@@ -25,7 +25,7 @@ class FooterWidget extends StatelessWidget {
                         TextField(
                           controller: _emailController,
                           decoration: InputDecoration(
-                            hintText: 'Enter your email address',
+                            hintText: 'Entrez votre adresse e-mail',
                             filled: true,
                             fillColor: Colors.white,
                             border: OutlineInputBorder(
@@ -45,7 +45,7 @@ class FooterWidget extends StatelessWidget {
                             ),
                             padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                           ),
-                          child: Text('SUBSCRIBE'),
+                          child: Text('S\'ABONNER'),
                         ),
                       ],
                     )
@@ -57,7 +57,7 @@ class FooterWidget extends StatelessWidget {
                           child: TextField(
                             controller: _emailController,
                             decoration: InputDecoration(
-                              hintText: 'Enter your email address',
+                              hintText: 'Entrez votre adresse e-mail',
                               filled: true,
                               fillColor: Colors.white,
                               border: OutlineInputBorder(
@@ -78,7 +78,7 @@ class FooterWidget extends StatelessWidget {
                             ),
                             padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                           ),
-                          child: Text('SUBSCRIBE'),
+                          child: Text('S\'ABONNER'),
                         ),
                       ],
                     ),
@@ -88,26 +88,26 @@ class FooterWidget extends StatelessWidget {
               isMobile
                   ? Column(
                       children: [
-                        FooterLink(text: 'ABOUT US'),
+                        FooterLink(text: 'À PROPOS DE NOUS'),
                         FooterLink(text: 'BLOG'),
-                        FooterLink(text: 'ABOUT US'),
-                        FooterLink(text: 'TERMS & CONDITIONS'),
+                        FooterLink(text: 'À PROPOS DE NOUS'),
+                        FooterLink(text: 'CONDITIONS GÉNÉRALES'),
                         FooterLink(text: 'CONTACT'),
                       ],
                     )
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        FooterLink(text: 'ABOUT US'),
+                        FooterLink(text: 'À PROPOS DE NOUS'),
                         FooterLink(text: 'BLOG'),
-                        FooterLink(text: 'ABOUT US'),
-                        FooterLink(text: 'TERMS & CONDITIONS'),
+                        FooterLink(text: 'À PROPOS DE NOUS'),
+                        FooterLink(text: 'CONDITIONS GÉNÉRALES'),
                         FooterLink(text: 'CONTACT'),
                       ],
                     ),
               SizedBox(height: 20),
               Text(
-                '© 2022 DREHATT. All rights reserved.',
+                '© 2022 DREHATT. Tous droits réservés.',
                 style: TextStyle(color: Colors.white),
               ),
             ],
@@ -130,8 +130,8 @@ class FooterWidget extends StatelessWidget {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text('Subscription Successful'),
-            content: Text('Thank you for subscribing to our newsletter!'),
+            title: Text('Abonnement réussi'),
+            content: Text('Merci de vous être abonné à notre newsletter !'),
             actions: [
               TextButton(
                 onPressed: () {
@@ -146,8 +146,8 @@ class FooterWidget extends StatelessWidget {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
-            title: Text('Error'),
-            content: Text('Please enter your email address.'),
+            title: Text('Erreur'),
+            content: Text('Veuillez entrer votre adresse e-mail.'),
             actions: [
               TextButton(
                 onPressed: () {
@@ -160,7 +160,7 @@ class FooterWidget extends StatelessWidget {
         );
       }
     } catch (e) {
-      print('Error subscribing to newsletter: $e');
+      print('Erreur lors de l\'abonnement à la newsletter : $e');
     }
   }
 }
