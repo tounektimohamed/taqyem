@@ -1,16 +1,13 @@
 import 'dart:async';
 
-import 'package:DREHATT_app/screens2/moreUser.dart';
+import 'package:DREHATT_app/screens2/users/moreUser.dart';
 import 'package:alarm/alarm.dart';
 import 'package:alarm/model/alarm_settings.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:DREHATT_app/components/language_constants.dart';
-import 'package:DREHATT_app/screens2/add_medication1.dart';
-import 'package:DREHATT_app/screens2/alarm_ring.dart';
 import 'package:DREHATT_app/screens2/homepage2.dart';
-import 'package:DREHATT_app/screens2/medication.dart';
-import 'package:DREHATT_app/screens2/more.dart';
+import 'package:DREHATT_app/screens2/admin/more.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -42,15 +39,7 @@ class _DashboardState extends State<Dashboard> {
   }
 
 //show alarm ring screen
-  Future<void> navigateToRingScreen(AlarmSettings alarmSettings) async {
-    print('Opened ring screen');
-    await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => AlarmScreen(alarmSettings: alarmSettings),
-        ));
-    loadAlarms();
-  }
+
 
   // // documnet IDs
   // List<String> docIDs = [];
@@ -67,14 +56,7 @@ class _DashboardState extends State<Dashboard> {
   //       );
   // }
 
-  @override
-  void initState() {
-    loadAlarms();
-    subscription ??= Alarm.ringStream.stream.listen(
-      (alarmSettings) => navigateToRingScreen(alarmSettings),
-    );
-    super.initState();
-  }
+ 
 
   @override
   Widget build(BuildContext context) {

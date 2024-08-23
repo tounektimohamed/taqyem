@@ -1,6 +1,6 @@
 import 'package:DREHATT_app/landing/views/home_page.dart';
 import 'package:flutter/material.dart';
-import 'package:DREHATT_app/screens2/onboarding.dart';
+import 'package:DREHATT_app/screens2/app%20option%20setting/onboarding.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});

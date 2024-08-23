@@ -1,10 +1,10 @@
-import 'package:DREHATT_app/screens2/TABAgentdashboard.dart';
+import 'package:DREHATT_app/screens2/agent/TABAgentdashboard.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:DREHATT_app/auth/auth_page.dart';
 import 'package:DREHATT_app/screens2/dashboard.dart';
-import 'package:DREHATT_app/screens2/email_verify.dart';
+import 'package:DREHATT_app/screens2/login_signup/email_verify.dart';
 
 class MainPage extends StatelessWidget {
   const MainPage({Key? key}) : super(key: key);

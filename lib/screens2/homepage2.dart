@@ -8,7 +8,7 @@ import 'package:flutter_timeline_calendar/timeline/flutter_timeline_calendar.dar
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:io';
-import 'account_settings.dart';
+import 'login_signup/account_settings.dart';
 
 class HomePage2 extends StatefulWidget {
   const HomePage2({super.key});

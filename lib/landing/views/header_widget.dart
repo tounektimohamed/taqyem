@@ -1,5 +1,5 @@
-import 'package:DREHATT_app/screens2/sign_in.dart';
-import 'package:DREHATT_app/screens2/sign_up.dart';
+import 'package:DREHATT_app/screens2/login_signup/sign_in.dart';
+import 'package:DREHATT_app/screens2/login_signup/sign_up.dart';
 import 'package:flutter/material.dart';
 
 class HeaderWidget extends StatelessWidget {
