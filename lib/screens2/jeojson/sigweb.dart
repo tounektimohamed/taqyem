@@ -1,3 +1,4 @@
+
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:DREHATT_app/screens2/jeojson/convertGeoJson.dart';
@@ -58,94 +59,94 @@ class _SigWebState extends State<SigWeb> {
       northeast: LatLng(maxLat ?? 0, maxLon ?? 0),
     );
   }
+Future<void> loadGeoJsonFromFirestore(String documentId) async {
+  if (mapController == null) {
+    print('Map controller is not initialized');
+    return;
+  }
 
-  Future<void> loadGeoJsonFromFirestore(String documentId) async {
-    if (mapController == null) {
-      print('Le contrôleur de la carte n\'est pas initialisé');
-      return;
-    }
+  try {
+    setState(() {
+      loadingData = true;
+    });
 
-    try {
-      setState(() {
-        loadingData = true;
-      });
+    final firestore = FirebaseFirestore.instance;
+    final docSnapshot = await firestore.collection('geojson_files').doc(documentId).get();
 
-      final firestore = FirebaseFirestore.instance;
-      final docSnapshot = await firestore.collection('geojson_files').doc(documentId).get();
+    if (docSnapshot.exists) {
+      final geoJsonData = docSnapshot.data()?['geojson'] as String?;
+      if (geoJsonData != null) {
+        final decodedGeoJson = json.decode(geoJsonData);
+        final Set<Polygon> newPolygons = {};
 
-      if (docSnapshot.exists) {
-        final geoJsonData = docSnapshot.data()?['geojson'] as String?;
-        if (geoJsonData != null) {
-          final decodedGeoJson = json.decode(geoJsonData);
-          final Set<Polygon> newPolygons = {};
-
-          int index = 0; // Initialiser l'index pour un identifiant unique
-          for (var feature in decodedGeoJson['features']) {
-            if (feature['geometry']['type'] == 'MultiPolygon') {
-              final List<LatLng> points = [];
-              for (var polygon in feature['geometry']['coordinates']) {
-                for (var ring in polygon) {
-                  for (var coord in ring) {
-                    points.add(LatLng(coord[1], coord[0]));
-                  }
+        int index = 0; // Initialize index for unique ID
+        for (var feature in decodedGeoJson['features']) {
+          if (feature['geometry']['type'] == 'MultiPolygon') {
+            final List<LatLng> points = [];
+            for (var polygon in feature['geometry']['coordinates']) {
+              for (var ring in polygon) {
+                for (var coord in ring) {
+                  points.add(LatLng(coord[1], coord[0]));
                 }
               }
-
-              // Générer un identifiant unique en utilisant l'index
-              final polygonId = PolygonId('polygon_$index');
-              index++; // Incrémenter l'index pour le prochain polygone
-
-              // Extraire la couleur de remplissage si elle existe
-              final String? fillHex = feature['properties']['fill'];
-              final double fillOpacity = feature['properties']['fill-opacity'] ?? 0.5;
-              final Color fillColor = fillHex != null
-                  ? Color(int.parse(fillHex.replaceFirst('#', '0xFF')))
-                  : Color.fromARGB(0, 236, 125, 125);
-
-              newPolygons.add(
-                Polygon(
-                  polygonId: polygonId,
-                  points: points,
-                  strokeColor: feature['properties']['stroke'] != null
-                      ? Color(int.parse(feature['properties']['stroke']
-                          .replaceFirst('#', '0xFF')))
-                      : Colors.black,
-                  strokeWidth: feature['properties']['stroke-width']?.toDouble() ?? 2.0,
-                  fillColor: fillColor.withOpacity(fillOpacity),
-                  onTap: () {
-                    _showPolygonInfo(feature['properties']);
-                  },
-                ),
-              );
             }
-          }
 
-          setState(() {
-            polygons = newPolygons;
-          });
+            // Generate unique ID using index
+            final polygonId = PolygonId('polygon_$index');
+            index++; // Increment index for next polygon
 
-          if (newPolygons.isNotEmpty) {
-            final bounds = calculateBoundingBox(
-              newPolygons.expand((polygon) => polygon.points).toList(),
+            // Extract fill color if exists
+            final String? fillHex = feature['properties']['fill'];
+            final double fillOpacity = feature['properties']['fill-opacity'] ?? 0.5;
+            final Color fillColor = fillHex != null
+                ? Color(int.parse(fillHex.replaceFirst('#', '0xFF')))
+                : Color.fromARGB(0, 236, 125, 125);
+
+            newPolygons.add(
+              Polygon(
+                polygonId: polygonId,
+                points: points,
+                strokeColor: feature['properties']['stroke'] != null
+                    ? Color(int.parse(feature['properties']['stroke']
+                        .replaceFirst('#', '0xFF')))
+                    : Colors.black,
+                strokeWidth: feature['properties']['stroke-width']?.toDouble() ?? 2.0,
+                fillColor: fillColor.withOpacity(fillOpacity),
+                onTap: () {
+                  _showPolygonInfo(feature['properties']);
+                },
+              ),
             );
-            mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
           }
-
-          print('GeoJSON chargé et analysé avec succès');
-        } else {
-          print('Le champ "geojson" n\'existe pas dans le document');
         }
+
+        setState(() {
+          polygons = newPolygons;
+        });
+
+        if (newPolygons.isNotEmpty) {
+          final bounds = calculateBoundingBox(
+            newPolygons.expand((polygon) => polygon.points).toList(),
+          );
+          mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
+        }
+
+        print('GeoJSON loaded and parsed successfully');
       } else {
-        print('Le document n\'existe pas');
+        print('Field "geojson" does not exist in the document');
       }
-    } catch (e) {
-      print('Erreur lors du chargement du GeoJSON : $e');
-    } finally {
-      setState(() {
-        loadingData = false;
-      });
+    } else {
+      print('Document does not exist');
     }
+  } catch (e) {
+    print('Error loading GeoJSON: $e');
+  } finally {
+    setState(() {
+      loadingData = false;
+    });
   }
+}
+
 
   Future<void> uploadGeoJsonToFirestore(
       String documentId, String geoJsonData) async {
@@ -154,9 +155,9 @@ class _SigWebState extends State<SigWeb> {
       await firestore.collection('geojson_files').doc(documentId).set({
         'geojson': geoJsonData,
       });
-      print('GeoJSON téléchargé avec succès');
+      print('GeoJSON uploaded successfully');
     } catch (e) {
-      print('Erreur lors du téléchargement du GeoJSON : $e');
+      print('Error uploading GeoJSON: $e');
     }
   }
 
@@ -170,7 +171,7 @@ class _SigWebState extends State<SigWeb> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Sélectionner un fichier GeoJSON'),
+          title: Text('Select a GeoJSON File'),
           content: Container(
             width: double.maxFinite,
             child: ListView(
@@ -181,7 +182,7 @@ class _SigWebState extends State<SigWeb> {
                 return ListTile(
                   title: Text(fileName),
                   onTap: () {
-                    Navigator.of(context).pop(); // Fermer la boîte de dialogue
+                    Navigator.of(context).pop(); // Close the dialog
                     _selectGeoJson(documentId);
                   },
                 );
@@ -197,7 +198,7 @@ class _SigWebState extends State<SigWeb> {
     try {
       await loadGeoJsonFromFirestore(documentId);
     } catch (e) {
-      print('Erreur lors de la sélection du fichier GeoJSON : $e');
+      print('Error selecting GeoJSON file: $e');
     }
   }
 
@@ -214,12 +215,12 @@ class _SigWebState extends State<SigWeb> {
 
         await uploadGeoJsonToFirestore(fileName, geoJsonData);
 
-        print('Fichier téléchargé avec succès : $fileName');
+        print('File uploaded successfully: $fileName');
       } else {
-        print('Aucun fichier sélectionné');
+        print('No file selected');
       }
     } catch (e) {
-      print('Erreur lors du téléchargement du fichier : $e');
+      print('Error uploading file: $e');
     }
   }
 
@@ -234,7 +235,7 @@ class _SigWebState extends State<SigWeb> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Sélectionner le type de carte'),
+          title: Text('Select Map Type'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -242,28 +243,28 @@ class _SigWebState extends State<SigWeb> {
                 title: Text('Normal'),
                 onTap: () {
                   _changeMapType(MapType.normal);
-                  Navigator.of(context).pop(); // Fermer la boîte de dialogue
+                  Navigator.of(context).pop(); // Ferme le dialogue
                 },
               ),
               ListTile(
                 title: Text('Satellite'),
                 onTap: () {
                   _changeMapType(MapType.satellite);
-                  Navigator.of(context).pop(); // Fermer la boîte de dialogue
+                  Navigator.of(context).pop(); // Ferme le dialogue
                 },
               ),
               ListTile(
                 title: Text('Terrain'),
                 onTap: () {
                   _changeMapType(MapType.terrain);
-                  Navigator.of(context).pop(); // Fermer la boîte de dialogue
+                  Navigator.of(context).pop(); // Ferme le dialogue
                 },
               ),
               ListTile(
-                title: Text('Hybride'),
+                title: Text('Hybrid'),
                 onTap: () {
                   _changeMapType(MapType.hybrid);
-                  Navigator.of(context).pop(); // Fermer la boîte de dialogue
+                  Navigator.of(context).pop(); // Ferme le dialogue
                 },
               ),
             ],
@@ -275,34 +276,50 @@ class _SigWebState extends State<SigWeb> {
 
   void _showPolygonInfo(Map<String, dynamic> properties) {
     String layerName = properties['Layer'] ??
-        'Couche inconnue'; // Valeur par défaut en cas d'absence
-    String paperSpace = properties['PaperSpace'] ?? 'Espace papier inconnu';
-    String subClasses = properties['SubClasses'] ?? 'Sous-classes inconnues';
-    String linetype = properties['Linetype'] ?? 'Type de ligne inconnu';
-    String entityHand = properties['EntityHand'] ?? 'Poignée d\'entité inconnue';
-    String text = properties['Text'] ?? 'Texte inconnu';
+        'Unknown Layer'; // Default text if 'Layer' is not available
+    Color polygonColor = Colors.white; // Default color
+
+    // Extract color if 'fill' property exists
+    if (properties.containsKey('fill')) {
+      String? fillHex = properties['fill'];
+      if (fillHex != null) {
+        polygonColor = Color(int.parse(fillHex.replaceFirst('#', '0xFF')));
+      }
+    }
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Informations du polygone'),
-          content: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Nom de la couche: $layerName'),
-              Text('Espace papier: $paperSpace'),
-              Text('Sous-classes: $subClasses'),
-              Text('Type de ligne: $linetype'),
-              Text('Poignée d\'entité: $entityHand'),
-              Text('Texte: $text'),
-            ],
+          title: Text('Polygon Info'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  height: 50.0,
+                  color: polygonColor,
+                  child: Center(
+                    child: Text(
+                      layerName,
+                      style: TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16.0),
+                ...properties.entries.map((entry) {
+                  return Text('${entry.key}: ${entry.value}');
+                }).toList(),
+              ],
+            ),
           ),
           actions: [
             TextButton(
-              child: Text('Fermer'),
+              child: Text('OK'),
               onPressed: () {
-                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Close the dialog
               },
             ),
           ],
@@ -312,29 +329,73 @@ class _SigWebState extends State<SigWeb> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    Firebase.initializeApp();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title),
+        title: Text('Suivi des PAUS'),
         actions: [
           IconButton(
-            icon: Icon(Icons.file_upload),
-            onPressed: _uploadGeoJsonFile,
+            icon:Icon(Icons.change_circle),
+
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => GeoJsonConverterPage()),
+              );
+            },
+            tooltip: 'convertisseur',
           ),
           IconButton(
-            icon: Icon(Icons.map),
-            onPressed: _showMapTypeSelectionDialog,
+            icon: Icon(Icons.map_sharp),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => KmlMapPage()),
+              );
+            },tooltip: 'kml reader',
           ),
+         IconButton(
+            icon: Icon(Icons.file_upload),
+            onPressed: _uploadGeoJsonFile,
+            tooltip: 'telecharger geojson fils ',
+          ),
+           IconButton(
+            icon: Icon(Icons.file_open),
+            onPressed: _showGeoJsonSelectionDialog,
+            tooltip: 'liste de paus',
+          ),
+          IconButton(
+            icon: Icon(Icons.layers),
+            onPressed: _showMapTypeSelectionDialog,
+            tooltip: 'changer layer ',
+          ),
+          
+          
         ],
       ),
-      body: GoogleMap(
-        onMapCreated: _onMapCreated,
-        mapType: _currentMapType,
-        polygons: polygons,
-        initialCameraPosition: CameraPosition(
-          target: LatLng(33.8769, 10.21), // Coordonnées de Tataouine, Tunisie
-          zoom: 10,
-        ),
+      body: Stack(
+        children: [
+          GoogleMap(
+            onMapCreated: _onMapCreated,
+            polygons: polygons,
+            mapType: _currentMapType,
+            initialCameraPosition: CameraPosition(
+              target: LatLng(
+                  32.9295, 10.4518), // Position initiale à Tataouine, Tunisie
+              zoom: 12,
+            ),
+          ),
+          if (loadingData)
+            Center(
+              child: CircularProgressIndicator(),
+            ),
+        ],
       ),
     );
   }
