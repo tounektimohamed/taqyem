@@ -48,7 +48,7 @@ class _PasswordResetState extends State<PasswordReset> {
           _isEmail = false;
         });
         try {
-          //loading circle
+          // cercle de chargement
           showDialog(
             context: context,
             builder: (context) {
@@ -78,7 +78,7 @@ class _PasswordResetState extends State<PasswordReset> {
             return;
           }
 
-          //pop loading cicle
+          // fermer le cercle de chargement
           Navigator.of(context).pop();
 
           setState(() {
@@ -100,22 +100,22 @@ class _PasswordResetState extends State<PasswordReset> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // backgroundColor: const Color.fromARGB(255, 233, 237, 237),
+      // couleur de fond : const Color.fromARGB(255, 233, 237, 237),
       appBar: AppBar(
-        // systemOverlayStyle: const SystemUiOverlayStyle(
+        // style d'overlay système : const SystemUiOverlayStyle(
         //     statusBarColor: Color.fromARGB(255, 233, 237, 237)),
         elevation: 5,
-        // iconTheme: const IconThemeData(
+        // thème de l'icône : const IconThemeData(
         //   color: Color.fromRGBO(7, 82, 96, 1),
         // ),
         title: Text(
-          'Reset your password',
+          'Réinitialiser votre mot de passe',
           style: GoogleFonts.roboto(
             fontWeight: FontWeight.w600,
-            // color: const Color.fromRGBO(7, 82, 96, 1),
+            // couleur : const Color.fromRGBO(7, 82, 96, 1),
           ),
         ),
-        // backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
+        // couleur de fond : const Color.fromRGBO(7, 82, 96, 1),
       ),
       body: Container(
         margin: const EdgeInsets.all(35),
@@ -123,9 +123,9 @@ class _PasswordResetState extends State<PasswordReset> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              //text
+              // texte
               Text(
-                'Enter the email address associated with your account',
+                'Entrez l’adresse email associée à votre compte',
                 style: GoogleFonts.roboto(
                   fontSize: 20,
                   color: const Color.fromARGB(255, 16, 15, 15),
@@ -135,10 +135,10 @@ class _PasswordResetState extends State<PasswordReset> {
               const SizedBox(
                 height: 15,
               ),
-              //email txtfield
+              // champ de texte email
               Text_Field(
                 label: 'Email',
-                hint: 'name@email.com',
+                hint: 'nom@email.com',
                 isPassword: false,
                 keyboard: TextInputType.emailAddress,
                 txtEditController: _emailController,
@@ -147,7 +147,7 @@ class _PasswordResetState extends State<PasswordReset> {
               const SizedBox(
                 height: 2,
               ),
-              //text not a valid email
+              // texte email invalide
               Visibility(
                 visible: _isEmail,
                 maintainSize: true,
@@ -158,7 +158,7 @@ class _PasswordResetState extends State<PasswordReset> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(12, 0, 0, 0),
                     child: Text(
-                      'Enter a valid email address',
+                      'Entrez une adresse email valide',
                       style: GoogleFonts.roboto(
                         fontSize: 12,
                         color: const Color.fromRGBO(255, 16, 15, 15),
@@ -171,7 +171,7 @@ class _PasswordResetState extends State<PasswordReset> {
               const SizedBox(
                 height: 5,
               ),
-              //firebase error message
+              // message d'erreur firebase
               Visibility(
                 visible: _isError,
                 maintainSize: false,
@@ -212,7 +212,7 @@ class _PasswordResetState extends State<PasswordReset> {
               const SizedBox(
                 height: 5,
               ),
-              //success message
+              // message de succès
               Visibility(
                 visible: _isRest,
                 maintainSize: false,
@@ -236,7 +236,7 @@ class _PasswordResetState extends State<PasswordReset> {
                             width: 3,
                           ),
                           Text(
-                            'Password reset link sent! Check your email.',
+                            'Lien de réinitialisation du mot de passe envoyé ! Vérifiez votre email.',
                             style: GoogleFonts.roboto(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
@@ -254,7 +254,7 @@ class _PasswordResetState extends State<PasswordReset> {
               const SizedBox(
                 height: 15,
               ),
-              //button
+              // bouton
               SizedBox(
                 width: double.infinity,
                 height: 55,
@@ -262,7 +262,7 @@ class _PasswordResetState extends State<PasswordReset> {
                   onPressed: passwordReset,
                   style: const ButtonStyle(
                     elevation: MaterialStatePropertyAll(2),
-                    // backgroundColor: MaterialStatePropertyAll(
+                    // couleur de fond : MaterialStatePropertyAll(
                     //   Color.fromARGB(255, 7, 82, 96),
                     // ),
                     shape: MaterialStatePropertyAll(
@@ -274,7 +274,7 @@ class _PasswordResetState extends State<PasswordReset> {
                     ),
                   ),
                   child: Text(
-                    'Reset Password',
+                    'Réinitialiser le mot de passe',
                     style: GoogleFonts.roboto(
                       fontSize: 25,
                     ),
@@ -288,23 +288,23 @@ class _PasswordResetState extends State<PasswordReset> {
     );
   }
 
-  // firebase error messages
+  // messages d'erreur firebase
   String getErrorMessage(String errorCode) {
     switch (errorCode) {
       case 'user-disabled':
-        return "User disabled.";
+        return "Utilisateur désactivé.";
       case 'user-not-found':
-        return 'No user found with this email.';
+        return 'Aucun utilisateur trouvé avec cet email.';
       case 'weak-password':
-        return 'Please enter a strong password';
+        return 'Veuillez entrer un mot de passe fort.';
       case 'invalid-action-code':
-        return 'Invalid action code. Please try again';
-      case 'expired-action-cod':
-        return 'Action code is expired.';
+        return 'Code d’action invalide. Veuillez réessayer.';
+      case 'expired-action-code':
+        return 'Le code d’action est expiré.';
       case 'network-request-failed':
-        return 'Network error.';
+        return 'Erreur de réseau.';
       default:
-        return 'Error while resetting password.';
+        return 'Erreur lors de la réinitialisation du mot de passe.';
     }
   }
 }

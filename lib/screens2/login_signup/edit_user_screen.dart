@@ -2,7 +2,7 @@ import 'package:DREHATT_app/components/text_field.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-enum Genders { male, female, other }
+enum Genders { homme, femme }
 
 class EditUserScreen extends StatefulWidget {
   final DocumentSnapshot user;
@@ -22,8 +22,8 @@ class _EditUserScreenState extends State<EditUserScreen> {
   final _mobileController = TextEditingController();
   bool isLoading = false;
 
-  Genders _genderSelected = Genders.male; // Default gender selection
-  bool _isAgent = false; // Track the agent role status
+  Genders _genderSelected = Genders.homme; // Sélection par défaut du genre
+  bool _isAgent = false; // Statut du rôle d'agent
 
   @override
   void initState() {
@@ -43,14 +43,13 @@ class _EditUserScreenState extends State<EditUserScreen> {
 
   Genders _genderFromString(String genderString) {
     switch (genderString.toLowerCase()) {
-      case 'male':
-        return Genders.male;
-      case 'female':
-        return Genders.female;
-      case 'other':
-        return Genders.other;
+      case 'homme':
+        return Genders.homme;
+      case 'femme':
+        return Genders.femme;
+     
       default:
-        return Genders.male; // Default to male if gender is not recognized
+        return Genders.homme; // Par défaut, si le genre n'est pas reconnu
     }
   }
 
@@ -61,7 +60,7 @@ class _EditUserScreenState extends State<EditUserScreen> {
 
     try {
       await FirebaseFirestore.instance
-          .collection('Users')
+          .collection('Utilisateurs')
           .doc(widget.user.id)
           .update({
         'name': _nameController.text,
@@ -72,12 +71,12 @@ class _EditUserScreenState extends State<EditUserScreen> {
         'mobile': _mobileController.text,
         'isAgent': _isAgent,
       });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('User updated successfully')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Utilisateur mis à jour avec succès')));
     } catch (e) {
-      print('Error updating user: $e');
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed to update user')));
+      print('Erreur lors de la mise à jour de l\'utilisateur : $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Échec de la mise à jour de l\'utilisateur')));
     } finally {
       setState(() {
         isLoading = false;
@@ -90,7 +89,7 @@ class _EditUserScreenState extends State<EditUserScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          ' Profile',
+          'Profil',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         elevation: 5,
@@ -109,14 +108,14 @@ class _EditUserScreenState extends State<EditUserScreen> {
             ),
             SizedBox(height: 20),
             Text(
-              'Basic Info',
+              'Informations de base',
               style: TextStyle(
                   fontSize: 15, color: Color.fromARGB(255, 16, 15, 15)),
             ),
             SizedBox(height: 10),
             Text_Field(
-              label: 'Name',
-              hint: 'FirstName LastName',
+              label: 'Nom',
+              hint: 'Prénom Nom',
               isPassword: false,
               keyboard: TextInputType.text,
               txtEditController: _nameController,
@@ -144,8 +143,8 @@ class _EditUserScreenState extends State<EditUserScreen> {
                   TextStyle(height: 2, color: Color.fromARGB(255, 16, 15, 15)),
               cursorColor: Color.fromARGB(255, 7, 82, 96),
               decoration: InputDecoration(
-                hintText: 'DD-MM-YYYY',
-                labelText: 'Date of Birth',
+                hintText: 'JJ-MM-AAAA',
+                labelText: 'Date de naissance',
                 labelStyle: TextStyle(color: Color.fromARGB(255, 16, 15, 15)),
                 filled: true,
                 floatingLabelBehavior: FloatingLabelBehavior.auto,
@@ -165,8 +164,7 @@ class _EditUserScreenState extends State<EditUserScreen> {
                 context: context,
                 builder: (context) => AlertDialog(
                   title: Text(
-                    'Select gender',
-                 
+                    'Sélectionnez le genre',
                   ),
                   content: StatefulBuilder(
                     builder: (BuildContext context, StateSetter setState) {
@@ -174,41 +172,30 @@ class _EditUserScreenState extends State<EditUserScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
                           RadioListTile(
-                            value: Genders.male,
-                            title: Text('Male'),
+                            value: Genders.homme,
+                            title: Text('Homme'),
                             groupValue: _genderSelected,
                             onChanged: (value) {
                               setState(() {
                                 _genderSelected = value as Genders;
-                                _genderController.text = 'Male';
+                                _genderController.text = 'Homme';
                                 Navigator.of(context).pop();
                               });
                             },
                           ),
                           RadioListTile(
-                            value: Genders.female,
-                            title: Text('Female'),
+                            value: Genders.femme,
+                            title: Text('Femme'),
                             groupValue: _genderSelected,
                             onChanged: (value) {
                               setState(() {
                                 _genderSelected = value as Genders;
-                                _genderController.text = 'Female';
+                                _genderController.text = 'Femme';
                                 Navigator.of(context).pop();
                               });
                             },
                           ),
-                          RadioListTile(
-                            value: Genders.other,
-                            title: Text('Other'),
-                            groupValue: _genderSelected,
-                            onChanged: (value) {
-                              setState(() {
-                                _genderSelected = value as Genders;
-                                _genderController.text = 'Other';
-                                Navigator.of(context).pop();
-                              });
-                            },
-                          ),
+                         
                         ],
                       );
                     },
@@ -221,9 +208,9 @@ class _EditUserScreenState extends State<EditUserScreen> {
                   TextStyle(height: 2, color: Color.fromARGB(255, 16, 15, 15)),
               cursorColor: Color.fromARGB(255, 7, 82, 96),
               decoration: InputDecoration(
-                labelText: 'Gender',
+                labelText: 'Genre',
                 labelStyle: TextStyle(color: Color.fromARGB(255, 16, 15, 15)),
-                hintText: 'Gender',
+                hintText: 'Genre',
                 filled: true,
                 floatingLabelBehavior: FloatingLabelBehavior.auto,
                 focusedBorder: OutlineInputBorder(
@@ -238,7 +225,7 @@ class _EditUserScreenState extends State<EditUserScreen> {
             ),
             SizedBox(height: 15),
             Text_Field(
-              label: 'NIC',
+              label: 'CIN',
               hint: '123456789V',
               isPassword: false,
               keyboard: TextInputType.text,
@@ -247,8 +234,8 @@ class _EditUserScreenState extends State<EditUserScreen> {
             ),
             SizedBox(height: 15),
             Text_Field(
-              label: 'Address',
-              hint: 'No, Street, City',
+              label: 'Adresse',
+              hint: 'No, Rue, Ville',
               isPassword: false,
               keyboard: TextInputType.text,
               txtEditController: _addressController,
@@ -256,7 +243,7 @@ class _EditUserScreenState extends State<EditUserScreen> {
             ),
             SizedBox(height: 15),
             Text_Field(
-              label: 'Mobile Number',
+              label: 'Numéro de portable',
               hint: '07XXXXXXXX',
               isPassword: false,
               keyboard: TextInputType.text,
@@ -266,7 +253,7 @@ class _EditUserScreenState extends State<EditUserScreen> {
             SizedBox(height: 15),
             Row(
               children: [
-                Text('Agent Role:'),
+                Text('Rôle d\'agent :'),
                 Switch(
                   value: _isAgent,
                   onChanged: (value) {
@@ -283,36 +270,20 @@ class _EditUserScreenState extends State<EditUserScreen> {
               height: 55,
               child: ElevatedButton(
                 onPressed: update,
-                style: ButtonStyle(
-                  elevation: WidgetStateProperty.all(2),
-                  shape: WidgetStateProperty.all(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  backgroundColor: WidgetStateProperty.resolveWith<Color>(
-                    (Set<WidgetState> states) {
-                      return isLoading
-                          ? Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.5)
-                          : Theme.of(context).colorScheme.primary;
-                    },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
                   ),
                 ),
-                child: !isLoading
-                    ? Text(
-                        'Save',
-                        style: TextStyle(
-                            fontSize: 25, fontWeight: FontWeight.w600),
-                      )
-                    : CircularProgressIndicator(
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.white)),
+                child: isLoading
+                    ? CircularProgressIndicator()
+                    : Text(
+                        'Mettre à jour',
+                        style: TextStyle(fontSize: 20),
+                      ),
               ),
             ),
-            SizedBox(height: 10),
           ],
         ),
       ),

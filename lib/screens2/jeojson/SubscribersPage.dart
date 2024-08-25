@@ -16,7 +16,7 @@ class _SubscribersPageState extends State<SubscribersPage> {
     final emailString = _emails.join(', ');
     Clipboard.setData(ClipboardData(text: emailString));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Emails copied to clipboard')),
+      const SnackBar(content: Text('Emails copiés dans le presse-papier')),
     );
   }
 
@@ -24,7 +24,7 @@ class _SubscribersPageState extends State<SubscribersPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Subscribers List'),
+        title: const Text('Liste des abonnés'),
         actions: [
           IconButton(
             icon: const Icon(Icons.copy),
@@ -46,7 +46,7 @@ class _SubscribersPageState extends State<SubscribersPage> {
                 _emails.clear();
                 for (var subscriber in subscribers) {
                   var data = subscriber.data() as Map<String, dynamic>;
-                  var email = data['email'] ?? 'No Email';
+                  var email = data['email'] ?? 'Pas d\'email';
                   _emails.add(email);
                 }
 
@@ -55,11 +55,11 @@ class _SubscribersPageState extends State<SubscribersPage> {
                   child: DataTable(
                     columns: const [
                       DataColumn(label: Text('Email')),
-                      DataColumn(label: Text('Subscription Date')),
+                      DataColumn(label: Text('Date d\'abonnement')),
                     ],
                     rows: subscribers.map((subscriber) {
                       var data = subscriber.data() as Map<String, dynamic>;
-                      var email = data['email'] ?? 'No Email';
+                      var email = data['email'] ?? 'Pas d\'email';
                       var timestamp = data['timestamp'] as Timestamp;
                       var date = timestamp.toDate();
 

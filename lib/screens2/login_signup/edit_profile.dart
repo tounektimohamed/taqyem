@@ -7,7 +7,7 @@ class EditProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Edit Profile"),
+        title: const Text("Modifier le profil"),
       ),
       body: Center(
           child: Column(
@@ -20,13 +20,13 @@ class EditProfilePage extends StatelessWidget {
             height: 20,
           ),
           const Text(
-            "In here you can edit your profile settings.",
+            "Ici, vous pouvez modifier les paramètres de votre profil.",
             style: TextStyle(fontSize: 20),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 10),
           const Text(
-            "If you forget your password relax and try to remember your password.",
+            "Si vous oubliez votre mot de passe, détendez-vous et essayez de vous en souvenir.",
             style: TextStyle(fontSize: 20),
             textAlign: TextAlign.center,
           ),

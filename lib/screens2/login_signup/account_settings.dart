@@ -7,8 +7,6 @@ import 'package:DREHATT_app/screens2/app%20option%20setting/termsNconditions.dar
 import 'package:DREHATT_app/screens2/users/user_profile.dart';
 import 'package:settings_ui/settings_ui.dart';
 
-// import 'package:settings/usersettings.dart';
-
 class SettingsPageUI extends StatefulWidget {
   const SettingsPageUI({super.key});
 
@@ -19,27 +17,6 @@ class SettingsPageUI extends StatefulWidget {
 class _SettingPageUIState extends State<SettingsPageUI> {
   bool ValueNotify1 = false;
   bool ValueNotify2 = false;
-  // bool ValueNotify3 = false;
-
-  // @override
-  // Widget build(BuildContext context) {
-  //   final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
-
-  //*****THEME DATA****
-
-  // onChangeFunction1(bool newValue1) {
-  //   setState(() {
-  //     ValueNotify1 = newValue1;
-  //   });
-  //   final themeProvider = Provider.of<ThemeProvider>(
-  //     context, listen: false);
-
-  //   if (newValue1) {
-  //     themeProvider.setThemeData(darkTheme);
-  //   } else {
-  //     themeProvider.setThemeData(lightTheme);
-  //   }
-  // }
 
   onChangeFunction2(bool newValue2) {
     setState(() {
@@ -47,22 +24,13 @@ class _SettingPageUIState extends State<SettingsPageUI> {
     });
   }
 
-  // onChangeFunction3(bool newValue3) {
-  //   setState(() {
-  //     ValueNotify3 = newValue3;
-  //   });
-  // }
-
   @override
   Widget build(BuildContext context) {
-    // final themeProvider = Provider.of<ThemeProvider>(
-    //   context, listen: false);
-
     return Scaffold(
       appBar: AppBar(
         title: Text(
           translation(context).settings,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 22,
           ),
         ),
@@ -172,7 +140,6 @@ class _SettingPageUIState extends State<SettingsPageUI> {
             tiles: <SettingsTile>[
               SettingsTile.navigation(
                 leading: const Icon(Icons.login_rounded),
-                // title: const Text('Sign Out'),
                 title: Text(translation(context).signOut),
                 onPressed: (context) {
                   FirebaseAuth.instance.signOut();

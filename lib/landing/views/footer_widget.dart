@@ -43,7 +43,8 @@ class FooterWidget extends StatelessWidget {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
-                            padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 30, vertical: 15),
                           ),
                           child: Text('S\'ABONNER'),
                         ),
@@ -76,7 +77,8 @@ class FooterWidget extends StatelessWidget {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30),
                             ),
-                            padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 30, vertical: 15),
                           ),
                           child: Text('S\'ABONNER'),
                         ),
@@ -90,7 +92,6 @@ class FooterWidget extends StatelessWidget {
                       children: [
                         FooterLink(text: 'À PROPOS DE NOUS'),
                         FooterLink(text: 'BLOG'),
-                        FooterLink(text: 'À PROPOS DE NOUS'),
                         FooterLink(text: 'CONDITIONS GÉNÉRALES'),
                         FooterLink(text: 'CONTACT'),
                       ],
@@ -100,14 +101,13 @@ class FooterWidget extends StatelessWidget {
                       children: [
                         FooterLink(text: 'À PROPOS DE NOUS'),
                         FooterLink(text: 'BLOG'),
-                        FooterLink(text: 'À PROPOS DE NOUS'),
                         FooterLink(text: 'CONDITIONS GÉNÉRALES'),
                         FooterLink(text: 'CONTACT'),
                       ],
                     ),
               SizedBox(height: 20),
               Text(
-                '© 2022 DREHATT. Tous droits réservés.',
+                '© ${DateTime.now().year} DREHATT. Tous droits réservés.',
                 style: TextStyle(color: Colors.white),
               ),
             ],
