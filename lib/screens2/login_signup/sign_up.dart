@@ -516,18 +516,18 @@ Future signUp() async {
                       height: 55,
                       child: FilledButton.tonalIcon(
                         onPressed: () async {
-                          UserCredential userCredential =
+                          UserCredential? userCredential =
                               await AuthService().signInWithGoogle(context);
-                          print(userCredential.user!.email);
+                          print(userCredential?.user!.email);
                           setState(() {
                             isLoading = true;
                           });
                           await FirebaseFirestore.instance
                               .collection('Users')
-                              .doc(userCredential.user!.email)
+                              .doc(userCredential?.user!.email)
                               .set(
                             {
-                              'name': userCredential.user!.displayName,
+                              'name': userCredential?.user!.displayName,
                               'dob': null,
                               'gender': null,
                               'nic': null,
