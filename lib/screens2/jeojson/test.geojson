@@ -1,0 +1,23 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "geometry": {
+          "type": "LineString",
+          "coordinates": [
+            [10.4330, 32.9330], 
+            [10.4400, 32.9400], 
+            [10.4500, 32.9450], 
+            [10.4550, 32.9500], 
+            [10.4600, 32.9550]  
+          ]
+        },
+        "properties": {
+          "name": "Sample LineString in Tataouine",
+          "description": "A LineString example with 5 points in Tataouine, Tunisia"
+        }
+      }
+    ]
+  }
+  

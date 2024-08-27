@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:DREHATT_app/screens2/jeojson/convertGeoJson.dart';
@@ -24,6 +23,7 @@ class _SigWebState extends State<SigWeb> {
   String _selectedGeoJsonDocumentId = '';
   Set<Polygon> polygons = {};
   MapType _currentMapType = MapType.normal;
+  Set<Polyline> polylines = {};
 
   final Map<String, Color> layerColorMap = {
     'EQUIP': Color(0xff0e38c0),
@@ -59,94 +59,138 @@ class _SigWebState extends State<SigWeb> {
       northeast: LatLng(maxLat ?? 0, maxLon ?? 0),
     );
   }
-Future<void> loadGeoJsonFromFirestore(String documentId) async {
-  if (mapController == null) {
-    print('Map controller is not initialized');
-    return;
-  }
 
-  try {
-    setState(() {
-      loadingData = true;
-    });
+  Future<void> loadGeoJsonFromFirestore(String documentId) async {
+    if (mapController == null) {
+      print('Map controller is not initialized');
+      return;
+    }
 
-    final firestore = FirebaseFirestore.instance;
-    final docSnapshot = await firestore.collection('geojson_files').doc(documentId).get();
+    try {
+      setState(() {
+        loadingData = true;
+      });
 
-    if (docSnapshot.exists) {
-      final geoJsonData = docSnapshot.data()?['geojson'] as String?;
-      if (geoJsonData != null) {
-        final decodedGeoJson = json.decode(geoJsonData);
-        final Set<Polygon> newPolygons = {};
+      final firestore = FirebaseFirestore.instance;
+      final docSnapshot =
+          await firestore.collection('geojson_files').doc(documentId).get();
 
-        int index = 0; // Initialize index for unique ID
-        for (var feature in decodedGeoJson['features']) {
-          if (feature['geometry']['type'] == 'MultiPolygon') {
-            final List<LatLng> points = [];
-            for (var polygon in feature['geometry']['coordinates']) {
-              for (var ring in polygon) {
-                for (var coord in ring) {
-                  points.add(LatLng(coord[1], coord[0]));
+      if (docSnapshot.exists) {
+        final geoJsonData = docSnapshot.data()?['geojson'] as String?;
+        if (geoJsonData != null) {
+          final decodedGeoJson = json.decode(geoJsonData);
+          final Set<Polygon> newPolygons = {};
+          final Set<Polyline> newPolylines = {}; // Added for LineString support
+
+          int index = 0; // Initialize index for unique ID
+          for (var feature in decodedGeoJson['features']) {
+            if (feature['geometry']['type'] == 'MultiPolygon') {
+              final List<List<LatLng>> polygonList = [];
+              for (var polygon in feature['geometry']['coordinates']) {
+                final List<LatLng> ringPoints = [];
+                for (var ring in polygon) {
+                  for (var coord in ring) {
+                    ringPoints.add(LatLng(coord[1], coord[0]));
+                  }
+                }
+                polygonList.add(ringPoints);
+              }
+
+              // Generate unique ID using index
+              final polygonId = PolygonId('polygon_$index');
+              index++; // Increment index for next polygon
+
+              // Extract fill color if exists
+              final String? fillHex = feature['properties']['fill'];
+              final double fillOpacity =
+                  feature['properties']['fill-opacity']?.toDouble() ?? 0.5;
+              final Color fillColor = fillHex != null
+                  ? Color(int.parse(fillHex.replaceFirst('#', '0xFF')))
+                  : Color.fromARGB(0, 236, 125, 125);
+
+              newPolygons.add(
+                Polygon(
+                  polygonId: polygonId,
+                  points: polygonList.expand((ring) => ring).toList(),
+                  strokeColor: feature['properties']['stroke'] != null
+                      ? Color(int.parse(feature['properties']['stroke']
+                          .replaceFirst('#', '0xFF')))
+                      : Colors.black,
+                  strokeWidth:
+                      feature['properties']['stroke-width']?.toDouble() ?? 2.0,
+                  fillColor: fillColor.withOpacity(fillOpacity),
+                  onTap: () {
+                    _showPolygonInfo(feature['properties']);
+                  },
+                ),
+              );
+            } else if (feature['geometry']['type'] == 'LineString') {
+              final List<LatLng> linePoints = [];
+              for (var coord in feature['geometry']['coordinates']) {
+                // Check if coordinates are objects with x and y properties
+                if (coord is Map<String, dynamic> &&
+                    coord.containsKey('x') &&
+                    coord.containsKey('y')) {
+                  final double x = coord['x']?.toDouble() ?? 0.0;
+                  final double y = coord['y']?.toDouble() ?? 0.0;
+                  linePoints.add(LatLng(
+                      y, x)); // Note the order: LatLng(latitude, longitude)
+                } else if (coord is List<dynamic> && coord.length >= 2) {
+                  // Handle the traditional array format [longitude, latitude]
+                  final double x = coord[0]?.toDouble() ?? 0.0;
+                  final double y = coord[1]?.toDouble() ?? 0.0;
+                  linePoints.add(LatLng(
+                      y, x)); // Note the order: LatLng(latitude, longitude)
                 }
               }
+
+              // Generate unique ID using index
+              final polylineId = PolylineId('polyline_$index');
+              index++; // Increment index for next polyline
+
+              newPolylines.add(
+                Polyline(
+                  polylineId: polylineId,
+                  points: linePoints,
+                  color: const Color.fromARGB(
+                      255, 243, 58, 33), // Default color for LineString
+                  width: 3, // Default width for LineString
+                ),
+              );
             }
-
-            // Generate unique ID using index
-            final polygonId = PolygonId('polygon_$index');
-            index++; // Increment index for next polygon
-
-            // Extract fill color if exists
-            final String? fillHex = feature['properties']['fill'];
-            final double fillOpacity = feature['properties']['fill-opacity'] ?? 0.5;
-            final Color fillColor = fillHex != null
-                ? Color(int.parse(fillHex.replaceFirst('#', '0xFF')))
-                : Color.fromARGB(0, 236, 125, 125);
-
-            newPolygons.add(
-              Polygon(
-                polygonId: polygonId,
-                points: points,
-                strokeColor: feature['properties']['stroke'] != null
-                    ? Color(int.parse(feature['properties']['stroke']
-                        .replaceFirst('#', '0xFF')))
-                    : Colors.black,
-                strokeWidth: feature['properties']['stroke-width']?.toDouble() ?? 2.0,
-                fillColor: fillColor.withOpacity(fillOpacity),
-                onTap: () {
-                  _showPolygonInfo(feature['properties']);
-                },
-              ),
-            );
           }
+
+          setState(() {
+            polygons = newPolygons;
+            // Add the polylines to the map
+            polylines = newPolylines;
+          });
+
+          if (newPolygons.isNotEmpty || newPolylines.isNotEmpty) {
+            final allPoints =
+                newPolygons.expand((polygon) => polygon.points).toList();
+            allPoints
+                .addAll(newPolylines.expand((polyline) => polyline.points));
+            final bounds = calculateBoundingBox(allPoints);
+            mapController!
+                .animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
+          }
+
+          print('GeoJSON loaded and parsed successfully');
+        } else {
+          print('Field "geojson" does not exist in the document');
         }
-
-        setState(() {
-          polygons = newPolygons;
-        });
-
-        if (newPolygons.isNotEmpty) {
-          final bounds = calculateBoundingBox(
-            newPolygons.expand((polygon) => polygon.points).toList(),
-          );
-          mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
-        }
-
-        print('GeoJSON loaded and parsed successfully');
       } else {
-        print('Field "geojson" does not exist in the document');
+        print('Document does not exist');
       }
-    } else {
-      print('Document does not exist');
+    } catch (e) {
+      print('Error loading GeoJSON: $e');
+    } finally {
+      setState(() {
+        loadingData = false;
+      });
     }
-  } catch (e) {
-    print('Error loading GeoJSON: $e');
-  } finally {
-    setState(() {
-      loadingData = false;
-    });
   }
-}
-
 
   Future<void> uploadGeoJsonToFirestore(
       String documentId, String geoJsonData) async {
@@ -341,8 +385,7 @@ Future<void> loadGeoJsonFromFirestore(String documentId) async {
         title: Text('Suivi des PAUS'),
         actions: [
           IconButton(
-            icon:Icon(Icons.change_circle),
-
+            icon: Icon(Icons.change_circle),
             onPressed: () {
               Navigator.push(
                 context,
@@ -358,14 +401,15 @@ Future<void> loadGeoJsonFromFirestore(String documentId) async {
                 context,
                 MaterialPageRoute(builder: (context) => KmlMapPage()),
               );
-            },tooltip: 'kml reader',
+            },
+            tooltip: 'kml reader',
           ),
-         IconButton(
+          IconButton(
             icon: Icon(Icons.file_upload),
             onPressed: _uploadGeoJsonFile,
             tooltip: 'telecharger geojson fils ',
           ),
-           IconButton(
+          IconButton(
             icon: Icon(Icons.file_open),
             onPressed: _showGeoJsonSelectionDialog,
             tooltip: 'liste de paus',
@@ -375,8 +419,6 @@ Future<void> loadGeoJsonFromFirestore(String documentId) async {
             onPressed: _showMapTypeSelectionDialog,
             tooltip: 'changer layer ',
           ),
-          
-          
         ],
       ),
       body: Stack(
@@ -384,6 +426,7 @@ Future<void> loadGeoJsonFromFirestore(String documentId) async {
           GoogleMap(
             onMapCreated: _onMapCreated,
             polygons: polygons,
+            polylines: polylines, // Ajoutez cette ligne
             mapType: _currentMapType,
             initialCameraPosition: CameraPosition(
               target: LatLng(
