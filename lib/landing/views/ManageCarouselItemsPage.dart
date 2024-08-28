@@ -1,8 +1,10 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:html' as html;
 
 class ManageCarouselItemsPage extends StatelessWidget {
   @override
@@ -24,7 +26,6 @@ class ManageCarouselItemsPage extends StatelessWidget {
     );
   }
 }
-
 class CarouselItemsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -44,9 +45,38 @@ class CarouselItemsList extends StatelessWidget {
             var carouselItem = carouselDocs[index].data() as Map<String, dynamic>;
             var url = carouselItem['url'];
             var type = carouselItem['type'] ?? 'url';
+
             Widget leading;
             if (type == 'image') {
-              leading = Image.network(url, width: 50, height: 50, fit: BoxFit.cover);
+              leading = kIsWeb
+                ? Image.network(
+                    url,
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                    errorBuilder: (BuildContext context, Object exception, StackTrace? stackTrace) {
+                      return Image.asset(
+                        'assets/images/placeholder.png',
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                      );
+                    },
+                  )
+                : Image.network(
+                    url,
+                    width: 50,
+                    height: 50,
+                    fit: BoxFit.cover,
+                    errorBuilder: (BuildContext context, Object exception, StackTrace? stackTrace) {
+                      return Image.asset(
+                        'assets/images/placeholder.png',
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                      );
+                    },
+                  );
             } else {
               leading = Icon(Icons.link);
             }
@@ -102,7 +132,6 @@ class CarouselItemsList extends StatelessWidget {
     );
   }
 }
-
 class AddCarouselItemPage extends StatefulWidget {
   @override
   _AddCarouselItemPageState createState() => _AddCarouselItemPageState();
@@ -110,20 +139,40 @@ class AddCarouselItemPage extends StatefulWidget {
 
 class _AddCarouselItemPageState extends State<AddCarouselItemPage> {
   File? _image;
+  String? _imageDataUrl;
   final ImagePicker _picker = ImagePicker();
 
   final TextEditingController urlController = TextEditingController();
 
   Future<void> getImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-
-    setState(() {
-      if (pickedFile != null) {
-        _image = File(pickedFile.path);
-      } else {
-        print('Aucune image sélectionnée.');
-      }
-    });
+    if (kIsWeb) {
+      final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
+      uploadInput.accept = 'image/*';
+      uploadInput.click();
+      uploadInput.onChange.listen((e) async {
+        final files = uploadInput.files;
+        if (files != null && files.isNotEmpty) {
+          final reader = html.FileReader();
+          reader.readAsDataUrl(files[0]);
+          reader.onLoadEnd.listen((e) {
+            setState(() {
+              _image = null; // Not used directly on web
+              _imageDataUrl = reader.result as String; // Handle Data URL
+            });
+          });
+        }
+      });
+    } else {
+      final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+      setState(() {
+        if (pickedFile != null) {
+          _image = File(pickedFile.path);
+          _imageDataUrl = null; // Not applicable for non-web platforms
+        } else {
+          print('No image selected.');
+        }
+      });
+    }
   }
 
   Future<String> uploadImageToFirebase(File imageFile) async {
@@ -152,16 +201,21 @@ class _AddCarouselItemPageState extends State<AddCarouselItemPage> {
                     _image!,
                     height: 150,
                   )
-                : Container(
-                    height: 150,
-                    color: Colors.grey[200],
-                    child: Center(
-                      child: Text(
-                        'Aucune image sélectionnée.',
-                        style: TextStyle(fontSize: 16.0),
+                : _imageDataUrl != null
+                    ? Image.network(
+                        _imageDataUrl!,
+                        height: 150,
+                      )
+                    : Container(
+                        height: 150,
+                        color: Colors.grey[200],
+                        child: Center(
+                          child: Text(
+                            'Aucune image sélectionnée.',
+                            style: TextStyle(fontSize: 16.0),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
             ElevatedButton(
               onPressed: getImage,
               child: Text('Sélectionner une image'),
@@ -178,9 +232,16 @@ class _AddCarouselItemPageState extends State<AddCarouselItemPage> {
             ElevatedButton(
               onPressed: () async {
                 if (_image != null) {
+                  // For non-web platforms
                   String imageUrl = await uploadImageToFirebase(_image!);
                   FirebaseFirestore.instance.collection('carouselItems').add({
                     'url': imageUrl,
+                    'type': 'image',
+                  });
+                } else if (_imageDataUrl != null) {
+                  // For web platforms
+                  FirebaseFirestore.instance.collection('carouselItems').add({
+                    'url': _imageDataUrl!,
                     'type': 'image',
                   });
                 } else {

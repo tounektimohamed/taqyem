@@ -53,13 +53,13 @@ class SectionOne extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Une Page d\'Accueil Parfaite pour Présenter Votre Application',
+                            'Direction Régionale de l\'Equipement et de l\'Habitat - Tataouine',
                           style: TextStyle(
                               fontSize: 24, fontWeight: FontWeight.bold),
                         ),
                         SizedBox(height: 10),
                         Text(
-                          'C\'est un fait bien établi qu\'un lecteur sera distrait par le contenu lisible d\'une page lorsqu\'il regarde sa mise en page.',
+                            'Découvrez notre nouvelle application mobile dédiée à faciliter vos démarches administratives et à vous offrir des services numériques adaptés à vos besoins. Que vous soyez un particulier, un professionnel, ou un acteur de l\'immobilier, notre application vous permet d\'accéder à une multitude de services directement depuis votre smartphone.',
                           style: TextStyle(fontSize: 16),
                         ),
                         SizedBox(height: 20),
@@ -96,13 +96,13 @@ class SectionOne extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Une Page d\'Accueil Parfaite pour Présenter Votre Application',
+                            'Direction Régionale de l\'Equipement et de l\'Habitat - Tataouine',
                             style: TextStyle(
                                 fontSize: 24, fontWeight: FontWeight.bold),
                           ),
                           SizedBox(height: 10),
                           Text(
-                            'C\'est un fait bien établi qu\'un lecteur sera distrait par le contenu lisible d\'une page lorsqu\'il regarde sa mise en page.',
+                            'Découvrez notre nouvelle application mobile dédiée à faciliter vos démarches administratives et à vous offrir des services numériques adaptés à vos besoins. Que vous soyez un particulier, un professionnel, ou un acteur de l\'immobilier, notre application vous permet d\'accéder à une multitude de services directement depuis votre smartphone.',
                             style: TextStyle(fontSize: 16),
                           ),
                           SizedBox(height: 20),
