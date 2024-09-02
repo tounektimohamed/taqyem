@@ -60,137 +60,138 @@ class _SigWebState extends State<SigWeb> {
     );
   }
 
-  Future<void> loadGeoJsonFromFirestore(String documentId) async {
-    if (mapController == null) {
-      print('Map controller is not initialized');
-      return;
-    }
+Future<void> loadGeoJsonFromFirestore(String documentId) async {
+  if (mapController == null) {
+    print('Map controller is not initialized');
+    return;
+  }
 
-    try {
-      setState(() {
-        loadingData = true;
-      });
+  try {
+    setState(() {
+      loadingData = true;
+    });
 
-      final firestore = FirebaseFirestore.instance;
-      final docSnapshot =
-          await firestore.collection('geojson_files').doc(documentId).get();
+    final firestore = FirebaseFirestore.instance;
+    final docSnapshot = await firestore.collection('geojson_files').doc(documentId).get();
 
-      if (docSnapshot.exists) {
-        final geoJsonData = docSnapshot.data()?['geojson'] as String?;
-        if (geoJsonData != null) {
-          final decodedGeoJson = json.decode(geoJsonData);
-          final Set<Polygon> newPolygons = {};
-          final Set<Polyline> newPolylines = {}; // Added for LineString support
+    if (docSnapshot.exists) {
+      final geoJsonData = docSnapshot.data()?['geojson'] as String?;
+      if (geoJsonData != null) {
+        final decodedGeoJson = json.decode(geoJsonData);
+        final Set<Polygon> newPolygons = {};
+        final Set<Polyline> newPolylines = {}; 
 
-          int index = 0; // Initialize index for unique ID
-          for (var feature in decodedGeoJson['features']) {
-            if (feature['geometry']['type'] == 'MultiPolygon') {
-              final List<List<LatLng>> polygonList = [];
-              for (var polygon in feature['geometry']['coordinates']) {
-                final List<LatLng> ringPoints = [];
-                for (var ring in polygon) {
-                  for (var coord in ring) {
-                    ringPoints.add(LatLng(coord[1], coord[0]));
-                  }
+        int index = 0; // Initialize index for unique ID
+        for (var feature in decodedGeoJson['features']) {
+          if (feature['geometry']['type'] == 'MultiPolygon') {
+            // Handle MultiPolygon
+            final List<List<LatLng>> polygonList = [];
+            for (var polygon in feature['geometry']['coordinates']) {
+              final List<LatLng> ringPoints = [];
+              for (var ring in polygon) {
+                for (var coord in ring) {
+                  ringPoints.add(LatLng(coord[1], coord[0]));
                 }
-                polygonList.add(ringPoints);
               }
+              polygonList.add(ringPoints);
+            }
 
-              // Generate unique ID using index
-              final polygonId = PolygonId('polygon_$index');
-              index++; // Increment index for next polygon
+            final polygonId = PolygonId('polygon_$index');
+            index++;
 
-              // Extract fill color if exists
-              final String? fillHex = feature['properties']['fill'];
-              final double fillOpacity =
-                  feature['properties']['fill-opacity']?.toDouble() ?? 0.5;
-              final Color fillColor = fillHex != null
-                  ? Color(int.parse(fillHex.replaceFirst('#', '0xFF')))
-                  : Color.fromARGB(0, 236, 125, 125);
+            final String? fillHex = feature['properties']['fill'];
+            final double fillOpacity = feature['properties']['fill-opacity']?.toDouble() ?? 0.5;
+            final Color fillColor = fillHex != null
+                ? Color(int.parse(fillHex.replaceFirst('#', '0xFF')))
+                : Color.fromARGB(0, 236, 125, 125);
 
-              newPolygons.add(
-                Polygon(
-                  polygonId: polygonId,
-                  points: polygonList.expand((ring) => ring).toList(),
-                  strokeColor: feature['properties']['stroke'] != null
-                      ? Color(int.parse(feature['properties']['stroke']
-                          .replaceFirst('#', '0xFF')))
-                      : Colors.black,
-                  strokeWidth:
-                      feature['properties']['stroke-width']?.toDouble() ?? 2.0,
-                  fillColor: fillColor.withOpacity(fillOpacity),
-                  onTap: () {
-                    _showPolygonInfo(feature['properties']);
-                  },
-                ),
-              );
-            } else if (feature['geometry']['type'] == 'LineString') {
+            newPolygons.add(
+              Polygon(
+                polygonId: polygonId,
+                points: polygonList.expand((ring) => ring).toList(),
+                strokeColor: feature['properties']['stroke'] != null
+                    ? Color(int.parse(feature['properties']['stroke'].replaceFirst('#', '0xFF')))
+                    : Colors.black,
+                strokeWidth: feature['properties']['stroke-width']?.toDouble() ?? 2.0,
+                fillColor: fillColor.withOpacity(fillOpacity),
+                onTap: () {
+                  _showPolygonInfo(feature['properties']);
+                },
+              ),
+            );
+          } else if (feature['geometry']['type'] == 'LineString') {
+            // Handle LineString
+            final List<LatLng> linePoints = [];
+            for (var coord in feature['geometry']['coordinates']) {
+              if (coord is List && coord.length >= 2) {
+                linePoints.add(LatLng(coord[1], coord[0]));
+              }
+            }
+
+            final polylineId = PolylineId('polyline_$index');
+            index++;
+
+            newPolylines.add(
+              Polyline(
+                polylineId: polylineId,
+                points: linePoints,
+                color: Colors.red,
+                width: 3,
+              ),
+            );
+          } else if (feature['geometry']['type'] == 'MultiLineString') {
+            // Handle MultiLineString
+            for (var line in feature['geometry']['coordinates']) {
               final List<LatLng> linePoints = [];
-              for (var coord in feature['geometry']['coordinates']) {
-                // Check if coordinates are objects with x and y properties
-                if (coord is Map<String, dynamic> &&
-                    coord.containsKey('x') &&
-                    coord.containsKey('y')) {
-                  final double x = coord['x']?.toDouble() ?? 0.0;
-                  final double y = coord['y']?.toDouble() ?? 0.0;
-                  linePoints.add(LatLng(
-                      y, x)); // Note the order: LatLng(latitude, longitude)
-                } else if (coord is List<dynamic> && coord.length >= 2) {
-                  // Handle the traditional array format [longitude, latitude]
-                  final double x = coord[0]?.toDouble() ?? 0.0;
-                  final double y = coord[1]?.toDouble() ?? 0.0;
-                  linePoints.add(LatLng(
-                      y, x)); // Note the order: LatLng(latitude, longitude)
+              for (var coord in line) {
+                if (coord is List && coord.length >= 2) {
+                  linePoints.add(LatLng(coord[1], coord[0]));
                 }
               }
 
-              // Generate unique ID using index
               final polylineId = PolylineId('polyline_$index');
-              index++; // Increment index for next polyline
+              index++;
 
               newPolylines.add(
                 Polyline(
                   polylineId: polylineId,
                   points: linePoints,
-                  color: const Color.fromARGB(
-                      255, 243, 58, 33), // Default color for LineString
-                  width: 3, // Default width for LineString
+                  color: Colors.blue, // Default color for MultiLineString
+                  width: 3,
                 ),
               );
             }
           }
-
-          setState(() {
-            polygons = newPolygons;
-            // Add the polylines to the map
-            polylines = newPolylines;
-          });
-
-          if (newPolygons.isNotEmpty || newPolylines.isNotEmpty) {
-            final allPoints =
-                newPolygons.expand((polygon) => polygon.points).toList();
-            allPoints
-                .addAll(newPolylines.expand((polyline) => polyline.points));
-            final bounds = calculateBoundingBox(allPoints);
-            mapController!
-                .animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
-          }
-
-          print('GeoJSON loaded and parsed successfully');
-        } else {
-          print('Field "geojson" does not exist in the document');
         }
+
+        setState(() {
+          polygons = newPolygons;
+          polylines = newPolylines;
+        });
+
+        if (newPolygons.isNotEmpty || newPolylines.isNotEmpty) {
+          final allPoints = newPolygons.expand((polygon) => polygon.points).toList();
+          allPoints.addAll(newPolylines.expand((polyline) => polyline.points));
+          final bounds = calculateBoundingBox(allPoints);
+          mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
+        }
+
+        print('GeoJSON loaded and parsed successfully');
       } else {
-        print('Document does not exist');
+        print('Field "geojson" does not exist in the document');
       }
-    } catch (e) {
-      print('Error loading GeoJSON: $e');
-    } finally {
-      setState(() {
-        loadingData = false;
-      });
+    } else {
+      print('Document does not exist');
     }
+  } catch (e) {
+    print('Error loading GeoJSON: $e');
+  } finally {
+    setState(() {
+      loadingData = false;
+    });
   }
+}
+
 
   Future<void> uploadGeoJsonToFirestore(
       String documentId, String geoJsonData) async {
@@ -382,10 +383,10 @@ class _SigWebState extends State<SigWeb> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Suivi des PAUS'),
+        title: const Text('Suivi des PAUS'),
         actions: [
           IconButton(
-            icon: Icon(Icons.change_circle),
+            icon: const Icon(Icons.change_circle),
             onPressed: () {
               Navigator.push(
                 context,

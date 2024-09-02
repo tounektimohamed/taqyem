@@ -125,7 +125,7 @@ class _GeoJsonConverterPageState extends State<GeoJsonConverterPage> {
 @override
 Widget build(BuildContext context) {
   return Scaffold(
-    appBar: AppBar(title: const Text('Convertisseur GeoJSON a UTM 22332')),
+    appBar: AppBar(title: const Text('Convertisseur GeoJSON a WGS')),
     body: Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(

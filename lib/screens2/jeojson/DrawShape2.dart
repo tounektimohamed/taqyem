@@ -30,60 +30,70 @@ class _CombinedMapPageState extends State<CombinedMapPage> {
   bool showSaveButton = false;
   String displayText = '';
 
-  void _onMapCreated(GoogleMapController controller) {
-    _mapController = controller;
-  }
+  // Ajoutez une fonction pour vérifier les coordonnées
+void _logCoordinates() {
+  print('Polygons: ${polygons.map((p) => p.points).toList()}');
+  print('Polylines: ${polylines.map((l) => l.points).toList()}');
+  print('Circles: ${circles.map((c) => {'center': c.center, 'radius': c.radius}).toList()}');
+}
 
-  Future<void> _pickKmlFile() async {
+void _onMapCreated(GoogleMapController controller) {
+  _mapController = controller;
+  _logCoordinates(); // Ajoutez cela pour vérifier les coordonnées après la création de la carte
+}
+
+Future<void> _pickKmlFile() async {
+  setState(() {
+    loadingData = true;
+  });
+
+  final result = await FilePicker.platform.pickFiles(
+    type: FileType.custom,
+    allowedExtensions: ['kml'],
+  );
+
+  if (result != null && result.files.single.bytes != null) {
+    final kmlBytes = result.files.single.bytes!;
+    final kmlDoc = loadKmlFromBytes(kmlBytes);
+    final extractedPolygons = extractPolygonsFromKml(kmlDoc);
+
     setState(() {
-      loadingData = true;
+      polygons = extractedPolygons;
+      _logCoordinates(); // Ajoutez cela pour vérifier les coordonnées après l'extraction
+      loadingData = false;
     });
 
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['kml'],
-    );
+    // Déplacez la caméra après avoir défini les formes
+    if (polygons.isNotEmpty) {
+      final firstPolygon = polygons.first;
+      final bounds = LatLngBounds(
+        southwest: LatLng(
+          firstPolygon.points
+              .map((point) => point.latitude)
+              .reduce((a, b) => a < b ? a : b),
+          firstPolygon.points
+              .map((point) => point.longitude)
+              .reduce((a, b) => a < b ? a : b),
+        ),
+        northeast: LatLng(
+          firstPolygon.points
+              .map((point) => point.latitude)
+              .reduce((a, b) => a > b ? a : b),
+          firstPolygon.points
+              .map((point) => point.longitude)
+              .reduce((a, b) => a > b ? a : b),
+        ),
+      );
 
-    if (result != null && result.files.single.bytes != null) {
-      final kmlBytes = result.files.single.bytes!;
-      final kmlDoc = loadKmlFromBytes(kmlBytes);
-      final extractedPolygons = extractPolygonsFromKml(kmlDoc);
-
-      setState(() {
-        polygons = extractedPolygons;
-        loadingData = false;
-      });
-
-      // Move camera to the first polygon for better visibility
-      if (polygons.isNotEmpty) {
-        final firstPolygon = polygons.first;
-        final bounds = LatLngBounds(
-          southwest: LatLng(
-            firstPolygon.points
-                .map((point) => point.latitude)
-                .reduce((a, b) => a < b ? a : b),
-            firstPolygon.points
-                .map((point) => point.longitude)
-                .reduce((a, b) => a < b ? a : b),
-          ),
-          northeast: LatLng(
-            firstPolygon.points
-                .map((point) => point.latitude)
-                .reduce((a, b) => a > b ? a : b),
-            firstPolygon.points
-                .map((point) => point.longitude)
-                .reduce((a, b) => a > b ? a : b),
-          ),
-        );
-
-        _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
-      }
-    } else {
-      setState(() {
-        loadingData = false;
-      });
+      _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
     }
+  } else {
+    setState(() {
+      loadingData = false;
+    });
   }
+}
+
 
   XmlDocument loadKmlFromBytes(Uint8List kmlBytes) {
     final kmlString = String.fromCharCodes(kmlBytes);
@@ -210,24 +220,20 @@ class _CombinedMapPageState extends State<CombinedMapPage> {
     });
   }
 
-  void _drawLine(LatLng position) {
-    setState(() {
-      if (shapePoints.isEmpty) {
-        shapePoints.add(position);
-      } else if (shapePoints.length == 1) {
-        shapePoints.add(position);
-        polylines.clear();
-        polylines.add(Polyline(
-          polylineId: PolylineId('line'),
-          points: shapePoints,
-          color: Colors.blue,
-          width: 2,
-        ));
-        _stopDrawing();
-      }
-      _updateDisplayText();
-    });
-  }
+void _drawLine(LatLng position) {
+  setState(() {
+    shapePoints.add(position);
+    polylines.clear();
+    polylines.add(Polyline(
+      polylineId: PolylineId('line'),
+      points: shapePoints,
+      color: Colors.blue,
+      width: 2,
+    ));
+
+    _updateDisplayText();
+  });
+}
 
   double _calculateDistance(LatLng start, LatLng end) {
     var p = 0.017453292519943295; // Pi / 180
@@ -272,19 +278,27 @@ class _CombinedMapPageState extends State<CombinedMapPage> {
     return 0;
   }
 
-  void _updateDisplayText() {
-    if (selectedShape == DrawShape.polygon && shapePoints.length > 2) {
-      double area = _calculatePolygonArea(shapePoints);
-      displayText = 'Aire: ${area.toStringAsFixed(2)} m²';
-    } else if (selectedShape == DrawShape.circle && circles.isNotEmpty) {
-      double radius = circles.first.radius;
-      double area = pi * radius * radius;
-      displayText = 'Aire: ${area.toStringAsFixed(2)} m²';
-    } else if (selectedShape == DrawShape.line && shapePoints.length == 2) {
-      double distance = _calculateDistance(shapePoints[0], shapePoints[1]);
-      displayText = 'Distance: ${distance.toStringAsFixed(2)} m';
-    }
+void _updateDisplayText() {
+  if (selectedShape == DrawShape.polygon && shapePoints.length > 2) {
+    double area = _calculatePolygonArea(shapePoints);
+    displayText = 'Aire: ${area.toStringAsFixed(2)} m²';
+  } else if (selectedShape == DrawShape.circle && circles.isNotEmpty) {
+    double radius = circles.first.radius;
+    double area = pi * radius * radius;
+    displayText = 'Aire: ${area.toStringAsFixed(2)} m²';
+  } else if (selectedShape == DrawShape.line && shapePoints.length > 1) {
+    double totalDistance = _calculateTotalDistance(shapePoints);
+    displayText = 'Distance totale: ${totalDistance.toStringAsFixed(2)} m';
   }
+}
+
+double _calculateTotalDistance(List<LatLng> points) {
+  double totalDistance = 0;
+  for (int i = 0; i < points.length - 1; i++) {
+    totalDistance += _calculateDistance(points[i], points[i + 1]);
+  }
+  return totalDistance;
+}
   
   void _showSaveDialog() async {
   final nameController = TextEditingController();
@@ -449,141 +463,206 @@ Future<void> _saveShape(
   }
 }
 
+ void _showSavedShapesList() async {
+  setState(() {
+    loadingData = true;
+  });
 
+  final querySnapshot = await FirebaseFirestore.instance.collection('shapes').get();
 
-  Future<void> _fetchSavedShapes() async {
-    setState(() {
-      loadingData = true;
-    });
+  setState(() {
+    loadingData = false;
+  });
 
-    final querySnapshot =
-        await FirebaseFirestore.instance.collection('shapes').get();
-    final fetchedPolygons = <Polygon>{};
-    final fetchedCircles = <Circle>{};
-    final fetchedPolylines = <Polyline>{};
+  final shapes = querySnapshot.docs.map((doc) {
+    final data = doc.data();
+    final name = data['name'] as String?;
+    return name != null ? {'id': doc.id, 'name': name} : null;
+  }).whereType<Map<String, dynamic>>().toList();
 
-    for (final doc in querySnapshot.docs) {
-      final data = doc.data();
-      final shapeType = data['type'] as String?;
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text('Saved Shapes'),
+        content: Container(
+          width: double.maxFinite,
+          child: ListView.builder(
+            itemCount: shapes.length,
+            itemBuilder: (context, index) {
+              final shape = shapes[index];
+              final shapeId = shape['id'] as String?;
+              final shapeName = shape['name'] as String?;
 
-      switch (shapeType) {
-        case 'polygon':
-          final coordinates = data['coordinates'] as List<dynamic>?;
-          final points = coordinates
-                  ?.map((point) {
-                    final lat = point['latitude'] as double?;
-                    final lng = point['longitude'] as double?;
-                    return (lat != null && lng != null)
-                        ? LatLng(lat, lng)
-                        : null;
-                  })
-                  .whereType<LatLng>()
-                  .toList() ??
-              [];
+              return ListTile(
+                title: Text(shapeName ?? 'Unknown Shape'),
+                onTap: () {
+                  if (shapeId != null) {
+                    _centerMapOnShape(shapeId);
+                    Navigator.of(context).pop();
+                  }
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text('Close'),
+          ),
+        ],
+      );
+    },
+  );
+}
 
-          if (points.isNotEmpty) {
-            fetchedPolygons.add(
+void _centerMapOnShape(String shapeId) async {
+  final shapeDoc = await FirebaseFirestore.instance.collection('shapes').doc(shapeId).get();
+  final data = shapeDoc.data();
+  final shapeType = data?['type'] as String?;
+
+  if (shapeType != null) {
+    switch (shapeType) {
+      case 'polygon':
+        final coordinates = data?['coordinates'] as List<dynamic>?;
+        final points = coordinates?.map((point) {
+          final lat = point['latitude'] as double?;
+          final lng = point['longitude'] as double?;
+          return (lat != null && lng != null) ? LatLng(lat, lng) : null;
+        }).whereType<LatLng>().toList() ?? [];
+
+        if (points.isNotEmpty) {
+          // Ajouter le polygone à la carte
+          setState(() {
+            polygons.add(
               Polygon(
-                polygonId: PolygonId(doc.id),
+                polygonId: PolygonId('saved_polygon_$shapeId'),
                 points: points,
                 strokeWidth: 2,
-                strokeColor: Colors.green,
-                fillColor: Colors.green.withOpacity(0.3),
+                strokeColor: Colors.green, // Couleur de contour pour la visibilité
+                fillColor: Colors.green.withOpacity(0.5), // Couleur de remplissage pour la visibilité
               ),
             );
-          }
-          break;
+          });
 
-        case 'circle':
-          final centerData = data['center'] as Map<String, dynamic>?;
-          final center = centerData != null
-              ? LatLng(centerData['latitude'] as double,
-                  centerData['longitude'] as double)
-              : LatLng(0, 0);
-          final radius = data['radius'] as double? ?? 0;
-
-          fetchedCircles.add(
-            Circle(
-              circleId: CircleId(doc.id),
-              center: center,
-              radius: radius,
-              strokeWidth: 2,
-              fillColor: Colors.orange.withOpacity(0.3),
-              strokeColor: Colors.orange,
+          // Déplacer la caméra pour centrer la forme
+          final bounds = LatLngBounds(
+            southwest: LatLng(
+              points.map((point) => point.latitude).reduce((a, b) => a < b ? a : b),
+              points.map((point) => point.longitude).reduce((a, b) => a < b ? a : b),
+            ),
+            northeast: LatLng(
+              points.map((point) => point.latitude).reduce((a, b) => a > b ? a : b),
+              points.map((point) => point.longitude).reduce((a, b) => a > b ? a : b),
             ),
           );
-          break;
 
-        case 'line':
-          final coordinates = data['coordinates'] as List<dynamic>?;
-          final points = coordinates
-                  ?.map((point) {
-                    final lat = point['latitude'] as double?;
-                    final lng = point['longitude'] as double?;
-                    return (lat != null && lng != null)
-                        ? LatLng(lat, lng)
-                        : null;
-                  })
-                  .whereType<LatLng>()
-                  .toList() ??
-              [];
+          _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
+        }
+        break;
 
-          if (points.isNotEmpty) {
-            fetchedPolylines.add(
+      case 'line':
+        final coordinates = data?['coordinates'] as List<dynamic>?;
+        final points = coordinates?.map((point) {
+          final lat = point['latitude'] as double?;
+          final lng = point['longitude'] as double?;
+          return (lat != null && lng != null) ? LatLng(lat, lng) : null;
+        }).whereType<LatLng>().toList() ?? [];
+
+        if (points.isNotEmpty) {
+          // Ajouter la ligne à la carte
+          setState(() {
+            polylines.add(
               Polyline(
-                polylineId: PolylineId(doc.id),
+                polylineId: PolylineId('saved_line_$shapeId'),
                 points: points,
-                color: Colors.purple,
+                color: Colors.blue,
                 width: 2,
               ),
             );
+          });
+
+          // Déplacer la caméra pour centrer la ligne
+          final bounds = LatLngBounds(
+            southwest: LatLng(
+              points.map((point) => point.latitude).reduce((a, b) => a < b ? a : b),
+              points.map((point) => point.longitude).reduce((a, b) => a < b ? a : b),
+            ),
+            northeast: LatLng(
+              points.map((point) => point.latitude).reduce((a, b) => a > b ? a : b),
+              points.map((point) => point.longitude).reduce((a, b) => a > b ? a : b),
+            ),
+          );
+
+          _mapController?.animateCamera(CameraUpdate.newLatLngBounds(bounds, 50));
+        }
+        break;
+
+      case 'circle':
+        final center = data?['center'] as Map<String, dynamic>?;
+        final radius = data?['radius'] as double?;
+        if (center != null && radius != null) {
+          final centerLat = center['latitude'] as double?;
+          final centerLng = center['longitude'] as double?;
+          if (centerLat != null && centerLng != null) {
+            // Ajouter le cercle à la carte
+            setState(() {
+              circles.add(
+                Circle(
+                  circleId: CircleId('saved_circle_$shapeId'),
+                  center: LatLng(centerLat, centerLng),
+                  radius: radius,
+                  strokeWidth: 2,
+                  fillColor: Colors.orange.withOpacity(0.5), // Couleur de remplissage pour la visibilité
+                  strokeColor: Colors.orange, // Couleur du contour pour la visibilité
+                ),
+              );
+            });
+
+            // Déplacer la caméra pour centrer le cercle
+            _mapController?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(centerLat, centerLng), 15));
           }
-          break;
-
-        default:
-          break;
-      }
+        }
+        break;
     }
-
-    setState(() {
-      polygons = fetchedPolygons;
-      circles = fetchedCircles;
-      polylines = fetchedPolylines;
-      loadingData = false;
-    });
   }
+}
 
- 
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Suivi des plans de lotissement'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: _fetchSavedShapes,
-            tooltip: 'Fetch Saved Shapes',
-          ),
-        ],
-      ),
+     appBar: AppBar(
+  title: Text('Suivi des plans de lotissement'),
+  actions: [
+    
+    IconButton(
+      icon: Icon(Icons.list),
+      onPressed: _showSavedShapesList,
+      tooltip: 'Show Saved Shapes List',
+    ),
+  ],
+),
+
       body: Column(
         children: [
           Expanded(
-            child: GoogleMap(
-              onMapCreated: _onMapCreated,
-              onTap: _onTap,
-              mapType: _currentMapType,
-              initialCameraPosition: CameraPosition(
-                target:
-                    LatLng(33.9167, 10.1667), // Initial position (Tataouine)
-                zoom: 10,
-              ),
-              polygons: polygons,
-              polylines: polylines,
-              circles: circles,
-            ),
+            child:GoogleMap(
+  onMapCreated: _onMapCreated,
+  onTap: _onTap,
+  mapType: _currentMapType,
+  initialCameraPosition: CameraPosition(
+    target: LatLng(33.9167, 10.1667), // Initial position (Tataouine)
+    zoom: 10,
+  ),
+  polygons: polygons,
+  polylines: polylines,
+  circles: circles,
+)
+
           ),
           if (loadingData)
             Padding(
