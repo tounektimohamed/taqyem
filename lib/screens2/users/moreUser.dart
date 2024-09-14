@@ -110,7 +110,7 @@ class _SettingsState extends State<MoreUser> {
                       children: [
                         //logo
                         Image(
-                          image: AssetImage('lib/assets//icons/me/logo.png'),
+                          image: AssetImage('lib/assets/icons/me/logo.png'),
                           height: 50,
                         ),
                         // app name
@@ -163,7 +163,7 @@ class _SettingsState extends State<MoreUser> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: Image(
-                  image: const AssetImage('lib/assets/icons/more.gif'),
+                  image: const AssetImage('lib/assets/icons/me/logo.png'),
                   height: MediaQuery.of(context).size.height * 0.25,
                   // width: MediaQuery.of(context).size.width * 0.6,
                   color: const Color.fromARGB(255, 241, 250, 251),

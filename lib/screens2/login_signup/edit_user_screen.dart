@@ -52,37 +52,39 @@ class _EditUserScreenState extends State<EditUserScreen> {
         return Genders.homme; // Par défaut, si le genre n'est pas reconnu
     }
   }
-
+  
+  
   Future<void> update() async {
-    setState(() {
-      isLoading = true;
-    });
+  setState(() {
+    isLoading = true;
+  });
 
-    try {
-      await FirebaseFirestore.instance
-          .collection('Utilisateurs')
-          .doc(widget.user.id)
-          .update({
-        'name': _nameController.text,
-        'dob': _dobController.text,
-        'gender': _genderController.text,
-        'nic': _nicController.text,
-        'address': _addressController.text,
-        'mobile': _mobileController.text,
-        'isAgent': _isAgent,
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Utilisateur mis à jour avec succès')));
-    } catch (e) {
-      print('Erreur lors de la mise à jour de l\'utilisateur : $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Échec de la mise à jour de l\'utilisateur')));
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
-    }
+  try {
+    await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(widget.user.id)
+        .update({
+      'name': _nameController.text,
+      'dob': _dobController.text,
+      'gender': _genderSelected == Genders.homme ? 'Homme' : 'Femme',
+      'nic': _nicController.text,
+      'address': _addressController.text,
+      'mobile': _mobileController.text,
+      'isAgent': _isAgent,
+    });
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('User updated successfully')));
+  } catch (e) {
+    print('Error updating user: $e');
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('Failed to update user')));
+  } finally {
+    setState(() {
+      isLoading = false;
+    });
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -265,25 +267,40 @@ class _EditUserScreenState extends State<EditUserScreen> {
               ],
             ),
             SizedBox(height: 30),
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                onPressed: update,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0),
-                  ),
-                ),
-                child: isLoading
-                    ? CircularProgressIndicator()
-                    : Text(
-                        'Mettre à jour',
-                        style: TextStyle(fontSize: 20),
-                      ),
-              ),
+           SizedBox(
+  width: double.infinity,
+  height: 55,
+  child: ElevatedButton(
+    onPressed: update,
+    style: ButtonStyle(
+      elevation: MaterialStateProperty.all(2),
+      shape: MaterialStateProperty.all(
+        RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+      ),
+      backgroundColor: MaterialStateProperty.resolveWith<Color>(
+        (Set<MaterialState> states) {
+          return isLoading
+              ? Theme.of(context).colorScheme.primary.withOpacity(0.5)
+              : Theme.of(context).colorScheme.primary;
+        },
+      ),
+    ),
+    child: !isLoading
+        ? Text(
+            'Save',
+            style: TextStyle(
+              fontSize: 25,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,  // Set text color to white
             ),
+          )
+        : CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
+  ),
+),
+
           ],
         ),
       ),
