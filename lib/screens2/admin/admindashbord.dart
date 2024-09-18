@@ -1,6 +1,7 @@
 import 'package:DREHATT_app/landing/views/ManageCarouselItemsPage.dart';
 import 'package:DREHATT_app/screens2/jeojson/DrawShape.dart';
 import 'package:DREHATT_app/screens2/jeojson/DrawShape2.dart';
+import 'package:DREHATT_app/screens2/jeojson/formhtml.dart';
 import 'package:DREHATT_app/screens2/jeojson/sigweb.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -277,6 +278,20 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             MaterialPageRoute(
                               builder: (context) =>
                                   MapDrawingPage(), // Ajouter le paramètre de titre requis
+                            ),
+                          );
+                        },
+                      ),
+                        buildDashboardItem(
+                        context,
+                        'Ajouter tiff ',
+                        'lib/assets/icons/me/plan.png',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AddHtmlFormPage(), // Ajouter le paramètre de titre requis
                             ),
                           );
                         },

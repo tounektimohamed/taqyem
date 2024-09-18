@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:DREHATT_app/screens2/jeojson/convertGeoJson.dart';
+import 'package:DREHATT_app/screens2/jeojson/gerehtml.dart';
+import 'package:DREHATT_app/screens2/jeojson/localhtml.dart';
 import 'package:DREHATT_app/screens2/kml/KmlMapPage.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
@@ -492,6 +494,27 @@ class _SigWebState extends State<SigWeb> {
       appBar: AppBar(
         title: const Text('Suivi des PAUS'),
         actions: [
+           IconButton(
+          icon: Icon(Icons.web),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => HtmlListPage()),
+            );
+          },
+          tooltip: 'Afficher HTML Local',
+        ),
+         
+            IconButton(
+          icon: Icon(Icons.web),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => HtmlPagesList()),
+            );
+          },
+          tooltip: 'Afficher HTML Local',
+        ),
           IconButton(
             icon: const Icon(Icons.change_circle),
             onPressed: () {

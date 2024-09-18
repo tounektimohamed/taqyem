@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Display Satellite</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.1.0/ol.css">
+  <script src="https://cdn.jsdelivr.net/npm/ol@v10.1.0/dist/ol.js"></script>
+  <style>
+    #map {position: absolute; top: 0; right: 0; bottom: 0; left: 0;}
+  </style>
+</head>
+<body>
+  <div id="map">
+    <a href="https://www.maptiler.com" style="position:absolute;left:10px;bottom:10px;z-index:999;">
+      <img src="https://api.maptiler.com/resources/logo.svg" alt="MapTiler logo">
+    </a>
+  </div>
+  <script>
+    const key = '9iN3VEcl3j4zLbzpx1o5';
+
+    const attribution = new ol.control.Attribution({
+      collapsible: false,
+    });
+
+    // Define the Satellite Layer
+    const satelliteLayer = new ol.layer.Tile({
+      source: new ol.source.XYZ({
+        url: `https://api.maptiler.com/tiles/satellite-v2/{z}/{x}/{y}.jpg?key=${key}`,
+        tileSize: 512,
+        crossOrigin: 'anonymous'
+      }),
+    });
+
+    // Define the Transport Layer
+    const transportLayer = new ol.layer.Tile({
+      opacity: 0.4,
+      source: new ol.source.TileJSON({
+        url: `https://api.maptiler.com/tiles/6a091519-aac4-43c7-a4bb-ef043b61cfab/tiles.json?key=${key}`,
+        tileSize: 512,
+        crossOrigin: 'anonymous',
+      }),
+    });
+
+    // Create an empty GeoJSON vector source
+    const geojsonSource = new ol.source.Vector();
+
+    // Create the GeoJSON layer
+    const geojsonLayer = new ol.layer.Vector({
+      source: geojsonSource,
+      style: new ol.style.Style({
+        fill: new ol.style.Fill({
+          color: 'rgba(255, 255, 255, 0.2)',
+        }),
+        stroke: new ol.style.Stroke({
+          color: '#ffcc33',
+          width: 2,
+        }),
+      }),
+    });
+
+    // Initialize the map
+    const map = new ol.Map({
+      layers: [satelliteLayer, transportLayer, geojsonLayer],
+      controls: ol.control.defaults.defaults({ attribution: false }).extend([attribution]),
+      target: 'map',
+      view: new ol.View({
+        constrainResolution: true,
+        center: ol.proj.fromLonLat([10.353118, 33.059525]), // Center on Ghomrassen, Tunisia
+        zoom: 17,
+      }),
+    });
+
+    // Fetch and load the GeoJSON file from Firebase Storage
+    fetch('https://firebasestorage.googleapis.com/v0/b/portfolio-8d8de.appspot.com/o/geojson_files%2Fghomrassen.geojson?alt=media&token=c6f88a66-f103-4e44-9fa6-ecfcd32e434a')
+      .then(response => response.json())
+      .then(data => {
+        const format = new ol.format.GeoJSON();
+        const features = format.readFeatures(data, {
+          featureProjection: 'EPSG:3857' // Coordinate system of the map
+        });
+        geojsonSource.addFeatures(features);
+      })
+      .catch(error => console.error('Error loading GeoJSON file:', error));
+  </script>
+</body>
+</html>
