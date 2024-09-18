@@ -13,7 +13,7 @@ class _HtmlPagesListState extends State<HtmlPagesList> {
   // Fetch HTML pages from the Flask API
   Future<void> fetchHtmlPages() async {
     try {
-      final response = await http.get(Uri.parse('https://geotiff-5axu.onrender.com/pages'));
+      final response = await http.get(Uri.parse('https://geotiif.vercel.app/pages'));
       if (response.statusCode == 200) {
         setState(() {
           htmlPages = List<String>.from(json.decode(response.body));
@@ -29,7 +29,7 @@ class _HtmlPagesListState extends State<HtmlPagesList> {
   // Delete an HTML page
   Future<void> deleteHtmlPage(String title) async {
     try {
-      final response = await http.delete(Uri.parse('https://geotiff-5axu.onrender.com/delete_html/$title'));
+      final response = await http.delete(Uri.parse('https://geotiif.vercel.app/delete_html/$title'));
       if (response.statusCode == 200) {
         setState(() {
           htmlPages.remove(title);
@@ -47,7 +47,7 @@ class _HtmlPagesListState extends State<HtmlPagesList> {
   Future<void> updateHtmlPage(String title, String newContent) async {
     try {
       final response = await http.put(
-        Uri.parse('https://geotiff-5axu.onrender.com/update_html/$title'),
+        Uri.parse('https://geotiif.vercel.app/update_html/$title'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'content': newContent}),
       );
@@ -73,7 +73,7 @@ class _HtmlPagesListState extends State<HtmlPagesList> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Liste des paln tiif et geojson'),
+        title: Text('Gere les liste des plans '),
       ),
       body: htmlPages.isEmpty
           ? Center(child: CircularProgressIndicator())
@@ -111,7 +111,7 @@ class _HtmlPagesListState extends State<HtmlPagesList> {
 
   Future<String> _fetchHtmlContent(String title) async {
     try {
-      final response = await http.get(Uri.parse('https://geotiff-5axu.onrender.com/page/$title'));
+      final response = await http.get(Uri.parse('https://geotiif.vercel.app/page/$title'));
       if (response.statusCode == 200) {
         return response.body;
       } else {

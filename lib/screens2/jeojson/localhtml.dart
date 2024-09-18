@@ -27,7 +27,7 @@ class _HtmlListPageState extends State<HtmlListPage> {
       isLoading = true;
     });
     try {
-      final response = await http.get(Uri.parse('https://geotiff-5axu.onrender.com/pages')); // URL correcte pour les titres
+      final response = await http.get(Uri.parse('https://geotiif.vercel.app/pages')); // URL correcte pour les titres
       if (response.statusCode == 200) {
         final List<dynamic> titles = json.decode(response.body);
         setState(() {
@@ -52,7 +52,7 @@ class _HtmlListPageState extends State<HtmlListPage> {
       isLoading = true;
     });
     try {
-      final response = await http.get(Uri.parse('https://geotiff-5axu.onrender.com/page/$title')); // URL correcte pour le contenu
+      final response = await http.get(Uri.parse('https://geotiif.vercel.app/page/$title')); // URL correcte pour le contenu
       if (response.statusCode == 200) {
         setState(() {
           htmlContentUrl = Uri.dataFromString(response.body, mimeType: 'text/html').toString(); // Conversion du contenu en URL
@@ -87,7 +87,7 @@ class _HtmlListPageState extends State<HtmlListPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('liste de paln '),
+        title: Text('Liste des plans'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

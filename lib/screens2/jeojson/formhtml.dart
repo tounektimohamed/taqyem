@@ -17,7 +17,7 @@ class _AddHtmlFormPageState extends State<AddHtmlFormPage> {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
-      final url = Uri.parse('https://geotiff-5axu.onrender.com/add_html'); // URL de l'API Flask
+      final url = Uri.parse('https://geotiif.vercel.app/add_html'); // URL de l'API Flask
       final response = await http.post(
         url,
         body: {

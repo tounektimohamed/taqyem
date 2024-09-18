@@ -1,3 +1,4 @@
+import 'package:DREHATT_app/screens2/jeojson/formhtml.dart';
 import 'package:DREHATT_app/screens2/users/ClaimsListPage.dart';
 import 'package:DREHATT_app/screens2/jeojson/DrawShape2.dart';
 import 'package:DREHATT_app/screens2/permis%20de%20bati/HousingApplicationListPage.dart';
@@ -251,6 +252,20 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           );
                         },
                       ),
+                       buildDashboardItem(
+                        context,
+                        'Ajouter tiff ',
+                        'lib/assets/icons/me/plan.png',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AddHtmlFormPage(), // Ajouter le paramètre de titre requis
+                            ),
+                          );
+                        },
+                       ),
                     ],
                   ),
                 ),
