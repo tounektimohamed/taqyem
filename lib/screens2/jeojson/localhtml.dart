@@ -47,28 +47,32 @@ class _HtmlListPageState extends State<HtmlListPage> {
   }
 
   // Fonction pour récupérer le contenu HTML d'un document spécifique
-  Future<void> _fetchHtmlContent(String title) async {
-    setState(() {
-      isLoading = true;
-    });
-    try {
-      final response = await http.get(Uri.parse('https://geotiif.vercel.app/page/$title')); // URL correcte pour le contenu
-      if (response.statusCode == 200) {
-        setState(() {
-          htmlContentUrl = Uri.dataFromString(response.body, mimeType: 'text/html').toString(); // Conversion du contenu en URL
-          isLoading = false;
-        });
-      } else {
-        throw Exception('Failed to load HTML content');
-      }
-    } catch (e) {
-      print('Error fetching HTML content: $e');
+Future<void> _fetchHtmlContent(String title) async {
+  setState(() {
+    isLoading = true;
+  });
+  try {
+    final response = await http.get(Uri.parse('https://geotiif.vercel.app/page/$title')); // URL correcte pour le contenu
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> jsonResponse = json.decode(response.body); // Décoder le JSON
+      final String htmlContent = jsonResponse['content']; // Extraire le contenu HTML du champ 'content'
+      
       setState(() {
+        htmlContentUrl = Uri.dataFromString(htmlContent, mimeType: 'text/html').toString(); // Conversion du contenu en URL
         isLoading = false;
-        errorMessage = 'Error fetching HTML content';
       });
+    } else {
+      throw Exception('Failed to load HTML content');
     }
+  } catch (e) {
+    print('Error fetching HTML content: $e');
+    setState(() {
+      isLoading = false;
+      errorMessage = 'Error fetching HTML content';
+    });
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
