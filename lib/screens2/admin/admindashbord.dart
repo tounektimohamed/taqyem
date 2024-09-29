@@ -164,6 +164,62 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     children: [
                       buildDashboardItem(
                         context,
+                        'Suivi des PAUS',
+                        'lib/assets/icons/me/PAU.png',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SigWeb(
+                                  title: 'Sig web'), // Ajouter le paramètre de titre requis
+                            ),
+                          );
+                        },
+                      ),
+                      buildDashboardItem(
+                        context,
+                        'Permis de bâtir',
+                        'lib/assets/icons/me/permit de batis.png',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  MapDrawingPage(), // Ajouter le paramètre de titre requis
+                            ),
+                          );
+                        },
+                      ),
+                        buildDashboardItem(
+                        context,
+                        'Ajouter tiff ',
+                        'lib/assets/icons/me/ajout des images.png',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AddHtmlFormPage(), // Ajouter le paramètre de titre requis
+                            ),
+                          );
+                        },
+                      ),
+                      buildDashboardItem(
+                        context,
+                        'Suivi des plans de lotissement',
+                        'lib/assets/icons/me/plan de lotissement.png',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  CombinedMapPage(), // Ajouter le paramètre de titre requis
+                            ),
+                          );
+                        },
+                      ),
+                      buildDashboardItem(
+                        context,
                         'Gestion des utilisateurs',
                         'lib/assets/icons/me/menagment.gif',
                         () {
@@ -175,19 +231,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           );
                         },
                       ),
-                      buildDashboardItem(
-                        context,
-                        'Voir les nouvelles',
-                        'lib/assets/icons/me/admin1.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => GereListPage(),
-                            ),
-                          );
-                        },
-                      ),
+                 
                       buildDashboardItem(
                         context,
                         'Voir les journaux d\'accès',
@@ -197,6 +241,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             context,
                             MaterialPageRoute(
                               builder: (context) => const AccessLogsPage(),
+                            ),
+                          );
+                        },
+                      ),
+                           buildDashboardItem(
+                        context,
+                        'Voir les nouvelles',
+                        'lib/assets/icons/me/news1.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => GereListPage(),
                             ),
                           );
                         },
@@ -217,7 +274,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       buildDashboardItem(
                         context,
                         'Liste des réclamations',
-                        'lib/assets/icons/me/subscribers.gif',
+                        'lib/assets/icons/me/admin4.gif',
                         () {
                           Navigator.push(
                             context,
@@ -243,7 +300,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       buildDashboardItem(
                         context,
                         'Gérer le carrousel',
-                        'lib/assets/icons/me/caroussel.png',
+                        'lib/assets/icons/me/G-carrousel.png',
                         () {
                           Navigator.push(
                             context,
@@ -254,62 +311,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         },
                       ),
                     
-                      buildDashboardItem(
-                        context,
-                        'Suivi des PAUS',
-                        'lib/assets/icons/me/caroussel.png',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SigWeb(
-                                  title: 'Sig web'), // Ajouter le paramètre de titre requis
-                            ),
-                          );
-                        },
-                      ),
-                      buildDashboardItem(
-                        context,
-                        'Permis de bâtir',
-                        'lib/assets/icons/me/plan.png',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  MapDrawingPage(), // Ajouter le paramètre de titre requis
-                            ),
-                          );
-                        },
-                      ),
-                        buildDashboardItem(
-                        context,
-                        'Ajouter tiff ',
-                        'lib/assets/icons/me/plan.png',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  AddHtmlFormPage(), // Ajouter le paramètre de titre requis
-                            ),
-                          );
-                        },
-                      ),
-                      buildDashboardItem(
-                        context,
-                        'Suivi des plans de lotissement',
-                        'lib/assets/icons/me/plan.png',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  CombinedMapPage(), // Ajouter le paramètre de titre requis
-                            ),
-                          );
-                        },
-                      ),
+                      
                     ],
                   ),
                 ),

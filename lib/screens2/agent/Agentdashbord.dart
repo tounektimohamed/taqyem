@@ -157,6 +157,63 @@ class _AgentDashboardState extends State<AgentDashboard> {
                     crossAxisSpacing: isDesktop ? 24 : 16,
                     mainAxisSpacing: isDesktop ? 24 : 16,
                     children: [
+                         buildDashboardItem(
+                        context,
+                        'Suivi des PAUS',
+                        'lib/assets/icons/me/G-carroussel.png',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SigWeb(
+                                  title:
+                                      'Sig web'), // Ajouter le paramètre de titre requis
+                            ),
+                          );
+                        },
+                      ),
+                      buildDashboardItem(
+                        context,
+                        'Permis de construire',
+                        'lib/assets/icons/me/permit de batis.png',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  MapDrawingPage(), // Ajouter le paramètre de titre requis
+                            ),
+                          );
+                        },
+                      ),
+                       buildDashboardItem(
+                        context,
+                        'Suivi des plans de lotissement',
+                        'lib/assets/icons/me/plan de lotissement.png',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  CombinedMapPage(), // Ajouter le paramètre de titre requis
+                            ),
+                          );
+                        },
+                      ),
+                        buildDashboardItem(
+                        context,
+                        'Ajouter tiff ',
+                        'lib/assets/icons/me/ajout des images.png',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AddHtmlFormPage(), // Ajouter le paramètre de titre requis
+                            ),
+                          );
+                        },
+                      ),
                       buildDashboardItem(
                         context,
                         'Voir les actualités',
@@ -173,7 +230,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                       buildDashboardItem(
                         context,
                         'Page des réclamations',
-                        'lib/assets/icons/me/subscribers.gif',
+                        'lib/assets/icons/me/admin4.gif',
                         () {
                           Navigator.push(
                             context,
@@ -186,7 +243,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                       buildDashboardItem(
                         context,
                         'Liste des demandes de permis de construire',
-                        'lib/assets/icons/me/maps.gif',
+                        'lib/assets/icons/me/admin1.gif',
                         () {
                           Navigator.push(
                             context,
@@ -210,62 +267,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           );
                         },
                       ),
-                      buildDashboardItem(
-                        context,
-                        'Suivi des PAUS',
-                        'lib/assets/icons/me/caroussel.png',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SigWeb(
-                                  title:
-                                      'Sig web'), // Ajouter le paramètre de titre requis
-                            ),
-                          );
-                        },
-                      ),
-                      buildDashboardItem(
-                        context,
-                        'Permis de construire',
-                        'lib/assets/icons/me/plan.png',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  MapDrawingPage(), // Ajouter le paramètre de titre requis
-                            ),
-                          );
-                        },
-                      ),
-                      buildDashboardItem(
-                        context,
-                        'Suivi des plans de lotissement',
-                        'lib/assets/icons/me/plan.png',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CombinedMapPage(),
-                            ),
-                          );
-                        },
-                      ),
-                       buildDashboardItem(
-                        context,
-                        'Ajouter tiff ',
-                        'lib/assets/icons/me/plan.png',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  AddHtmlFormPage(), // Ajouter le paramètre de titre requis
-                            ),
-                          );
-                        },
-                       ),
+                   
                     ],
                   ),
                 ),
