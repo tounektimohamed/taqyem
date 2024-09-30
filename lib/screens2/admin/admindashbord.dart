@@ -162,30 +162,45 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     crossAxisSpacing: isDesktop ? 24 : 16,
                     mainAxisSpacing: isDesktop ? 24 : 16,
                     children: [
-                      buildDashboardItem(
+                       buildDashboardItem(
                         context,
                         'Suivi des PAUS',
-                        'lib/assets/icons/me/PAU.png',
+                        'lib/assets/icons/me/isens_thumb-removebg-preview.png',
                         () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => const SigWeb(
-                                  title: 'Sig web'), // Ajouter le paramètre de titre requis
+                                  title:
+                                      'Sig web'), // Ajouter le paramètre de titre requis
                             ),
                           );
                         },
                       ),
                       buildDashboardItem(
                         context,
-                        'Permis de bâtir',
-                        'lib/assets/icons/me/permit de batis.png',
+                        'Permis de construire',
+                        'lib/assets/icons/me/permis_debati-removebg-preview.png',
                         () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
                                   MapDrawingPage(), // Ajouter le paramètre de titre requis
+                            ),
+                          );
+                        },
+                      ),
+                       buildDashboardItem(
+                        context,
+                        'Suivi des plans de lotissement',
+                        'lib/assets/icons/me/realisations-16918-removebg-preview.png',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  CombinedMapPage(), // Ajouter le paramètre de titre requis
                             ),
                           );
                         },
@@ -204,20 +219,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           );
                         },
                       ),
-                      buildDashboardItem(
-                        context,
-                        'Suivi des plans de lotissement',
-                        'lib/assets/icons/me/plan de lotissement.png',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  CombinedMapPage(), // Ajouter le paramètre de titre requis
-                            ),
-                          );
-                        },
-                      ),
+                    
                       buildDashboardItem(
                         context,
                         'Gestion des utilisateurs',

@@ -160,7 +160,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                          buildDashboardItem(
                         context,
                         'Suivi des PAUS',
-                        'lib/assets/icons/me/G-carroussel.png',
+                        'lib/assets/icons/me/isens_thumb-removebg-preview.png',
                         () {
                           Navigator.push(
                             context,
@@ -175,7 +175,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                       buildDashboardItem(
                         context,
                         'Permis de construire',
-                        'lib/assets/icons/me/permit de batis.png',
+                        'lib/assets/icons/me/permis_debati-removebg-preview.png',
                         () {
                           Navigator.push(
                             context,
@@ -189,7 +189,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                        buildDashboardItem(
                         context,
                         'Suivi des plans de lotissement',
-                        'lib/assets/icons/me/plan de lotissement.png',
+                        'lib/assets/icons/me/realisations-16918-removebg-preview.png',
                         () {
                           Navigator.push(
                             context,
