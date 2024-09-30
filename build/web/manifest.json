@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
     "name": "DREHATT",
     "short_name": "DREHATT",
     "start_url": ".",
@@ -32,4 +33,39 @@
             "purpose": "maskable"
         }
     ]
+=======
+  "name": "DREHATT",
+  "short_name": "app",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0175C2",
+  "theme_color": "#0175C2",
+  "description": "A new Flutter project.",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icons/cigle-meh.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/cigle-meh.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/cigle-meh.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/cigle-meh.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+>>>>>>> 42479558b038fcab6e25c236986417c337fd52c2
 }
