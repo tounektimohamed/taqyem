@@ -13,8 +13,19 @@ class _AddClassPageState extends State<AddClassPage> {
   final TextEditingController _studentNameController = TextEditingController();
 
   String? _currentClassId;
+  String? _selectedClass;
   final List<Map<String, String>> _subjects = [];
   final List<Map<String, String>> _students = [];
+
+  // Arabic class options for primary school
+  final List<String> _classOptions = [
+    "السنة الأولى ابتدائي",
+    "السنة الثانية ابتدائي",
+    "السنة الثالثة ابتدائي",
+    "السنة الرابعة ابتدائي",
+    "السنة الخامسة ابتدائي",
+    "السنة السادسة ابتدائي",
+  ];
 
   Future<void> _addClass() async {
     final className = _classNameController.text.trim();
@@ -111,6 +122,27 @@ class _AddClassPageState extends State<AddClassPage> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
+                    // Dropdown for class selection
+                    DropdownButtonFormField<String>(
+                      value: _selectedClass,
+                      hint: Text('اختيار السنة الدراسية'),
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onChanged: (String? newClass) {
+                        setState(() {
+                          _selectedClass = newClass;
+                        });
+                      },
+                      items: _classOptions.map((classOption) {
+                        return DropdownMenuItem<String>(
+                          value: classOption,
+                          child: Text(classOption),
+                        );
+                      }).toList(),
+                    ),
+                    SizedBox(height: 15),
                     TextField(
                       controller: _classNameController,
                       decoration: InputDecoration(
@@ -138,7 +170,7 @@ class _AddClassPageState extends State<AddClassPage> {
                         ],
                       ),
                       style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white, backgroundColor: Color.fromARGB(255, 7, 82, 96),  // Couleur du texte lorsque le bouton est actif
+                        foregroundColor: Colors.white, backgroundColor: Color.fromARGB(255, 7, 82, 96),
                         padding: EdgeInsets.symmetric(vertical: 14, horizontal: 24),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
