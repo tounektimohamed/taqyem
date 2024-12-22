@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:DREHATT_app/components/language_constants.dart';
+import 'package:Taqyem/components/language_constants.dart';
 
 import '/components/re_usable_select_photo_button.dart';
 

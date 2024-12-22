@@ -1,10 +1,10 @@
-import 'package:DREHATT_app/screens2/agent/TABAgentdashboard.dart';
+import 'package:Taqyem/screens2/agent/TABAgentdashboard.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:DREHATT_app/auth/auth_page.dart';
-import 'package:DREHATT_app/screens2/dashboard.dart';
-import 'package:DREHATT_app/screens2/login_signup/email_verify.dart';
+import 'package:Taqyem/auth/auth_page.dart';
+import 'package:Taqyem/screens2/dashboard.dart';
+import 'package:Taqyem/screens2/login_signup/email_verify.dart';
 
 class MainPage extends StatelessWidget {
   const MainPage({Key? key}) : super(key: key);
@@ -37,7 +37,7 @@ class MainPage extends StatelessWidget {
                   bool isAgent = userDocSnapshot.data!.get('isAgent') ?? false;
 
                   if (isEmailVerified) {
-                    return isAgent ? const Agentdashboard() : const Dashboard();
+                    return isAgent ? const Agentdashboard() : const Agentdashboard();
                   } else {
                     return const EmailVerificationScreen();
                   }

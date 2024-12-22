@@ -1,4 +1,4 @@
-import 'package:DREHATT_app/screens2/login_signup/sign_in.dart';
+import 'package:Taqyem/screens2/login_signup/sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -146,7 +146,7 @@ Future signUp() async {
           'nic': null,
           'address': null,
           'mobile': null,
-          'isAgent': false, // Ajout du champ isAgent avec valeur par défaut false
+          'isAgent': true, // Ajout du champ isAgent avec valeur par défaut false
         },
       );
 
@@ -219,7 +219,7 @@ Future signUp() async {
                             ),
                             //title
                             Text(
-                              'DREHATT',
+                              'Taqyem',
                               style: GoogleFonts.poppins(
                                 fontSize: 20,
                                 fontWeight: FontWeight.w600,

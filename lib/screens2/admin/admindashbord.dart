@@ -1,8 +1,8 @@
-import 'package:DREHATT_app/landing/views/ManageCarouselItemsPage.dart';
-import 'package:DREHATT_app/screens2/jeojson/DrawShape.dart';
-import 'package:DREHATT_app/screens2/jeojson/DrawShape2.dart';
-import 'package:DREHATT_app/screens2/jeojson/formhtml.dart';
-import 'package:DREHATT_app/screens2/jeojson/sigweb.dart';
+import 'package:Taqyem/landing/views/ManageCarouselItemsPage.dart';
+import 'package:Taqyem/screens2/jeojson/DrawShape.dart';
+import 'package:Taqyem/screens2/jeojson/DrawShape2.dart';
+import 'package:Taqyem/screens2/jeojson/formhtml.dart';
+import 'package:Taqyem/screens2/jeojson/sigweb.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,13 +12,13 @@ import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:image_picker/image_picker.dart';
 
 // Importer d'autres fichiers nécessaires
-import 'package:DREHATT_app/screens2/admin/AccessLogsPage.dart';
-import 'package:DREHATT_app/screens2/users/ClaimsListPage.dart';
-import 'package:DREHATT_app/screens2/permis%20de%20bati/HousingApplicationForm.dart';
-import 'package:DREHATT_app/screens2/permis%20de%20bati/HousingApplicationListPage.dart';
-import 'package:DREHATT_app/screens2/jeojson/SubscribersPage.dart';
-import 'package:DREHATT_app/screens2/news/gerenews.dart';
-import 'package:DREHATT_app/screens2/users/User%20Management.dart';
+import 'package:Taqyem/screens2/admin/AccessLogsPage.dart';
+import 'package:Taqyem/screens2/users/ClaimsListPage.dart';
+import 'package:Taqyem/screens2/permis%20de%20bati/HousingApplicationForm.dart';
+import 'package:Taqyem/screens2/permis%20de%20bati/HousingApplicationListPage.dart';
+import 'package:Taqyem/screens2/jeojson/SubscribersPage.dart';
+import 'package:Taqyem/screens2/news/gerenews.dart';
+import 'package:Taqyem/screens2/users/User%20Management.dart';
 import '../login_signup/account_settings.dart';
 
 class AdminDashboard extends StatefulWidget {

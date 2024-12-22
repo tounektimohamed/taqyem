@@ -78,11 +78,11 @@ class TermsAndConditions extends StatelessWidget {
             //   ),
             //   SizedBox(height: 16),
             //   Text(
-            //     'Application refers to DREHATT, the software program provided by the Company.',
+            //     'Application refers to Taqyem, the software program provided by the Company.',
             //   ),
             //   SizedBox(height: 16),
             //   Text(
-            //     'Company (referred to as either "the Company", "We", "Us" or "Our" in this Agreement) refers to DREHATT.',
+            //     'Company (referred to as either "the Company", "We", "Us" or "Our" in this Agreement) refers to Taqyem.',
             //   ),
             //   SizedBox(height: 16),
             //   Text(

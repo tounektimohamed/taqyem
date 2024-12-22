@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:DREHATT_app/components/event_card.dart';
+import 'package:Taqyem/components/event_card.dart';
 import 'package:timeline_tile/timeline_tile.dart';
 
 class TimeLine extends StatelessWidget {

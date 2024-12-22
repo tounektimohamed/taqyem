@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'package:DREHATT_app/components/alert.dart';
+import 'package:Taqyem/components/alert.dart';
 
 import '../../components/text_field.dart';
 

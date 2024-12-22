@@ -1,7 +1,7 @@
-import 'package:DREHATT_app/screens2/users/moreUser.dart';
+import 'package:Taqyem/screens2/users/moreUser.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:DREHATT_app/screens2/homepage2.dart';
+import 'package:Taqyem/screens2/homepage2.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});

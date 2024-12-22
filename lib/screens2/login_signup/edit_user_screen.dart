@@ -1,4 +1,4 @@
-import 'package:DREHATT_app/components/text_field.dart';
+import 'package:Taqyem/components/text_field.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 

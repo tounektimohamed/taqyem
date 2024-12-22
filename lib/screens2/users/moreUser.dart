@@ -1,11 +1,11 @@
-import 'package:DREHATT_app/screens2/permis%20de%20bati/HousingApplicationForm.dart';
-import 'package:DREHATT_app/screens2/homepage2.dart';
+import 'package:Taqyem/screens2/permis%20de%20bati/HousingApplicationForm.dart';
+import 'package:Taqyem/screens2/homepage2.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:maps_launcher/maps_launcher.dart';
-import 'package:DREHATT_app/components/language_constants.dart';
-import 'package:DREHATT_app/screens2/login_signup/account_settings.dart';
+import 'package:Taqyem/components/language_constants.dart';
+import 'package:Taqyem/screens2/login_signup/account_settings.dart';
 
 class MoreUser extends StatefulWidget {
   const MoreUser({super.key});
@@ -115,7 +115,7 @@ class _SettingsState extends State<MoreUser> {
                         ),
                         // app name
                         // Text(
-                        //   'DREHATT',
+                        //   'Taqyem',
                         //   style: GoogleFonts.poppins(
                         //     fontSize: 20,
                         //     fontWeight: FontWeight.w600,

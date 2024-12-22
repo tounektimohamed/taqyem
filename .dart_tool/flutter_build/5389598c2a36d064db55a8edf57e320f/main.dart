@@ -1,5 +1,5 @@
 // @dart=3.0
-// Flutter web bootstrap script for package:DREHATT_app/main.dart.
+// Flutter web bootstrap script for package:Taqyem/main.dart.
 //
 // Generated file. Do not edit.
 //
@@ -9,7 +9,7 @@
 import 'dart:ui_web' as ui_web;
 import 'dart:async';
 
-import 'package:DREHATT_app/main.dart' as entrypoint;
+import 'package:Taqyem/main.dart' as entrypoint;
 import 'web_plugin_registrant.dart' as pluginRegistrant;
 
 typedef _UnaryFunction = dynamic Function(List<String> args);

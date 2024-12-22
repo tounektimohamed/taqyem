@@ -1,13 +1,13 @@
 import 'dart:async';
 
-import 'package:DREHATT_app/screens2/agent/Agentdashbord.dart';
-import 'package:DREHATT_app/screens2/login_signup/account_settings.dart';
+import 'package:Taqyem/screens2/agent/Agentdashbord.dart';
+import 'package:Taqyem/screens2/login_signup/account_settings.dart';
 import 'package:alarm/alarm.dart';
 import 'package:alarm/model/alarm_settings.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:DREHATT_app/components/language_constants.dart';
-import 'package:DREHATT_app/screens2/homepage2.dart';
+import 'package:Taqyem/components/language_constants.dart';
+import 'package:Taqyem/screens2/homepage2.dart';
 
 class Agentdashboard extends StatefulWidget {
   const Agentdashboard({super.key});

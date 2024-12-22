@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:DREHATT_app/components/onboarding_content.dart';
+import 'package:Taqyem/components/onboarding_content.dart';
 
 class Onboarding extends StatefulWidget {
   final void Function()? goToHomePage; // Ajoutez cette ligne pour la redirection vers MyHomePage
@@ -47,7 +47,7 @@ class _OnboardingState extends State<Onboarding> {
                   ),
                   //nom de l'application
                   Text(
-                    'DREHATT',
+                    'Taqyem',
                     style: GoogleFonts.poppins(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,

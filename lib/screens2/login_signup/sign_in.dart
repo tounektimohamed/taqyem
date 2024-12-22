@@ -1,16 +1,16 @@
-import 'package:DREHATT_app/screens2/agent/TABAgentdashboard.dart';
-import 'package:DREHATT_app/screens2/admin/admindashbord.dart';
-import 'package:DREHATT_app/screens2/dashboard.dart';
-import 'package:DREHATT_app/screens2/login_signup/sign_up.dart';
+import 'package:Taqyem/screens2/agent/TABAgentdashboard.dart';
+import 'package:Taqyem/screens2/admin/admindashbord.dart';
+import 'package:Taqyem/screens2/dashboard.dart';
+import 'package:Taqyem/screens2/login_signup/sign_up.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import 'package:DREHATT_app/components/text_field.dart';
-import 'package:DREHATT_app/screens2/login_signup/password_reset.dart';
-import 'package:DREHATT_app/services2/auth_service.dart';
+import 'package:Taqyem/components/text_field.dart';
+import 'package:Taqyem/screens2/login_signup/password_reset.dart';
+import 'package:Taqyem/services2/auth_service.dart';
 
 class SignIn extends StatefulWidget {
   const SignIn({Key? key}) : super(key: key);
@@ -116,7 +116,7 @@ class _SignInState extends State<SignIn> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => const Dashboard(),
+              builder: (context) => const Agentdashboard(),
             ),
           );
         }
@@ -199,7 +199,7 @@ class _SignInState extends State<SignIn> {
                       height: 80,
                     ),
                     Text(
-                      'DREHATT',
+                      'Taqyem',
                       style: GoogleFonts.poppins(
                         fontSize: 30,
                         fontWeight: FontWeight.w600,

@@ -1,4 +1,4 @@
-import 'package:DREHATT_app/screens2/admin/admindashbord.dart';
+import 'package:Taqyem/screens2/admin/admindashbord.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../login_signup/edit_user_screen.dart';

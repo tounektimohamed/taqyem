@@ -60655,7 +60655,7 @@ h=r}f=A.aD(p,20,p)
 s=A.AD(B.l,p,p)
 r=A.aD(p,20,p)
 q=k?A.b7(A.a([new A.mc(m,p),new A.mc("BLOG",p),new A.mc(l,p),new A.mc("CONTACT",p)],g),B.o,B.n,B.m):A.bO(A.a([new A.mc(m,p),new A.mc("BLOG",p),new A.mc(l,p),new A.mc("CONTACT",p)],g),B.o,B.ib,B.m,p)
-return A.b5(p,A.b7(A.a([j,i,h,f,s,r,q,A.aD(p,20,p),A.E("\xa9 "+A.ba(new A.aF(Date.now(),!1))+" DREHATT. Tous droits r\xe9serv\xe9s.",p,p,p,p,p,p,p,p,A.bZ(p,p,B.l,p,p,p,p,p,p,p,p,p,p,p,p,p,p,!0,p,p,p,p,p,p,p,p),p,p,p)],g),B.o,B.n,B.m),B.k,B.bA,p,p,p,p,p,new A.ag(20,40,20,40),p,p,p)},
+return A.b5(p,A.b7(A.a([j,i,h,f,s,r,q,A.aD(p,20,p),A.E("\xa9 "+A.ba(new A.aF(Date.now(),!1))+" Taqyem. Tous droits r\xe9serv\xe9s.",p,p,p,p,p,p,p,p,A.bZ(p,p,B.l,p,p,p,p,p,p,p,p,p,p,p,p,p,p,!0,p,p,p,p,p,p,p,p),p,p,p)],g),B.o,B.n,B.m),B.k,B.bA,p,p,p,p,p,new A.ag(20,40,20,40),p,p,p)},
 $S:178}
 A.axg.prototype={
 $0(){this.a.zE(this.b)},
@@ -60687,7 +60687,7 @@ A.a_n.prototype={
 F(a){return new A.mj(new A.azz(),null)}}
 A.azz.prototype={
 $2(a,b){var s=null,r="lib/assets/icons/me/cigle-meh.png",q="S'INSCRIRE",p="CONNEXION",o=A.I(255,138,178,211),n=t.p
-n=b.b<600?A.b7(A.a([A.bO(A.a([A.bO(A.a([A.lj(r,s,s,s,40,s),A.aD(s,s,10),A.E("DREHATT",s,s,s,s,s,s,s,s,A.bZ(s,s,B.l,s,s,s,s,s,s,s,s,24,s,s,s,s,s,!0,s,s,s,s,s,s,s,s),s,s,s)],n),B.o,B.n,B.m,s),A.dF(s,A.cn(B.nU,B.l,s,s),s,new A.azu(),s,s)],n),B.o,B.bH,B.m,s),A.aD(s,20,s),A.bO(A.a([A.ej(A.E(q,s,s,s,s,s,s,s,s,A.bZ(s,s,B.l,s,s,s,s,s,s,s,s,s,s,s,s,s,s,!0,s,s,s,s,s,s,s,s),s,s,s),new A.azv(a),s),A.aD(s,s,10),A.fN(!1,A.E(p,s,s,s,s,s,s,s,s,s,s,s,s),s,s,B.aH,s,s,s,s,new A.azw(a),s,s)],n),B.o,B.n,B.m,s)],n),B.at,B.n,B.m):A.bO(A.a([A.bO(A.a([A.lj(r,s,s,s,40,s),A.aD(s,s,10),A.E("DREHATT",s,s,s,s,s,s,s,s,A.bZ(s,s,B.l,s,s,s,s,s,s,s,s,24,s,s,s,s,s,!0,s,s,s,s,s,s,s,s),s,s,s)],n),B.o,B.n,B.m,s),A.bO(A.a([A.ej(A.E(q,s,s,s,s,s,s,s,s,A.bZ(s,s,B.l,s,s,s,s,s,s,s,s,s,s,s,s,s,s,!0,s,s,s,s,s,s,s,s),s,s,s),new A.azx(a),s),A.aD(s,s,10),A.fN(!1,A.E(p,s,s,s,s,s,s,s,s,s,s,s,s),s,s,B.aH,s,s,s,s,new A.azy(a),s,s)],n),B.o,B.n,B.m,s)],n),B.o,B.bH,B.m,s)
+n=b.b<600?A.b7(A.a([A.bO(A.a([A.bO(A.a([A.lj(r,s,s,s,40,s),A.aD(s,s,10),A.E("Taqyem",s,s,s,s,s,s,s,s,A.bZ(s,s,B.l,s,s,s,s,s,s,s,s,24,s,s,s,s,s,!0,s,s,s,s,s,s,s,s),s,s,s)],n),B.o,B.n,B.m,s),A.dF(s,A.cn(B.nU,B.l,s,s),s,new A.azu(),s,s)],n),B.o,B.bH,B.m,s),A.aD(s,20,s),A.bO(A.a([A.ej(A.E(q,s,s,s,s,s,s,s,s,A.bZ(s,s,B.l,s,s,s,s,s,s,s,s,s,s,s,s,s,s,!0,s,s,s,s,s,s,s,s),s,s,s),new A.azv(a),s),A.aD(s,s,10),A.fN(!1,A.E(p,s,s,s,s,s,s,s,s,s,s,s,s),s,s,B.aH,s,s,s,s,new A.azw(a),s,s)],n),B.o,B.n,B.m,s)],n),B.at,B.n,B.m):A.bO(A.a([A.bO(A.a([A.lj(r,s,s,s,40,s),A.aD(s,s,10),A.E("Taqyem",s,s,s,s,s,s,s,s,A.bZ(s,s,B.l,s,s,s,s,s,s,s,s,24,s,s,s,s,s,!0,s,s,s,s,s,s,s,s),s,s,s)],n),B.o,B.n,B.m,s),A.bO(A.a([A.ej(A.E(q,s,s,s,s,s,s,s,s,A.bZ(s,s,B.l,s,s,s,s,s,s,s,s,s,s,s,s,s,s,!0,s,s,s,s,s,s,s,s),s,s,s),new A.azx(a),s),A.aD(s,s,10),A.fN(!1,A.E(p,s,s,s,s,s,s,s,s,s,s,s,s),s,s,B.aH,s,s,s,s,new A.azy(a),s,s)],n),B.o,B.n,B.m,s)],n),B.o,B.bH,B.m,s)
 return A.b5(s,n,B.k,o,s,s,s,s,s,new A.ag(20,20,20,20),s,s,s)},
 $S:178}
 A.azu.prototype={
@@ -61141,7 +61141,7 @@ m(){var s=this.e
 s===$&&A.b()
 s.m()
 this.aX()},
-F(a){var s,r,q,p,o,n,m,l=this,k=null,j=A.e1(k,k,k,k,k),i=t.p,h=A.b7(A.a([B.Wm,A.E("DREHATT",k,k,k,k,k,k,k,k,A.ayM(B.b3,20,B.a_),k,k,k)],i),B.o,B.n,B.aB),g=l.e
+F(a){var s,r,q,p,o,n,m,l=this,k=null,j=A.e1(k,k,k,k,k),i=t.p,h=A.b7(A.a([B.Wm,A.E("Taqyem",k,k,k,k,k,k,k,k,A.ayM(B.b3,20,B.a_),k,k,k)],i),B.o,B.n,B.aB),g=l.e
 g===$&&A.b()
 $.bkn()
 g=A.eI(A.bgZ(B.q,g,new A.b5_(),4,k,new A.b50(l),!0,!0,k,!1,k,B.aR),1)
@@ -63547,7 +63547,7 @@ s.J(new A.b07())}},
 m(){var s=this.e
 if(s!=null)s.bf(0)
 this.aX()},
-F(a){var s,r,q,p,o=this,n=null,m=A.e1(n,n,n,n,n),l=A.E("DREHATT",n,n,n,n,n,n,n,n,A.ayM(B.b3,20,B.a_),n,n,n),k=A.E("Please verify your email address",n,n,n,n,n,n,n,n,A.bP(B.bc,25,B.a_,1),B.cj,n,n),j=$.ah,i=(j==null?$.ah=$.bw():j).bL("[DEFAULT]")
+F(a){var s,r,q,p,o=this,n=null,m=A.e1(n,n,n,n,n),l=A.E("Taqyem",n,n,n,n,n,n,n,n,A.ayM(B.b3,20,B.a_),n,n,n),k=A.E("Please verify your email address",n,n,n,n,n,n,n,n,A.bP(B.bc,25,B.a_,1),B.cj,n,n),j=$.ah,i=(j==null?$.ah=$.bw():j).bL("[DEFAULT]")
 A.aP(i,$.bF(),!0)
 j=A.fP(new A.bk(i)).gfd()
 j=j==null?n:j.a.c.a.b
@@ -63817,7 +63817,7 @@ case"ERROR_OPERATION_NOT_ALLOWED":case"operation-not-allowed":return"Server erro
 case"ERROR_INVALID_EMAIL":case"invalid-email":return s
 case"network-request-failed":return"Network error."
 default:return"Sign in failed. Please try again."}},
-F(a){var s,r,q=null,p=A.e1(q,q,0,B.VR,q),o=A.E("DREHATT",q,q,q,q,q,q,q,q,A.ayM(B.b3,30,B.a_),q,q,q),n=A.E("Welcome back!",q,q,q,q,q,q,q,q,A.bP(B.bc,35,q,q),q,q,q),m=this.akH(),l=A.E("or",q,q,q,q,q,q,q,q,A.bP(B.jg,15,q,q),q,q,q),k=!this.x,j=k?B.UC:B.mU
+F(a){var s,r,q=null,p=A.e1(q,q,0,B.VR,q),o=A.E("Taqyem",q,q,q,q,q,q,q,q,A.ayM(B.b3,30,B.a_),q,q,q),n=A.E("Welcome back!",q,q,q,q,q,q,q,q,A.bP(B.bc,35,q,q),q,q,q),m=this.akH(),l=A.E("or",q,q,q,q,q,q,q,q,A.bP(B.jg,15,q,q),q,q,q),k=!this.x,j=k?B.UC:B.mU
 k=k?A.E("Sign In with Google",q,q,q,q,q,q,q,q,A.bP(q,20,B.a_,q),q,q,q):B.q4
 k=A.aD(A.bmO(j,k,new A.b8u(this,a),B.dv),55,1/0)
 j=A.E("Don't have an account? ",q,q,q,q,q,q,q,q,A.bP(B.jg,15,q,q),q,q,q)
@@ -64071,7 +64071,7 @@ r=s.x
 r.T$=q
 r.L$=0
 s.aX()},
-F(a1){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e=this,d=null,c="Password",b=t.p,a=A.bO(A.a([A.eI(A.E("Let's \nGet Started",d,d,d,d,d,d,d,d,A.bP(B.bc,35,d,1),d,d,d),1),A.b7(A.a([B.v5,A.E("DREHATT",d,d,d,d,d,d,d,d,A.ayM(B.b3,20,B.a_),d,d,d)],b),B.o,B.n,B.m)],b),B.o,B.n,B.m,d),a0=e.as
+F(a1){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e=this,d=null,c="Password",b=t.p,a=A.bO(A.a([A.eI(A.E("Let's \nGet Started",d,d,d,d,d,d,d,d,A.bP(B.bc,35,d,1),d,d,d),1),A.b7(A.a([B.v5,A.E("Taqyem",d,d,d,d,d,d,d,d,A.ayM(B.b3,20,B.a_),d,d,d)],b),B.o,B.n,B.m)],b),B.o,B.n,B.m,d),a0=e.as
 a0===$&&A.b()
 a0=A.kS(a0,"FirstName LastName",!1,B.d0,"Name",e.r)
 s=e.ch

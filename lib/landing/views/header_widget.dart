@@ -1,5 +1,5 @@
-import 'package:DREHATT_app/screens2/login_signup/sign_in.dart';
-import 'package:DREHATT_app/screens2/login_signup/sign_up.dart';
+import 'package:Taqyem/screens2/login_signup/sign_in.dart';
+import 'package:Taqyem/screens2/login_signup/sign_up.dart';
 import 'package:flutter/material.dart';
 
 class HeaderWidget extends StatelessWidget {
@@ -23,7 +23,7 @@ class HeaderWidget extends StatelessWidget {
                             Image.asset('lib/assets/icons/me/cigle-meh.png',
                                 height: 40),
                             SizedBox(width: 10),
-                            Text('DREHATT',
+                            Text('Taqyem',
                                 style: TextStyle(
                                     color: Colors.white, fontSize: 24)),
                           ],
@@ -73,7 +73,7 @@ class HeaderWidget extends StatelessWidget {
                         Image.asset('lib/assets/icons/me/cigle-meh.png',
                             height: 40),
                         SizedBox(width: 10),
-                        Text('DREHATT',
+                        Text('Taqyem',
                             style:
                                 TextStyle(color: Colors.white, fontSize: 24)),
                       ],

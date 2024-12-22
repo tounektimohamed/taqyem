@@ -1,11 +1,13 @@
-import 'package:DREHATT_app/screens2/jeojson/formhtml.dart';
-import 'package:DREHATT_app/screens2/users/ClaimsListPage.dart';
-import 'package:DREHATT_app/screens2/jeojson/DrawShape2.dart';
-import 'package:DREHATT_app/screens2/permis%20de%20bati/HousingApplicationListPage.dart';
-import 'package:DREHATT_app/screens2/news/add_news_screen.dart';
-import 'package:DREHATT_app/screens2/news/gerenews.dart';
-import 'package:DREHATT_app/screens2/jeojson/sigweb.dart';
-import 'package:DREHATT_app/screens2/jeojson/DrawShape.dart';
+import 'package:Taqyem/screens2/jeojson/formhtml.dart';
+import 'package:Taqyem/screens2/users/ClaimsListPage.dart';
+import 'package:Taqyem/screens2/jeojson/DrawShape2.dart';
+import 'package:Taqyem/screens2/permis%20de%20bati/HousingApplicationListPage.dart';
+import 'package:Taqyem/screens2/news/add_news_screen.dart';
+import 'package:Taqyem/screens2/news/gerenews.dart';
+import 'package:Taqyem/screens2/jeojson/sigweb.dart';
+import 'package:Taqyem/screens2/jeojson/DrawShape.dart';
+import 'package:Taqyem/taqyem/AddClassPage.dart';
+import 'package:Taqyem/taqyem/AddStudentPage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -157,117 +159,114 @@ class _AgentDashboardState extends State<AgentDashboard> {
                     crossAxisSpacing: isDesktop ? 24 : 16,
                     mainAxisSpacing: isDesktop ? 24 : 16,
                     children: [
-                         buildDashboardItem(
+                      buildDashboardItem(
                         context,
-                        'Suivi des PAUS',
-                        'lib/assets/icons/me/isens_thumb-removebg-preview.png',
+                        'Ajouter une classe',
+                        'lib/assets/icons/me/ajouter.gif',
                         () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const SigWeb(
-                                  title:
-                                      'Sig web'), // Ajouter le paramètre de titre requis
+                              builder: (context) =>  AddClassPage(), // Ajouter le paramètre de titre requis
                             ),
                           );
                         },
                       ),
                       buildDashboardItem(
                         context,
-                        'Permis de construire',
-                        'lib/assets/icons/me/permis_debati-removebg-preview.png',
+                        'Gestion des Classes ',
+                        'lib/assets/icons/me/L7.gif',
                         () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  MapDrawingPage(), // Ajouter le paramètre de titre requis
+                                  ManageClassesPage(), // Ajouter le paramètre de titre requis
                             ),
                           );
                         },
                       ),
-                       buildDashboardItem(
-                        context,
-                        'Suivi des plans de lotissement',
-                        'lib/assets/icons/me/realisations-16918-removebg-preview.png',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  CombinedMapPage(), // Ajouter le paramètre de titre requis
-                            ),
-                          );
-                        },
-                      ),
-                        buildDashboardItem(
-                        context,
-                        'Ajouter tiff ',
-                        'lib/assets/icons/me/ajout des images.png',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  AddHtmlFormPage(), // Ajouter le paramètre de titre requis
-                            ),
-                          );
-                        },
-                      ),
-                      buildDashboardItem(
-                        context,
-                        'Voir les actualités',
-                        'lib/assets/icons/me/news1.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => GereListPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      buildDashboardItem(
-                        context,
-                        'Page des réclamations',
-                        'lib/assets/icons/me/admin4.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ClaimsListPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      buildDashboardItem(
-                        context,
-                        'Liste des demandes de permis de construire',
-                        'lib/assets/icons/me/admin1.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  HousingApplicationListPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      buildDashboardItem(
-                        context,
-                        'Ajouter une actualité',
-                        'lib/assets/icons/me/news.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const AddNewsScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                   
+                      // buildDashboardItem(
+                      //   context,
+                      //   'Suivi des plans de lotissement',
+                      //   'lib/assets/icons/me/realisations-16918-removebg-preview.png',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) =>
+                      //             CombinedMapPage(), // Ajouter le paramètre de titre requis
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+                      // buildDashboardItem(
+                      //   context,
+                      //   'Ajouter tiff ',
+                      //   'lib/assets/icons/me/ajout des images.png',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) =>
+                      //             AddHtmlFormPage(), // Ajouter le paramètre de titre requis
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+                      // buildDashboardItem(
+                      //   context,
+                      //   'Voir les actualités',
+                      //   'lib/assets/icons/me/news1.gif',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) => GereListPage(),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+                      // buildDashboardItem(
+                      //   context,
+                      //   'Page des réclamations',
+                      //   'lib/assets/icons/me/admin4.gif',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) => ClaimsListPage(),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+                      // buildDashboardItem(
+                      //   context,
+                      //   'Liste des demandes de permis de construire',
+                      //   'lib/assets/icons/me/admin1.gif',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) =>
+                      //             HousingApplicationListPage(),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+                      // buildDashboardItem(
+                      //   context,
+                      //   'Ajouter une actualité',
+                      //   'lib/assets/icons/me/news.gif',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) => const AddNewsScreen(),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
                     ],
                   ),
                 ),

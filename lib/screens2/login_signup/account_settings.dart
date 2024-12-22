@@ -1,10 +1,11 @@
+import 'package:Taqyem/screens2/login_signup/sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:DREHATT_app/components/language.dart';
-import 'package:DREHATT_app/components/language_constants.dart';
-import 'package:DREHATT_app/screens2/app%20option%20setting/help_center.dart';
-import 'package:DREHATT_app/screens2/app%20option%20setting/termsNconditions.dart';
-import 'package:DREHATT_app/screens2/users/user_profile.dart';
+import 'package:Taqyem/components/language.dart';
+import 'package:Taqyem/components/language_constants.dart';
+import 'package:Taqyem/screens2/app%20option%20setting/help_center.dart';
+import 'package:Taqyem/screens2/app%20option%20setting/termsNconditions.dart';
+import 'package:Taqyem/screens2/users/user_profile.dart';
 import 'package:settings_ui/settings_ui.dart';
 
 class SettingsPageUI extends StatefulWidget {
@@ -135,19 +136,33 @@ class _SettingPageUIState extends State<SettingsPageUI> {
               ),
             ],
           ),
-          SettingsSection(
-            title: const Text(''),
-            tiles: <SettingsTile>[
-              SettingsTile.navigation(
-                leading: const Icon(Icons.login_rounded),
-                title: Text(translation(context).signOut),
-                onPressed: (context) {
-                  FirebaseAuth.instance.signOut();
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
+         SettingsSection(
+  title: const Text(''),
+  tiles: <SettingsTile>[
+    SettingsTile.navigation(
+      leading: const Icon(Icons.login_rounded),
+      title: Text(translation(context).signOut),
+      onPressed: (context) async {
+        try {
+          // Déconnexion de Firebase
+          await FirebaseAuth.instance.signOut();
+
+          // Redirection vers la page de connexion
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => SignIn()),
+          );
+        } catch (e) {
+          // Gérer les erreurs de déconnexion
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur lors de la déconnexion : $e')),
+          );
+        }
+      },
+    ),
+  ],
+),
+
         ],
       ),
     );

@@ -107,7 +107,7 @@ class FooterWidget extends StatelessWidget {
                     ),
               SizedBox(height: 20),
               Text(
-                '© ${DateTime.now().year} DREHATT. Tous droits réservés.',
+                '© ${DateTime.now().year} Taqyem. Tous droits réservés.',
                 style: TextStyle(color: Colors.white),
               ),
             ],

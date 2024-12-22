@@ -83,7 +83,7 @@ class _EmailVerificationScreenState extends State<EmailVerificationScreen> {
                   ),
                   //title
                   Text(
-                    'DREHATT',
+                    'Taqyem',
                     style: GoogleFonts.poppins(
                       fontSize: 20,
                       fontWeight: FontWeight.w600,

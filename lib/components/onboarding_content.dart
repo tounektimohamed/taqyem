@@ -9,27 +9,26 @@ class UnbordingContent {
     required this.description,
   });
 }
-
 List<UnbordingContent> contents = [
   UnbordingContent(
-      title: 'Remplir des formulaires de demande de logement.!',
-      image: 'lib/assets/icons/me/service.gif',
-      description:
-          "Permettez aux utilisateurs de remplir et soumettre facilement des demandes de logement en ligne et de suivre l'état de leur demande en temps réel."),
+    title: 'Évaluer les progrès des élèves',
+    image: 'lib/assets/icons/me/progress.gif',
+    description: "Suivez facilement les performances et l'évolution de chaque élève au fil du temps."),
   UnbordingContent(
-      title: 'Signaler des problèmes de maintenance dans les propriétés appartenant au ministère.',
-      image: 'lib/assets/icons/me/admin1.gif',
-      description:
-          "Les utilisateurs peuvent signaler facilement des problèmes de maintenance dans les propriétés du ministère et suivre l'avancement des réparations."),
+    title: 'Créer des fiches d’évaluation personnalisées',
+    image: 'lib/assets/icons/me/assessment.gif',
+    description: "Permettez aux enseignants de créer des évaluations adaptées aux besoins de chaque élève."),
   UnbordingContent(
-      title: 'Demander des informations ',
-      image: 'lib/assets/icons/me/admin4.gif',
-      description:
-          "Demander des informations sur les procédures et conditions d'accès aux services du ministère."),
+    title: 'Suivi des résultats et des progrès',
+    image: 'lib/assets/icons/me/results.gif',
+    description: "Affichez les résultats des évaluations et suivez les progrès des élèves dans différentes matières."),
   UnbordingContent(
-      title: 'Prendre des rendez-vous',
-      image: 'lib/assets/icons/me/admin1.gif',
-      description:
-          "Permettez aux utilisateurs de réserver des rendez-vous en ligne pour rencontrer des responsables du ministère à des dates et heures convenables."),
-  
+    title: 'Partager des rapports avec les parents',
+    image: 'lib/assets/icons/me/share_report.gif',
+    description: "Générez des rapports détaillés et partagez-les facilement avec les parents des élèves."),
+  UnbordingContent(
+    title: 'Notifier les enseignants et parents',
+    image: 'lib/assets/icons/me/notification.gif',
+    description: "Recevez des rappels pour les évaluations et les progrès des élèves, et informez les parents."),
 ];
+

@@ -7,8 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:DREHATT_app/components/language_constants.dart';
-import 'package:DREHATT_app/screens2/app%20option%20setting/select_photo_options.dart';
+import 'package:Taqyem/components/language_constants.dart';
+import 'package:Taqyem/screens2/app%20option%20setting/select_photo_options.dart';
 
 import '../../components/constants.dart';
 

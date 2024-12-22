@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:DREHATT_app/screens2/users/Claim.dart'; // Assurez-vous que le chemin est correct
+import 'package:Taqyem/screens2/users/Claim.dart'; // Assurez-vous que le chemin est correct
 
 class ClaimsListPage extends StatelessWidget {
   Future<void> _deleteClaim(BuildContext context, String claimId) async {

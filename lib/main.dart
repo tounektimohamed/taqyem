@@ -5,8 +5,8 @@ import 'firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:DREHATT_app/auth/main_page.dart';
-import 'package:DREHATT_app/components/language_constants.dart';
+import 'package:Taqyem/auth/main_page.dart';
+import 'package:Taqyem/components/language_constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

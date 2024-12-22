@@ -1,6 +1,9 @@
-import 'package:DREHATT_app/landing/views/home_page.dart';
+import 'package:Taqyem/landing/views/home_page.dart';
+import 'package:Taqyem/screens2/agent/Agentdashbord.dart';
+import 'package:Taqyem/screens2/login_signup/sign_in.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:DREHATT_app/screens2/app%20option%20setting/onboarding.dart';
+import 'package:Taqyem/screens2/app%20option%20setting/onboarding.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -23,14 +26,23 @@ class _AuthPageState extends State<AuthPage> {
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (showOnboarding) {
-      return Onboarding(
-        goToHomePage: goToHomePage,
-      );
+@override
+Widget build(BuildContext context) {
+  // Vérifier si l'utilisateur est authentifié
+  final user = FirebaseAuth.instance.currentUser;
+
+  if (showOnboarding) {
+    return Onboarding(
+      goToHomePage: goToHomePage,
+    );
+  } else {
+    // Si l'utilisateur est authentifié, naviguer vers le tableau de bord, sinon vers la page de connexion
+    if (user != null) {
+      return AgentDashboard(); // Page de tableau de bord
     } else {
-      return  MyHomePage(); // Naviguez vers MyHomePage après l'onboarding
+      return SignIn(); // Page de connexion
     }
   }
+}
+
 }
