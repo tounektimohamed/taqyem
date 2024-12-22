@@ -1,1 +1,0 @@
- /home/tounekti/Taqyem/.dart_tool/flutter_gen/gen_l10n/app_localizations_en.dart /home/tounekti/Taqyem/.dart_tool/flutter_gen/gen_l10n/app_localizations_si.dart /home/tounekti/Taqyem/.dart_tool/flutter_gen/gen_l10n/app_localizations.dart:  /home/tounekti/Taqyem/l10n.yaml /home/tounekti/Taqyem/lib/l10n/app_en.arb /home/tounekti/Taqyem/lib/l10n/app_si.arb
