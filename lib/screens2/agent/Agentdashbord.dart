@@ -8,6 +8,7 @@ import 'package:Taqyem/screens2/jeojson/sigweb.dart';
 import 'package:Taqyem/screens2/jeojson/DrawShape.dart';
 import 'package:Taqyem/taqyem/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
+import 'package:Taqyem/taqyem/pdf/ManagePDFPage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -186,34 +187,34 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           );
                         },
                       ),
-                      // buildDashboardItem(
-                      //   context,
-                      //   'Suivi des plans de lotissement',
-                      //   'lib/assets/icons/me/realisations-16918-removebg-preview.png',
-                      //   () {
-                      //     Navigator.push(
-                      //       context,
-                      //       MaterialPageRoute(
-                      //         builder: (context) =>
-                      //             CombinedMapPage(), // Ajouter le paramètre de titre requis
-                      //       ),
-                      //     );
-                      //   },
-                      // ),
-                      // buildDashboardItem(
-                      //   context,
-                      //   'Ajouter tiff ',
-                      //   'lib/assets/icons/me/ajout des images.png',
-                      //   () {
-                      //     Navigator.push(
-                      //       context,
-                      //       MaterialPageRoute(
-                      //         builder: (context) =>
-                      //             AddHtmlFormPage(), // Ajouter le paramètre de titre requis
-                      //       ),
-                      //     );
-                      //   },
-                      // ),
+                      buildDashboardItem(
+                        context,
+                        'Gestion des PDF (Ajouter et Supprimer)',
+                        'lib/assets/icons/me/realisations-16918-removebg-preview.png',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  UploadPDFPage(), // Ajouter le paramètre de titre requis
+                            ),
+                          );
+                        },
+                      ),
+                      buildDashboardItem(
+                        context,
+                        'pdf partager',
+                        'lib/assets/icons/me/ajout des images.png',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  DisplayPDFsPage(), // Ajouter le paramètre de titre requis
+                            ),
+                          );
+                        },
+                      ),
                       // buildDashboardItem(
                       //   context,
                       //   'Voir les actualités',
