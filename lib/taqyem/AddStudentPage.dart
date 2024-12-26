@@ -31,7 +31,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       setState(() {
         _classes = classDocs.docs.map((doc) {
           return {
-            'id': doc.id,  // Utiliser l'ID du document pour référence interne
+            'id': doc.id, // Utiliser l'ID du document pour référence interne
             'class_name': doc['class_name'], // Nom de la classe
             'subjects': List<String>.from(doc['subjects']), // Matières
             'students': List<String>.from(doc['students']), // Élèves
@@ -40,7 +40,8 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       });
     } catch (e) {
       print("Erreur lors du chargement des classes : $e");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors du chargement des classes')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors du chargement des classes')));
     }
   }
 
@@ -57,15 +58,18 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       setState(() {
         _classes.removeWhere((classData) => classData['id'] == classId);
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Classe supprimée')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Classe supprimée')));
     } catch (e) {
       print("Erreur lors de la suppression : $e");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors de la suppression de la classe')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Erreur lors de la suppression de la classe')));
     }
   }
 
   // Supprimer un élève
-  Future<void> _deleteStudent(Map<String, dynamic> classData, String student) async {
+  Future<void> _deleteStudent(
+      Map<String, dynamic> classData, String student) async {
     try {
       List<String> updatedStudents = List.from(classData['students']);
       updatedStudents.remove(student);
@@ -82,15 +86,18 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       setState(() {
         classData['students'] = updatedStudents;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Élève supprimé')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Élève supprimé')));
     } catch (e) {
       print("Erreur lors de la suppression de l'élève : $e");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors de la suppression de l\'élève')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de la suppression de l\'élève')));
     }
   }
 
   // Supprimer une matière
-  Future<void> _deleteSubject(Map<String, dynamic> classData, String subject) async {
+  Future<void> _deleteSubject(
+      Map<String, dynamic> classData, String subject) async {
     try {
       List<String> updatedSubjects = List.from(classData['subjects']);
       updatedSubjects.remove(subject);
@@ -107,10 +114,12 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       setState(() {
         classData['subjects'] = updatedSubjects;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Matière supprimée')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Matière supprimée')));
     } catch (e) {
       print("Erreur lors de la suppression de la matière : $e");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors de la suppression de la matière')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Erreur lors de la suppression de la matière')));
     }
   }
 
@@ -143,11 +152,13 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                 });
 
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Élève ajouté')));
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text('Élève ajouté')));
                 _fetchClasses(); // Rafraîchir la liste des classes
               } catch (e) {
                 print("Erreur lors de l'ajout de l'élève : $e");
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors de l\'ajout de l\'élève')));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Erreur lors de l\'ajout de l\'élève')));
               }
             },
             child: Text('Ajouter'),
@@ -186,11 +197,13 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                 });
 
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Matière ajoutée')));
+                ScaffoldMessenger.of(context)
+                    .showSnackBar(SnackBar(content: Text('Matière ajoutée')));
                 _fetchClasses(); // Rafraîchir la liste des classes
               } catch (e) {
                 print("Erreur lors de l'ajout de la matière : $e");
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors de l\'ajout de la matière')));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Erreur lors de l\'ajout de la matière')));
               }
             },
             child: Text('Ajouter'),
@@ -201,8 +214,10 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   }
 
   // Modifier le nom d'un élève
-  Future<void> _editStudent(Map<String, dynamic> classData, String oldStudentName) async {
-    TextEditingController studentController = TextEditingController(text: oldStudentName);
+  Future<void> _editStudent(
+      Map<String, dynamic> classData, String oldStudentName) async {
+    TextEditingController studentController =
+        TextEditingController(text: oldStudentName);
 
     showDialog(
       context: context,
@@ -231,12 +246,15 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                   });
 
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Nom de l\'élève modifié')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Nom de l\'élève modifié')));
                   _fetchClasses(); // Rafraîchir la liste des classes
                 }
               } catch (e) {
                 print("Erreur lors de la modification de l'élève : $e");
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors de la modification de l\'élève')));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content:
+                        Text('Erreur lors de la modification de l\'élève')));
               }
             },
             child: Text('Modifier'),
@@ -255,12 +273,11 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
         return ExpansionTile(
           title: Text(classData['class_name']), // Affichage du nom de la classe
           subtitle: Text(
-            'Élèves: ${classData['students'].length} | Matières: ${classData['subjects'].length}'
-          ), // Nombre d'élèves et de matières
+              'Élèves: ${classData['students'].length} | Matières: ${classData['subjects'].length}'), // Nombre d'élèves et de matières
           children: [
             ...classData['subjects'].map<Widget>((subject) {
               return ListTile(
-                title: Text(subject),  // Affichage de la matière
+                title: Text(subject), // Affichage de la matière
                 trailing: IconButton(
                   icon: Icon(Icons.delete),
                   onPressed: () => _deleteSubject(classData, subject),
@@ -269,17 +286,19 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
             }).toList(),
             ...classData['students'].map<Widget>((student) {
               return ListTile(
-                title: Text(student),  // Affichage de l'élève
+                title: Text(student), // Affichage de l'élève
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
                       icon: Icon(Icons.edit),
-                      onPressed: () => _editStudent(classData, student),  // Modifier le nom de l'élève
+                      onPressed: () => _editStudent(
+                          classData, student), // Modifier le nom de l'élève
                     ),
                     IconButton(
                       icon: Icon(Icons.delete),
-                      onPressed: () => _deleteStudent(classData, student), // Supprimer l'élève
+                      onPressed: () => _deleteStudent(
+                          classData, student), // Supprimer l'élève
                     ),
                   ],
                 ),

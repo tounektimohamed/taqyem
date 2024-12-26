@@ -15,6 +15,7 @@ class _AddClassPageState extends State<AddClassPage> {
   TextEditingController _studentNameController = TextEditingController(); // Contrôleur pour le nom de l'élève
   List<Map<String, String>> _students = []; // Liste des élèves ajoutés
   TextEditingController _newSubjectController = TextEditingController(); // Contrôleur pour ajouter une nouvelle matière
+String? _selectedClassNameDisplay;
 
   @override
   void initState() {
@@ -97,12 +98,13 @@ class _AddClassPageState extends State<AddClassPage> {
               .collection('user_classes') // Sous-collection pour les classes
               .doc(); // Créer un nouveau document
 
-          await userClassesRef.set({
-            'class_name': _selectedClassName, // Classe sélectionnée
-            'subjects': _selectedSubjects, // Matières sélectionnées
-            'students': _students.map((student) => student['name']).toList(), // Liste des élèves
-            'timestamp': FieldValue.serverTimestamp(), // Date de l'ajout
-          });
+         await userClassesRef.set({
+    'class_id': _selectedClassName, // ID de la classe
+    'class_name': _selectedClassNameDisplay, // Nom de la classe
+    'subjects': _selectedSubjects, // Matières sélectionnées
+    'students': _students.map((student) => student['name']).toList(), // Liste des élèves
+    'timestamp': FieldValue.serverTimestamp(), // Date de l'ajout
+});
 
           // Réinitialiser les champs après l'enregistrement
           setState(() {
@@ -225,14 +227,19 @@ class _AddClassPageState extends State<AddClassPage> {
                   child: Text(classData['name'] ?? 'Nom inconnu'),
                 );
               }).toList(),
-              onChanged: (value) async {
-                setState(() {
-                  _selectedClassName = value;
-                });
-                if (value != null) {
-                  await _loadSubjects(value);
-                }
-              },
+             onChanged: (value) async {
+    setState(() {
+        _selectedClassName = value; // ID de la classe
+        _selectedClassNameDisplay = _classNames.firstWhere(
+            (classData) => classData['id'] == value,
+            orElse: () => {'name': 'Nom inconnu'}
+        )['name']; // Nom de la classe
+    });
+    if (value != null) {
+        await _loadSubjects(value);
+    }
+},
+
               decoration: InputDecoration(
                 labelText: 'Sélectionner une classe',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
