@@ -1453,6 +1453,8 @@ file:///home/tounekti/Bureau/DREHATT_app/lib/screens2/users/user_profile.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/services2/auth_service.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/AddClassPage.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/AddStudentPage.dart
+file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/EditPage.dart
+file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/gistion.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/pdf/ManagePDFPage.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/rating.dart
 file:///home/tounekti/flutter/bin/cache/flutter_web_sdk/kernel/dart2js_platform.dill

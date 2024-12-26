@@ -8,6 +8,8 @@ import 'package:Taqyem/screens2/jeojson/sigweb.dart';
 import 'package:Taqyem/screens2/jeojson/DrawShape.dart';
 import 'package:Taqyem/taqyem/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
+import 'package:Taqyem/taqyem/EditPage.dart';
+import 'package:Taqyem/taqyem/gistion.dart';
 import 'package:Taqyem/taqyem/pdf/ManagePDFPage.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -168,7 +170,8 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>  AddClassPage(), // Ajouter le paramètre de titre requis
+                              builder: (context) =>
+                                  AddClassPage(), // Ajouter le paramètre de titre requis
                             ),
                           );
                         },
@@ -215,32 +218,33 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           );
                         },
                       ),
-                      // buildDashboardItem(
-                      //   context,
-                      //   'Voir les actualités',
-                      //   'lib/assets/icons/me/news1.gif',
-                      //   () {
-                      //     Navigator.push(
-                      //       context,
-                      //       MaterialPageRoute(
-                      //         builder: (context) => GereListPage(),
-                      //       ),
-                      //     );
-                      //   },
-                      // ),
-                      // buildDashboardItem(
-                      //   context,
-                      //   'Page des réclamations',
-                      //   'lib/assets/icons/me/admin4.gif',
-                      //   () {
-                      //     Navigator.push(
-                      //       context,
-                      //       MaterialPageRoute(
-                      //         builder: (context) => ClaimsListPage(),
-                      //       ),
-                      //     );
-                      //   },
-                      // ),
+                      buildDashboardItem(
+                        context,
+                        'AdminPage',
+                        'lib/assets/icons/me/news1.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AdminPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      buildDashboardItem(
+                        context,
+                        'EditPage',
+                        'lib/assets/icons/me/news1.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AdminCrudPage(),
+                            ),
+                          );
+                        },
+                      ),
                       // buildDashboardItem(
                       //   context,
                       //   'Liste des demandes de permis de construire',
