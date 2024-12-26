@@ -156,109 +156,49 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       ),
     );
   }
+
+  // Ajouter une matière
   Future<void> _addSubject(Map<String, dynamic> classData) async {
-  try {
-    // Récupérer les matières disponibles pour la classe depuis Firestore
-    final matieresSnapshot = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(classData['id'])
-        .collection('matieres')
-        .get();
+    TextEditingController subjectController = TextEditingController();
 
-    if (matieresSnapshot.docs.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Aucune matière disponible pour cette classe.')),
-      );
-      return;
-    }
-
-    // Construire la liste des matières
-    final matieres = matieresSnapshot.docs.map((doc) {
-      return {
-        'id': doc.id,
-        'matiere_name': doc['matiere_name'], // Nom de la matière
-      };
-    }).toList();
-
-    String? selectedMatiere;
-
-    // Afficher un dialogue pour sélectionner une matière
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Ajouter une matière'),
-        content: StatefulBuilder(
-          builder: (context, setState) => DropdownButtonFormField<String>(
-            decoration: InputDecoration(labelText: 'Sélectionner une matière'),
-            value: selectedMatiere,
-            items: matieres.map((matiere) {
-              return DropdownMenuItem<String>(
-                value: matiere['id'], // Utiliser l'ID pour la valeur
-                child: Text(matiere['matiere_name']),
-              );
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                selectedMatiere = value;
-              });
-            },
-          ),
+        content: TextField(
+          controller: subjectController,
+          decoration: InputDecoration(labelText: 'Nom de la matière'),
         ),
         actions: [
           ElevatedButton(
             onPressed: () async {
-              if (selectedMatiere != null && selectedMatiere!.isNotEmpty) {
-                try {
-                  List<String> updatedSubjects = List.from(classData['subjects']);
-                  if (updatedSubjects.contains(selectedMatiere)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('La matière est déjà ajoutée.')),
-                    );
-                    return;
-                  }
+              try {
+                List<String> updatedSubjects = List.from(classData['subjects']);
+                updatedSubjects.add(subjectController.text);
 
-                  updatedSubjects.add(selectedMatiere!);
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser!.uid)
+                    .collection('user_classes')
+                    .doc(classData['id'])
+                    .update({
+                  'subjects': updatedSubjects,
+                });
 
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(currentUser!.uid)
-                      .collection('user_classes')
-                      .doc(classData['id'])
-                      .update({
-                    'subjects': updatedSubjects,
-                  });
-
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Matière ajoutée')));
-                  _fetchClasses(); // Rafraîchir la liste des classes
-                } catch (e) {
-                  print("Erreur lors de l'ajout de la matière : $e");
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Erreur lors de l\'ajout de la matière')));
-                }
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Veuillez sélectionner une matière')));
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Matière ajoutée')));
+                _fetchClasses(); // Rafraîchir la liste des classes
+              } catch (e) {
+                print("Erreur lors de l'ajout de la matière : $e");
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur lors de l\'ajout de la matière')));
               }
             },
             child: Text('Ajouter'),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Annuler'),
-          ),
         ],
       ),
     );
-  } catch (e) {
-    print("Erreur lors de la récupération des matières : $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Erreur lors de la récupération des matières')),
-    );
   }
-}
-
 
   // Modifier le nom d'un élève
   Future<void> _editStudent(Map<String, dynamic> classData, String oldStudentName) async {
