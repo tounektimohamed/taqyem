@@ -616,6 +616,7 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
                             .doc(selectedBareme)
                             .collection('sousBaremes')
                             .snapshots(),
+                            
                         builder: (context, snapshot) {
                           if (!snapshot.hasData) {
                             return Center(child: CircularProgressIndicator());
@@ -627,6 +628,7 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
                               style: TextStyle(fontSize: 16, color: Colors.grey),
                             );
                           }
+
                           return Column(
                             children: sousBaremes.map((sousBareme) {
                               String sousBaremeName = sousBareme['name'] ?? 'Nom inconnu';

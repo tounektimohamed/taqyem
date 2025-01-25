@@ -301,6 +301,7 @@ class _AdminPageState extends State<AdminPage> {
                     .doc(selectedBareme)
                     .collection('sousBaremes')
                     .snapshots(),
+                    
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
                     return Center(child: CircularProgressIndicator());
@@ -309,6 +310,7 @@ class _AdminPageState extends State<AdminPage> {
                   return ListView.builder(
                     shrinkWrap: true,
                     physics: NeverScrollableScrollPhysics(),
+                    
                     itemCount: sousBaremes.length,
                     itemBuilder: (context, index) {
                       var sousBareme = sousBaremes[index];
@@ -318,6 +320,7 @@ class _AdminPageState extends State<AdminPage> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
+                        
                         child: ListTile(
                           title: Text(sousBareme['name'], style: TextStyle(color: Colors.teal)),
                           subtitle: Text('Valeur: ${sousBareme['value']}', style: TextStyle(color: Colors.teal.withOpacity(0.7))),
@@ -327,6 +330,7 @@ class _AdminPageState extends State<AdminPage> {
                       );
                     },
                   );
+                  
                 },
               ),
           ],

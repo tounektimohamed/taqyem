@@ -9,8 +9,11 @@ import 'package:Taqyem/screens2/jeojson/DrawShape.dart';
 import 'package:Taqyem/services2/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
 import 'package:Taqyem/taqyem/EditPage.dart';
+import 'package:Taqyem/taqyem/StudentDetailsPage.dart';
 import 'package:Taqyem/taqyem/gistion.dart';
 import 'package:Taqyem/taqyem/pdf/ManagePDFPage.dart';
+import 'package:Taqyem/taqyem/rating.dart';
+import 'package:Taqyem/taqyem/test.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -220,6 +223,21 @@ class _AgentDashboardState extends State<AgentDashboard> {
                       ),
                       buildDashboardItem(
                         context,
+                        'evalier',
+                        'lib/assets/icons/me/ajout des images.png',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  ManageStudentGradesPage(), // de titre requis
+                            ),
+                          );
+                        },
+                      ),
+
+                      buildDashboardItem(
+                        context,
                         'AdminPage',
                         'lib/assets/icons/me/news1.gif',
                         () {
@@ -231,6 +249,8 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           );
                         },
                       ),
+
+                      
                       buildDashboardItem(
                         context,
                         'EditPage',
@@ -239,26 +259,39 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  AdminCrudPage(),
+                              builder: (context) => AdminCrudPage(),
                             ),
                           );
                         },
                       ),
-                      // buildDashboardItem(
-                      //   context,
-                      //   'Liste des demandes de permis de construire',
-                      //   'lib/assets/icons/me/admin1.gif',
-                      //   () {
-                      //     Navigator.push(
-                      //       context,
-                      //       MaterialPageRoute(
-                      //         builder: (context) =>
-                      //             HousingApplicationListPage(),
-                      //       ),
-                      //     );
-                      //   },
-                      // ),
+                      buildDashboardItem(
+                        context,
+                        'SelectionPage',
+                        'lib/assets/icons/me/news1.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SelectionPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      
+                      buildDashboardItem(
+                        context,
+                        'Liste des demandes de permis de construire',
+                        'lib/assets/icons/me/news1.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  SelectionListPage(),
+                            ),
+                          );
+                        },
+                      ),
                       // buildDashboardItem(
                       //   context,
                       //   'Ajouter une actualité',
