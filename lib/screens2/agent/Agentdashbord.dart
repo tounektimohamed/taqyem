@@ -6,7 +6,7 @@ import 'package:Taqyem/screens2/news/add_news_screen.dart';
 import 'package:Taqyem/screens2/news/gerenews.dart';
 import 'package:Taqyem/screens2/jeojson/sigweb.dart';
 import 'package:Taqyem/screens2/jeojson/DrawShape.dart';
-import 'package:Taqyem/taqyem/AddClassPage.dart';
+import 'package:Taqyem/services2/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
 import 'package:Taqyem/taqyem/EditPage.dart';
 import 'package:Taqyem/taqyem/gistion.dart';

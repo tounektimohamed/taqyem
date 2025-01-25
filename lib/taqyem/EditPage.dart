@@ -11,7 +11,17 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
   String? selectedMatiere;
   String? selectedBareme;
   String? selectedSousBareme;
-  TextEditingController _controller = TextEditingController();
+  final TextEditingController _controller = TextEditingController();
+  final TextEditingController _sousBaremeNomController = TextEditingController();
+  final TextEditingController _sousBaremeValueController = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _sousBaremeNomController.dispose();
+    _sousBaremeValueController.dispose();
+    super.dispose();
+  }
 
   // Edit class
   void editClass(String classId) async {
@@ -173,12 +183,84 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
     }
   }
 
+  // Add new subject
+  void addMatiere() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(selectedClass)
+          .collection('matieres')
+          .add({'name': _controller.text});
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Matière ajoutée avec succès !'),
+          backgroundColor: Colors.green));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Erreur lors de l\'ajout de la matière'),
+          backgroundColor: Colors.red));
+    }
+  }
+
+  // Add new grade
+  void addBareme() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(selectedClass)
+          .collection('matieres')
+          .doc(selectedMatiere)
+          .collection('baremes')
+          .add({'value': _controller.text});
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Barème ajouté avec succès !'),
+          backgroundColor: Colors.green));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Erreur lors de l\'ajout du barème'),
+          backgroundColor: Colors.red));
+    }
+  }
+
+  // Add new sub-grade (Sous-bareme)
+  void addSousBareme() async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(selectedClass)
+          .collection('matieres')
+          .doc(selectedMatiere)
+          .collection('baremes')
+          .doc(selectedBareme)
+          .collection('sousBaremes')
+          .add({
+        'value': _sousBaremeValueController.text,
+        'name': _sousBaremeNomController.text, // Utilisez le nom saisi par l'utilisateur
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Sous-bareme ajouté avec succès !'),
+          backgroundColor: Colors.green));
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Erreur lors de l\'ajout du sous-bareme'),
+          backgroundColor: Colors.red));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Gestion des Données'),
+        title: Text(
+          'Gestion des Données',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
         backgroundColor: Colors.teal,
+        elevation: 10,
+        centerTitle: true,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -186,20 +268,24 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
           children: [
             // Sélectionner une classe
             Card(
-              elevation: 4,
+              elevation: 6,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Padding(
-                padding: const EdgeInsets.all(12.0),
+                padding: const EdgeInsets.all(16.0),
                 child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('classes')
-                      .snapshots(),
+                  stream: FirebaseFirestore.instance.collection('classes').snapshots(),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
                       return Center(child: CircularProgressIndicator());
                     }
                     var classes = snapshot.data!.docs;
                     return DropdownButton<String>(
-                      hint: Text('Sélectionnez une classe'),
+                      hint: Text(
+                        'Sélectionnez une classe',
+                        style: TextStyle(color: Colors.teal),
+                      ),
                       value: selectedClass,
                       onChanged: (String? newValue) {
                         setState(() {
@@ -214,7 +300,10 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
                         String className = classDoc['name'] ?? 'Nom inconnu';
                         return DropdownMenuItem<String>(
                           value: classDoc.id,
-                          child: Text(className),
+                          child: Text(
+                            className,
+                            style: TextStyle(fontSize: 16),
+                          ),
                         );
                       }).toList(),
                     );
@@ -222,16 +311,29 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
                 ),
               ),
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 24),
 
             // Afficher les matières de la classe
-            selectedClass == null
-                ? Container()
-                : Card(
-                    elevation: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: StreamBuilder<QuerySnapshot>(
+            if (selectedClass != null)
+              Card(
+                elevation: 6,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Cliquez sur une matière pour afficher ses barèmes.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('classes')
                             .doc(selectedClass)
@@ -242,12 +344,20 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
                             return Center(child: CircularProgressIndicator());
                           }
                           var matieres = snapshot.data!.docs;
+                          if (matieres.isEmpty) {
+                            return Text(
+                              'Aucune matière disponible.',
+                              style: TextStyle(fontSize: 16, color: Colors.grey),
+                            );
+                          }
                           return Column(
                             children: matieres.map((matiere) {
-                              String matiereName =
-                                  matiere['name'] ?? 'Nom inconnu';
+                              String matiereName = matiere['name'] ?? 'Nom inconnu';
                               return ListTile(
-                                title: Text(matiereName),
+                                title: Text(
+                                  matiereName,
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                                ),
                                 onTap: () {
                                   setState(() {
                                     selectedMatiere = matiere.id;
@@ -255,40 +365,46 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
                                     selectedSousBareme = null;
                                   });
                                 },
-                                leading: Icon(Icons.school),
+                                leading: Icon(Icons.school, color: Colors.teal),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
-                                      icon: Icon(Icons.edit),
+                                      icon: Icon(Icons.edit, color: Colors.blue),
                                       onPressed: () {
                                         _controller.text = matiereName;
                                         showDialog(
                                           context: context,
-                                          builder: (context) {
-                                            return AlertDialog(
-                                              title: Text('Modifier la matière'),
-                                              content: TextField(
-                                                controller: _controller,
-                                                decoration: InputDecoration(
-                                                    labelText: 'Nom de la matière'),
+                                          builder: (context) => AlertDialog(
+                                            title: Text(
+                                              'Modifier la matière',
+                                              style: TextStyle(color: Colors.teal),
+                                            ),
+                                            content: TextField(
+                                              controller: _controller,
+                                              decoration: InputDecoration(
+                                                labelText: 'Nom de la matière',
+                                                border: OutlineInputBorder(),
                                               ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () {
-                                                    editMatiere(matiere.id);
-                                                    Navigator.pop(context);
-                                                  },
-                                                  child: Text('Modifier'),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () {
+                                                  editMatiere(matiere.id);
+                                                  Navigator.pop(context);
+                                                },
+                                                child: Text(
+                                                  'Modifier',
+                                                  style: TextStyle(color: Colors.teal),
                                                 ),
-                                              ],
-                                            );
-                                          },
+                                              ),
+                                            ],
+                                          ),
                                         );
                                       },
                                     ),
                                     IconButton(
-                                      icon: Icon(Icons.delete),
+                                      icon: Icon(Icons.delete, color: Colors.red),
                                       onPressed: () => deleteMatiere(matiere.id),
                                     ),
                                   ],
@@ -298,18 +414,62 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
                           );
                         },
                       ),
-                    ),
+                      SizedBox(height: 10),
+                      ElevatedButton(
+                        onPressed: () {
+                          _controller.clear();
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text('Ajouter une matière'),
+                              content: TextField(
+                                controller: _controller,
+                                decoration: InputDecoration(
+                                  labelText: 'Nom de la matière',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    addMatiere();
+                                    Navigator.pop(context);
+                                  },
+                                  child: Text('Ajouter'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        child: Text('Ajouter une matière'),
+                      ),
+                    ],
                   ),
-            SizedBox(height: 20),
+                ),
+              ),
+            SizedBox(height: 24),
 
             // Afficher les barèmes de la matière sélectionnée
-            selectedMatiere == null
-                ? Container()
-                : Card(
-                    elevation: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: StreamBuilder<QuerySnapshot>(
+            if (selectedMatiere != null)
+              Card(
+                elevation: 6,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Cliquez sur un barème pour afficher ses sous-barèmes.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('classes')
                             .doc(selectedClass)
@@ -322,51 +482,66 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
                             return Center(child: CircularProgressIndicator());
                           }
                           var baremes = snapshot.data!.docs;
+                          if (baremes.isEmpty) {
+                            return Text(
+                              'Aucun barème disponible.',
+                              style: TextStyle(fontSize: 16, color: Colors.grey),
+                            );
+                          }
                           return Column(
                             children: baremes.map((bareme) {
                               String baremeValue = bareme['value'] ?? 'Inconnu';
                               return ListTile(
-                                title: Text(baremeValue),
+                                title: Text(
+                                  baremeValue,
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                                ),
                                 onTap: () {
                                   setState(() {
                                     selectedBareme = bareme.id;
                                     selectedSousBareme = null;
                                   });
                                 },
-                                leading: Icon(Icons.grade),
+                                leading: Icon(Icons.grade, color: Colors.teal),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
-                                      icon: Icon(Icons.edit),
+                                      icon: Icon(Icons.edit, color: Colors.blue),
                                       onPressed: () {
                                         _controller.text = baremeValue;
                                         showDialog(
                                           context: context,
-                                          builder: (context) {
-                                            return AlertDialog(
-                                              title: Text('Modifier le barème'),
-                                              content: TextField(
-                                                controller: _controller,
-                                                decoration: InputDecoration(
-                                                    labelText: 'Valeur du barème'),
+                                          builder: (context) => AlertDialog(
+                                            title: Text(
+                                              'Modifier le barème',
+                                              style: TextStyle(color: Colors.teal),
+                                            ),
+                                            content: TextField(
+                                              controller: _controller,
+                                              decoration: InputDecoration(
+                                                labelText: 'Valeur du barème',
+                                                border: OutlineInputBorder(),
                                               ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () {
-                                                    editBareme(bareme.id);
-                                                    Navigator.pop(context);
-                                                  },
-                                                  child: Text('Modifier'),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () {
+                                                  editBareme(bareme.id);
+                                                  Navigator.pop(context);
+                                                },
+                                                child: Text(
+                                                  'Modifier',
+                                                  style: TextStyle(color: Colors.teal),
                                                 ),
-                                              ],
-                                            );
-                                          },
+                                              ),
+                                            ],
+                                          ),
                                         );
                                       },
                                     ),
                                     IconButton(
-                                      icon: Icon(Icons.delete),
+                                      icon: Icon(Icons.delete, color: Colors.red),
                                       onPressed: () => deleteBareme(bareme.id),
                                     ),
                                   ],
@@ -376,18 +551,62 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
                           );
                         },
                       ),
-                    ),
+                      SizedBox(height: 10),
+                      ElevatedButton(
+                        onPressed: () {
+                          _controller.clear();
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text('Ajouter un barème'),
+                              content: TextField(
+                                controller: _controller,
+                                decoration: InputDecoration(
+                                  labelText: 'Valeur du barème',
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    addBareme();
+                                    Navigator.pop(context);
+                                  },
+                                  child: Text('Ajouter'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        child: Text('Ajouter un barème'),
+                      ),
+                    ],
                   ),
-            SizedBox(height: 20),
+                ),
+              ),
+            SizedBox(height: 24),
 
             // Afficher les sous-barèmes du barème sélectionné
-            selectedBareme == null
-                ? Container()
-                : Card(
-                    elevation: 4,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
-                      child: StreamBuilder<QuerySnapshot>(
+            if (selectedBareme != null)
+              Card(
+                elevation: 6,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Cliquez sur un sous-barème pour afficher ses détails.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('classes')
                             .doc(selectedClass)
@@ -402,54 +621,67 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
                             return Center(child: CircularProgressIndicator());
                           }
                           var sousBaremes = snapshot.data!.docs;
+                          if (sousBaremes.isEmpty) {
+                            return Text(
+                              'Aucun sous-barème disponible.',
+                              style: TextStyle(fontSize: 16, color: Colors.grey),
+                            );
+                          }
                           return Column(
                             children: sousBaremes.map((sousBareme) {
-                              String sousBaremeName =
-                                  sousBareme['name'] ?? 'Nom inconnu';
+                              String sousBaremeName = sousBareme['name'] ?? 'Nom inconnu';
+                              String sousBaremeValue = sousBareme['value'] ?? 'Inconnu';
                               return ListTile(
-                                title: Text(sousBaremeName),
+                                title: Text(
+                                  '$sousBaremeName - $sousBaremeValue',
+                                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                                ),
                                 onTap: () {
                                   setState(() {
                                     selectedSousBareme = sousBareme.id;
                                   });
                                 },
-                                leading: Icon(Icons.format_list_bulleted),
+                                leading: Icon(Icons.format_list_bulleted, color: Colors.teal),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
-                                      icon: Icon(Icons.edit),
+                                      icon: Icon(Icons.edit, color: Colors.blue),
                                       onPressed: () {
                                         _controller.text = sousBaremeName;
                                         showDialog(
                                           context: context,
-                                          builder: (context) {
-                                            return AlertDialog(
-                                              title: Text('Modifier le sous-bareme'),
-                                              content: TextField(
-                                                controller: _controller,
-                                                decoration: InputDecoration(
-                                                    labelText: 'Nom du sous-bareme'),
+                                          builder: (context) => AlertDialog(
+                                            title: Text(
+                                              'Modifier le sous-bareme',
+                                              style: TextStyle(color: Colors.teal),
+                                            ),
+                                            content: TextField(
+                                              controller: _controller,
+                                              decoration: InputDecoration(
+                                                labelText: 'Nom du sous-bareme',
+                                                border: OutlineInputBorder(),
                                               ),
-                                              actions: [
-                                                TextButton(
-                                                  onPressed: () {
-                                                    editSousBareme(
-                                                        sousBareme.id);
-                                                    Navigator.pop(context);
-                                                  },
-                                                  child: Text('Modifier'),
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () {
+                                                  editSousBareme(sousBareme.id);
+                                                  Navigator.pop(context);
+                                                },
+                                                child: Text(
+                                                  'Modifier',
+                                                  style: TextStyle(color: Colors.teal),
                                                 ),
-                                              ],
-                                            );
-                                          },
+                                              ),
+                                            ],
+                                          ),
                                         );
                                       },
                                     ),
                                     IconButton(
-                                      icon: Icon(Icons.delete),
-                                      onPressed: () => deleteSousBareme(
-                                          sousBareme.id),
+                                      icon: Icon(Icons.delete, color: Colors.red),
+                                      onPressed: () => deleteSousBareme(sousBareme.id),
                                     ),
                                   ],
                                 ),
@@ -458,9 +690,53 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
                           );
                         },
                       ),
-                    ),
+                      SizedBox(height: 10),
+                      ElevatedButton(
+                        onPressed: () {
+                          _sousBaremeNomController.clear();
+                          _sousBaremeValueController.clear();
+                          showDialog(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text('Ajouter un sous-barème'),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TextField(
+                                    controller: _sousBaremeNomController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Nom du sous-barème',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                  ),
+                                  SizedBox(height: 10),
+                                  TextField(
+                                    controller: _sousBaremeValueController,
+                                    decoration: InputDecoration(
+                                      labelText: 'Valeur du sous-barème',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    addSousBareme();
+                                    Navigator.pop(context);
+                                  },
+                                  child: Text('Ajouter'),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        child: Text('Ajouter un sous-barème'),
+                      ),
+                    ],
                   ),
-            SizedBox(height: 20),
+                ),
+              ),
           ],
         ),
       ),
