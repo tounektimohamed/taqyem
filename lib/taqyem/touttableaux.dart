@@ -269,7 +269,7 @@ class _TablePageState extends State<TablePage> {
                               ),
                               SizedBox(height: 8), // Espace entre les éléments
                               Text(
-                                'الصف: ${classAndMatiereNames['className']}',
+                                'القسم: ${classAndMatiereNames['className']}',
                                 style: TextStyle(fontSize: 14), // Petite police
                               ),
                             ],

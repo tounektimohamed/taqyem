@@ -220,33 +220,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         },
                       ),
                     
-                      buildDashboardItem(
-                        context,
-                        'Gestion des utilisateurs',
-                        'lib/assets/icons/me/menagment.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const UserManagement(),
-                            ),
-                          );
-                        },
-                      ),
-                 
-                      buildDashboardItem(
-                        context,
-                        'Voir les journaux d\'accès',
-                        'lib/assets/icons/me/admin1.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const AccessLogsPage(),
-                            ),
-                          );
-                        },
-                      ),
+                     
                            buildDashboardItem(
                         context,
                         'Voir les nouvelles',

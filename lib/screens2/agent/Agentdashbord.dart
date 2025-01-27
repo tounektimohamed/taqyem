@@ -1,3 +1,4 @@
+import 'package:Taqyem/screens2/admin/AccessLogsPage.dart';
 import 'package:Taqyem/screens2/jeojson/formhtml.dart';
 import 'package:Taqyem/screens2/users/ClaimsListPage.dart';
 import 'package:Taqyem/screens2/jeojson/DrawShape2.dart';
@@ -6,6 +7,7 @@ import 'package:Taqyem/screens2/news/add_news_screen.dart';
 import 'package:Taqyem/screens2/news/gerenews.dart';
 import 'package:Taqyem/screens2/jeojson/sigweb.dart';
 import 'package:Taqyem/screens2/jeojson/DrawShape.dart';
+import 'package:Taqyem/screens2/users/User%20Management.dart';
 import 'package:Taqyem/services2/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
 import 'package:Taqyem/taqyem/EditPage.dart';
@@ -290,6 +292,33 @@ class _AgentDashboardState extends State<AgentDashboard> {
                             MaterialPageRoute(
                               builder: (context) =>
                                   DisplayPDFsPage(), // Ajouter le paramètre de titre requis
+                            ),
+                          );
+                        },
+                      ),
+                      //  buildDashboardItem(
+                      //   context,
+                      //   'Gestion des utilisateurs',
+                      //   'lib/assets/icons/me/menagment.gif',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) => const UserManagement(),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+                 
+                      buildDashboardItem(
+                        context,
+                        'Voir les journaux d\'accès',
+                        'lib/assets/icons/me/admin1.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AccessLogsPage(),
                             ),
                           );
                         },
