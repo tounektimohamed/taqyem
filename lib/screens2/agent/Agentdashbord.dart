@@ -194,6 +194,78 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           );
                         },
                       ),
+                      
+                      buildDashboardItem(
+                        context,
+                        'إسناد اعداد',
+                        'lib/assets/icons/me/note.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  ManageStudentGradesPage(), // de titre requis
+                            ),
+                          );
+                        },
+                      ),
+
+                      // buildDashboardItem(
+                      //   context,
+                      //   'AdminPage',
+                      //   'lib/assets/icons/me/news1.gif',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) => AdminPage(),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+
+                      
+                      buildDashboardItem(
+                        context,
+                        'AdminPage-ادراج المعايير',
+                        'lib/assets/icons/me/barm.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AdminCrudPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      buildDashboardItem(
+                        context,
+                        'إعداد جدول جامع',
+                        'lib/assets/icons/me/15-13-33-168_512.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SelectionPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      
+                      buildDashboardItem(
+                        context,
+                        'قائمة الجداول الجامعة',
+                        'lib/assets/icons/me/unnamed.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  ClassListPage(),
+                            ),
+                          );
+                        },
+                      ),
                       buildDashboardItem(
                         context,
                         'Gestion des PDF (Ajouter et Supprimer)',
@@ -218,77 +290,6 @@ class _AgentDashboardState extends State<AgentDashboard> {
                             MaterialPageRoute(
                               builder: (context) =>
                                   DisplayPDFsPage(), // Ajouter le paramètre de titre requis
-                            ),
-                          );
-                        },
-                      ),
-                      buildDashboardItem(
-                        context,
-                        'evalier',
-                        'lib/assets/icons/me/ajout des images.png',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  ManageStudentGradesPage(), // de titre requis
-                            ),
-                          );
-                        },
-                      ),
-
-                      buildDashboardItem(
-                        context,
-                        'AdminPage',
-                        'lib/assets/icons/me/news1.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AdminPage(),
-                            ),
-                          );
-                        },
-                      ),
-
-                      
-                      buildDashboardItem(
-                        context,
-                        'EditPage',
-                        'lib/assets/icons/me/news1.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AdminCrudPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      buildDashboardItem(
-                        context,
-                        'SelectionPage',
-                        'lib/assets/icons/me/news1.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SelectionPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      
-                      buildDashboardItem(
-                        context,
-                        'Tableaux Récapitulatifs des Résultats',
-                        'lib/assets/icons/me/news1.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  ClassListPage(),
                             ),
                           );
                         },
