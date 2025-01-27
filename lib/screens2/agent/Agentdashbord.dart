@@ -14,6 +14,7 @@ import 'package:Taqyem/taqyem/gistion.dart';
 import 'package:Taqyem/taqyem/pdf/ManagePDFPage.dart';
 import 'package:Taqyem/taqyem/rating.dart';
 import 'package:Taqyem/taqyem/test.dart';
+import 'package:Taqyem/taqyem/touttableaux.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -280,14 +281,14 @@ class _AgentDashboardState extends State<AgentDashboard> {
                       
                       buildDashboardItem(
                         context,
-                        'Liste des demandes de permis de construire',
+                        'Tableaux Récapitulatifs des Résultats',
                         'lib/assets/icons/me/news1.gif',
                         () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  SelectionListPage(),
+                                  ClassListPage(),
                             ),
                           );
                         },
