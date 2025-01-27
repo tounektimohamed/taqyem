@@ -313,7 +313,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                       buildDashboardItem(
                         context,
                         'Voir les journaux d\'accès',
-                        'lib/assets/icons/me/admin1.gif',
+                        'lib/assets/icons/me/assessment.gif',
                         () {
                           Navigator.push(
                             context,
