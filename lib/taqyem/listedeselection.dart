@@ -2,6 +2,7 @@ import 'package:Taqyem/taqyem/tableau.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+
 class SelectedBaremesPage extends StatefulWidget {
   final String selectedClass;
   final String selectedMatiere;

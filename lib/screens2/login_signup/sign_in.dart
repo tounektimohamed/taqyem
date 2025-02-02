@@ -109,7 +109,7 @@ class _SignInState extends State<SignIn> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => const Agentdashboard(),
+              builder: (context) => const AdminDashboard(),
             ),
           );
         } else {

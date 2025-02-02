@@ -170,6 +170,19 @@ class _AgentDashboardState extends State<AgentDashboard> {
                     crossAxisSpacing: isDesktop ? 24 : 16,
                     mainAxisSpacing: isDesktop ? 24 : 16,
                     children: [
+                       buildDashboardItem(
+                        context,
+                        'Gestion des utilisateurs',
+                        'lib/assets/icons/me/menagment.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const UserManagement(),
+                            ),
+                          );
+                        },
+                      ),
                       buildDashboardItem(
                         context,
                         'Ajouter une classe',
@@ -296,22 +309,9 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           );
                         },
                       ),
-                      
 
+                      
                       buildDashboardItem(
-                        context,
-                        'Gestion des-خطة العلاج ',
-                        'lib/assets/icons/me/news1.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ErrorOrigin(),
-                            ),
-                          );
-                        },
-                      ),
-                        buildDashboardItem(
                         context,
                         'Voir les nouvelles',
                         'lib/assets/icons/me/news1.gif',
@@ -338,7 +338,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                       //   },
                       // ),
 
-                       // buildDashboardItem(
+                      // buildDashboardItem(
                       //   context,
                       //   'Ajouter une actualité',
                       //   'lib/assets/icons/me/news.gif',
@@ -351,7 +351,6 @@ class _AgentDashboardState extends State<AgentDashboard> {
                       //     );
                       //   },
                       // ),
-                       
                     ],
                   ),
                 ),

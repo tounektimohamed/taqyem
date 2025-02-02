@@ -1677,11 +1677,15 @@ file:///home/tounekti/Bureau/DREHATT_app/lib/services2/auth_service.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/AddStudentPage.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/EditPage.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/StudentDetailsPage.dart
+file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/da3m_tableau.dart
+file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/ereur_solution.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/gistion.dart
+file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/header.dart
+file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/jadwelisnad.dart
+file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/listedeselection.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/pdf/ManagePDFPage.dart
-file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/rating.dart
+file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/selectionPage.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/tableau.dart
-file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/test.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/touttableaux.dart
 file:///home/tounekti/flutter/bin/cache/flutter_web_sdk/kernel/dart2js_platform.dill
 file:///home/tounekti/flutter/packages/flutter/lib/animation.dart

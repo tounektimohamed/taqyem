@@ -146,7 +146,7 @@ Future signUp() async {
           'nic': null,
           'address': null,
           'mobile': null,
-          'isAgent': true, // Ajout du champ isAgent avec valeur par défaut false
+          'isAgent': false, // Ajout du champ isAgent avec valeur par défaut false
         },
       );
 
