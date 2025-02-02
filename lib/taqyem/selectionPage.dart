@@ -1,4 +1,4 @@
-import 'package:Taqyem/taqyem/test.dart';
+import 'package:Taqyem/taqyem/listedeselection.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -173,70 +173,113 @@ class _BaremesPageState extends State<BaremesPage> {
   }
 
   Future<void> _saveSelections() async {
-    try {
-      CollectionReference selectionsRef = FirebaseFirestore.instance
-          .collection('selections')
-          .doc(widget.selectedClass)
-          .collection(widget.selectedMatiere);
+  try {
+    CollectionReference selectionsRef = FirebaseFirestore.instance
+        .collection('selections')
+        .doc(widget.selectedClass)
+        .collection(widget.selectedMatiere);
 
-      var oldSelections = await selectionsRef.get();
-      for (var doc in oldSelections.docs) {
-        var sousBaremesRef = doc.reference.collection('sousBaremes');
-        var sousBaremesSnapshot = await sousBaremesRef.get();
-        for (var sousDoc in sousBaremesSnapshot.docs) {
-          await sousDoc.reference.delete();
-        }
-        await doc.reference.delete();
+    var oldSelections = await selectionsRef.get();
+    for (var doc in oldSelections.docs) {
+      var sousBaremesRef = doc.reference.collection('sousBaremes');
+      var sousBaremesSnapshot = await sousBaremesRef.get();
+      for (var sousDoc in sousBaremesSnapshot.docs) {
+        await sousDoc.reference.delete();
       }
-
-      _selectedBaremes.forEach((baremeId, isSelected) async {
-        if (isSelected) {
-          await selectionsRef.add({
-            'baremeId': baremeId,
-            'classId': widget.selectedClass,
-            'matiereId': widget.selectedMatiere,
-            'selectedAt': DateTime.now(),
-          });
-
-          if (_selectedSousBaremes.containsKey(baremeId)) {
-            var sousBaremesRef = selectionsRef.doc(baremeId).collection('sousBaremes');
-            _selectedSousBaremes[baremeId]!.forEach((sousBaremeId, isSelected) async {
-              if (isSelected) {
-                await sousBaremesRef.doc(sousBaremeId).set({
-                  'selected': true,
-                  'selectedAt': DateTime.now(),
-                });
-              }
-            });
-          }
-        }
-      });
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => SelectedBaremesPage(
-            selectedClass: widget.selectedClass,
-            selectedMatiere: widget.selectedMatiere,
-          ),
-        ),
-      );
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Sélections enregistrées avec succès!', style: TextStyle(color: Colors.white)),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur lors de l\'enregistrement: $e', style: TextStyle(color: Colors.white)),
-          backgroundColor: Colors.red,
-        ),
-      );
+      await doc.reference.delete();
     }
+
+    _selectedBaremes.forEach((baremeId, isSelected) async {
+      if (isSelected) {
+        var baremeName = await _getBaremeName(baremeId); // Get the name of the bareme
+        await selectionsRef.add({
+          'baremeId': baremeId,
+          'baremeName': baremeName, // Store the name of the bareme
+          'classId': widget.selectedClass,
+          'matiereId': widget.selectedMatiere,
+          'selectedAt': DateTime.now(),
+        });
+
+        if (_selectedSousBaremes.containsKey(baremeId)) {
+          var sousBaremesRef = selectionsRef.doc(baremeId).collection('sousBaremes');
+          _selectedSousBaremes[baremeId]!.forEach((sousBaremeId, isSelected) async {
+            if (isSelected) {
+              var sousBaremeName = await _getSousBaremeName(baremeId, sousBaremeId); // Get the name of the sous-bareme
+              await sousBaremesRef.doc(sousBaremeId).set({
+                'selected': true,
+                'sousBaremeName': sousBaremeName, // Store the name of the sous-bareme
+                'selectedAt': DateTime.now(),
+              });
+            }
+          });
+        }
+      }
+    });
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SelectedBaremesPage(
+          selectedClass: widget.selectedClass,
+          selectedMatiere: widget.selectedMatiere,
+        ),
+      ),
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Sélections enregistrées avec succès!', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.green,
+      ),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Erreur lors de l\'enregistrement: $e', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
+}
+
+// Helper function to fetch the name of the bareme
+Future<String> _getBaremeName(String baremeId) async {
+  try {
+    var baremeDoc = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(widget.selectedClass)
+        .collection('matieres')
+        .doc(widget.selectedMatiere)
+        .collection('baremes')
+        .doc(baremeId)
+        .get();
+    return baremeDoc['value']; // Assuming 'value' contains the name of the bareme
+  } catch (e) {
+    print('Erreur lors de la récupération du nom du barème: $e');
+    return ''; // Return an empty string if an error occurs
+  }
+}
+
+// Helper function to fetch the name of the sous-bareme
+Future<String> _getSousBaremeName(String baremeId, String sousBaremeId) async {
+  try {
+    var sousBaremeDoc = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(widget.selectedClass)
+        .collection('matieres')
+        .doc(widget.selectedMatiere)
+        .collection('baremes')
+        .doc(baremeId)
+        .collection('sousBaremes')
+        .doc(sousBaremeId)
+        .get();
+    return sousBaremeDoc['name']; // Assuming 'name' contains the name of the sous-bareme
+  } catch (e) {
+    print('Erreur lors de la récupération du nom du sous-barème: $e');
+    return ''; // Return an empty string if an error occurs
+  }
+}
+
 }
 
 //////////////////////////////////////////////

@@ -3,13 +3,17 @@ import 'package:Taqyem/screens2/jeojson/DrawShape.dart';
 import 'package:Taqyem/screens2/jeojson/DrawShape2.dart';
 import 'package:Taqyem/screens2/jeojson/formhtml.dart';
 import 'package:Taqyem/screens2/jeojson/sigweb.dart';
+import 'package:Taqyem/screens2/news/add_news_screen.dart';
+import 'package:Taqyem/services2/AddClassPage.dart';
+import 'package:Taqyem/taqyem/AddStudentPage.dart';
+import 'package:Taqyem/taqyem/EditPage.dart';
+import 'package:Taqyem/taqyem/selectionPage.dart';
+import 'package:Taqyem/taqyem/touttableaux.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_timeline_calendar/timeline/flutter_timeline_calendar.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
-import 'package:image_picker/image_picker.dart';
 
 // Importer d'autres fichiers nécessaires
 import 'package:Taqyem/screens2/admin/AccessLogsPage.dart';
@@ -19,6 +23,7 @@ import 'package:Taqyem/screens2/permis%20de%20bati/HousingApplicationListPage.da
 import 'package:Taqyem/screens2/jeojson/SubscribersPage.dart';
 import 'package:Taqyem/screens2/news/gerenews.dart';
 import 'package:Taqyem/screens2/users/User%20Management.dart';
+import '../../taqyem/pdf/ManagePDFPage.dart';
 import '../login_signup/account_settings.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -162,63 +167,218 @@ class _AdminDashboardState extends State<AdminDashboard> {
                     crossAxisSpacing: isDesktop ? 24 : 16,
                     mainAxisSpacing: isDesktop ? 24 : 16,
                     children: [
+
                        buildDashboardItem(
                         context,
-                        'Suivi des PAUS',
-                        'lib/assets/icons/me/isens_thumb-removebg-preview.png',
+                        'Ajouter une classe',
+                        'lib/assets/icons/me/ajouter.gif',
                         () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const SigWeb(
-                                  title:
-                                      'Sig web'), // Ajouter le paramètre de titre requis
+                              builder: (context) =>
+                                  AddClassPage(), // Ajouter le paramètre de titre requis
                             ),
                           );
                         },
                       ),
                       buildDashboardItem(
                         context,
-                        'Permis de construire',
-                        'lib/assets/icons/me/permis_debati-removebg-preview.png',
+                        'Gestion des Classes ',
+                        'lib/assets/icons/me/L7.gif',
                         () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  MapDrawingPage(), // Ajouter le paramètre de titre requis
+                                  ManageClassesPage(), // Ajouter le paramètre de titre requis
                             ),
                           );
                         },
                       ),
-                       buildDashboardItem(
+
+                      // buildDashboardItem(
+                      //   context,
+                      //   'إسناد اعداد',
+                      //   'lib/assets/icons/me/note.gif',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) =>
+                      //             ManageStudentGradesPage(), // de titre requis
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+
+                      
+
+                      buildDashboardItem(
                         context,
-                        'Suivi des plans de lotissement',
+                        'AdminPage-ادراج المعايير',
+                        'lib/assets/icons/me/barm.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AdminCrudPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      buildDashboardItem(
+                        context,
+                        'إعداد جدول جامع',
+                        'lib/assets/icons/me/15-13-33-168_512.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SelectionPage(),
+                            ),
+                          );
+                        },
+                      ),
+
+                      buildDashboardItem(
+                        context,
+                        'قائمة الجداول الجامعة',
+                        'lib/assets/icons/me/unnamed.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ClassListPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      buildDashboardItem(
+                        context,
+                        'Gestion des PDF (Ajouter et Supprimer)',
                         'lib/assets/icons/me/realisations-16918-removebg-preview.png',
                         () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  CombinedMapPage(), // Ajouter le paramètre de titre requis
+                                  UploadPDFPage(), // Ajouter le paramètre de titre requis
                             ),
                           );
                         },
                       ),
-                        buildDashboardItem(
+                      buildDashboardItem(
                         context,
-                        'Ajouter tiff ',
+                        'pdf partager',
                         'lib/assets/icons/me/ajout des images.png',
                         () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) =>
-                                  AddHtmlFormPage(), // Ajouter le paramètre de titre requis
+                                  DisplayPDFsPage(), // Ajouter le paramètre de titre requis
                             ),
                           );
                         },
                       ),
+                       buildDashboardItem(
+                        context,
+                        'Gestion des utilisateurs',
+                        'lib/assets/icons/me/menagment.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const UserManagement(),
+                            ),
+                          );
+                        },
+                      ),
+
+                      buildDashboardItem(
+                        context,
+                        'Voir les journaux d\'accès',
+                        'lib/assets/icons/me/assessment.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AccessLogsPage(),
+                            ),
+                          );
+                        },
+                      ),
+                       buildDashboardItem(
+                        context,
+                        'Ajouter une actualité',
+                        'lib/assets/icons/me/news.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AddNewsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      //  buildDashboardItem(
+                      //   context,
+                      //   'Suivi des PAUS',
+                      //   'lib/assets/icons/me/isens_thumb-removebg-preview.png',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) => const SigWeb(
+                      //             title:
+                      //                 'Sig web'), // Ajouter le paramètre de titre requis
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+                      // buildDashboardItem(
+                      //   context,
+                      //   'Permis de construire',
+                      //   'lib/assets/icons/me/permis_debati-removebg-preview.png',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) =>
+                      //             MapDrawingPage(), // Ajouter le paramètre de titre requis
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+                      //  buildDashboardItem(
+                      //   context,
+                      //   'Suivi des plans de lotissement',
+                      //   'lib/assets/icons/me/realisations-16918-removebg-preview.png',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) =>
+                      //             CombinedMapPage(), // Ajouter le paramètre de titre requis
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+                      //   buildDashboardItem(
+                      //   context,
+                      //   'Ajouter tiff ',
+                      //   'lib/assets/icons/me/ajout des images.png',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) =>
+                      //             AddHtmlFormPage(), // Ajouter le paramètre de titre requis
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
                     
                      
                            buildDashboardItem(
@@ -247,45 +407,45 @@ class _AdminDashboardState extends State<AdminDashboard> {
                           );
                         },
                       ),
-                      buildDashboardItem(
-                        context,
-                        'Liste des réclamations',
-                        'lib/assets/icons/me/admin4.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ClaimsListPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      buildDashboardItem(
-                        context,
-                        'Demandes de logement',
-                        'lib/assets/icons/me/maps.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => HousingApplicationListPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      buildDashboardItem(
-                        context,
-                        'Gérer le carrousel',
-                        'lib/assets/icons/me/G-carrousel.png',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ManageCarouselItemsPage(),
-                            ),
-                          );
-                        },
-                      ),
+                      // buildDashboardItem(
+                      //   context,
+                      //   'Liste des réclamations',
+                      //   'lib/assets/icons/me/admin4.gif',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) => ClaimsListPage(),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+                      // buildDashboardItem(
+                      //   context,
+                      //   'Demandes de logement',
+                      //   'lib/assets/icons/me/maps.gif',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) => HousingApplicationListPage(),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
+                      // buildDashboardItem(
+                      //   context,
+                      //   'Gérer le carrousel',
+                      //   'lib/assets/icons/me/G-carrousel.png',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) => ManageCarouselItemsPage(),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
                     
                       
                     ],

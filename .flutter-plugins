@@ -61,6 +61,7 @@ permission_handler_android=/home/tounekti/.pub-cache/hosted/pub.dev/permission_h
 permission_handler_apple=/home/tounekti/.pub-cache/hosted/pub.dev/permission_handler_apple-9.4.5/
 permission_handler_html=/home/tounekti/.pub-cache/hosted/pub.dev/permission_handler_html-0.1.1/
 permission_handler_windows=/home/tounekti/.pub-cache/hosted/pub.dev/permission_handler_windows-0.2.1/
+printing=/home/tounekti/.pub-cache/hosted/pub.dev/printing-5.13.1/
 shared_preferences=/home/tounekti/.pub-cache/hosted/pub.dev/shared_preferences-2.2.3/
 shared_preferences_android=/home/tounekti/.pub-cache/hosted/pub.dev/shared_preferences_android-2.2.3/
 shared_preferences_foundation=/home/tounekti/.pub-cache/hosted/pub.dev/shared_preferences_foundation-2.4.0/

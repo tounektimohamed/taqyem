@@ -1,3 +1,4 @@
+import 'package:Taqyem/services2/AddClassPage.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -15,10 +16,17 @@ class ManageClassesPage extends StatefulWidget {
 
 class _ManageClassesPageState extends State<ManageClassesPage> {
   User? currentUser = FirebaseAuth.instance.currentUser;
+
+//  User? currentUser = FirebaseAuth.instance.currentUser;
   List<Map<String, dynamic>> _classes = [];
   List<Map<String, dynamic>> _subjects = []; // Liste des matières disponibles
   Uint8List? _imageBytes;
   String? _photoUrl;
+  String? _selectedSubject; // Variable pour stocker la matière sélectionnée
+  List<Map<String, String>> _selectedSubjects = []; // Stocke les ID et noms des matières sélectionnées
+  // Ajoutez ces deux variables
+  String? selectedClassId;
+  String? selectedSubjectId;
 
   @override
   void initState() {
@@ -27,6 +35,42 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       _fetchClasses();
     }
   }
+
+Future<String?> _getEvaluation({
+  required String classId,
+  required String studentId,
+  required String baremeId,
+}) async {
+  try {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      throw Exception("Aucun utilisateur connecté");
+    }
+
+    // Référence au document de l'évaluation
+    var docRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('user_classes')
+        .doc(classId)
+        .collection('students')
+        .doc(studentId)
+        .collection('baremes')
+        .doc(baremeId);
+
+    // Récupérer le document
+    var doc = await docRef.get();
+
+    // Vérifier si le document existe et si le champ `value` existe
+    if (doc.exists && doc.data()?.containsKey('value') == true) {
+      return doc['value'] as String?; // Retourner la valeur du champ `value`
+    }
+    return null; // Retourner null si le document ou le champ `value` n'existe pas
+  } catch (e) {
+    print('Erreur lors de la récupération de l\'évaluation: $e');
+    return null;
+  }
+}
 
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
@@ -39,8 +83,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       });
     }
   }
-
-  String? _selectedSubject; // Variable pour stocker la matière sélectionnée
 
   Future<void> _addSubjectDialog(Map<String, dynamic> classData) async {
     await _loadSubjects(classData['class_id']);
@@ -62,7 +104,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
               },
               items: _subjects.map<DropdownMenuItem<String>>((subject) {
                 return DropdownMenuItem<String>(
-                  value: subject['name'],
+                  value: subject['id'],
                   child: Text(subject['name']),
                 );
               }).toList(),
@@ -77,7 +119,10 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           ElevatedButton(
             onPressed: () async {
               if (_selectedSubject != null) {
-                await _addSubjectToClass(classData, _selectedSubject!);
+                var selectedSubject = _subjects
+                    .firstWhere((subject) => subject['id'] == _selectedSubject);
+                await _addSubjectToClass(classData, selectedSubject['name']!,
+                    selectedSubject['id']!);
                 Navigator.pop(context);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -91,12 +136,13 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     );
   }
 
-  Future<void> _addSubjectToClass(
-      Map<String, dynamic> classData, String subjectName) async {
+  Future<void> _addSubjectToClass(Map<String, dynamic> classData,
+      String subjectName, String subjectId) async {
     try {
-      List<String> updatedSubjects = List.from(classData['subjects']);
-      if (!updatedSubjects.contains(subjectName)) {
-        updatedSubjects.add(subjectName);
+      List<Map<String, String>> updatedSubjects =
+          List.from(classData['subjects']);
+      if (!updatedSubjects.any((subject) => subject['id'] == subjectId)) {
+        updatedSubjects.add({'id': subjectId, 'name': subjectName});
 
         await FirebaseFirestore.instance
             .collection('users')
@@ -132,11 +178,22 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           .collection('matieres')
           .get();
 
-      setState(() {
-        _subjects = classDoc.docs.map((doc) {
-          return {'id': doc.id, 'name': doc['name'] as String};
-        }).toList();
-      });
+      if (classDoc.docs.isNotEmpty) {
+        setState(() {
+          _subjects.clear();
+          _subjects.addAll(classDoc.docs.map((doc) {
+            return {
+              'id': doc.id,
+              'name': doc['name']
+                  as String, // Assurez-vous que 'name' est une String
+            };
+          }).toList());
+        });
+      } else {
+        setState(() {
+          _subjects.clear();
+        });
+      }
     } catch (e) {
       print("Erreur lors de la récupération des matières : $e");
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -154,19 +211,42 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
 
       setState(() {
         _classes = classDocs.docs.map((doc) {
+          // Convertir les sujets en List<Map<String, String>>
+          List<Map<String, String>> subjects = [];
+          if (doc['subjects'] != null) {
+            subjects = (doc['subjects'] as List).map((subject) {
+              return {
+                'id': subject['id']
+                    .toString(), // Assurez-vous que c'est une String
+                'name': subject['name']
+                    .toString(), // Assurez-vous que c'est une String
+              };
+            }).toList();
+          }
+
+          // Convertir les étudiants en List<String>
+          List<String> students = [];
+          if (doc['students'] != null) {
+            students = (doc['students'] as List).map((student) {
+              return student.toString(); // Assurez-vous que c'est une String
+            }).toList();
+          }
+
           return {
             'id': doc.id,
-            'class_id': doc['class_id'],
-            'class_name': doc['class_name'],
-            'subjects': List<String>.from(doc['subjects']),
-            'students': List<String>.from(doc['students']),
+            'class_id':
+                doc['class_id'].toString(), // Assurez-vous que c'est une String
+            'class_name': doc['class_name']
+                .toString(), // Assurez-vous que c'est une String
+            'subjects': subjects,
+            'students': students,
           };
         }).toList();
       });
     } catch (e) {
       print("Erreur lors du chargement des classes : $e");
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors du chargement des classes')));
+          SnackBar(content: Text('Erreur lors du chargement des classes: $e')));
     }
   }
 
@@ -213,48 +293,49 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       ),
     );
   }
-Future<void> _deleteStudent(
-    Map<String, dynamic> classData, String studentId) async {
-  try {
-    // Étape 1 : Supprimer l'élève de la liste `students` dans le document de la classe
-    List<String> updatedStudents = List.from(classData['students']);
-    updatedStudents.remove(studentId);
 
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('user_classes')
-        .doc(classData['id'])
-        .update({
-      'students': updatedStudents,
-    });
+  Future<void> _deleteStudent(
+      Map<String, dynamic> classData, String studentId) async {
+    try {
+      // Étape 1 : Supprimer l'élève de la liste `students` dans le document de la classe
+      List<String> updatedStudents = List.from(classData['students']);
+      updatedStudents.remove(studentId);
 
-    // Étape 2 : Supprimer le document de l'élève dans la sous-collection `students`
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('user_classes')
-        .doc(classData['id'])
-        .collection('students')
-        .doc(studentId)
-        .delete();
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(classData['id'])
+          .update({
+        'students': updatedStudents,
+      });
 
-    // Mettre à jour l'état local
-    setState(() {
-      classData['students'] = updatedStudents;
-    });
+      // Étape 2 : Supprimer le document de l'élève dans la sous-collection `students`
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(classData['id'])
+          .collection('students')
+          .doc(studentId)
+          .delete();
 
-    // Afficher un message de succès
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('Élève supprimé')));
-  } catch (e) {
-    // Gérer les erreurs
-    print("Erreur lors de la suppression de l'élève : $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Erreur lors de la suppression de l\'élève')),
-    );
+      // Mettre à jour l'état local
+      setState(() {
+        classData['students'] = updatedStudents;
+      });
+
+      // Afficher un message de succès
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Élève supprimé')));
+    } catch (e) {
+      // Gérer les erreurs
+      print("Erreur lors de la suppression de l'élève : $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de la suppression de l\'élève')),
+      );
+    }
   }
-}
 
   Future<void> _confirmDeleteStudent(
       Map<String, dynamic> classData, String studentId) async {
@@ -281,10 +362,11 @@ Future<void> _deleteStudent(
   }
 
   Future<void> _deleteSubject(
-      Map<String, dynamic> classData, String subject) async {
+      Map<String, dynamic> classData, String subjectId) async {
     try {
-      List<String> updatedSubjects = List.from(classData['subjects']);
-      updatedSubjects.remove(subject);
+      List<Map<String, String>> updatedSubjects =
+          List.from(classData['subjects']);
+      updatedSubjects.removeWhere((subject) => subject['id'] == subjectId);
 
       await FirebaseFirestore.instance
           .collection('users')
@@ -308,7 +390,7 @@ Future<void> _deleteStudent(
   }
 
   Future<void> _confirmDeleteSubject(
-      Map<String, dynamic> classData, String subject) async {
+      Map<String, dynamic> classData, String subjectId) async {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -322,7 +404,7 @@ Future<void> _deleteStudent(
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _deleteSubject(classData, subject);
+              _deleteSubject(classData, subjectId);
             },
             child: Text('Supprimer'),
           ),
@@ -466,6 +548,266 @@ Future<void> _deleteStudent(
     }
   }
 
+
+Future<void> _saveEvaluation({
+  required String classId,
+  required String studentId,
+  required String baremeId,
+  required String? newValue,
+}) async {
+  try {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      throw Exception("Aucun utilisateur connecté");
+    }
+
+    // Référence au document de l'évaluation
+    var docRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('user_classes')
+        .doc(classId)
+        .collection('students')
+        .doc(studentId)
+        .collection('baremes')
+        .doc(baremeId);
+
+    // Sauvegarder la nouvelle valeur
+    if (newValue != null) {
+      await docRef.set({'value': newValue}, SetOptions(merge: true));
+    } else {
+      await docRef.update({'value': FieldValue.delete()}); // Supprimer le champ `value` si newValue est null
+    }
+
+    print('Évaluation sauvegardée avec succès pour le barème $baremeId');
+  } catch (e) {
+    print('Erreur lors de la sauvegarde de l\'évaluation: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Erreur lors de la sauvegarde de l\'évaluation')),
+    );
+  }
+}
+
+//////////////////////////////////////////////////
+Future<void> _showSelectionsDialog(String classId, String matiereId, String studentId) async {
+  final List<String> evaluationOptions = ['( - - - )', '( + - - )', '( + + - )', '( + + + )'];
+  final Map<String, Color> evaluationColors = {
+    '( - - - )': Colors.red,
+    '( + - - )': Colors.yellow,
+    '( + + - )': Colors.orange,
+    '( + + + )': Colors.green,
+  };
+  Color defaultColor = Colors.blue;
+
+  try {
+    CollectionReference selectionsRef = FirebaseFirestore.instance
+        .collection('selections')
+        .doc(classId)
+        .collection(matiereId);
+
+    var selectionsSnapshot = await selectionsRef.get();
+
+    List<Map<String, dynamic>> selections = [];
+    for (var doc in selectionsSnapshot.docs) {
+      String? savedEvaluation = await _getEvaluation(
+        classId: classId,
+        studentId: studentId,
+        baremeId: doc.id,
+      );
+
+      selections.add({
+        'id': doc.id,
+        'baremeId': doc['baremeId'],
+        'baremeName': doc['baremeName'],
+        'selectedAt': doc['selectedAt'],
+        'evaluation': savedEvaluation ?? '( - - - )',
+      });
+
+      var sousBaremesRef = doc.reference.collection('sousBaremes');
+      var sousBaremesSnapshot = await sousBaremesRef.get();
+      List<Map<String, dynamic>> sousBaremes = [];
+      for (var sousDoc in sousBaremesSnapshot.docs) {
+        sousBaremes.add({
+          'id': sousDoc.id,
+          'sousBaremeName': sousDoc['sousBaremeName'],
+          'selectedAt': sousDoc['selectedAt'],
+        });
+      }
+
+      selections.last['sousBaremes'] = sousBaremes;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          // Récupérer la taille de l'écran
+          final screenWidth = MediaQuery.of(context).size.width;
+          final isSmallScreen = screenWidth < 600; // Téléphone
+
+          return AlertDialog(
+            title: Text('Sélections associées'),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Veuillez sélectionner une évaluation pour chaque barème.',
+                    style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
+                  ),
+                  Divider(),
+                  ...selections.map((selection) {
+                    String selectedEvaluation = selection['evaluation'];
+                    return Card(
+                      margin: EdgeInsets.symmetric(vertical: 8),
+                      child: ExpansionTile(
+                        title: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              selection['baremeName'] ?? 'Sans nom',
+                              style: TextStyle(
+                                fontSize: isSmallScreen ? 14 : 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            // Afficher les options d'évaluation en ligne ou en colonne selon la taille de l'écran
+                            isSmallScreen
+                                ? Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: evaluationOptions.map((value) {
+                                      return _buildEvaluationButton(
+                                        value: value,
+                                        isSelected: selection['evaluation'] == value,
+                                        color: evaluationColors[value] ?? defaultColor,
+                                        onTap: () {
+                                          setState(() {
+                                            selection['evaluation'] = value;
+                                          });
+                                        },
+                                      );
+                                    }).toList(),
+                                  )
+                                : Row(
+                                    children: evaluationOptions.map((value) {
+                                      return _buildEvaluationButton(
+                                        value: value,
+                                        isSelected: selection['evaluation'] == value,
+                                        color: evaluationColors[value] ?? defaultColor,
+                                        onTap: () {
+                                          setState(() {
+                                            selection['evaluation'] = value;
+                                          });
+                                        },
+                                      );
+                                    }).toList(),
+                                  ),
+                          ],
+                        ),
+                        children: (selection['sousBaremes'] as List<Map<String, dynamic>>)
+                            .map((sousBareme) => ListTile(
+                                  title: Text(
+                                    sousBareme['sousBaremeName'] ?? 'Sans nom',
+                                    style: TextStyle(fontSize: isSmallScreen ? 12 : 14),
+                                  ),
+                                  subtitle: Text(
+                                    'ID: ${sousBareme['id']}',
+                                    style: TextStyle(fontSize: isSmallScreen ? 10 : 12),
+                                  ),
+                                ))
+                            .toList(),
+                      ),
+                    );
+                  }).toList(),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Annuler', style: TextStyle(color: Colors.red)),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  bool confirm = await showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: Text('Confirmer'),
+                      content: Text('Êtes-vous sûr de vouloir enregistrer ces évaluations ?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: Text('Non'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: Text('Oui'),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirm) {
+                    for (var selection in selections) {
+                      await _saveEvaluation(
+                        classId: classId,
+                        studentId: studentId,
+                        baremeId: selection['baremeId'],
+                        newValue: selection['evaluation'],
+                      );
+                    }
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Évaluations enregistrées avec succès!')),
+                    );
+
+                    Navigator.pop(context);
+                  }
+                },
+                child: Text('Évaluer'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  } catch (e) {
+    print('Erreur lors du chargement des sélections: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Erreur lors du chargement des sélections')),
+    );
+  }
+}
+
+// Widget pour construire un bouton d'évaluation
+Widget _buildEvaluationButton({
+  required String value,
+  required bool isSelected,
+  required Color color,
+  required VoidCallback onTap,
+}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isSelected ? color : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color),
+      ),
+      child: Text(
+        value,
+        style: TextStyle(
+          color: isSelected ? Colors.white : color,
+          fontSize: 14,
+        ),
+      ),
+    ),
+  );
+}
+/////////////////////////////////////////////////////////////////////////////
   Widget _buildClassList() {
     return ListView.builder(
       itemCount: _classes.length,
@@ -475,13 +817,59 @@ Future<void> _deleteStudent(
           title: Text(classData['class_name']),
           subtitle: Text(
               'Élèves: ${classData['students'].length} | Matières: ${classData['subjects'].length}'),
+          onExpansionChanged: (expanded) {
+            if (expanded) {
+              setState(() {
+                selectedClassId = classData['class_id'];
+                selectedSubjectId =
+                    null; // Réinitialiser la sélection de la matière
+              });
+
+              String message = "ID de la classe : ${classData['class_id']}\n";
+              message += "Matières :\n";
+              for (var subject in classData['subjects']) {
+                message += "- ${subject['name']} (ID: ${subject['id']})\n";
+              }
+
+              // showDialog(
+              //   context: context,
+              //   builder: (context) => AlertDialog(
+              //     title: Text("Détails de la classe"),
+              //     content: Text(message),
+              //     actions: [
+              //       TextButton(
+              //         onPressed: () => Navigator.pop(context),
+              //         child: Text("Fermer"),
+              //       ),
+              //     ],
+              //   ),
+              // );
+            }
+          },
           children: [
             ...classData['subjects'].map<Widget>((subject) {
               return ListTile(
-                title: Text(subject),
+                title: Text(subject['name']),
+                tileColor: selectedSubjectId == subject['id']
+                    ? const Color.fromARGB(255, 0, 255, 8)
+                    : null, // Colorer en vert si sélectionné
+                leading: selectedSubjectId == subject['id']
+                    ? Icon(Icons.check_box,
+                        color: Color.fromARGB(
+                            255, 226, 107, 9)) // Icône de sélection
+                    : Icon(Icons.check_box_outline_blank,
+                        color: Colors.grey), // Icône non sélectionnée
+                onTap: () {
+                  setState(() {
+                    selectedSubjectId = subject['id'];
+                  });
+                  print("ID de la classe : ${classData['class_id']}");
+                  print("ID de la matière sélectionnée : ${subject['id']}");
+                },
                 trailing: IconButton(
                   icon: Icon(Icons.delete),
-                  onPressed: () => _confirmDeleteSubject(classData, subject),
+                  onPressed: () =>
+                      _confirmDeleteSubject(classData, subject['id']),
                 ),
               );
             }).toList(),
@@ -549,19 +937,16 @@ Future<void> _deleteStudent(
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // Bouton pour modifier les détails de l'élève
                           IconButton(
                             icon: Icon(Icons.edit),
                             onPressed: () =>
                                 _showStudentDetails(classData, studentId),
                           ),
-                          // Bouton pour supprimer l'élève
                           IconButton(
                             icon: Icon(Icons.delete),
                             onPressed: () =>
                                 _confirmDeleteStudent(classData, studentId),
                           ),
-                          // Bouton pour appeler le parent
                           if (parentPhone != null && parentPhone.isNotEmpty)
                             IconButton(
                               icon: Icon(Icons.phone),
@@ -580,6 +965,21 @@ Future<void> _deleteStudent(
                             ),
                         ],
                       ),
+                      onTap: () {
+                          print("ID de l'élève sélectionné : $studentId");
+
+                        if (selectedClassId != null &&
+                            selectedSubjectId != null) {
+                          _showSelectionsDialog(
+                              selectedClassId!, selectedSubjectId!,studentId!);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text(
+                                    "Veuillez sélectionner une classe et une matière")),
+                          );
+                        }
+                      },
                     );
                   }
                 },
@@ -748,13 +1148,42 @@ Future<void> _deleteStudent(
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Gestion des classes')),
-      body: _classes.isEmpty
-          ? Center(child: CircularProgressIndicator())
-          : _buildClassList(),
-    );
-  }
+ @override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(title: Text('Gestion des classes')),
+    body: _classes.isEmpty
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Aucune classe trouvée.',
+                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'Vous devez ajouter une classe dans l\'onglet "Ajouter une classe".',
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    // Naviguer vers AddClassPage
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddClassPage(),
+                      ),
+                    );
+                  },
+                  child: Text('Ajouter une classe'),
+                ),
+              ],
+            ),
+          )
+        : _buildClassList(),
+  );
+}
 }

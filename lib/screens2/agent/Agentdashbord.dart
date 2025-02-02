@@ -12,10 +12,12 @@ import 'package:Taqyem/services2/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
 import 'package:Taqyem/taqyem/EditPage.dart';
 import 'package:Taqyem/taqyem/StudentDetailsPage.dart';
+import 'package:Taqyem/taqyem/ereur_solution.dart';
 import 'package:Taqyem/taqyem/gistion.dart';
+import 'package:Taqyem/taqyem/jadwelisnad.dart';
 import 'package:Taqyem/taqyem/pdf/ManagePDFPage.dart';
-import 'package:Taqyem/taqyem/rating.dart';
-import 'package:Taqyem/taqyem/test.dart';
+import 'package:Taqyem/taqyem/selectionPage.dart';
+import 'package:Taqyem/taqyem/listedeselection.dart';
 import 'package:Taqyem/taqyem/touttableaux.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -196,21 +198,21 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           );
                         },
                       ),
-                      
-                      buildDashboardItem(
-                        context,
-                        'إسناد اعداد',
-                        'lib/assets/icons/me/note.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  ManageStudentGradesPage(), // de titre requis
-                            ),
-                          );
-                        },
-                      ),
+
+                      // buildDashboardItem(
+                      //   context,
+                      //   'إسناد اعداد',
+                      //   'lib/assets/icons/me/note.gif',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) =>
+                      //             ManageStudentGradesPage(), // de titre requis
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
 
                       // buildDashboardItem(
                       //   context,
@@ -226,20 +228,19 @@ class _AgentDashboardState extends State<AgentDashboard> {
                       //   },
                       // ),
 
-                      
-                      buildDashboardItem(
-                        context,
-                        'AdminPage-ادراج المعايير',
-                        'lib/assets/icons/me/barm.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AdminCrudPage(),
-                            ),
-                          );
-                        },
-                      ),
+                      // buildDashboardItem(
+                      //   context,
+                      //   'AdminPage-ادراج المعايير',
+                      //   'lib/assets/icons/me/barm.gif',
+                      //   () {
+                      //     Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute(
+                      //         builder: (context) => AdminCrudPage(),
+                      //       ),
+                      //     );
+                      //   },
+                      // ),
                       buildDashboardItem(
                         context,
                         'إعداد جدول جامع',
@@ -253,7 +254,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           );
                         },
                       ),
-                      
+
                       buildDashboardItem(
                         context,
                         'قائمة الجداول الجامعة',
@@ -262,8 +263,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  ClassListPage(),
+                              builder: (context) => ClassListPage(),
                             ),
                           );
                         },
@@ -296,6 +296,34 @@ class _AgentDashboardState extends State<AgentDashboard> {
                           );
                         },
                       ),
+                      
+
+                      buildDashboardItem(
+                        context,
+                        'Gestion des-خطة العلاج ',
+                        'lib/assets/icons/me/news1.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ErrorOrigin(),
+                            ),
+                          );
+                        },
+                      ),
+                        buildDashboardItem(
+                        context,
+                        'Voir les nouvelles',
+                        'lib/assets/icons/me/news1.gif',
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => GereListPage(),
+                            ),
+                          );
+                        },
+                      ),
                       //  buildDashboardItem(
                       //   context,
                       //   'Gestion des utilisateurs',
@@ -309,21 +337,8 @@ class _AgentDashboardState extends State<AgentDashboard> {
                       //     );
                       //   },
                       // ),
-                 
-                      buildDashboardItem(
-                        context,
-                        'Voir les journaux d\'accès',
-                        'lib/assets/icons/me/assessment.gif',
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const AccessLogsPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      // buildDashboardItem(
+
+                       // buildDashboardItem(
                       //   context,
                       //   'Ajouter une actualité',
                       //   'lib/assets/icons/me/news.gif',
@@ -336,6 +351,7 @@ class _AgentDashboardState extends State<AgentDashboard> {
                       //     );
                       //   },
                       // ),
+                       
                     ],
                   ),
                 ),

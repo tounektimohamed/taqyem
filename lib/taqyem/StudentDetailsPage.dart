@@ -32,12 +32,16 @@ class _ManageStudentGradesPageState extends State<ManageStudentGradesPage> {
 
       setState(() {
         _classes = classDocs.docs.map((doc) {
+          // Vous pouvez afficher le class_id ici si nécessaire
+          print('Class ID: ${doc['class_id']}'); // Affiche le class_id dans la console
+
           return {
             'id': doc.id,
             'class_id': doc['class_id'],
             'class_name': doc['class_name'],
           };
         }).toList();
+        
       });
     } catch (e) {
       print("Erreur lors du chargement des classes : $e");
@@ -46,7 +50,6 @@ class _ManageStudentGradesPageState extends State<ManageStudentGradesPage> {
       );
     }
   }
-
   Future<void> _fetchStudents(String classId) async {
     try {
       final studentDocs = await FirebaseFirestore.instance
@@ -57,16 +60,16 @@ class _ManageStudentGradesPageState extends State<ManageStudentGradesPage> {
           .collection('students')
           .get();
 
-      final studentsWithGrades =
+      final studentsWithMarks =
           await Future.wait(studentDocs.docs.map((doc) async {
-        final grades = await FirebaseFirestore.instance
+        final marks = await FirebaseFirestore.instance
             .collection('users')
             .doc(currentUser!.uid)
             .collection('user_classes')
             .doc(classId)
             .collection('students')
             .doc(doc.id)
-            .collection('grades')
+            .collection('baremes')
             .get();
 
         return {
@@ -74,12 +77,12 @@ class _ManageStudentGradesPageState extends State<ManageStudentGradesPage> {
           'name': doc['name'],
           'parentName': doc['parentName'],
           'birthDate': doc['birthDate'],
-          'grades': grades.docs.map((gradeDoc) => gradeDoc['subject']).toList(),
+          'marks': marks.docs.map((markDoc) => markDoc['value']).toList(),
         };
       }));
 
       setState(() {
-        _students = studentsWithGrades;
+        _students = studentsWithMarks;
       });
     } catch (e) {
       print("Erreur lors du chargement des élèves : $e");
@@ -113,22 +116,21 @@ class _ManageStudentGradesPageState extends State<ManageStudentGradesPage> {
     }
   }
 
-  Future<void> _assignGrade(
-      String studentId, String subject, double grade) async {
+  Future<void> _assignMark(String studentId, String subject, double mark) async {
     try {
+      // Mettre à jour le champ `value` dans le document existant de la collection `baremes`
       await FirebaseFirestore.instance
           .collection('users')
-          .doc(currentUser!.uid)
+          .doc(currentUser!.uid) // VusMWn6WMiWEl3QyukU7RTFm5Gj2
           .collection('user_classes')
-          .doc(_selectedClassId)
+          .doc(_selectedClassId) // UNpvOcT2qaq3CfJmpuNq
           .collection('students')
-          .doc(studentId)
-          .collection('grades')
-          .add({
-        'subject': subject,
-        'grade': grade,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+          .doc(studentId) // gSukRi5l66HyfEWyox5G
+          .collection('baremes')
+          .doc(subject) // Cw478y5zY1VlIZm5Kh2F (ID de la matière)
+          .update({
+            'value': mark, // Mettre à jour le champ `value`
+          });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Note attribuée avec succès')),
@@ -174,7 +176,6 @@ class _ManageStudentGradesPageState extends State<ManageStudentGradesPage> {
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           onTap: () {
-                            
                             setState(() {
                               _selectedClassId = classData['id'];
                               _selectedSubject = null;
@@ -225,7 +226,7 @@ class _ManageStudentGradesPageState extends State<ManageStudentGradesPage> {
                             itemBuilder: (context, index) {
                               final student = _students[index];
                               final isEvaluated = _selectedSubject != null &&
-                                  student['grades'].contains(_selectedSubject);
+                                  student['marks'].contains(_selectedSubject);
 
                               return Card(
                                 margin: EdgeInsets.symmetric(
@@ -248,7 +249,7 @@ class _ManageStudentGradesPageState extends State<ManageStudentGradesPage> {
                                   ),
                                   onTap: () {
                                     if (_selectedSubject != null) {
-                                      _showGradeDialog(
+                                      _showMarkDialog(
                                           student['id'], _selectedSubject!);
                                     }
                                   },
@@ -265,15 +266,15 @@ class _ManageStudentGradesPageState extends State<ManageStudentGradesPage> {
     );
   }
 
-  Future<void> _showGradeDialog(String studentId, String subject) async {
-    TextEditingController gradeController = TextEditingController();
+  Future<void> _showMarkDialog(String studentId, String subject) async {
+    TextEditingController markController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Attribuer une note'),
         content: TextField(
-          controller: gradeController,
+          controller: markController,
           decoration: InputDecoration(labelText: 'Note (sur 20)'),
           keyboardType: TextInputType.number,
         ),
@@ -284,9 +285,9 @@ class _ManageStudentGradesPageState extends State<ManageStudentGradesPage> {
           ),
           ElevatedButton(
             onPressed: () {
-              final grade = double.tryParse(gradeController.text);
-              if (grade != null && grade >= 0 && grade <= 20) {
-                _assignGrade(studentId, subject, grade);
+              final mark = double.tryParse(markController.text);
+              if (mark != null && mark >= 0 && mark <= 20) {
+                _assignMark(studentId, subject, mark);
                 Navigator.pop(context);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(

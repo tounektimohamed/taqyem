@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:printing/printing.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 class ClassListPage extends StatelessWidget {
   final User? currentUser = FirebaseAuth.instance.currentUser;
@@ -151,8 +154,7 @@ class MatiereListPage extends StatelessWidget {
       ),
     );
   }
-}
-class TablePage extends StatefulWidget {
+}class TablePage extends StatefulWidget {
   final String selectedClass;
   final String selectedMatiere;
   final User currentUser;
@@ -172,10 +174,15 @@ class _TablePageState extends State<TablePage> {
   String _schoolName = '';
   bool _isDialogCompleted = false;
 
+  // Variables pour stocker les marques
+  Map<String, int> sumCriteriaMaxPerBareme = {};
+  int totalStudents = 0;
+
   @override
   void initState() {
     super.initState();
     _loadUserData(); // Charger les données depuis Firestore
+    fetchMarks(); // Récupérer les marques au chargement de la page
   }
 
   // Charger les données depuis Firestore
@@ -205,13 +212,95 @@ class _TablePageState extends State<TablePage> {
     // Implémentez la logique pour afficher la boîte de dialogue ici
   }
 
+  // Récupérer les marques depuis Firestore
+  Future<void> fetchMarks() async {
+    try {
+      // Récupérer tous les élèves de la classe
+      var studentsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('user_classes')
+          .where('class_id', isEqualTo: widget.selectedClass)
+          .get();
+
+      if (studentsSnapshot.docs.isEmpty) {
+        print('Aucune classe trouvée pour cet utilisateur.');
+        return;
+      }
+
+      var classDocId = studentsSnapshot.docs.first.id;
+
+      var students = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('user_classes')
+          .doc(classDocId)
+          .collection('students')
+          .get();
+
+      setState(() {
+        totalStudents = students.docs.length; // Mettre à jour le nombre total d'élèves
+      });
+
+      // Récupérer les barèmes sélectionnés
+      var selectedBaremes = await FirebaseFirestore.instance
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .get();
+
+      // Initialiser les compteurs pour chaque barème
+      for (var baremeDoc in selectedBaremes.docs) {
+        var baremeId = baremeDoc['baremeId'];
+        sumCriteriaMaxPerBareme[baremeId] = 0;
+      }
+
+      // Parcourir chaque élève
+      for (var studentDoc in students.docs) {
+        var studentId = studentDoc.id;
+
+        // Parcourir chaque barème
+        for (var baremeDoc in selectedBaremes.docs) {
+          var baremeId = baremeDoc['baremeId'];
+
+          // Récupérer la valeur du barème pour l'élève
+          var baremeSnapshot = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(widget.currentUser.uid)
+              .collection('user_classes')
+              .doc(classDocId)
+              .collection('students')
+              .doc(studentId)
+              .collection('baremes')
+              .doc(baremeId)
+              .get();
+
+          if (baremeSnapshot.exists) {
+            var value = baremeSnapshot['value'];
+
+            // Compter les occurrences de +++ et ++-
+            if (value == '( + + + )' || value == '( + + - )') {
+              sumCriteriaMaxPerBareme[baremeId] =
+                  (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
+            }
+          }
+        }
+      }
+
+      // Mettre à jour l'interface utilisateur
+      setState(() {});
+    } catch (e) {
+      print('Erreur lors de la récupération des marques : $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         textTheme: TextTheme(
-          bodyMedium: TextStyle(fontFamily: 'ArabicFont', fontSize: 14), // Petite police
+          bodyMedium: TextStyle(fontFamily: 'ArabicFont', fontSize: 14),
         ),
         colorScheme: ColorScheme.light(
           primary: Colors.blue,
@@ -296,10 +385,10 @@ class _TablePageState extends State<TablePage> {
                             height: 100, // Taille réduite du logo
                           ),
                           SizedBox(height: 8),
-                        Text(
-                          'مدرسة: $_schoolName',
-                          style: TextStyle(fontSize: 14), // Petite police
-                        ),
+                          Text(
+                            'مدرسة: $_schoolName',
+                            style: TextStyle(fontSize: 14), // Petite police
+                          ),
                         ],
                       ),
                     ],
@@ -497,57 +586,115 @@ class _TablePageState extends State<TablePage> {
                         ),
                       ),
                   ],
-                  rows: studentsDocs.map((doc) {
-                    var studentData = doc.data() as Map<String, dynamic>;
-                    var studentName = studentData['name'] ?? 'اسم غير معروف';
-                    var studentId = doc.id;
+                  rows: [
+                    ...studentsDocs.map((doc) {
+                      var studentData = doc.data() as Map<String, dynamic>;
+                      var studentName = studentData['name'] ?? 'اسم غير معروف';
+                      var studentId = doc.id;
 
-                    return DataRow(
-                      cells: [
-                        DataCell(
-                          Container(
-                            width: 150,
-                            child: Text(
-                              studentName,
-                              textDirection: TextDirection.rtl,
-                              style: TextStyle(color: Colors.grey.shade800),
-                            ),
-                          ),
-                        ),
-                        for (var bareme in baremesValues)
+                      return DataRow(
+                        cells: [
                           DataCell(
                             Container(
-                              width: 100,
-                              child: FutureBuilder<String>(
-                                future:
-                                    _getSelectedValue(studentId, bareme['id']!),
-                                builder: (context, snapshot) {
-                                  if (snapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return CircularProgressIndicator(); // Afficher un indicateur de chargement
-                                  }
-                                  if (snapshot.hasError) {
-                                    return Text('خطأ',
-                                        textDirection: TextDirection
-                                            .rtl); // Afficher une erreur
-                                  }
-                                  return Text(
-                                    snapshot.data ??
-                                        '( - - - )', // Afficher la valeur ou une valeur par défaut
-                                    textDirection: TextDirection.rtl,
-                                    style:
-                                        TextStyle(color: Colors.grey.shade800),
-                                  );
-                                },
+                              width: 150,
+                              child: Text(
+                                studentName,
+                                textDirection: TextDirection.rtl,
+                                style: TextStyle(color: Colors.grey.shade800),
                               ),
                             ),
                           ),
+                          for (var bareme in baremesValues)
+                            DataCell(
+                              Container(
+                                width: 100,
+                                child: FutureBuilder<String>(
+                                  future:
+                                      _getSelectedValue(studentId, bareme['id']!),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return CircularProgressIndicator(); // Afficher un indicateur de chargement
+                                    }
+                                    if (snapshot.hasError) {
+                                      return Text('خطأ',
+                                          textDirection: TextDirection
+                                              .rtl); // Afficher une erreur
+                                    }
+                                    return Text(
+                                      snapshot.data ??
+                                          '( - - - )', // Afficher la valeur ou une valeur par défaut
+                                      textDirection: TextDirection.rtl,
+                                      style:
+                                          TextStyle(color: Colors.grey.shade800),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
                       ],
                     );
                   }).toList(),
-                ),
+                  // Ajouter la ligne pour la somme des élèves avec les critères +++ et ++-
+                  DataRow(
+                    cells: [
+                      DataCell(
+                        Container(
+                          width: 150,
+                          child: Text(
+                            'عدد التلاميذ المحققين للتملك الأدنى',
+                            textDirection: TextDirection.rtl,
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, color: Colors.blue),
+                          ),
+                        ),
+                      ),
+                      for (var bareme in baremesValues)
+                        DataCell(
+                          Container(
+                            width: 100,
+                            child: Text(
+                              sumCriteriaMaxPerBareme[bareme['id']!].toString(),
+                              textDirection: TextDirection.rtl,
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  // Ajouter la ligne pour le pourcentage
+                  DataRow(
+                    cells: [
+                      DataCell(
+                        Container(
+                          width: 150,
+                          child: Text(
+                            'النسبة المئوية للتلاميذ المحققين للتملك',
+                            textDirection: TextDirection.rtl,
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold, color: Colors.blue),
+                          ),
+                        ),
+                      ),
+                      for (var bareme in baremesValues)
+                        DataCell(
+                          Container(
+                            width: 100,
+                            child: Text(
+                              '${((sumCriteriaMaxPerBareme[bareme['id']!] ?? 0) / totalStudents * 100).toStringAsFixed(2)}%',
+                              textDirection: TextDirection.rtl,
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
               ),
-            );
+            ));
+          
           },
         );
       },
