@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
-  <meta name="google-signin-client_id" content="562475984196-4rmbp26md9fq33pffjbpcmurlompl0mb.apps.googleusercontent.com">
+  <meta name="google-signin-client_id"
+    content="562475984196-4rmbp26md9fq33pffjbpcmurlompl0mb.apps.googleusercontent.com">
 
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Taqyem">
   <link rel="apple-touch-icon" href="icons/cigle-meh.png">
-  <link rel="icon" type="image/png" href="icons/cigle-meh.png"/>
+  <link rel="icon" type="image/png" href="icons/cigle-meh.png" />
 
   <title>Taqyem</title>
   <link rel="manifest" href="manifest.json">
@@ -28,12 +30,12 @@
     // Your web app's Firebase configuration
     const firebaseConfig = {
       apiKey: 'AIzaSyCuzZQDt6eBErRHZK3ZAInanLqHE4iw3oE',
-    appId: '1:1027057481100:web:0730b43a791acb845512a9',
-    messagingSenderId: '1027057481100',
-    projectId: 'portfolio-8d8de',
-    authDomain: 'portfolio-8d8de.firebaseapp.com',
-    storageBucket: 'portfolio-8d8de.appspot.com',
-    measurementId: 'G-6F9E00FKLZ',
+      appId: '1:1027057481100:web:0730b43a791acb845512a9',
+      messagingSenderId: '1027057481100',
+      projectId: 'portfolio-8d8de',
+      authDomain: 'portfolio-8d8de.firebaseapp.com',
+      storageBucket: 'portfolio-8d8de.appspot.com',
+      measurementId: 'G-6F9E00FKLZ',
     };
 
     // Initialize Firebase
@@ -41,22 +43,24 @@
   </script>
 
   <!-- Google Maps API -->
-  <script async src="https://maps.googleapis.com/maps/api/js?v=weekly&key=AIzaSyAdJg582WrPb-1vojpBPiOFTOFLXPN3OY0&callback=initMap"></script>
+  <script async
+    src="https://maps.googleapis.com/maps/api/js?v=weekly&key=AIzaSyAdJg582WrPb-1vojpBPiOFTOFLXPN3OY0&callback=initMap"></script>
 
   <script>
     const serviceWorkerVersion = null;
   </script>
   <script src="flutter.js" defer></script>
 </head>
+
 <body>
   <script>
-    window.addEventListener('load', function(ev) {
+    window.addEventListener('load', function (ev) {
       _flutter.loader.loadEntrypoint({
         serviceWorker: {
           serviceWorkerVersion: serviceWorkerVersion,
         },
-        onEntrypointLoaded: function(engineInitializer) {
-          engineInitializer.initializeEngine().then(function(appRunner) {
+        onEntrypointLoaded: function (engineInitializer) {
+          engineInitializer.initializeEngine().then(function (appRunner) {
             appRunner.runApp();
           });
         }
@@ -64,4 +68,5 @@
     });
   </script>
 </body>
+
 </html>
