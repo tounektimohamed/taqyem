@@ -1,3 +1,4 @@
+import 'package:Taqyem/auth/main_page.dart';
 import 'package:Taqyem/landing/views/home_page.dart';
 import 'package:Taqyem/screens2/agent/Agentdashbord.dart';
 import 'package:Taqyem/screens2/login_signup/sign_in.dart';
@@ -38,7 +39,7 @@ Widget build(BuildContext context) {
   } else {
     // Si l'utilisateur est authentifié, naviguer vers le tableau de bord, sinon vers la page de connexion
     if (user != null) {
-      return AgentDashboard(); // Page de tableau de bord
+      return  MainPage(); // Page de tableau de bord
     } else {
       return SignIn(); // Page de connexion
     }

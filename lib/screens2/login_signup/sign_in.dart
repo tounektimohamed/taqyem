@@ -102,7 +102,7 @@ class _SignInState extends State<SignIn> {
           'name': userDoc.get('name'),
           'timestamp': Timestamp.now(),
         });
-        bool isAgent = userDoc.get('isAgent') ?? true;
+        bool isAgent = userDoc.get('isAgent') ?? false;
 
         if (!mounted) return;
 
