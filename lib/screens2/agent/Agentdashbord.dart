@@ -223,7 +223,7 @@ Widget build(BuildContext context) {
             _buildDrawerItem(
               context,
               Icons.people,
-              'Gestion des utilisateurs',
+              'إدارة المستخدمين',
               () {
                 Navigator.push(
                   context,
@@ -236,7 +236,7 @@ Widget build(BuildContext context) {
             _buildDrawerItem(
               context,
               Icons.people,
-              'Gestion des solutions',
+              'إدارة الحلول ',
               () {
                 Navigator.push(
                   context,
@@ -314,7 +314,7 @@ Widget build(BuildContext context) {
             _buildDrawerItem(
               context,
               Icons.picture_as_pdf,
-              'Gestion des PDF (Ajouter et Supprimer)',
+              'مشاركة وثائق تعلمية',
               () {
                 Navigator.push(
                   context,
@@ -324,23 +324,23 @@ Widget build(BuildContext context) {
                 );
               },
             ),
-            _buildDrawerItem(
-              context,
-              Icons.share,
-              'PDF partager',
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DisplayPDFsPage(),
-                  ),
-                );
-              },
-            ),
+            // _buildDrawerItem(
+            //   context,
+            //   Icons.share,
+            //   'PDF partager',
+            //   () {
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(
+            //         builder: (context) => UploadPDFPage(),
+            //       ),
+            //     );
+            //   },
+            // ),
             _buildDrawerItem(
               context,
               Icons.article,
-              'Voir les nouvelles',
+              'رؤية الأخبار',
               () {
                 Navigator.push(
                   context,
@@ -366,7 +366,7 @@ Widget build(BuildContext context) {
             _buildDrawerItem(
               context,
               Icons.settings,
-              'Ajouter une actualité',
+              'إضافة خبر ',
               () {
                 Navigator.push(
                   context,
@@ -379,7 +379,7 @@ Widget build(BuildContext context) {
             _buildDrawerItem(
               context,
               Icons.settings,
-              'Voir les journaux d\'accès',
+              'رؤية سجلات الوصول',
               () {
                 Navigator.push(
                   context,

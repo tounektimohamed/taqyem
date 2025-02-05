@@ -223,7 +223,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             _buildDrawerItem(
               context,
               Icons.people,
-              'Gestion des utilisateurs',
+              'إدارة المستخدمين',
               () {
                 Navigator.push(
                   context,
@@ -249,7 +249,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             _buildDrawerItem(
               context,
               Icons.add,
-              'Ajouter une classe',
+              'إضافة قسم جديد',
               () {
                 Navigator.push(
                   context,
@@ -262,7 +262,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             _buildDrawerItem(
               context,
               Icons.class_,
-              'Gestion des Classes',
+              'إدارة الأقسام',
               () {
                 Navigator.push(
                   context,
@@ -314,7 +314,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
             _buildDrawerItem(
               context,
               Icons.picture_as_pdf,
-              'Gestion des PDF (Ajouter et Supprimer)',
+              'مشاركة وثائق تعلمية',
               () {
                 Navigator.push(
                   context,
@@ -324,23 +324,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 );
               },
             ),
-            _buildDrawerItem(
-              context,
-              Icons.share,
-              'PDF partager',
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DisplayPDFsPage(),
-                  ),
-                );
-              },
-            ),
+            // _buildDrawerItem(
+            //   context,
+            //   Icons.share,
+            //   'PDF partager',
+            //   () {
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(
+            //         builder: (context) => UploadPDFPage(),
+            //       ),
+            //     );
+            //   },
+            // ),
             _buildDrawerItem(
               context,
               Icons.article,
-              'Voir les nouvelles',
+              'رؤية الأخبار',
               () {
                 Navigator.push(
                   context,
