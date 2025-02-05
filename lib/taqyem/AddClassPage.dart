@@ -53,7 +53,7 @@ class _AddClassPageState extends State<AddClassPage> {
     );
   }
 
- Future<void> _loadClassNames() async {
+Future<void> _loadClassNames() async {
   try {
     final classDocs = await FirebaseFirestore.instance.collection('classes').get();
 
@@ -64,6 +64,9 @@ class _AddClassPageState extends State<AddClassPage> {
           'name': doc['name'] as String, // Assurez-vous que 'name' est une String
         };
       }).toList();
+
+      // Trier la liste par ordre alphabétique arabe
+      _classNames.sort((a, b) => a['name']!.compareTo(b['name']!));
     });
   } catch (e) {
     print("Erreur lors du chargement des classes : $e");
@@ -71,6 +74,7 @@ class _AddClassPageState extends State<AddClassPage> {
         SnackBar(content: Text('Erreur lors du chargement des classes')));
   }
 }
+
 Future<void> _loadSubjects(String classId) async {
   try {
     final classDoc = await FirebaseFirestore.instance

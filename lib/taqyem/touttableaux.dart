@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:url_launcher/url_launcher.dart';
 
 
 class ClassListPage extends StatelessWidget {
@@ -57,7 +60,6 @@ class ClassListPage extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (context) => MatiereListPage(
                           SelectedClass: classId,
-
                           selectedClass: classId,
                           currentUser: currentUser!,
                         ),
@@ -74,8 +76,6 @@ class ClassListPage extends StatelessWidget {
   }
 }
 
-
-
 class MatiereListPage extends StatelessWidget {
   final String selectedClass;
   final String SelectedClass;
@@ -83,8 +83,7 @@ class MatiereListPage extends StatelessWidget {
   final User currentUser;
 
   MatiereListPage({
-        required this.SelectedClass,
-
+    required this.SelectedClass,
     required this.selectedClass,
     required this.currentUser,
   });
@@ -135,7 +134,7 @@ class MatiereListPage extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) => TablePage(
-                       // SelectedClass: SelectedClass,
+                          // SelectedClass: SelectedClass,
 
                           selectedClass: selectedClass,
                           selectedMatiere: matiereId,
@@ -152,7 +151,9 @@ class MatiereListPage extends StatelessWidget {
       ),
     );
   }
-}class TablePage extends StatefulWidget {
+}
+
+class TablePage extends StatefulWidget {
   final String selectedClass;
   final String selectedMatiere;
   final User currentUser;
@@ -237,7 +238,8 @@ class _TablePageState extends State<TablePage> {
           .get();
 
       setState(() {
-        totalStudents = students.docs.length; // Mettre à jour le nombre total d'élèves
+        totalStudents =
+            students.docs.length; // Mettre à jour le nombre total d'élèves
       });
 
       // Récupérer les barèmes sélectionnés
@@ -291,6 +293,137 @@ class _TablePageState extends State<TablePage> {
       print('Erreur lors de la récupération des marques : $e');
     }
   }
+////////////////////////////////////////////////////////////////////////////////////
+
+
+ Future<void> _generatePDF() async {
+    var data = {
+      'profName': _profName,
+      'matiereName': await _getMatiereName(),
+      'className': await _getClassName(),
+      'schoolName': _schoolName,
+      'baremes': await _getBaremes(),
+      'students': await _getStudents(),
+      'sumCriteriaMaxPerBareme': sumCriteriaMaxPerBareme,
+      'totalStudents': totalStudents,
+      // 'date': DateTime.now().toString().substring(0, 10), // Correction ici
+      
+    };
+
+    var response = await http.post(
+      Uri.parse('http://localhost:5000/generate_pdf'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(data),
+    );
+
+    if (response.statusCode == 200) {
+      // Gérer le téléchargement du PDF
+    } else {
+      print('Erreur lors de la génération du PDF');
+    }
+  }
+
+  Future<String> _getMatiereName() async {
+    var matiereDoc = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(widget.selectedClass)
+        .collection('matieres')
+        .doc(widget.selectedMatiere)
+        .get();
+
+    return matiereDoc['name'] ?? 'غير معروف';
+  }
+
+  Future<String> _getClassName() async {
+    var classDoc = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(widget.selectedClass)
+        .get();
+
+    return classDoc['name'] ?? 'غير معروف';
+  }
+
+  Future<List<Map<String, dynamic>>> _getBaremes() async {
+    var selectedBaremes = await FirebaseFirestore.instance
+        .collection('selections')
+        .doc(widget.selectedClass)
+        .collection(widget.selectedMatiere)
+        .get();
+
+    List<Map<String, dynamic>> baremes = [];
+    for (var baremeDoc in selectedBaremes.docs) {
+      var baremeId = baremeDoc['baremeId'];
+      var baremeSnapshot = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .collection('matieres')
+          .doc(widget.selectedMatiere)
+          .collection('baremes')
+          .doc(baremeId)
+          .get();
+
+      if (baremeSnapshot.exists) {
+        baremes.add({
+          'id': baremeId,
+          'value': baremeSnapshot['value'] ?? 'معيار',
+        });
+      }
+    }
+
+    return baremes;
+  }
+
+  Future<List<Map<String, dynamic>>> _getStudents() async {
+    var studentsSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.currentUser.uid)
+        .collection('user_classes')
+        .where('class_id', isEqualTo: widget.selectedClass)
+        .get();
+
+    if (studentsSnapshot.docs.isEmpty) {
+      return [];
+    }
+
+    var classDocId = studentsSnapshot.docs.first.id;
+
+    var students = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.currentUser.uid)
+        .collection('user_classes')
+        .doc(classDocId)
+        .collection('students')
+        .get();
+
+    List<Map<String, dynamic>> studentsData = [];
+    for (var studentDoc in students.docs) {
+      var studentId = studentDoc.id;
+      var studentData = studentDoc.data();
+
+      var baremes = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('user_classes')
+          .doc(classDocId)
+          .collection('students')
+          .doc(studentId)
+          .collection('baremes')
+          .get();
+
+      Map<String, String> baremesMap = {};
+      for (var baremeDoc in baremes.docs) {
+        baremesMap[baremeDoc.id] = baremeDoc['value'];
+      }
+
+      studentsData.add({
+        'name': studentData['name'] ?? 'اسم غير معروف',
+        'baremes': baremesMap,
+      });
+    }
+
+    return studentsData;
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -307,9 +440,16 @@ class _TablePageState extends State<TablePage> {
       ),
       home: Scaffold(
         appBar: AppBar(
-          title: Text('الجدول الجامع للنتائج', textDirection: TextDirection.rtl),
+          title:
+              Text('الجدول الجامع للنتائج', textDirection: TextDirection.rtl),
           backgroundColor: Colors.blue,
           elevation: 4,
+          actions: [
+            ElevatedButton(
+              onPressed: _generatePDF,
+              child: Text("Imprimer le tableau"),
+            )
+          ],
         ),
         body: Directionality(
           textDirection: TextDirection.rtl,
@@ -321,7 +461,8 @@ class _TablePageState extends State<TablePage> {
                   padding: EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    border: Border.all(color: Color.fromARGB(255, 243, 243, 243)),
+                    border:
+                        Border.all(color: Color.fromARGB(255, 243, 243, 243)),
                   ),
                   child: Row(
                     children: [
@@ -329,7 +470,8 @@ class _TablePageState extends State<TablePage> {
                       FutureBuilder<Map<String, String>>(
                         future: _getClassAndMatiereNames(),
                         builder: (context, snapshot) {
-                          if (snapshot.connectionState == ConnectionState.waiting) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
                             return CircularProgressIndicator();
                           }
                           if (snapshot.hasError) {
@@ -343,7 +485,8 @@ class _TablePageState extends State<TablePage> {
 
                           var classAndMatiereNames = snapshot.data!;
                           return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start, // Alignement à gauche
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start, // Alignement à gauche
                             children: [
                               Text(
                                 'الأستاذ: $_profName',
@@ -551,31 +694,19 @@ class _TablePageState extends State<TablePage> {
             var baremesValues = baremesValuesSnapshot.data!;
 
             return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.9),
-                child: DataTable(
-                  columnSpacing: 20,
-                  horizontalMargin: 12,
-                  columns: [
-                    DataColumn(
-                      label: Container(
-                        width: 150,
-                        child: Text(
-                          'الاسم واللقب',
-                          textDirection: TextDirection.rtl,
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, color: Colors.blue),
-                        ),
-                      ),
-                    ),
-                    for (var bareme in baremesValues)
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.9),
+                  child: DataTable(
+                    columnSpacing: 20,
+                    horizontalMargin: 12,
+                    columns: [
                       DataColumn(
                         label: Container(
-                          width: 100,
+                          width: 150,
                           child: Text(
-                            bareme['value'] ?? 'معيار',
+                            'الاسم واللقب',
                             textDirection: TextDirection.rtl,
                             style: TextStyle(
                                 fontWeight: FontWeight.bold,
@@ -583,22 +714,82 @@ class _TablePageState extends State<TablePage> {
                           ),
                         ),
                       ),
-                  ],
-                  rows: [
-                    ...studentsDocs.map((doc) {
-                      var studentData = doc.data() as Map<String, dynamic>;
-                      var studentName = studentData['name'] ?? 'اسم غير معروف';
-                      var studentId = doc.id;
+                      for (var bareme in baremesValues)
+                        DataColumn(
+                          label: Container(
+                            width: 100,
+                            child: Text(
+                              bareme['value'] ?? 'معيار',
+                              textDirection: TextDirection.rtl,
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue),
+                            ),
+                          ),
+                        ),
+                    ],
+                    rows: [
+                      ...studentsDocs.map((doc) {
+                        var studentData = doc.data() as Map<String, dynamic>;
+                        var studentName =
+                            studentData['name'] ?? 'اسم غير معروف';
+                        var studentId = doc.id;
 
-                      return DataRow(
+                        return DataRow(
+                          cells: [
+                            DataCell(
+                              Container(
+                                width: 150,
+                                child: Text(
+                                  studentName,
+                                  textDirection: TextDirection.rtl,
+                                  style: TextStyle(color: Colors.grey.shade800),
+                                ),
+                              ),
+                            ),
+                            for (var bareme in baremesValues)
+                              DataCell(
+                                Container(
+                                  width: 100,
+                                  child: FutureBuilder<String>(
+                                    future: _getSelectedValue(
+                                        studentId, bareme['id']!),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState ==
+                                          ConnectionState.waiting) {
+                                        return CircularProgressIndicator(); // Afficher un indicateur de chargement
+                                      }
+                                      if (snapshot.hasError) {
+                                        return Text('خطأ',
+                                            textDirection: TextDirection
+                                                .rtl); // Afficher une erreur
+                                      }
+                                      return Text(
+                                        snapshot.data ??
+                                            '( - - - )', // Afficher la valeur ou une valeur par défaut
+                                        textDirection: TextDirection.rtl,
+                                        style: TextStyle(
+                                            color: Colors.grey.shade800),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      }).toList(),
+                      // Ajouter la ligne pour la somme des élèves avec les critères +++ et ++-
+                      DataRow(
                         cells: [
                           DataCell(
                             Container(
                               width: 150,
                               child: Text(
-                                studentName,
+                                'عدد التلاميذ المحققين للتملك الأدنى',
                                 textDirection: TextDirection.rtl,
-                                style: TextStyle(color: Colors.grey.shade800),
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue),
                               ),
                             ),
                           ),
@@ -606,93 +797,51 @@ class _TablePageState extends State<TablePage> {
                             DataCell(
                               Container(
                                 width: 100,
-                                child: FutureBuilder<String>(
-                                  future:
-                                      _getSelectedValue(studentId, bareme['id']!),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState ==
-                                        ConnectionState.waiting) {
-                                      return CircularProgressIndicator(); // Afficher un indicateur de chargement
-                                    }
-                                    if (snapshot.hasError) {
-                                      return Text('خطأ',
-                                          textDirection: TextDirection
-                                              .rtl); // Afficher une erreur
-                                    }
-                                    return Text(
-                                      snapshot.data ??
-                                          '( - - - )', // Afficher la valeur ou une valeur par défaut
-                                      textDirection: TextDirection.rtl,
-                                      style:
-                                          TextStyle(color: Colors.grey.shade800),
-                                    );
-                                  },
+                                child: Text(
+                                  sumCriteriaMaxPerBareme[bareme['id']!]
+                                      .toString(),
+                                  textDirection: TextDirection.rtl,
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue),
                                 ),
                               ),
                             ),
-                      ],
-                    );
-                  }).toList(),
-                  // Ajouter la ligne pour la somme des élèves avec les critères +++ et ++-
-                  DataRow(
-                    cells: [
-                      DataCell(
-                        Container(
-                          width: 150,
-                          child: Text(
-                            'عدد التلاميذ المحققين للتملك الأدنى',
-                            textDirection: TextDirection.rtl,
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, color: Colors.blue),
-                          ),
-                        ),
+                        ],
                       ),
-                      for (var bareme in baremesValues)
-                        DataCell(
-                          Container(
-                            width: 100,
-                            child: Text(
-                              sumCriteriaMaxPerBareme[bareme['id']!].toString(),
-                              textDirection: TextDirection.rtl,
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, color: Colors.blue),
+                      // Ajouter la ligne pour le pourcentage
+                      DataRow(
+                        cells: [
+                          DataCell(
+                            Container(
+                              width: 150,
+                              child: Text(
+                                'النسبة المئوية للتلاميذ المحققين للتملك',
+                                textDirection: TextDirection.rtl,
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue),
+                              ),
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                  // Ajouter la ligne pour le pourcentage
-                  DataRow(
-                    cells: [
-                      DataCell(
-                        Container(
-                          width: 150,
-                          child: Text(
-                            'النسبة المئوية للتلاميذ المحققين للتملك',
-                            textDirection: TextDirection.rtl,
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, color: Colors.blue),
-                          ),
-                        ),
-                      ),
-                      for (var bareme in baremesValues)
-                        DataCell(
-                          Container(
-                            width: 100,
-                            child: Text(
-                              '${((sumCriteriaMaxPerBareme[bareme['id']!] ?? 0) / totalStudents * 100).toStringAsFixed(2)}%',
-                              textDirection: TextDirection.rtl,
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, color: Colors.blue),
+                          for (var bareme in baremesValues)
+                            DataCell(
+                              Container(
+                                width: 100,
+                                child: Text(
+                                  '${((sumCriteriaMaxPerBareme[bareme['id']!] ?? 0) / totalStudents * 100).toStringAsFixed(2)}%',
+                                  textDirection: TextDirection.rtl,
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue),
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
-            ));
-          
+                ));
           },
         );
       },
@@ -728,13 +877,15 @@ class _TablePageState extends State<TablePage> {
 
   Future<String> _getSelectedValue(String studentId, String baremeId) async {
     try {
-      print('Récupération de la valeur pour studentId: $studentId, baremeId: $baremeId');
+      print(
+          'Récupération de la valeur pour studentId: $studentId, baremeId: $baremeId');
 
       var snapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.currentUser.uid)
           .collection('user_classes')
-          .where('class_id', isEqualTo: widget.selectedClass) // Ajoutez cette condition
+          .where('class_id',
+              isEqualTo: widget.selectedClass) // Ajoutez cette condition
           .get();
 
       if (snapshot.docs.isNotEmpty) {

@@ -93,8 +93,7 @@ class _SettingPageUIState extends State<SettingsPageUI> {
                                 style: const TextStyle(fontSize: 30),
                               ),
                               title: Text(language.name),
-                              onTap: () async {
-                              },
+                              onTap: () async {},
                             );
                           }).toList(),
                         ),
@@ -136,33 +135,33 @@ class _SettingPageUIState extends State<SettingsPageUI> {
               ),
             ],
           ),
-         SettingsSection(
-  title: const Text(''),
-  tiles: <SettingsTile>[
-    SettingsTile.navigation(
-      leading: const Icon(Icons.login_rounded),
-      title: Text(translation(context).signOut),
-      onPressed: (context) async {
-        try {
-          // Déconnexion de Firebase
-          await FirebaseAuth.instance.signOut();
+          SettingsSection(
+            title: const Text(''),
+            tiles: <SettingsTile>[
+              SettingsTile.navigation(
+                leading: const Icon(Icons.login_rounded),
+                title: Text(translation(context).signOut),
+                onPressed: (context) async {
+                  try {
+                    // Déconnexion de Firebase
+                    await FirebaseAuth.instance.signOut();
 
-          // Redirection vers la page de connexion
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => SignIn()),
-          );
-        } catch (e) {
-          // Gérer les erreurs de déconnexion
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erreur lors de la déconnexion : $e')),
-          );
-        }
-      },
-    ),
-  ],
-),
-
+                    // Redirection vers la page de connexion
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => SignIn()),
+                    );
+                  } catch (e) {
+                    // Gérer les erreurs de déconnexion
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text('Erreur lors de la déconnexion : $e')),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
         ],
       ),
     );

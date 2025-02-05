@@ -16,24 +16,19 @@ class BaremesPage extends StatefulWidget {
 class _BaremesPageState extends State<BaremesPage> {
   Map<String, bool> _selectedBaremes = {};
   Map<String, Map<String, bool>> _selectedSousBaremes = {};
-
-  void _toggleBaremeSelection(String baremeId) {
-    setState(() {
-      _selectedBaremes[baremeId] = !(_selectedBaremes[baremeId] ?? false);
-    });
-  }
-
   Future<void> _loadExistingSelections() async {
     try {
-      var selectionsRef = FirebaseFirestore.instance
-          .collection('selections')
+      var baremesSnapshot = await FirebaseFirestore.instance
+          .collection('classes')
           .doc(widget.selectedClass)
-          .collection(widget.selectedMatiere);
+          .collection('matieres')
+          .doc(widget.selectedMatiere)
+          .collection('baremes')
+          .get();
 
-      var baremesSnapshot = await selectionsRef.get();
       for (var baremeDoc in baremesSnapshot.docs) {
-        var baremeId = baremeDoc['baremeId'];
-        _selectedBaremes[baremeId] = true;
+        var baremeId = baremeDoc.id;
+        _selectedBaremes[baremeId] = true; // Sélectionner par défaut
 
         var sousBaremesSnapshot =
             await baremeDoc.reference.collection('sousBaremes').get();
@@ -42,17 +37,30 @@ class _BaremesPageState extends State<BaremesPage> {
           if (!_selectedSousBaremes.containsKey(baremeId)) {
             _selectedSousBaremes[baremeId] = {};
           }
-          _selectedSousBaremes[baremeId]![sousBaremeId] = true;
+          _selectedSousBaremes[baremeId]![sousBaremeId] =
+              true; // Sélectionner par défaut
         }
       }
 
       setState(() {});
+
+      // Enregistrer automatiquement les sélections
+      await _saveSelections();
     } catch (e) {
       print('Erreur lors du chargement des sélections existantes: $e');
     }
   }
 
-  void _toggleSousBaremeSelection(String baremeId, String sousBaremeId) {
+  void _toggleBaremeSelection(String baremeId) async {
+    setState(() {
+      _selectedBaremes[baremeId] = !(_selectedBaremes[baremeId] ?? false);
+    });
+
+    // Enregistrer automatiquement dans Firestore
+    await _saveSelections();
+  }
+
+  void _toggleSousBaremeSelection(String baremeId, String sousBaremeId) async {
     setState(() {
       if (!_selectedSousBaremes.containsKey(baremeId)) {
         _selectedSousBaremes[baremeId] = {};
@@ -60,11 +68,15 @@ class _BaremesPageState extends State<BaremesPage> {
       _selectedSousBaremes[baremeId]![sousBaremeId] =
           !(_selectedSousBaremes[baremeId]![sousBaremeId] ?? false);
     });
+
+    // Enregistrer automatiquement dans Firestore
+    await _saveSelections();
   }
 
   @override
   void initState() {
     super.initState();
+
     _loadExistingSelections();
   }
 
@@ -93,10 +105,14 @@ class _BaremesPageState extends State<BaremesPage> {
             return Center(child: CircularProgressIndicator(color: Colors.blue));
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Erreur: ${snapshot.error}', style: TextStyle(color: Colors.red)));
+            return Center(
+                child: Text('Erreur: ${snapshot.error}',
+                    style: TextStyle(color: Colors.red)));
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(child: Text('Aucun barème trouvé.', style: TextStyle(color: Colors.grey)));
+            return Center(
+                child: Text('Aucun barème trouvé.',
+                    style: TextStyle(color: Colors.grey)));
           }
 
           return ListView.builder(
@@ -118,21 +134,31 @@ class _BaremesPageState extends State<BaremesPage> {
                         },
                         activeColor: Colors.blue,
                       ),
-                      Text('Barème: $baremeValue', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text('Barème: $baremeValue',
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold)),
                     ],
                   ),
                   children: [
                     FutureBuilder<QuerySnapshot>(
                       future: bareme.reference.collection('sousBaremes').get(),
                       builder: (context, sousSnapshot) {
-                        if (sousSnapshot.connectionState == ConnectionState.waiting) {
-                          return Center(child: CircularProgressIndicator(color: Colors.blue));
+                        if (sousSnapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Center(
+                              child: CircularProgressIndicator(
+                                  color: Colors.blue));
                         }
                         if (sousSnapshot.hasError) {
-                          return Center(child: Text('Erreur: ${sousSnapshot.error}', style: TextStyle(color: Colors.red)));
+                          return Center(
+                              child: Text('Erreur: ${sousSnapshot.error}',
+                                  style: TextStyle(color: Colors.red)));
                         }
-                        if (!sousSnapshot.hasData || sousSnapshot.data!.docs.isEmpty) {
-                          return Center(child: Text('Aucun sous-barème trouvé.', style: TextStyle(color: Colors.grey)));
+                        if (!sousSnapshot.hasData ||
+                            sousSnapshot.data!.docs.isEmpty) {
+                          return Center(
+                              child: Text('Aucun sous-barème trouvé.',
+                                  style: TextStyle(color: Colors.grey)));
                         }
 
                         return ListView.builder(
@@ -148,13 +174,17 @@ class _BaremesPageState extends State<BaremesPage> {
                               title: Row(
                                 children: [
                                   Checkbox(
-                                    value: _selectedSousBaremes[baremeId]?[sousBaremeId] ?? false,
+                                    value: _selectedSousBaremes[baremeId]
+                                            ?[sousBaremeId] ??
+                                        false,
                                     onChanged: (bool? value) {
-                                      _toggleSousBaremeSelection(baremeId, sousBaremeId);
+                                      _toggleSousBaremeSelection(
+                                          baremeId, sousBaremeId);
                                     },
                                     activeColor: Colors.blue,
                                   ),
-                                  Text('Sous-Barème: $sousBaremeName', style: TextStyle(fontSize: 14)),
+                                  Text('Sous-Barème: $sousBaremeName',
+                                      style: TextStyle(fontSize: 14)),
                                 ],
                               ),
                             );
@@ -173,113 +203,112 @@ class _BaremesPageState extends State<BaremesPage> {
   }
 
   Future<void> _saveSelections() async {
-  try {
-    CollectionReference selectionsRef = FirebaseFirestore.instance
-        .collection('selections')
-        .doc(widget.selectedClass)
-        .collection(widget.selectedMatiere);
+    try {
+      CollectionReference selectionsRef = FirebaseFirestore.instance
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere);
 
-    var oldSelections = await selectionsRef.get();
-    for (var doc in oldSelections.docs) {
-      var sousBaremesRef = doc.reference.collection('sousBaremes');
-      var sousBaremesSnapshot = await sousBaremesRef.get();
-      for (var sousDoc in sousBaremesSnapshot.docs) {
-        await sousDoc.reference.delete();
-      }
-      await doc.reference.delete();
-    }
-
-    _selectedBaremes.forEach((baremeId, isSelected) async {
-      if (isSelected) {
-        var baremeName = await _getBaremeName(baremeId); // Get the name of the bareme
-        await selectionsRef.add({
-          'baremeId': baremeId,
-          'baremeName': baremeName, // Store the name of the bareme
-          'classId': widget.selectedClass,
-          'matiereId': widget.selectedMatiere,
-          'selectedAt': DateTime.now(),
-        });
-
-        if (_selectedSousBaremes.containsKey(baremeId)) {
-          var sousBaremesRef = selectionsRef.doc(baremeId).collection('sousBaremes');
-          _selectedSousBaremes[baremeId]!.forEach((sousBaremeId, isSelected) async {
-            if (isSelected) {
-              var sousBaremeName = await _getSousBaremeName(baremeId, sousBaremeId); // Get the name of the sous-bareme
-              await sousBaremesRef.doc(sousBaremeId).set({
-                'selected': true,
-                'sousBaremeName': sousBaremeName, // Store the name of the sous-bareme
-                'selectedAt': DateTime.now(),
-              });
-            }
-          });
+      // Supprimer les anciennes sélections
+      var oldSelections = await selectionsRef.get();
+      for (var doc in oldSelections.docs) {
+        var sousBaremesRef = doc.reference.collection('sousBaremes');
+        var sousBaremesSnapshot = await sousBaremesRef.get();
+        for (var sousDoc in sousBaremesSnapshot.docs) {
+          await sousDoc.reference.delete();
         }
+        await doc.reference.delete();
       }
-    });
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SelectedBaremesPage(
-          selectedClass: widget.selectedClass,
-          selectedMatiere: widget.selectedMatiere,
+      // Enregistrer les nouvelles sélections
+      _selectedBaremes.forEach((baremeId, isSelected) async {
+        if (isSelected) {
+          var baremeName = await _getBaremeName(baremeId);
+          await selectionsRef.add({
+            'baremeId': baremeId,
+            'baremeName': baremeName,
+            'classId': widget.selectedClass,
+            'matiereId': widget.selectedMatiere,
+            'selectedAt': DateTime.now(),
+          });
+
+          if (_selectedSousBaremes.containsKey(baremeId)) {
+            var sousBaremesRef =
+                selectionsRef.doc(baremeId).collection('sousBaremes');
+            _selectedSousBaremes[baremeId]!
+                .forEach((sousBaremeId, isSelected) async {
+              if (isSelected) {
+                var sousBaremeName =
+                    await _getSousBaremeName(baremeId, sousBaremeId);
+                await sousBaremesRef.doc(sousBaremeId).set({
+                  'selected': true,
+                  'sousBaremeName': sousBaremeName,
+                  'selectedAt': DateTime.now(),
+                });
+              }
+            });
+          }
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sélections enregistrées avec succès!',
+              style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.green,
         ),
-      ),
-    );
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Sélections enregistrées avec succès!', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.green,
-      ),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Erreur lors de l\'enregistrement: $e', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.red,
-      ),
-    );
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur lors de l\'enregistrement: $e',
+              style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
-}
 
 // Helper function to fetch the name of the bareme
-Future<String> _getBaremeName(String baremeId) async {
-  try {
-    var baremeDoc = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(widget.selectedClass)
-        .collection('matieres')
-        .doc(widget.selectedMatiere)
-        .collection('baremes')
-        .doc(baremeId)
-        .get();
-    return baremeDoc['value']; // Assuming 'value' contains the name of the bareme
-  } catch (e) {
-    print('Erreur lors de la récupération du nom du barème: $e');
-    return ''; // Return an empty string if an error occurs
+  Future<String> _getBaremeName(String baremeId) async {
+    try {
+      var baremeDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .collection('matieres')
+          .doc(widget.selectedMatiere)
+          .collection('baremes')
+          .doc(baremeId)
+          .get();
+      return baremeDoc[
+          'value']; // Assuming 'value' contains the name of the bareme
+    } catch (e) {
+      print('Erreur lors de la récupération du nom du barème: $e');
+      return ''; // Return an empty string if an error occurs
+    }
   }
-}
 
 // Helper function to fetch the name of the sous-bareme
-Future<String> _getSousBaremeName(String baremeId, String sousBaremeId) async {
-  try {
-    var sousBaremeDoc = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(widget.selectedClass)
-        .collection('matieres')
-        .doc(widget.selectedMatiere)
-        .collection('baremes')
-        .doc(baremeId)
-        .collection('sousBaremes')
-        .doc(sousBaremeId)
-        .get();
-    return sousBaremeDoc['name']; // Assuming 'name' contains the name of the sous-bareme
-  } catch (e) {
-    print('Erreur lors de la récupération du nom du sous-barème: $e');
-    return ''; // Return an empty string if an error occurs
+  Future<String> _getSousBaremeName(
+      String baremeId, String sousBaremeId) async {
+    try {
+      var sousBaremeDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .collection('matieres')
+          .doc(widget.selectedMatiere)
+          .collection('baremes')
+          .doc(baremeId)
+          .collection('sousBaremes')
+          .doc(sousBaremeId)
+          .get();
+      return sousBaremeDoc[
+          'name']; // Assuming 'name' contains the name of the sous-bareme
+    } catch (e) {
+      print('Erreur lors de la récupération du nom du sous-barème: $e');
+      return ''; // Return an empty string if an error occurs
+    }
   }
-}
-
 }
 
 //////////////////////////////////////////////
@@ -301,15 +330,19 @@ class _SelectionPageState extends State<SelectionPage> {
   @override
   void initState() {
     super.initState();
+
     fetchClasses();
     _showIntroDialog(); // Afficher la boîte de dialogue d'introduction
   }
 
   Future<void> fetchClasses() async {
     try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('classes').get();
+      QuerySnapshot snapshot =
+          await FirebaseFirestore.instance.collection('classes').get();
       setState(() {
-        classes = snapshot.docs.map((doc) => {'id': doc.id, 'name': doc['name'] as String}).toList();
+        classes = snapshot.docs
+            .map((doc) => {'id': doc.id, 'name': doc['name'] as String})
+            .toList();
       });
     } catch (e) {
       print('Erreur lors de la récupération des classes: $e');
@@ -324,7 +357,9 @@ class _SelectionPageState extends State<SelectionPage> {
           .collection('matieres')
           .get();
       setState(() {
-        matieres = snapshot.docs.map((doc) => {'id': doc.id, 'name': doc['name'] as String}).toList();
+        matieres = snapshot.docs
+            .map((doc) => {'id': doc.id, 'name': doc['name'] as String})
+            .toList();
       });
     } catch (e) {
       print('Erreur lors de la récupération des matières: $e');
@@ -343,7 +378,9 @@ class _SelectionPageState extends State<SelectionPage> {
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text('Bienvenue !', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+            title: Text('Bienvenue !',
+                style:
+                    TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
             content: Text(
               'Cette page vous permet de sélectionner une classe et une matière pour afficher les barèmes correspondants. '
               'Utilisez les menus déroulants pour faire votre sélection, puis cliquez sur "Afficher les barèmes".',
@@ -370,7 +407,8 @@ class _SelectionPageState extends State<SelectionPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Sélectionnez une classe et une matière', style: TextStyle(color: Colors.white)),
+        title: Text('Sélectionnez une classe et une matière',
+            style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.blue,
         elevation: 4, // Ombre sous l'AppBar
       ),
@@ -387,14 +425,17 @@ class _SelectionPageState extends State<SelectionPage> {
                   borderRadius: BorderRadius.circular(10), // Bordures arrondies
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 8.0),
                   child: DropdownButton<String>(
                     value: selectedClassName,
-                    hint: Text('Sélectionnez une classe', style: TextStyle(color: Colors.grey)),
+                    hint: Text('Sélectionnez une classe',
+                        style: TextStyle(color: Colors.grey)),
                     items: classes.map((Map<String, String> classe) {
                       return DropdownMenuItem<String>(
                         value: classe['name'],
-                        child: Text(classe['name']!, style: TextStyle(color: Colors.black)),
+                        child: Text(classe['name']!,
+                            style: TextStyle(color: Colors.black)),
                       );
                     }).toList(),
                     onChanged: (String? newValue) {
@@ -408,7 +449,8 @@ class _SelectionPageState extends State<SelectionPage> {
                         selectedMatiereName = null;
                         matieres.clear();
                       });
-                      if (selectedClassId != null && selectedClassId!.isNotEmpty) {
+                      if (selectedClassId != null &&
+                          selectedClassId!.isNotEmpty) {
                         fetchMatieres(selectedClassId!);
                       }
                     },
@@ -425,14 +467,17 @@ class _SelectionPageState extends State<SelectionPage> {
                   borderRadius: BorderRadius.circular(10), // Bordures arrondies
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0, vertical: 8.0),
                   child: DropdownButton<String>(
                     value: selectedMatiereName,
-                    hint: Text('Sélectionnez une matière', style: TextStyle(color: Colors.grey)),
+                    hint: Text('Sélectionnez une matière',
+                        style: TextStyle(color: Colors.grey)),
                     items: matieres.map((Map<String, String> matiere) {
                       return DropdownMenuItem<String>(
                         value: matiere['name'],
-                        child: Text(matiere['name']!, style: TextStyle(color: Colors.black)),
+                        child: Text(matiere['name']!,
+                            style: TextStyle(color: Colors.black)),
                       );
                     }).toList(),
                     onChanged: (String? newValue) {
@@ -455,7 +500,8 @@ class _SelectionPageState extends State<SelectionPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   IconButton(
-                    icon: Icon(Icons.remove_red_eye, color: Colors.blue, size: 30), // Icône d'œil
+                    icon: Icon(Icons.remove_red_eye,
+                        color: Colors.blue, size: 30), // Icône d'œil
                     onPressed: () {
                       // Action à effectuer lorsque l'icône est cliquée
                       Navigator.push(
@@ -472,7 +518,8 @@ class _SelectionPageState extends State<SelectionPage> {
                   SizedBox(width: 10), // Espace entre l'icône et le bouton
                   ElevatedButton(
                     onPressed: () async {
-                      if (selectedClassId != null && selectedMatiereId != null) {
+                      if (selectedClassId != null &&
+                          selectedMatiereId != null) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -485,22 +532,29 @@ class _SelectionPageState extends State<SelectionPage> {
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Veuillez sélectionner une classe et une matière', style: TextStyle(color: Colors.white)),
+                            content: Text(
+                                'Veuillez sélectionner une classe et une matière',
+                                style: TextStyle(color: Colors.white)),
                             backgroundColor: Colors.red,
-                            behavior: SnackBarBehavior.floating, // SnackBar flottante
+                            behavior:
+                                SnackBarBehavior.floating, // SnackBar flottante
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10), // Bordures arrondies
+                              borderRadius: BorderRadius.circular(
+                                  10), // Bordures arrondies
                             ),
                           ),
                         );
                       }
                     },
-                    child: Text('Programmer un barème', style: TextStyle(color: Colors.white)),
+                    child: Text('Programmer un barème',
+                        style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
-                      padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 32, vertical: 16),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10), // Bordures arrondies
+                        borderRadius:
+                            BorderRadius.circular(10), // Bordures arrondies
                       ),
                       elevation: 4, // Ombre
                     ),

@@ -44,36 +44,59 @@ class _AdminPageState extends State<AdminPage> {
     }
   }
 
-  // Ajouter un barème à une matière
-  void addBareme() async {
-    if (selectedMatiere == null) {
-      showSnackBar('Veuillez sélectionner une matière', Colors.red);
-      return;
-    }
-    if (baremeController.text.isEmpty) {
-      showSnackBar('Veuillez entrer un barème', Colors.red);
-      return;
-    }
-
-    try {
-      DocumentReference baremeRef = await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(selectedClass)
-          .collection('matieres')
-          .doc(selectedMatiere)
-          .collection('baremes')
-          .add({'value': baremeController.text});
-      baremeController.clear();
-      showSnackBar('Barème ajouté avec succès !', Colors.green);
-
-      // On peut définir le barème ajouté comme sélectionné
-      setState(() {
-        selectedBareme = baremeRef.id;
-      });
-    } catch (e) {
-      showSnackBar('Erreur lors de l\'ajout du barème: ${e.toString()}', Colors.red);
-    }
+ // Ajouter un barème à une matière
+void addBareme() async {
+  if (selectedMatiere == null) {
+    showSnackBar('Veuillez sélectionner une matière', Colors.red);
+    return;
   }
+  if (baremeController.text.isEmpty) {
+    showSnackBar('Veuillez entrer un barème', Colors.red);
+    return;
+  }
+
+  try {
+    DocumentReference baremeRef = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(selectedClass)
+        .collection('matieres')
+        .doc(selectedMatiere)
+        .collection('baremes')
+        .add({'value': baremeController.text});
+    baremeController.clear();
+    showSnackBar('Barème ajouté avec succès !', Colors.green);
+
+    // On peut définir le barème ajouté comme sélectionné
+    setState(() {
+      selectedBareme = baremeRef.id;
+    });
+
+    // Enregistrer le barème dans la collection 'selections'
+    await _saveBaremeToSelections(baremeRef.id, baremeController.text);
+  } catch (e) {
+    showSnackBar('Erreur lors de l\'ajout du barème: ${e.toString()}', Colors.red);
+  }
+}
+
+// Enregistrer le barème dans la collection 'selections'
+Future<void> _saveBaremeToSelections(String baremeId, String baremeValue) async {
+  try {
+    await FirebaseFirestore.instance
+        .collection('selections')
+        .doc(selectedClass)
+        .collection(selectedMatiere!)
+        .doc(baremeId)
+        .set({
+      'baremeId': baremeId,
+      'baremeName': baremeValue,
+      'classId': selectedClass,
+      'matiereId': selectedMatiere,
+      'selectedAt': DateTime.now(),
+    });
+  } catch (e) {
+    showSnackBar('Erreur lors de l\'enregistrement du barème dans selections: ${e.toString()}', Colors.red);
+  }
+}
 
   // Ajouter un sous-barème avec un nom personnalisé
   void addSousBareme() async {

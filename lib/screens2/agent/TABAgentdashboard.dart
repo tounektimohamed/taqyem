@@ -1,13 +1,15 @@
 import 'dart:async';
 
+import 'package:Taqyem/screens2/admin/adminpage.dart';
 import 'package:Taqyem/screens2/agent/Agentdashbord.dart';
 import 'package:Taqyem/screens2/login_signup/account_settings.dart';
+import 'package:Taqyem/taqyem/add_dev.dart';
 import 'package:alarm/alarm.dart';
 import 'package:alarm/model/alarm_settings.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:Taqyem/components/language_constants.dart';
-import 'package:Taqyem/screens2/homepage2.dart';
 
 class Agentdashboard extends StatefulWidget {
   const Agentdashboard({super.key});
@@ -40,30 +42,30 @@ class _DashboardState extends State<Agentdashboard> {
 
 //show alarm ring screen
 
-  // // documnet IDs
-  // List<String> docIDs = [];
+  // documnet IDs
+  List<String> docIDs = [];
 
-  // //get docIDs
-  // Future getDocIDs() async {
-  //   await FirebaseFirestore.instance.collection('users').get().then(
-  //         (snapshot) => snapshot.docs.forEach(
-  //           (documnet) {
-  //             print(documnet.reference);
-  //             docIDs.add(documnet.reference.id);
-  //           },
-  //         ),
-  //       );
-  // }
-
+  //get docIDs
+  Future getDocIDs() async {
+    await FirebaseFirestore.instance.collection('users').get().then(
+          (snapshot) => snapshot.docs.forEach(
+            (documnet) {
+              print(documnet.reference);
+              docIDs.add(documnet.reference.id);
+            },
+          ),
+        );
+  }
 
   @override
   Widget build(BuildContext context) {
     //pages
     final List<Widget> pages = <Widget>[
       //main page
-      const AgentDashboard(),
+      const AdminDashboard(),
       //medication
-     // const Mediaction(),
+     // AddMedication1(),
+
       //statistic
       //settings
       const SettingsPageUI(),
@@ -81,7 +83,7 @@ class _DashboardState extends State<Agentdashboard> {
         ),
       ),
       //floating action button
-    
+
       //bottom navigation
       bottomNavigationBar: NavigationBar(
         backgroundColor: const Color.fromARGB(255, 242, 253, 255),

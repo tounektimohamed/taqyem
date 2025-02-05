@@ -10,7 +10,23 @@ import 'package:Taqyem/components/language_constants.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  
+  // Forcer l'application à s'ouvrir en mode paysage
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+
+  // Forcer l'interface utilisateur système à rester en mode clair
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.dark,
+      systemNavigationBarColor: Colors.white,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
+
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -19,11 +35,10 @@ void main() async {
   } catch (e) {
     print('Error initializing Firebase: $e');
   }
+
   await Alarm.init(showDebugLogs: true);
   runApp(const MyApp());
 }
-
-
 
 class MyApp extends StatefulWidget {
   const MyApp({Key? key}) : super(key: key);
@@ -43,6 +58,10 @@ class _MyAppState extends State<MyApp> {
 
   setLocale(Locale locale) {
     setState(() {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
       _locale = locale;
     });
   }
@@ -61,7 +80,7 @@ class _MyAppState extends State<MyApp> {
       home: const MainPage(),
       theme: ThemeData(
         useMaterial3: true,
-        //scaffoldBackgroundColor: Colors.white,
+        brightness: Brightness.light, // Forcer le mode clair
         scaffoldBackgroundColor: const Color.fromRGBO(241, 250, 251, 1),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color.fromARGB(255, 241, 250, 251),

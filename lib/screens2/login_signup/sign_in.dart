@@ -1,3 +1,4 @@
+import 'package:Taqyem/screens2/admin/adminpage.dart';
 import 'package:Taqyem/screens2/agent/TABAgentdashboard.dart';
 import 'package:Taqyem/screens2/admin/admindashbord.dart';
 import 'package:Taqyem/screens2/dashboard.dart';
@@ -101,7 +102,7 @@ class _SignInState extends State<SignIn> {
           'name': userDoc.get('name'),
           'timestamp': Timestamp.now(),
         });
-        bool isAgent = userDoc.get('isAgent') ?? false;
+        bool isAgent = userDoc.get('isAgent') ?? true;
 
         if (!mounted) return;
 

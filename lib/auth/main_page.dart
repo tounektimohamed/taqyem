@@ -1,3 +1,5 @@
+import 'package:Taqyem/screens2/admin/adminpage.dart';
+import 'package:Taqyem/screens2/agent/Agentdashbord.dart';
 import 'package:Taqyem/screens2/agent/TABAgentdashboard.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -37,7 +39,7 @@ class MainPage extends StatelessWidget {
                   bool isAgent = userDocSnapshot.data!.get('isAgent') ?? false;
 
                   if (isEmailVerified) {
-                    return isAgent ? const Agentdashboard() : const Agentdashboard();
+                    return isAgent ? const AgentDashboard() : const Agentdashboard();
                   } else {
                     return const EmailVerificationScreen();
                   }

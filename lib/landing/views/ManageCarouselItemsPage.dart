@@ -26,6 +26,7 @@ class ManageCarouselItemsPage extends StatelessWidget {
     );
   }
 }
+
 class CarouselItemsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -91,7 +92,7 @@ class CarouselItemsList extends StatelessWidget {
                   style: TextStyle(fontSize: 16),
                 ),
                 trailing: IconButton(
-                  icon: Icon(Icons.delete),
+                  icon: Icon(Icons.delete, color: Colors.red),
                   onPressed: () {
                     showDialog(
                       context: context,
@@ -100,11 +101,11 @@ class CarouselItemsList extends StatelessWidget {
                         content: Text('Êtes-vous sûr de vouloir supprimer cet élément ?'),
                         actions: [
                           TextButton(
-                            child: Text('Annuler'),
+                            child: Text('Annuler', style: TextStyle(color: Colors.grey)),
                             onPressed: () => Navigator.pop(context),
                           ),
                           TextButton(
-                            child: Text('Supprimer'),
+                            child: Text('Supprimer', style: TextStyle(color: Colors.red)),
                             onPressed: () {
                               FirebaseFirestore.instance
                                   .collection('carouselItems')
@@ -132,6 +133,7 @@ class CarouselItemsList extends StatelessWidget {
     );
   }
 }
+
 class AddCarouselItemPage extends StatefulWidget {
   @override
   _AddCarouselItemPageState createState() => _AddCarouselItemPageState();
@@ -219,6 +221,9 @@ class _AddCarouselItemPageState extends State<AddCarouselItemPage> {
             ElevatedButton(
               onPressed: getImage,
               child: Text('Sélectionner une image'),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(vertical: 16),
+              ),
             ),
             SizedBox(height: 20),
             TextField(
