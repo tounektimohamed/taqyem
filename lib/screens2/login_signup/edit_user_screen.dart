@@ -47,44 +47,53 @@ class _EditUserScreenState extends State<EditUserScreen> {
         return Genders.homme;
       case 'femme':
         return Genders.femme;
-     
+
       default:
         return Genders.homme; // Par défaut, si le genre n'est pas reconnu
     }
   }
-  
-  
+
   Future<void> update() async {
-  setState(() {
-    isLoading = true;
-  });
-
-  try {
-    await FirebaseFirestore.instance
-        .collection('Users')
-        .doc(widget.user.id)
-        .update({
-      'name': _nameController.text,
-      'dob': _dobController.text,
-      'gender': _genderSelected == Genders.homme ? 'Homme' : 'Femme',
-      'nic': _nicController.text,
-      'address': _addressController.text,
-      'mobile': _mobileController.text,
-      'isAgent': _isAgent,
-    });
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('User updated successfully')));
-  } catch (e) {
-    print('Error updating user: $e');
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('Failed to update user')));
-  } finally {
     setState(() {
-      isLoading = false;
+      isLoading = true;
     });
-  }
-}
 
+    try {
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(widget.user.id)
+          .update({
+        'name': _nameController.text,
+        'dob': _dobController.text,
+        'gender': _genderSelected == Genders.homme ? 'Homme' : 'Femme',
+        'nic': _nicController.text,
+        'address': _addressController.text,
+        'mobile': _mobileController.text,
+        'isAgent': _isAgent,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Utilisateur mis à jour avec succès'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      Navigator.pop(context, true); // Fermer l'écran et retourner "true"
+    } catch (e) {
+      print('Erreur de mise à jour : $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Échec de la mise à jour'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -197,7 +206,6 @@ class _EditUserScreenState extends State<EditUserScreen> {
                               });
                             },
                           ),
-                         
                         ],
                       );
                     },
@@ -255,7 +263,7 @@ class _EditUserScreenState extends State<EditUserScreen> {
             SizedBox(height: 15),
             Row(
               children: [
-                Text('Rôle d\'agent :'),
+                Text('c\'est un admin :'),
                 Switch(
                   value: _isAgent,
                   onChanged: (value) {
@@ -267,40 +275,43 @@ class _EditUserScreenState extends State<EditUserScreen> {
               ],
             ),
             SizedBox(height: 30),
-           SizedBox(
-  width: double.infinity,
-  height: 55,
-  child: ElevatedButton(
-    onPressed: update,
-    style: ButtonStyle(
-      elevation: MaterialStateProperty.all(2),
-      shape: MaterialStateProperty.all(
-        RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-      ),
-      backgroundColor: MaterialStateProperty.resolveWith<Color>(
-        (Set<MaterialState> states) {
-          return isLoading
-              ? Theme.of(context).colorScheme.primary.withOpacity(0.5)
-              : Theme.of(context).colorScheme.primary;
-        },
-      ),
-    ),
-    child: !isLoading
-        ? Text(
-            'Save',
-            style: TextStyle(
-              fontSize: 25,
-              fontWeight: FontWeight.w600,
-              color: Colors.white,  // Set text color to white
+            SizedBox(
+              width: double.infinity,
+              height: 55,
+              child: ElevatedButton(
+                onPressed: update,
+                style: ButtonStyle(
+                  elevation: MaterialStateProperty.all(2),
+                  shape: MaterialStateProperty.all(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  backgroundColor: MaterialStateProperty.resolveWith<Color>(
+                    (Set<MaterialState> states) {
+                      return isLoading
+                          ? Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withOpacity(0.5)
+                          : Theme.of(context).colorScheme.primary;
+                    },
+                  ),
+                ),
+                child: !isLoading
+                    ? Text(
+                        'Save',
+                        style: TextStyle(
+                          fontSize: 25,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white, // Set text color to white
+                        ),
+                      )
+                    : CircularProgressIndicator(
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.white)),
+              ),
             ),
-          )
-        : CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white)),
-  ),
-),
-
           ],
         ),
       ),

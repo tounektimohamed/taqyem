@@ -23,14 +23,18 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
       
       if (result != null) {
         Uint8List fileBytes = result.files.single.bytes!;
-        String fileName = result.files.single.name;
+        
+        String? customName = await _showFileNameDialog();
+        if (customName == null || customName.isEmpty) return;
+
+        String fileName = "$customName.pdf";
 
         User? user = _auth.currentUser;
         if (user == null) {
           throw Exception("Utilisateur non connecté");
         }
 
-        String userName = user.displayName ?? user.email ?? "Utilisateur anonyme";
+        String name = user.displayName ?? user.email ?? "Utilisateur anonyme";
 
         Reference storageRef = _storage.ref().child('pdfs/${DateTime.now().millisecondsSinceEpoch}_$fileName');
         UploadTask uploadTask = storageRef.putData(fileBytes);
@@ -45,10 +49,10 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
         String fileUrl = await snapshot.ref.getDownloadURL();
 
         await _firestore.collection('pdfs').add({
-          'name': fileName,
+          'Name': fileName,
           'time': FieldValue.serverTimestamp(),
           'userId': user.uid,
-          'userName': userName,
+          'name': name,
           'fileUrl': fileUrl,
         });
 
@@ -64,6 +68,32 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erreur lors du téléchargement : $e")));
     }
+  }
+
+  Future<String?> _showFileNameDialog() async {
+    TextEditingController controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Nom du fichier"),
+          content: TextField(
+            controller: controller,
+            decoration: InputDecoration(hintText: "Entrez le nom du fichier"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: Text("Annuler"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              child: Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _downloadAndShowPDF(String fileUrl) async {
@@ -119,10 +149,10 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
                     itemCount: pdfs.length,
                     itemBuilder: (context, index) {
                       final pdf = pdfs[index];
-                      final fileName = pdf['name'];
+                      final fileName = pdf['Name'];
                       final docId = pdf.id;
                       final userId = pdf['userId'];
-                      final userName = pdf['userName'];
+                      final name = pdf['name'];
                       final fileUrl = pdf['fileUrl'];
                       final time = (pdf['time'] as Timestamp?)?.toDate() ?? DateTime.now();
 
@@ -135,7 +165,7 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Partagé par: $userName', style: TextStyle(fontSize: 14.0)),
+                              Text('Partagé par: $name', style: TextStyle(fontSize: 14.0)),
                               Text('Date: ${time.toLocal()}'),
                             ],
                           ),

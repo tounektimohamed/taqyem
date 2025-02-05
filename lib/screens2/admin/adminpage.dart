@@ -337,19 +337,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
             //     );
             //   },
             // ),
-            _buildDrawerItem(
-              context,
-              Icons.article,
-              'رؤية الأخبار',
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => GereListPage(),
-                  ),
-                );
-              },
-            ),
+            // _buildDrawerItem(
+            //   context,
+            //   Icons.article,
+            //   'رؤية الأخبار',
+            //   () {
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(
+            //         builder: (context) => GereListPage(),
+            //       ),
+            //     );
+            //   },
+            // ),
             _buildDrawerItem(
               context,
               Icons.settings,

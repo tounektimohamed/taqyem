@@ -4,20 +4,32 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../login_signup/edit_user_screen.dart';
 
-class UserManagement extends StatelessWidget {
+class UserManagement extends StatefulWidget {
   const UserManagement({Key? key}) : super(key: key);
 
-  Future<void> deleteUser(String userId) async {
-    await FirebaseFirestore.instance.collection('Users').doc(userId).delete();
-  }
+  @override
+  _UserManagementState createState() => _UserManagementState();
+}
 
-  void editUser(BuildContext context, DocumentSnapshot user) {
-    Navigator.push(
+class _UserManagementState extends State<UserManagement> {
+  
+
+  Future<void> editUser(BuildContext context, DocumentSnapshot user) async {
+    bool? shouldRefresh = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => EditUserScreen(user: user),
       ),
     );
+
+    if (shouldRefresh == true) {
+      setState(() {}); // Rafraîchir l'écran après retour
+    }
+  }
+
+
+  Future<void> deleteUser(String userId) async {
+    await FirebaseFirestore.instance.collection('Users').doc(userId).delete();
   }
 
   @override
