@@ -19,11 +19,12 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
 
   Future<void> _uploadPDF() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
-      
+      FilePickerResult? result = await FilePicker.platform
+          .pickFiles(type: FileType.custom, allowedExtensions: ['pdf']);
+
       if (result != null) {
         Uint8List fileBytes = result.files.single.bytes!;
-        
+
         String? customName = await _showFileNameDialog();
         if (customName == null || customName.isEmpty) return;
 
@@ -36,7 +37,9 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
 
         String name = user.displayName ?? user.email ?? "Utilisateur anonyme";
 
-        Reference storageRef = _storage.ref().child('pdfs/${DateTime.now().millisecondsSinceEpoch}_$fileName');
+        Reference storageRef = _storage
+            .ref()
+            .child('pdfs/${DateTime.now().millisecondsSinceEpoch}_$fileName');
         UploadTask uploadTask = storageRef.putData(fileBytes);
 
         uploadTask.snapshotEvents.listen((TaskSnapshot snapshot) {
@@ -60,13 +63,15 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
           _uploadProgress = 0.0;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Fichier téléchargé avec succès")));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Fichier téléchargé avec succès")));
       }
     } catch (e) {
       setState(() {
         _uploadProgress = 0.0;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erreur lors du téléchargement : $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Erreur lors du téléchargement : $e")));
     }
   }
 
@@ -101,10 +106,12 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
       if (await canLaunch(fileUrl)) {
         await launch(fileUrl);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Impossible d'ouvrir le fichier PDF")));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Impossible d'ouvrir le fichier PDF")));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erreur lors de l'ouverture du PDF")));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Erreur lors de l'ouverture du PDF")));
     }
   }
 
@@ -112,7 +119,11 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Gestion des fichiers PDF'),
+        title: Text('Gestion des fichiers PDF',
+            textDirection: TextDirection.rtl,
+            style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
+        elevation: 4,
         actions: [
           IconButton(
             icon: Icon(Icons.add),
@@ -129,7 +140,8 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
                 children: [
                   LinearProgressIndicator(value: _uploadProgress),
                   SizedBox(height: 5),
-                  Text("Téléchargement : ${(100 * _uploadProgress).toStringAsFixed(2)}%"),
+                  Text(
+                      "Téléchargement : ${(100 * _uploadProgress).toStringAsFixed(2)}%"),
                 ],
               ),
             ),
@@ -137,7 +149,10 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: StreamBuilder<QuerySnapshot>(
-                stream: _firestore.collection('pdfs').orderBy('time', descending: true).snapshots(),
+                stream: _firestore
+                    .collection('pdfs')
+                    .orderBy('time', descending: true)
+                    .snapshots(),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
                     return Center(child: CircularProgressIndicator());
@@ -154,28 +169,41 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
                       final userId = pdf['userId'];
                       final name = pdf['name'];
                       final fileUrl = pdf['fileUrl'];
-                      final time = (pdf['time'] as Timestamp?)?.toDate() ?? DateTime.now();
+                      final time = (pdf['time'] as Timestamp?)?.toDate() ??
+                          DateTime.now();
 
                       return Card(
                         elevation: 4.0,
                         margin: EdgeInsets.symmetric(vertical: 8.0),
                         child: ListTile(
                           contentPadding: EdgeInsets.all(12.0),
-                          title: Text(fileName, style: TextStyle(fontWeight: FontWeight.bold)),
+                          title: Text(fileName,
+                              style: TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Partagé par: $name', style: TextStyle(fontSize: 14.0)),
+                              Text('Partagé par: $name',
+                                  style: TextStyle(fontSize: 14.0)),
                               Text('Date: ${time.toLocal()}'),
+                              Text(
+                                  'Pour télécharger, cliquez sur le PDF souhaité',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontStyle: FontStyle.italic)),
                             ],
                           ),
                           trailing: userId == _auth.currentUser?.uid
                               ? IconButton(
                                   icon: Icon(Icons.delete, color: Colors.red),
                                   onPressed: () async {
-                                    await _firestore.collection('pdfs').doc(docId).delete();
+                                    await _firestore
+                                        .collection('pdfs')
+                                        .doc(docId)
+                                        .delete();
                                     await _storage.refFromURL(fileUrl).delete();
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Fichier supprimé")));
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                            content: Text("Fichier supprimé")));
                                   },
                                 )
                               : null,

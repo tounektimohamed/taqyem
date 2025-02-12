@@ -1,4 +1,5 @@
 import 'package:Taqyem/taqyem/AddClassPage.dart';
+import 'package:Taqyem/taqyem/selectionPage.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -23,7 +24,8 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   Uint8List? _imageBytes;
   String? _photoUrl;
   String? _selectedSubject; // Variable pour stocker la matière sélectionnée
-  List<Map<String, String>> _selectedSubjects = []; // Stocke les ID et noms des matières sélectionnées
+  List<Map<String, String>> _selectedSubjects =
+      []; // Stocke les ID et noms des matières sélectionnées
   // Ajoutez ces deux variables
   String? selectedClassId;
   String? selectedSubjectId;
@@ -36,41 +38,47 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     }
   }
 
-Future<String?> _getEvaluation({
-  required String classId,
-  required String studentId,
-  required String baremeId,
-}) async {
-  try {
-    User? currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      throw Exception("Aucun utilisateur connecté");
+  Future<String?> _getEvaluation({
+    required String classId,
+    required String studentId,
+    required String baremeId,
+    String? sousBaremeId, // Nouveau paramètre pour l'ID du sous-barème
+  }) async {
+    try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw Exception("Aucun utilisateur connecté");
+      }
+
+      // Construire la référence de base du document
+      var docRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('user_classes')
+          .doc(classId)
+          .collection('students')
+          .doc(studentId)
+          .collection('baremes')
+          .doc(baremeId);
+
+      // Si sousBaremeId est fourni, ajuster la référence à la sous-collection des sous-barèmes
+      if (sousBaremeId != null) {
+        docRef = docRef.collection('sous_baremes').doc(sousBaremeId);
+      }
+
+      // Récupérer le document
+      var doc = await docRef.get();
+
+      // Vérifier si le document existe et si le champ `value` existe
+      if (doc.exists && doc.data()?.containsKey('Marks') == true) {
+        return doc['Marks'] as String?; // Retourner la valeur du champ `value`
+      }
+      return null; // Retourner null si le document ou le champ `value` n'existe pas
+    } catch (e) {
+      print('Erreur lors de la récupération de l\'évaluation: $e');
+      return null;
     }
-
-    // Référence au document de l'évaluation
-    var docRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser.uid)
-        .collection('user_classes')
-        .doc(classId)
-        .collection('students')
-        .doc(studentId)
-        .collection('baremes')
-        .doc(baremeId);
-
-    // Récupérer le document
-    var doc = await docRef.get();
-
-    // Vérifier si le document existe et si le champ `value` existe
-    if (doc.exists && doc.data()?.containsKey('value') == true) {
-      return doc['value'] as String?; // Retourner la valeur du champ `value`
-    }
-    return null; // Retourner null si le document ou le champ `value` n'existe pas
-  } catch (e) {
-    print('Erreur lors de la récupération de l\'évaluation: $e');
-    return null;
   }
-}
 
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
@@ -548,265 +556,463 @@ Future<String?> _getEvaluation({
     }
   }
 
+  Future<void> _saveEvaluation({
+    required String classId,
+    required String studentId,
+    required String baremeId,
+    required String? newValue,
+    String? sousBaremeId,
+  }) async {
+    try {
+      // Vérifier si un utilisateur est connecté
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) throw Exception("Aucun utilisateur connecté");
 
-Future<void> _saveEvaluation({
-  required String classId,
-  required String studentId,
-  required String baremeId,
-  required String? newValue,
-}) async {
-  try {
-    User? currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      throw Exception("Aucun utilisateur connecté");
-    }
+      // Référence à la collection baremes
+      var baremesCollectionRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('user_classes')
+          .doc(classId)
+          .collection('students')
+          .doc(studentId)
+          .collection('baremes');
 
-    // Référence au document de l'évaluation
-    var docRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser.uid)
-        .collection('user_classes')
-        .doc(classId)
-        .collection('students')
-        .doc(studentId)
-        .collection('baremes')
-        .doc(baremeId);
+      // Référence au document du barème principal
+      var baremeRef = baremesCollectionRef.doc(baremeId);
 
-    // Sauvegarder la nouvelle valeur
-    if (newValue != null) {
-      await docRef.set({'value': newValue}, SetOptions(merge: true));
-    } else {
-      await docRef.update({'value': FieldValue.delete()}); // Supprimer le champ `value` si newValue est null
-    }
+      // Vérifier si le barème principal existe
+      final baremeDoc = await baremeRef.get();
 
-    print('Évaluation sauvegardée avec succès pour le barème $baremeId');
-  } catch (e) {
-    print('Erreur lors de la sauvegarde de l\'évaluation: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Erreur lors de la sauvegarde de l\'évaluation')),
-    );
-  }
-}
+      // Si le document n'existe pas, le créer avec les champs de base
+      if (!baremeDoc.exists) {
+        await baremeRef.set({
+          'createdAt': FieldValue.serverTimestamp(),
+          'haveSoubarem':
+              sousBaremeId != null, // Indique si des sous-barèmes existent
+        });
+        print("Document parent créé pour le barème $baremeId");
+      }
 
-//////////////////////////////////////////////////
-Future<void> _showSelectionsDialog(String classId, String matiereId, String studentId) async {
-  final List<String> evaluationOptions = ['( - - - )', '( + - - )', '( + + - )', '( + + + )'];
-  final Map<String, Color> evaluationColors = {
-    '( - - - )': Colors.red,
-    '( + - - )': Colors.yellow,
-    '( + + - )': Colors.orange,
-    '( + + + )': Colors.green,
-  };
-  Color defaultColor = Colors.blue;
+      // Sauvegarder la valeur dans le barème principal ou le sous-barème
+      if (sousBaremeId != null) {
+        // Créer ou mettre à jour le sous-barème directement dans la collection baremes
+        var sousBaremeDirectRef = baremesCollectionRef.doc(sousBaremeId);
+        if (newValue != null) {
+          await sousBaremeDirectRef
+              .set({'Marks': newValue}, SetOptions(merge: true));
+        } else {
+          await sousBaremeDirectRef.update({'Marks': FieldValue.delete()});
+        }
 
-  try {
-    CollectionReference selectionsRef = FirebaseFirestore.instance
-        .collection('selections')
-        .doc(classId)
-        .collection(matiereId);
+        // Créer ou mettre à jour le sous-barème dans la collection sous_baremes du barème principal
+        var sousBaremeNestedRef =
+            baremeRef.collection('sous_baremes').doc(sousBaremeId);
+        if (newValue != null) {
+          await sousBaremeNestedRef
+              .set({'Marks': newValue}, SetOptions(merge: true));
+        } else {
+          await sousBaremeNestedRef.update({'Marks': FieldValue.delete()});
+        }
 
-    var selectionsSnapshot = await selectionsRef.get();
+        // Mettre à jour haveSoubarem dans le barème principal
+        await baremeRef.update({'haveSoubarem': true});
 
-    List<Map<String, dynamic>> selections = [];
-    for (var doc in selectionsSnapshot.docs) {
-      String? savedEvaluation = await _getEvaluation(
-        classId: classId,
-        studentId: studentId,
-        baremeId: doc.id,
+        print('Sauvegarde réussie pour le sous-barème $sousBaremeId');
+      } else {
+        // Sauvegarder dans le barème principal
+        if (newValue != null) {
+          await baremeRef.set({'Marks': newValue}, SetOptions(merge: true));
+        } else {
+          await baremeRef.update({'Marks': FieldValue.delete()});
+        }
+        print('Sauvegarde réussie pour le barème $baremeId');
+      }
+    } catch (e) {
+      print('Erreur lors de la sauvegarde: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Erreur lors de la sauvegarde')),
       );
+    }
+  }
 
-      selections.add({
-        'id': doc.id,
-        'baremeId': doc['baremeId'],
-        'baremeName': doc['baremeName'],
-        'selectedAt': doc['selectedAt'],
-        'evaluation': savedEvaluation ?? '( - - - )',
-      });
+  Future<void> _showSelectionsDialog(
+      String classId, String matiereId, String studentId) async {
+    final List<String> evaluationOptions = [
+      '( - - - )',
+      '( + - - )',
+      '( + + - )',
+      '( + + + )'
+    ];
+    final Map<String, Color> evaluationColors = {
+      '( - - - )': Colors.red,
+      '( + - - )': Colors.orange,
+      '( + + - )': Colors.amber,
+      '( + + + )': Colors.green,
+    };
 
-      var sousBaremesRef = doc.reference.collection('sousBaremes');
-      var sousBaremesSnapshot = await sousBaremesRef.get();
-      List<Map<String, dynamic>> sousBaremes = [];
-      for (var sousDoc in sousBaremesSnapshot.docs) {
-        sousBaremes.add({
-          'id': sousDoc.id,
-          'sousBaremeName': sousDoc['sousBaremeName'],
-          'selectedAt': sousDoc['selectedAt'],
+    try {
+      CollectionReference selectionsRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(classId)
+          .collection(matiereId);
+
+      var selectionsSnapshot = await selectionsRef.get();
+
+      List<Map<String, dynamic>> selections = [];
+      for (var doc in selectionsSnapshot.docs) {
+        var sousBaremesRef = doc.reference.collection('sousBaremes');
+        var sousBaremesSnapshot = await sousBaremesRef.get();
+        List<Map<String, dynamic>> sousBaremes = [];
+
+        for (var sousDoc in sousBaremesSnapshot.docs) {
+          String? savedEvaluation = await _getEvaluation(
+            classId: classId,
+            studentId: studentId,
+            baremeId: doc.id,
+            sousBaremeId: sousDoc.id,
+          );
+
+          sousBaremes.add({
+            'id': sousDoc.id,
+            'sousBaremeName': sousDoc['sousBaremeName'],
+            'evaluation': savedEvaluation ?? '( - - - )',
+          });
+        }
+
+        String? savedEvaluation = sousBaremes.isEmpty
+            ? await _getEvaluation(
+                classId: classId, studentId: studentId, baremeId: doc.id)
+            : null;
+
+        selections.add({
+          'id': doc.id,
+          'baremeId': doc['baremeId'],
+          'baremeName': doc['baremeName'],
+          'evaluation': savedEvaluation ?? '( - - - )',
+          'sousBaremes': sousBaremes,
         });
       }
 
-      selections.last['sousBaremes'] = sousBaremes;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          // Récupérer la taille de l'écran
-          final screenWidth = MediaQuery.of(context).size.width;
-          final isSmallScreen = screenWidth < 600; // Téléphone
-
-          return AlertDialog(
-            title: Text('Sélections associées'),
-            content: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Veuillez sélectionner une évaluation pour chaque barème.',
-                    style: TextStyle(fontSize: isSmallScreen ? 14 : 16),
-                  ),
-                  Divider(),
-                  ...selections.map((selection) {
-                    String selectedEvaluation = selection['evaluation'];
-                    return Card(
-                      margin: EdgeInsets.symmetric(vertical: 8),
-                      child: ExpansionTile(
-                        title: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              selection['baremeName'] ?? 'Sans nom',
-                              style: TextStyle(
-                                fontSize: isSmallScreen ? 14 : 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            // Afficher les options d'évaluation en ligne ou en colonne selon la taille de l'écran
-                            isSmallScreen
-                                ? Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: evaluationOptions.map((value) {
-                                      return _buildEvaluationButton(
-                                        value: value,
-                                        isSelected: selection['evaluation'] == value,
-                                        color: evaluationColors[value] ?? defaultColor,
-                                        onTap: () {
-                                          setState(() {
-                                            selection['evaluation'] = value;
-                                          });
-                                        },
-                                      );
-                                    }).toList(),
-                                  )
-                                : Row(
-                                    children: evaluationOptions.map((value) {
-                                      return _buildEvaluationButton(
-                                        value: value,
-                                        isSelected: selection['evaluation'] == value,
-                                        color: evaluationColors[value] ?? defaultColor,
-                                        onTap: () {
-                                          setState(() {
-                                            selection['evaluation'] = value;
-                                          });
-                                        },
-                                      );
-                                    }).toList(),
-                                  ),
-                          ],
-                        ),
-                        children: (selection['sousBaremes'] as List<Map<String, dynamic>>)
-                            .map((sousBareme) => ListTile(
-                                  title: Text(
-                                    sousBareme['sousBaremeName'] ?? 'Sans nom',
-                                    style: TextStyle(fontSize: isSmallScreen ? 12 : 14),
-                                  ),
-                                  subtitle: Text(
-                                    'ID: ${sousBareme['id']}',
-                                    style: TextStyle(fontSize: isSmallScreen ? 10 : 12),
-                                  ),
-                                ))
-                            .toList(),
-                      ),
-                    );
-                  }).toList(),
-                ],
-              ),
-            ),
+      if (selections.isEmpty) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('لا توجد معايير محددة'),
+            content: Text('لإجراء التقييم، يجب عليك أولاً برمجة معيار للتقييم'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text('Annuler', style: TextStyle(color: Colors.red)),
+                child: Text('إلغاء', style: TextStyle(color: Colors.red)),
               ),
               ElevatedButton(
-                onPressed: () async {
-                  bool confirm = await showDialog(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: Text('Confirmer'),
-                      content: Text('Êtes-vous sûr de vouloir enregistrer ces évaluations ?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: Text('Non'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: Text('Oui'),
-                        ),
-                      ],
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SelectionPage(),
                     ),
                   );
-
-                  if (confirm) {
-                    for (var selection in selections) {
-                      await _saveEvaluation(
-                        classId: classId,
-                        studentId: studentId,
-                        baremeId: selection['baremeId'],
-                        newValue: selection['evaluation'],
-                      );
-                    }
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Évaluations enregistrées avec succès!')),
-                    );
-
-                    Navigator.pop(context);
-                  }
                 },
-                child: Text('Évaluer'),
+                child: Text('اذهب إلى صفحة الاختيار'),
               ),
             ],
-          );
-        },
-      ),
-    );
-  } catch (e) {
-    print('Erreur lors du chargement des sélections: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Erreur lors du chargement des sélections')),
+          ),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (context) => StatefulBuilder(
+            builder: (context, setState) {
+              return Dialog(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16)),
+                child: Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'تقييم المعايير',
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.bold),
+                      ),
+                      Divider(),
+                      Flexible(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: selections.map((selection) {
+                              bool hasSousBaremes =
+                                  (selection['sousBaremes'] as List).isNotEmpty;
+                              return Card(
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                elevation: 4,
+                                margin: EdgeInsets.symmetric(vertical: 8),
+                                child: Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: Column(
+                                    children: [
+                                      ListTile(
+                                        title: Text(
+                                          selection['baremeName'] ?? 'بدون اسم',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                        leading: Icon(Icons.assignment,
+                                            color: Colors.blue),
+                                        trailing: hasSousBaremes
+                                            ? Icon(Icons.expand_more)
+                                            : null,
+                                      ),
+                                      if (hasSousBaremes)
+                                        Column(
+                                          children: (selection['sousBaremes']
+                                                  as List<Map<String, dynamic>>)
+                                              .map((sousBareme) {
+                                            return _buildSousBaremeCard(
+                                                sousBareme,
+                                                setState,
+                                                evaluationOptions,
+                                                evaluationColors);
+                                          }).toList(),
+                                        )
+                                      else
+                                        _buildEvaluationButtons(
+                                          evaluationOptions,
+                                          evaluationColors,
+                                          selection['evaluation'],
+                                          (newValue) {
+                                            setState(() {
+                                              selection['evaluation'] =
+                                                  newValue;
+                                            });
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text('إلغاء',
+                                style:
+                                    TextStyle(color: Colors.red, fontSize: 16)),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              bool confirm = await showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: Text('تأكيد'),
+                                  content: Text(
+                                      'هل أنت متأكد أنك تريد حفظ هذه التقييمات؟'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      child: Text('لا'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      child: Text('نعم'),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirm) {
+                                for (var selection in selections) {
+                                  if ((selection['sousBaremes'] as List)
+                                      .isNotEmpty) {
+                                    for (var sousBareme
+                                        in selection['sousBaremes']) {
+                                      await _saveEvaluation(
+                                        classId: classId,
+                                        studentId: studentId,
+                                        baremeId: selection['baremeId'],
+                                        sousBaremeId: sousBareme['id'],
+                                        newValue: sousBareme['evaluation'],
+                                      );
+                                    }
+                                  } else {
+                                    await _saveEvaluation(
+                                      classId: classId,
+                                      studentId: studentId,
+                                      baremeId: selection['baremeId'],
+                                      newValue: selection['evaluation'],
+                                    );
+                                  }
+                                }
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text('تم حفظ التقييمات بنجاح!')),
+                                );
+                                Navigator.pop(context);
+                              }
+                            },
+                            icon: Icon(Icons.save),
+                            label: Text('تقييم'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      }
+    } catch (e) {
+      print('Erreur lors du chargement des sélections: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('حدث خطأ أثناء تحميل التقييمات')),
+      );
+    }
+  }
+
+  Widget _buildEvaluationButtons(List<String> options,
+      Map<String, Color> colors, String selectedValue, Function(String) onTap) {
+    return Wrap(
+      spacing: 8,
+      children: options.map((Marks) {
+        return GestureDetector(
+          onTap: () => onTap(Marks),
+          child: Chip(
+            label: Text(Marks,
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
+            backgroundColor: colors[Marks] ?? Colors.blue,
+            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            side: BorderSide(
+              color: selectedValue == Marks ? Colors.black : Colors.transparent,
+              width: 2,
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
-}
 
-// Widget pour construire un bouton d'évaluation
-Widget _buildEvaluationButton({
-  required String value,
-  required bool isSelected,
-  required Color color,
-  required VoidCallback onTap,
-}) {
-  return GestureDetector(
-    onTap: onTap,
-    child: Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isSelected ? color : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color),
-      ),
-      child: Text(
-        value,
-        style: TextStyle(
-          color: isSelected ? Colors.white : color,
-          fontSize: 14,
+  Widget _buildSousBaremeCard(Map<String, dynamic> sousBareme,
+      Function setState, List<String> options, Map<String, Color> colors) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      margin: EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+      child: ListTile(
+        title: Text(sousBareme['sousBaremeName'] ?? 'Sans nom'),
+        subtitle: _buildEvaluationButtons(
+          options,
+          colors,
+          sousBareme['evaluation'],
+          (Marks) {
+            setState(() {
+              sousBareme['evaluation'] = Marks;
+            });
+          },
         ),
       ),
-    ),
-  );
-}
+    );
+  }
+
+// Widget pour construire un bouton d'évaluation
+  Widget _buildEvaluationButton({
+    required String Marks,
+    required bool isSelected,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? color : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color),
+        ),
+        child: Text(
+          Marks,
+          style: TextStyle(
+            color: isSelected ? Colors.white : color,
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<Color> _getStudentIndicatorColor(
+      String classId, String studentId, String? subjectId) async {
+    if (subjectId == null) return Colors.red;
+
+    try {
+      final selectionsRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(classId)
+          .collection(subjectId);
+
+      final selectionsSnapshot = await selectionsRef.get();
+      if (selectionsSnapshot.docs.isEmpty) return Colors.red;
+
+      int total = 0;
+      int evaluated = 0;
+
+      for (var baremeDoc in selectionsSnapshot.docs) {
+        final baremeId = baremeDoc.id;
+        final hasSousBaremes = baremeDoc['haveSoubarem'] ?? false;
+
+        if (hasSousBaremes) {
+          final sousBaremesSnapshot =
+              await baremeDoc.reference.collection('sousBaremes').get();
+          total += sousBaremesSnapshot.size;
+
+          for (var sousDoc in sousBaremesSnapshot.docs) {
+            final eval = await _getEvaluation(
+              classId: classId,
+              studentId: studentId,
+              baremeId: baremeId,
+              sousBaremeId: sousDoc.id,
+            );
+            if (eval != null && eval != '( - - - )') evaluated++;
+          }
+        } else {
+          total++;
+          final eval = await _getEvaluation(
+            classId: classId,
+            studentId: studentId,
+            baremeId: baremeId,
+          );
+          if (eval != null && eval != '( - - - )') evaluated++;
+        }
+      }
+
+      if (evaluated == 0) return Colors.red;
+      return evaluated == total ? Colors.green : Colors.orange;
+    } catch (e) {
+      print('Error getting indicator color: $e');
+      return Colors.red;
+    }
+  }
+
 /////////////////////////////////////////////////////////////////////////////
   Widget _buildClassList() {
     return ListView.builder(
@@ -902,6 +1108,7 @@ Widget _buildEvaluationButton({
                     final birthDate = studentData['birthDate'];
 
                     return ListTile(
+                      
                       leading: photoUrl != null && photoUrl.isNotEmpty
                           ? CachedNetworkImage(
                               imageUrl: photoUrl,
@@ -966,12 +1173,12 @@ Widget _buildEvaluationButton({
                         ],
                       ),
                       onTap: () {
-                          print("ID de l'élève sélectionné : $studentId");
+                        print("ID de l'élève sélectionné : $studentId");
 
                         if (selectedClassId != null &&
                             selectedSubjectId != null) {
                           _showSelectionsDialog(
-                              selectedClassId!, selectedSubjectId!,studentId!);
+                              selectedClassId!, selectedSubjectId!, studentId!);
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -1148,42 +1355,47 @@ Widget _buildEvaluationButton({
     );
   }
 
- @override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(title: Text('Gestion des classes')),
-    body: _classes.isEmpty
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Aucune classe trouvée.',
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  'Vous devez ajouter une classe dans l\'onglet "Ajouter une classe".',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    // Naviguer vers AddClassPage
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => AddClassPage(),
-                      ),
-                    );
-                  },
-                  child: Text('Ajouter une classe'),
-                ),
-              ],
-            ),
-          )
-        : _buildClassList(),
-  );
-}
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title:
+            Text('Gestion des classes', style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
+        elevation: 4,
+      ),
+      body: _classes.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Aucune classe trouvée.',
+                    style: TextStyle(fontSize: 18, color: Colors.grey),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    'Vous devez ajouter une classe dans l\'onglet "Ajouter une classe".',
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      // Naviguer vers AddClassPage
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AddClassPage(),
+                        ),
+                      );
+                    },
+                    child: Text('Ajouter une classe'),
+                  ),
+                ],
+              ),
+            )
+          : _buildClassList(),
+    );
+  }
 }

@@ -1,3 +1,4 @@
+import 'package:Taqyem/taqyem/test/da3m_tableau%20copy.dart';
 import 'package:Taqyem/taqyem/da3m_tableau.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -32,37 +33,57 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     _loadUserData(); // Charger les données depuis Firestore
     fetchMarks(); // Récupérer les marques au chargement de la page
   }
-void _navigateToClassificationPage(String baremeId) async {
-  var classAndMatiereNames = await _getClassAndMatiereNames();
 
-  // Récupérer le nom du barème
-  var baremeDoc = await FirebaseFirestore.instance
-      .collection('classes')
-      .doc(widget.selectedClass)
-      .collection('matieres')
-      .doc(widget.selectedMatiere)
-      .collection('baremes')
-      .doc(baremeId)
-      .get();
-  var baremeName = baremeDoc['value'] ?? 'غير معروف';
+  void _navigateToClassificationPage2(String baremeId,
+      {String? sousBaremeId}) async {
+    var classAndMatiereNames = await _getClassAndMatiereNames();
 
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => ClassificationPage(
-        selectedClass: widget.selectedClass,
-        selectedBaremeId: baremeId,
-        currentUser: currentUser!,
-        profName: _profName,
-        schoolName: _schoolName,
-        className: classAndMatiereNames['className'] ?? 'غير معروف',
-        matiereName: classAndMatiereNames['matiereName'] ?? 'غير معروف',
-        matiereId: classAndMatiereNames['matiereId'] ?? 'غير معروف',
-        baremeName: baremeName,
+    // Récupérer le nom du barème
+    var baremeDoc = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(widget.selectedClass)
+        .collection('matieres')
+        .doc(widget.selectedMatiere)
+        .collection('baremes')
+        .doc(baremeId)
+        .get();
+    var baremeName = baremeDoc['Marks'] ?? 'غير معروف';
+
+    // Récupérer le nom du sous-barème si sousBaremeId est fourni
+    String? sousBaremeName;
+    if (sousBaremeId != null) {
+      var sousBaremeDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .collection('matieres')
+          .doc(widget.selectedMatiere)
+          .collection('baremes')
+          .doc(baremeId)
+          .collection('sous_baremes')
+          .doc(sousBaremeId)
+          .get();
+      sousBaremeName = sousBaremeDoc['Marks'] ?? 'غير معروف';
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ClassificationPage2(
+          selectedClass: widget.selectedClass,
+          selectedBaremeId: baremeId,
+          selectedSousBaremeId: sousBaremeId, // Passer le sousBaremeId
+          currentUser: currentUser!,
+          profName: _profName,
+          schoolName: _schoolName,
+          className: classAndMatiereNames['className'] ?? 'غير معروف',
+          matiereName: classAndMatiereNames['matiereName'] ?? 'غير معروف',
+          matiereId: classAndMatiereNames['matiereId'] ?? 'غير معروف',
+          baremeName: baremeName,
+          sousBaremeName: sousBaremeName, // Passer le nom du sous-barème
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   // Charger les données depuis Firestore
   void _loadUserData() async {
@@ -161,45 +182,58 @@ void _navigateToClassificationPage(String baremeId) async {
   // Récupérer les marques depuis Firestore
   Future<void> fetchMarks() async {
     try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw Exception("Aucun utilisateur connecté");
+      }
+
       // Récupérer tous les élèves de la classe
       var studentsSnapshot = await FirebaseFirestore.instance
           .collection('users')
-          .doc(currentUser!.uid)
+          .doc(currentUser.uid)
           .collection('user_classes')
           .doc(widget.selectedClass)
           .collection('students')
           .get();
 
       setState(() {
-        totalStudents = studentsSnapshot
-            .docs.length; // Mettre à jour le nombre total d'élèves
+        totalStudents = studentsSnapshot.docs.length;
       });
 
-      // Récupérer les barèmes sélectionnés
+      // Récupérer les barèmes et sous-barèmes sélectionnés
       var selectedBaremes = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
           .collection('selections')
           .doc(widget.selectedClass)
           .collection(widget.selectedMatiere)
           .get();
 
-      // Initialiser les compteurs pour chaque barème
+      // Initialiser les compteurs pour chaque barème et sous-barème
       for (var baremeDoc in selectedBaremes.docs) {
         var baremeId = baremeDoc['baremeId'];
         sumCriteriaMaxPerBareme[baremeId] = 0;
+
+        // Récupérer les sous-barèmes pour ce barème
+        var sousBaremesSnapshot =
+            await baremeDoc.reference.collection('sous_baremes').get();
+        for (var sousBaremeDoc in sousBaremesSnapshot.docs) {
+          var sousBaremeId = sousBaremeDoc['sousBaremeId'];
+          sumCriteriaMaxPerBareme['$baremeId-$sousBaremeId'] = 0;
+        }
       }
 
       // Parcourir chaque élève
       for (var studentDoc in studentsSnapshot.docs) {
         var studentId = studentDoc.id;
 
-        // Parcourir chaque barème
         for (var baremeDoc in selectedBaremes.docs) {
           var baremeId = baremeDoc['baremeId'];
 
           // Récupérer la valeur du barème pour l'élève
           var baremeSnapshot = await FirebaseFirestore.instance
               .collection('users')
-              .doc(currentUser!.uid)
+              .doc(currentUser.uid)
               .collection('user_classes')
               .doc(widget.selectedClass)
               .collection('students')
@@ -208,19 +242,41 @@ void _navigateToClassificationPage(String baremeId) async {
               .doc(baremeId)
               .get();
 
-          if (baremeSnapshot.exists) {
-            var value = baremeSnapshot['value'];
+          if (baremeSnapshot.exists &&
+              baremeSnapshot.data()?.containsKey('Marks') == true) {
+            var value = baremeSnapshot['Marks'];
+            // print('Valeur récupérée pour le barème $baremeId : $value');
 
-            // Compter les occurrences de +++ et ++-
             if (value == '( + + + )' || value == '( + + - )') {
               sumCriteriaMaxPerBareme[baremeId] =
                   (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
+            }
+          } else {
+            // print('Le champ "Marks" n\'existe pas dans le document $baremeId');
+
+            // Vérifier dans les sous-barèmes
+            var sousBaremesSnapshot =
+                await baremeSnapshot.reference.collection('sous_baremes').get();
+            for (var sousBaremeDoc in sousBaremesSnapshot.docs) {
+              if (sousBaremeDoc.data().containsKey('Marks')) {
+                var value = sousBaremeDoc['Marks'];
+                // print(
+                //     'Valeur récupérée pour le sous-barème ${sousBaremeDoc.id} : $value');
+
+                if (value == '( + + + )' || value == '( + + - )') {
+                  sumCriteriaMaxPerBareme[sousBaremeDoc.id] =
+                      (sumCriteriaMaxPerBareme[sousBaremeDoc.id] ?? 0) +
+                          1; // ID seul
+                }
+              } else {
+                // print(
+                //     'Le champ "Marks" n\'existe pas dans le sous-barème ${sousBaremeDoc.id}');
+              }
             }
           }
         }
       }
 
-      // Mettre à jour l'interface utilisateur
       setState(() {});
     } catch (e) {
       print('Erreur lors de la récupération des marques : $e');
@@ -251,9 +307,10 @@ void _navigateToClassificationPage(String baremeId) async {
       ),
       home: Scaffold(
         appBar: AppBar(
-          title:
-              Text('الجدول الجامع للنتائج', textDirection: TextDirection.rtl),
-          backgroundColor: const Color.fromARGB(255, 169, 204, 233),
+          title: Text('الجدول الجامع للنتائج',
+              textDirection: TextDirection.rtl,
+              style: TextStyle(color: Colors.white)),
+          backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
           elevation: 4,
         ),
         body: Directionality(
@@ -362,37 +419,38 @@ void _navigateToClassificationPage(String baremeId) async {
       ),
     );
   }
-Future<Map<String, String>> _getClassAndMatiereNames() async {
-  try {
-    var classDoc = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(widget.selectedClass)
-        .get();
-    var className = classDoc['name'] ?? 'غير معروف';
 
-    var matiereDoc = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(widget.selectedClass)
-        .collection('matieres')
-        .doc(widget.selectedMatiere)
-        .get();
-    var matiereName = matiereDoc['name'] ?? 'غير معروف';
-    var matiereId = matiereDoc.id;
+  Future<Map<String, String>> _getClassAndMatiereNames() async {
+    try {
+      var classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .get();
+      var className = classDoc['name'] ?? 'غير معروف';
 
-    return {
-      'className': className,
-      'matiereName': matiereName,
-      'matiereId': matiereId,
-    };
-  } catch (e) {
-    print('Erreur lors de la récupération des noms: $e');
-    return {
-      'className': 'غير معروف',
-      'matiereName': 'غير معروف',
-      'matiereId': 'غير معروف',
-    };
+      var matiereDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .collection('matieres')
+          .doc(widget.selectedMatiere)
+          .get();
+      var matiereName = matiereDoc['name'] ?? 'غير معروف';
+      var matiereId = matiereDoc.id;
+
+      return {
+        'className': className,
+        'matiereName': matiereName,
+        'matiereId': matiereId,
+      };
+    } catch (e) {
+      print('Erreur lors de la récupération des noms: $e');
+      return {
+        'className': 'غير معروف',
+        'matiereName': 'غير معروف',
+        'matiereId': 'غير معروف',
+      };
+    }
   }
-}
 
   Widget _buildMainContent() {
     return StreamBuilder<QuerySnapshot>(
@@ -413,7 +471,7 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
         if (!userClassesSnapshot.hasData ||
             userClassesSnapshot.data!.docs.isEmpty) {
           return Center(
-              child: Text('لم يتم العثور على أي فصل.',
+              child: Text('لم يتم العثور على أي قسم.',
                   textDirection: TextDirection.rtl));
         }
 
@@ -429,14 +487,14 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
               currentUser: currentUser!,
               sumCriteriaMaxPerBareme: sumCriteriaMaxPerBareme,
               totalStudents: totalStudents,
-              navigateToClassificationPage:
-                  _navigateToClassificationPage, // Ajoutez cette ligne
+              navigateToClassificationPage2:
+                  _navigateToClassificationPage2, // Ajoutez cette ligne
             );
           }
         }
 
         return Center(
-            child: Text('لم يتم العثور على أي فصل مطابق.',
+            child: Text('لم يتم العثور على أي قسم مطابق.',
                 textDirection: TextDirection.rtl));
       },
     );
@@ -450,17 +508,18 @@ class StudentsTable extends StatefulWidget {
   final User currentUser;
   final Map<String, int> sumCriteriaMaxPerBareme;
   final int totalStudents;
-  final Function(String) navigateToClassificationPage; // Ajoutez cette ligne
+  final Function(String) navigateToClassificationPage2;
 
-  StudentsTable({
+  const StudentsTable({
+    Key? key,
     required this.classDocId,
     required this.selectedClass,
     required this.selectedMatiere,
     required this.currentUser,
     required this.sumCriteriaMaxPerBareme,
     required this.totalStudents,
-    required this.navigateToClassificationPage, // Ajoutez cette ligne
-  });
+    required this.navigateToClassificationPage2,
+  }) : super(key: key);
 
   @override
   _StudentsTableState createState() => _StudentsTableState();
@@ -473,8 +532,7 @@ class _StudentsTableState extends State<StudentsTable> {
     '( + + - )',
     '( + + + )'
   ];
-  Map<String, Map<String, String>> _selectedValues = {};
-
+  final Map<String, Map<String, String>> _selectedValues = {};
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -490,7 +548,7 @@ class _StudentsTableState extends State<StudentsTable> {
                 .snapshots(),
             builder: (context, studentsSnapshot) {
               if (studentsSnapshot.connectionState == ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
+                return const Center(child: CircularProgressIndicator());
               }
               if (studentsSnapshot.hasError) {
                 return Center(
@@ -499,7 +557,7 @@ class _StudentsTableState extends State<StudentsTable> {
               }
               if (!studentsSnapshot.hasData ||
                   studentsSnapshot.data!.docs.isEmpty) {
-                return Center(
+                return const Center(
                     child: Text('لم يتم العثور على أي طالب.',
                         textDirection: TextDirection.rtl));
               }
@@ -508,14 +566,13 @@ class _StudentsTableState extends State<StudentsTable> {
             },
           ),
         ),
-        // Bouton "Terminer"
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: ElevatedButton(
-            onPressed: _saveAllChanges,
-            child: Text('Terminer', style: TextStyle(fontSize: 18)),
-          ),
-        ),
+        // Padding(
+        //   padding: const EdgeInsets.all(16.0),
+        //   child: ElevatedButton(
+        //     onPressed: _saveAllChanges,
+        //     child: const Text('حفظ التغييرات', style: TextStyle(fontSize: 18)),
+        //   ),
+        // ),
       ],
     );
   }
@@ -523,13 +580,15 @@ class _StudentsTableState extends State<StudentsTable> {
   Widget _buildSelectionsTable(List<QueryDocumentSnapshot> studentsDocs) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
           .collection('selections')
           .doc(widget.selectedClass)
           .collection(widget.selectedMatiere)
           .snapshots(),
       builder: (context, selectionsSnapshot) {
         if (selectionsSnapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
+          return const Center(child: CircularProgressIndicator());
         }
         if (selectionsSnapshot.hasError) {
           return Center(
@@ -538,19 +597,17 @@ class _StudentsTableState extends State<StudentsTable> {
         }
         if (!selectionsSnapshot.hasData ||
             selectionsSnapshot.data!.docs.isEmpty) {
-          return Center(
+          return const Center(
               child: Text('لم يتم العثور على أي معيار.',
                   textDirection: TextDirection.rtl));
         }
 
-        var selectedBaremes = selectionsSnapshot.data!.docs;
-
-        return FutureBuilder<List<Map<String, String>>>(
-          future: _getBaremesValues(selectedBaremes),
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: _getBaremesValues(selectionsSnapshot.data!.docs),
           builder: (context, baremesValuesSnapshot) {
             if (baremesValuesSnapshot.connectionState ==
                 ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator());
             }
             if (baremesValuesSnapshot.hasError) {
               return Center(
@@ -559,233 +616,315 @@ class _StudentsTableState extends State<StudentsTable> {
             }
             if (!baremesValuesSnapshot.hasData ||
                 baremesValuesSnapshot.data!.isEmpty) {
-              return Center(
+              return const Center(
                   child: Text('لم يتم العثور على أي معيار.',
                       textDirection: TextDirection.rtl));
             }
 
-            var baremesValues = baremesValuesSnapshot.data!;
-
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.9),
-                child: DataTable(
-                  columnSpacing: 20,
-                  horizontalMargin: 12,
-                  columns: [
-                    DataColumn(
-                      label: Container(
-                        width: 150,
-                        child: Text(
-                          'الاسم واللقب',
-                          textDirection: TextDirection.rtl,
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, color: Colors.blue),
-                        ),
-                      ),
-                    ),
-                    for (var bareme in baremesValues)
-                      DataColumn(
-                        label: Container(
-                          width: 100,
-                          child: Text(
-                            bareme['value'] ?? 'معيار',
-                            textDirection: TextDirection.rtl,
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue),
-                          ),
-                        ),
-                      ),
-                  ],
-                  rows: [
-                    ...studentsDocs.map((doc) {
-                      var studentData = doc.data() as Map<String, dynamic>;
-                      var studentName = studentData['name'] ?? 'اسم غير معروف';
-                      var studentId = doc.id;
-
-                      return DataRow(
-                        cells: [
-                          DataCell(
-                            Container(
-                              width: 150,
-                              child: Text(
-                                studentName,
-                                textDirection: TextDirection.rtl,
-                                style: TextStyle(color: Colors.grey.shade800),
-                              ),
-                            ),
-                          ),
-                          for (var bareme in baremesValues)
-                            DataCell(
-                              Container(
-                                width: 100,
-                                child: FutureBuilder<String>(
-                                  future: _getSelectedValue(
-                                      studentId, bareme['id']!),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState ==
-                                        ConnectionState.waiting) {
-                                      return CircularProgressIndicator();
-                                    }
-                                    if (snapshot.hasError) {
-                                      return Text('خطأ',
-                                          textDirection: TextDirection.rtl);
-                                    }
-                                    var selectedValue =
-                                        snapshot.data ?? _dropdownValues[0];
-                                    return StudentDropdown(
-                                      studentId: studentId,
-                                      baremeId: bareme['id']!,
-                                      initialValue: selectedValue,
-                                      dropdownValues: _dropdownValues,
-                                      onChanged:
-                                          (studentId, baremeId, newValue) {
-                                        if (!_selectedValues
-                                            .containsKey(studentId)) {
-                                          _selectedValues[studentId] = {};
-                                        }
-                                        _selectedValues[studentId]![baremeId] =
-                                            newValue;
-                                      },
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                        ],
-                      );
-                    }).toList(),
-                    // Ajouter la ligne pour la somme des élèves avec les critères +++ et ++-
-                    DataRow(
-                      cells: [
-                        DataCell(
-                          Container(
-                            width: 150,
-                            child: Text(
-                              'عدد التلاميذ المحققين للتملك ',
-                              textDirection: TextDirection.rtl,
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue),
-                            ),
-                          ),
-                        ),
-                        for (var bareme in baremesValues)
-                          DataCell(
-                            Container(
-                              width: 100,
-                              child: Text(
-                                widget.sumCriteriaMaxPerBareme[bareme['id']!]
-                                    .toString(),
-                                textDirection: TextDirection.rtl,
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    // Ajouter la ligne pour le pourcentage
-                    DataRow(
-                      cells: [
-                        DataCell(
-                          Container(
-                            width: 150,
-                            child: Text(
-                              'النسبة المئوية للتلاميذ المحققين للتملك',
-                              textDirection: TextDirection.rtl,
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue),
-                            ),
-                          ),
-                        ),
-                        for (var bareme in baremesValues)
-                          DataCell(
-                            Container(
-                              width: 100,
-                              child: Text(
-                                '${((widget.sumCriteriaMaxPerBareme[bareme['id']!] ?? 0) / widget.totalStudents * 100).toStringAsFixed(2)}%',
-                                textDirection: TextDirection.rtl,
-                                style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    // Ajouter un bouton sous chaque barème pour la classification
-                    DataRow(
-                      cells: [
-                        DataCell(
-                            Container()), // Cellule vide pour la colonne des noms
-                        for (var bareme in baremesValues)
-                          DataCell(
-                            Container(
-                              width: 100,
-                              child: ElevatedButton(
-                                onPressed: () =>
-                                    _classifyStudentsByBarem(bareme['id']!),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      Colors.green, // Couleur verte
-                                ),
-                                child: Text(
-                                  'تصنيف',
-                                  style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.yellow), // Texte en jaune
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    DataRow(
-                      cells: [
-                        DataCell(
-                            Container()), // Cellule vide pour la colonne des noms
-                        for (var bareme in baremesValues)
-                          DataCell(
-                            Container(
-                              width: 100,
-                              child: ElevatedButton(
-                                onPressed: () =>
-                                    widget.navigateToClassificationPage(
-                                        bareme['id']!),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      Colors.green, // Couleur verte
-                                ),
-                                child: Text(
-                                  'خطة العلاج وأصل الخطأ',
-                                  style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.yellow), // Texte en jaune
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
+            return _buildDataTable(studentsDocs, baremesValuesSnapshot.data!);
           },
         );
       },
     );
   }
 
-  Future<String> _getSelectedValue(String studentId, String baremeId) async {
+  Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
+      List<Map<String, dynamic>> baremesValues) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columnSpacing: 20,
+        horizontalMargin: 12,
+        columns: [
+          const DataColumn(
+            label: SizedBox(
+              width: 150,
+              child: Text('الاسم واللقب',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.blue)),
+            ),
+          ),
+          for (final bareme in baremesValues)
+            for (final entry in [
+              {'id': bareme['id'], 'value': bareme['value']},
+              ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+            ])
+              DataColumn(
+                label: SizedBox(
+                  width: 100,
+                  child: Text(entry['value'],
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, color: Colors.blue)),
+                ),
+              ),
+        ],
+        rows: [
+          ...studentsDocs.map((studentDoc) {
+            final studentId = studentDoc.id;
+            final studentName = studentDoc['name'] ?? 'غير معروف';
+
+            return DataRow(
+              cells: [
+                DataCell(
+                  SizedBox(
+                    width: 150,
+                    child: Text(studentName,
+                        textDirection: TextDirection.rtl,
+                        style: TextStyle(color: Colors.grey.shade800)),
+                  ),
+                ),
+                for (final bareme in baremesValues)
+                  for (final entry in [
+                    {'id': bareme['id'], 'type': 'bareme'},
+                    ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+                        .map((s) => {'id': s['id'], 'type': 'sousBareme'})
+                  ])
+                    DataCell(
+                      SizedBox(
+                        width: 100,
+                        child: FutureBuilder<String>(
+                          future: _getSelectedValue(studentId, entry['id']),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const CircularProgressIndicator();
+                            }
+                            return Text(
+                              snapshot.data ?? _dropdownValues[0],
+                              style: TextStyle(color: Colors.grey.shade800),
+                            );
+                          },
+                        ),
+                      ),
+                    )
+              ],
+            );
+          }).toList(),
+          // Statistics Rows
+          DataRow(
+            cells: [
+              const DataCell(Text('عدد التلاميذ المحققين',
+                  style: TextStyle(fontWeight: FontWeight.bold))),
+              for (final bareme in baremesValues)
+                for (final entry in [
+                  {'id': bareme['id']},
+                  ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+                ])
+                  DataCell(Text(
+                    (widget.sumCriteriaMaxPerBareme[entry['id']] ?? 0) == 0
+                        ? 'لم يُقيّم بعد'
+                        : widget.sumCriteriaMaxPerBareme[entry['id']]
+                            .toString(),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  )),
+            ],
+          ),
+          DataRow(
+            cells: [
+              const DataCell(Text('النسبة المئوية',
+                  style: TextStyle(fontWeight: FontWeight.bold))),
+              for (final bareme in baremesValues)
+                for (final entry in [
+                  {'id': bareme['id']},
+                  ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+                ])
+                  DataCell(Text(
+                    widget.totalStudents == 0
+                        ? 'Pas de note'
+                        : '${((widget.sumCriteriaMaxPerBareme[entry['id']] ?? 0) / widget.totalStudents * 100).toStringAsFixed(2)}%',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  )),
+            ],
+          ),
+          // Ajouter un bouton sous chaque barème pour la classification
+          DataRow(
+            cells: [
+              DataCell(Container()), // Cellule vide pour la colonne des noms
+              for (var bareme in baremesValues)
+                for (var entry in [
+                  {'id': bareme['id'], 'type': 'bareme'},
+                  ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+                      .map((s) => {'id': s['id'], 'type': 'sousBareme'})
+                ])
+                  DataCell(
+                    Container(
+                      width: 100,
+                      child: ElevatedButton(
+                        onPressed: () => _classifyStudentsByBarem(
+                          bareme['id']!,
+                          sousBaremeId: entry['type'] == 'sousBareme'
+                              ? entry['id']
+                              : null,
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green, // Couleur verte
+                        ),
+                        child: Text(
+                          'تصنيف',
+                          style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.yellow), // Texte en jaune
+                        ),
+                      ),
+                    ),
+                  ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _getBaremesValues(
+      List<QueryDocumentSnapshot> selectedBaremes) async {
+    final List<Map<String, dynamic>> result = [];
+    final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    print('User ID: $userId');
+    print('Selected Class: ${widget.selectedClass}');
+    print('Selected Matiere: ${widget.selectedMatiere}');
+
+    for (final baremeDoc in selectedBaremes) {
+      final baremeId = baremeDoc['baremeId'];
+      print('Processing baremeId: $baremeId');
+
+      final baremeSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .doc(baremeId)
+          .get();
+
+      final isBaremeSelected = baremeSnapshot['selected'] ?? false;
+      print('Bareme selected: $isBaremeSelected');
+
+      final sousBaremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .doc(baremeId)
+          .collection('sousBaremes')
+          .get();
+
+      final selectedSousBaremes = sousBaremesSnapshot.docs
+          .where((doc) => doc['selected'] == true)
+          .toList();
+
+      print('Number of selected sousBaremes: ${selectedSousBaremes.length}');
+
+      if (isBaremeSelected) {
+        final baremeName = baremeSnapshot['baremeName'] ?? 'غير معروف';
+        print('Adding bareme: $baremeId - $baremeName');
+
+        result.add({
+          'id': baremeId,
+          'value': baremeName,
+          'sousBaremes': [],
+        });
+      } else if (selectedSousBaremes.isNotEmpty) {
+        for (final sousBareme in selectedSousBaremes) {
+          final sousBaremeName = sousBareme['sousBaremeName'] ?? 'غير معروف';
+          print(
+              'Adding sousBareme: ${sousBareme.id} - $sousBaremeName (Parent: $baremeId)');
+
+          result.add({
+            'id': sousBareme.id,
+            'value': sousBaremeName,
+            'parentBaremeId': baremeId, // Track parent bareme ID
+          });
+        }
+      }
+    }
+    print('Final result: $result');
+    return result;
+  }
+
+  // Future<void> _saveAllChanges() async {
+  //   final batch = FirebaseFirestore.instance.batch();
+
+  //   for (final studentId in _selectedValues.keys) {
+  //     final studentBaremes = _selectedValues[studentId]!;
+  //     for (final baremeKey in studentBaremes.keys) {
+  //       final value = studentBaremes[baremeKey]!;
+
+  //       // Vérifier si la clé est pour un barème ou un sous-barème
+  //       final isSousBareme = baremeKey.contains('-');
+  //       final baremeId = isSousBareme ? baremeKey.split('-')[0] : baremeKey;
+  //       final sousBaremeId = isSousBareme ? baremeKey.split('-')[1] : null;
+
+  //       // Référence à la collection baremes
+  //       var baremesCollectionRef = FirebaseFirestore.instance
+  //           .collection('users')
+  //           .doc(widget.currentUser.uid)
+  //           .collection('user_classes')
+  //           .doc(widget.classDocId)
+  //           .collection('students')
+  //           .doc(studentId)
+  //           .collection('baremes');
+
+  //       // Référence au document du barème principal
+  //       var baremeRef = baremesCollectionRef.doc(baremeId);
+
+  //       // Si c'est un sous-barème, modifier dans les deux emplacements
+  //       if (isSousBareme) {
+  //         // 1. Modifier dans le sous-barème directement dans la collection baremes
+  //         var sousBaremeDirectRef = baremesCollectionRef.doc(baremeKey);
+  //         if (value != null) {
+  //           batch.set(
+  //               sousBaremeDirectRef, {'Marks': value}, SetOptions(merge: true));
+  //         } else {
+  //           batch.update(sousBaremeDirectRef, {'Marks': FieldValue.delete()});
+  //         }
+
+  //         // 2. Modifier dans la collection sous_baremes du barème principal
+  //         var sousBaremeNestedRef =
+  //             baremeRef.collection('sous_baremes').doc(sousBaremeId);
+  //         if (value != null) {
+  //           batch.set(
+  //               sousBaremeNestedRef, {'Marks': value}, SetOptions(merge: true));
+  //         } else {
+  //           batch.update(sousBaremeNestedRef, {'Marks': FieldValue.delete()});
+  //         }
+
+  //         // 3. Mettre à jour haveSoubarem dans le barème principal
+  //         batch.set(baremeRef, {'haveSoubarem': true}, SetOptions(merge: true));
+  //       } else {
+  //         // Si c'est un barème principal, modifier uniquement dans le barème principal
+  //         if (value != null) {
+  //           batch.set(baremeRef, {'Marks': value}, SetOptions(merge: true));
+  //         } else {
+  //           batch.update(baremeRef, {'Marks': FieldValue.delete()});
+  //         }
+  //       }
+  //     }
+  //   }
+
+  //   // Appliquer toutes les modifications en une seule transaction
+  //   await batch.commit();
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     const SnackBar(content: Text('تم حفظ التغييرات بنجاح')),
+  //   );
+
+  //   await batch.commit();
+  //   ScaffoldMessenger.of(context).showSnackBar(
+  //     const SnackBar(content: Text('تم حفظ التغييرات بنجاح')),
+  //   );
+  // }
+
+  Future<String> _getSelectedValue(
+    String studentId,
+    String baremeKey,
+  ) async {
     try {
-      var snapshot = await FirebaseFirestore.instance
+      debugPrint(
+          'Début de _getSelectedValue pour l\'étudiant $studentId et le barème $baremeKey');
+
+      // Référence au barème principal
+      var docRef = FirebaseFirestore.instance
           .collection('users')
           .doc(widget.currentUser.uid)
           .collection('user_classes')
@@ -793,93 +932,49 @@ class _StudentsTableState extends State<StudentsTable> {
           .collection('students')
           .doc(studentId)
           .collection('baremes')
-          .doc(baremeId)
-          .get();
+          .doc(baremeKey);
 
-      if (snapshot.exists) {
-        var data = snapshot.data() as Map<String, dynamic>;
-        return data['value'] ?? _dropdownValues[0];
-      } else {
+      // Vérifier si le barème existe
+      final parentDoc = await docRef.get();
+      if (!parentDoc.exists) {
+        debugPrint('Le document pour le barème $baremeKey n\'existe pas');
         return _dropdownValues[0];
       }
+
+      // Vérifier si le barème principal a des sous-barèmes
+      final haveSoubarem = parentDoc.data()?['haveSoubarem'] ?? false;
+      debugPrint(
+          'Le barème $baremeKey a-t-il des sous-barèmes ? $haveSoubarem');
+
+      // Si le barème a des sous-barèmes, chercher dans la collection "sous_baremes"
+      if (haveSoubarem) {
+        final sousBaremesSnapshot =
+            await docRef.collection('sous_baremes').limit(1).get();
+        if (sousBaremesSnapshot.docs.isNotEmpty) {
+          // Prendre le premier sous-barème (ou celui que vous voulez)
+          final sousBaremeDocRef = sousBaremesSnapshot.docs.first;
+          final sousBaremeData = sousBaremeDocRef.data();
+          debugPrint(
+              'Sous-barème trouvé avec la valeur: ${sousBaremeData?['Marks']}');
+          return sousBaremeData?['Marks']?.toString() ?? _dropdownValues[0];
+        } else {
+          debugPrint('Aucun sous-barème trouvé');
+        }
+      }
+
+      // Retourner la valeur principale si pas de sous-barème ou sous-barème non trouvé
+      final marks =
+          parentDoc.data()?['Marks']?.toString() ?? _dropdownValues[0];
+      debugPrint('Valeur principale récupérée: $marks');
+      return marks;
     } catch (e) {
-      print('Erreur lors de la récupération de la valeur: $e');
+      debugPrint("Erreur: $e");
       return _dropdownValues[0];
     }
   }
 
-  Future<List<Map<String, String>>> _getBaremesValues(
-      List<QueryDocumentSnapshot> selectedBaremes) async {
-    List<Map<String, String>> baremesValues = [];
-
-    for (var baremeDoc in selectedBaremes) {
-      var baremeId = baremeDoc['baremeId'];
-      var baremeSnapshot = await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(widget.selectedClass)
-          .collection('matieres')
-          .doc(widget.selectedMatiere)
-          .collection('baremes')
-          .doc(baremeId)
-          .get();
-
-      if (baremeSnapshot.exists) {
-        var baremeData = baremeSnapshot.data() as Map<String, dynamic>;
-        baremesValues.add({
-          'id': baremeId,
-          'value': baremeData['value'] ?? 'معيار',
-        });
-      }
-    }
-
-    return baremesValues;
-  }
-
-  void _saveAllChanges() async {
-    try {
-      if (_selectedValues.isEmpty) {
-        print('Aucune donnée à enregistrer.');
-        return;
-      }
-
-      final batch = FirebaseFirestore.instance.batch();
-
-      for (var studentId in _selectedValues.keys) {
-        for (var baremeId in _selectedValues[studentId]!.keys) {
-          var newValue = _selectedValues[studentId]![baremeId]!;
-          var docRef = FirebaseFirestore.instance
-              .collection('users')
-              .doc(widget.currentUser.uid)
-              .collection('user_classes')
-              .doc(widget.classDocId)
-              .collection('students')
-              .doc(studentId)
-              .collection('baremes')
-              .doc(baremeId);
-
-          batch.set(docRef, {'value': newValue}, SetOptions(merge: true));
-        }
-      }
-
-      await batch.commit();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('تم حفظ التغييرات بنجاح',
-                textDirection: TextDirection.rtl)),
-      );
-    } catch (e) {
-      print('Erreur lors de la sauvegarde des modifications: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content:
-                Text('خطأ في حفظ التغييرات', textDirection: TextDirection.rtl)),
-      );
-    }
-  }
-
   // Fonction pour classer les élèves en groupes selon un barème spécifique
-  void _classifyStudentsByBarem(String baremeId) async {
+  void _classifyStudentsByBarem(String baremeId, {String? sousBaremeId}) async {
     try {
       // Récupérer tous les élèves de la classe
       var studentsSnapshot = await FirebaseFirestore.instance
@@ -902,8 +997,8 @@ class _StudentsTableState extends State<StudentsTable> {
         var studentId = studentDoc.id;
         var studentName = studentDoc['name'] ?? 'اسم غير معروف';
 
-        // Récupérer la valeur du barème pour l'élève
-        var baremeSnapshot = await FirebaseFirestore.instance
+        // Récupérer la valeur du barème ou sous-barème pour l'élève
+        var baremeRef = FirebaseFirestore.instance
             .collection('users')
             .doc(widget.currentUser.uid)
             .collection('user_classes')
@@ -911,11 +1006,14 @@ class _StudentsTableState extends State<StudentsTable> {
             .collection('students')
             .doc(studentId)
             .collection('baremes')
-            .doc(baremeId)
-            .get();
+            .doc(baremeId);
 
-        if (baremeSnapshot.exists) {
-          var value = baremeSnapshot['value'];
+        var snapshot = sousBaremeId != null
+            ? await baremeRef.collection('sous_baremes').doc(sousBaremeId).get()
+            : await baremeRef.get();
+
+        if (snapshot.exists) {
+          var value = snapshot['Marks'];
 
           // Classer l'élève dans un groupe
           if (value == '( + + + )') {
@@ -998,55 +1096,51 @@ class _StudentsTableState extends State<StudentsTable> {
 
 class StudentDropdown extends StatefulWidget {
   final String studentId;
-
   final String baremeId;
   final String initialValue;
   final List<String> dropdownValues;
   final Function(String, String, String) onChanged;
 
-  StudentDropdown({
+  const StudentDropdown({
+    Key? key,
     required this.studentId,
     required this.baremeId,
     required this.initialValue,
     required this.dropdownValues,
     required this.onChanged,
-  });
+  }) : super(key: key);
 
   @override
   _StudentDropdownState createState() => _StudentDropdownState();
 }
 
 class _StudentDropdownState extends State<StudentDropdown> {
-  late String _selectedValue;
+  late String _currentValue;
 
   @override
   void initState() {
     super.initState();
-    _selectedValue = widget.initialValue;
+    _currentValue = widget.initialValue;
   }
 
   @override
   Widget build(BuildContext context) {
     return DropdownButton<String>(
-      value: _selectedValue,
-      onChanged: (String? newValue) {
-        if (newValue != null) {
-          setState(() {
-            _selectedValue = newValue;
-          });
-          widget.onChanged(widget.studentId, widget.baremeId, newValue);
+      value: _currentValue,
+      alignment: Alignment.center,
+      dropdownColor: Colors.white,
+      items: widget.dropdownValues
+          .map((value) => DropdownMenuItem(
+                value: value,
+                child: Text(value, textDirection: TextDirection.rtl),
+              ))
+          .toList(),
+      onChanged: (value) {
+        if (value != null) {
+          setState(() => _currentValue = value);
+          widget.onChanged(widget.studentId, widget.baremeId, value);
         }
       },
-      items:
-          widget.dropdownValues.map<DropdownMenuItem<String>>((String value) {
-        return DropdownMenuItem<String>(
-          value: value,
-          child: Text(
-            value,
-            textDirection: TextDirection.rtl,
-          ),
-        );
-      }).toList(),
     );
   }
 }

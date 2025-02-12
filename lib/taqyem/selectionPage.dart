@@ -1,7 +1,11 @@
 import 'package:Taqyem/taqyem/listedeselection.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:Taqyem/taqyem/tableau.dart';
+import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BaremesPage extends StatefulWidget {
   final String selectedClass;
@@ -16,19 +20,34 @@ class BaremesPage extends StatefulWidget {
 class _BaremesPageState extends State<BaremesPage> {
   Map<String, bool> _selectedBaremes = {};
   Map<String, Map<String, bool>> _selectedSousBaremes = {};
+
+  void _toggleBaremeSelection(String baremeId) {
+    setState(() {
+      _selectedBaremes[baremeId] = !(_selectedBaremes[baremeId] ?? false);
+    });
+  }
+
   Future<void> _loadExistingSelections() async {
     try {
-      var baremesSnapshot = await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(widget.selectedClass)
-          .collection('matieres')
-          .doc(widget.selectedMatiere)
-          .collection('baremes')
-          .get();
+      // Obtenir l'ID de l'utilisateur actuellement connecté
+      String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
+      if (userId.isEmpty) {
+        throw Exception('Utilisateur non connecté');
+      }
+
+      // Référence à la collection de sélections de l'utilisateur
+      var selectionsRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere);
+
+      var baremesSnapshot = await selectionsRef.get();
       for (var baremeDoc in baremesSnapshot.docs) {
-        var baremeId = baremeDoc.id;
-        _selectedBaremes[baremeId] = true; // Sélectionner par défaut
+        var baremeId = baremeDoc['baremeId'];
+        _selectedBaremes[baremeId] = true;
 
         var sousBaremesSnapshot =
             await baremeDoc.reference.collection('sousBaremes').get();
@@ -37,30 +56,17 @@ class _BaremesPageState extends State<BaremesPage> {
           if (!_selectedSousBaremes.containsKey(baremeId)) {
             _selectedSousBaremes[baremeId] = {};
           }
-          _selectedSousBaremes[baremeId]![sousBaremeId] =
-              true; // Sélectionner par défaut
+          _selectedSousBaremes[baremeId]![sousBaremeId] = true;
         }
       }
 
       setState(() {});
-
-      // Enregistrer automatiquement les sélections
-      await _saveSelections();
     } catch (e) {
       print('Erreur lors du chargement des sélections existantes: $e');
     }
   }
 
-  void _toggleBaremeSelection(String baremeId) async {
-    setState(() {
-      _selectedBaremes[baremeId] = !(_selectedBaremes[baremeId] ?? false);
-    });
-
-    // Enregistrer automatiquement dans Firestore
-    await _saveSelections();
-  }
-
-  void _toggleSousBaremeSelection(String baremeId, String sousBaremeId) async {
+  void _toggleSousBaremeSelection(String baremeId, String sousBaremeId) {
     setState(() {
       if (!_selectedSousBaremes.containsKey(baremeId)) {
         _selectedSousBaremes[baremeId] = {};
@@ -68,15 +74,11 @@ class _BaremesPageState extends State<BaremesPage> {
       _selectedSousBaremes[baremeId]![sousBaremeId] =
           !(_selectedSousBaremes[baremeId]![sousBaremeId] ?? false);
     });
-
-    // Enregistrer automatiquement dans Firestore
-    await _saveSelections();
   }
 
   @override
   void initState() {
     super.initState();
-
     _loadExistingSelections();
   }
 
@@ -84,7 +86,7 @@ class _BaremesPageState extends State<BaremesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Barèmes et Sous-Barèmes'),
+        title: Text('المعايير و المؤشرات'),
         actions: [
           IconButton(
             icon: Icon(Icons.save, color: Color.fromARGB(255, 23, 192, 23)),
@@ -106,12 +108,12 @@ class _BaremesPageState extends State<BaremesPage> {
           }
           if (snapshot.hasError) {
             return Center(
-                child: Text('Erreur: ${snapshot.error}',
+                child: Text('خطأ: ${snapshot.error}',
                     style: TextStyle(color: Colors.red)));
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return Center(
-                child: Text('Aucun barème trouvé.',
+                child: Text('لم يتم العثور على أي برنامج.',
                     style: TextStyle(color: Colors.grey)));
           }
 
@@ -134,7 +136,7 @@ class _BaremesPageState extends State<BaremesPage> {
                         },
                         activeColor: Colors.blue,
                       ),
-                      Text('Barème: $baremeValue',
+                      Text('المعيار: $baremeValue',
                           style: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold)),
                     ],
@@ -151,13 +153,13 @@ class _BaremesPageState extends State<BaremesPage> {
                         }
                         if (sousSnapshot.hasError) {
                           return Center(
-                              child: Text('Erreur: ${sousSnapshot.error}',
+                              child: Text('خطأ: ${sousSnapshot.error}',
                                   style: TextStyle(color: Colors.red)));
                         }
                         if (!sousSnapshot.hasData ||
                             sousSnapshot.data!.docs.isEmpty) {
                           return Center(
-                              child: Text('Aucun sous-barème trouvé.',
+                              child: Text('لم يتم العثور على أي مؤشر.',
                                   style: TextStyle(color: Colors.grey)));
                         }
 
@@ -183,7 +185,7 @@ class _BaremesPageState extends State<BaremesPage> {
                                     },
                                     activeColor: Colors.blue,
                                   ),
-                                  Text('Sous-Barème: $sousBaremeName',
+                                  Text('المؤشر: $sousBaremeName',
                                       style: TextStyle(fontSize: 14)),
                                 ],
                               ),
@@ -204,12 +206,22 @@ class _BaremesPageState extends State<BaremesPage> {
 
   Future<void> _saveSelections() async {
     try {
+      // Obtenir l'ID de l'utilisateur actuellement connecté
+      String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+      if (userId.isEmpty) {
+        throw Exception('Utilisateur non connecté');
+      }
+
+      // Référence à la collection de sélections de l'utilisateur
       CollectionReference selectionsRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
           .collection('selections')
           .doc(widget.selectedClass)
           .collection(widget.selectedMatiere);
 
-      // Supprimer les anciennes sélections
+      // Suppression des anciennes sélections
       var oldSelections = await selectionsRef.get();
       for (var doc in oldSelections.docs) {
         var sousBaremesRef = doc.reference.collection('sousBaremes');
@@ -220,49 +232,72 @@ class _BaremesPageState extends State<BaremesPage> {
         await doc.reference.delete();
       }
 
-      // Enregistrer les nouvelles sélections
+      // Sauvegarde des barèmes sélectionnés
       _selectedBaremes.forEach((baremeId, isSelected) async {
         if (isSelected) {
-          var baremeName = await _getBaremeName(baremeId);
-          await selectionsRef.add({
+          String baremeName = await _getBaremeName(baremeId);
+          await selectionsRef.doc(baremeId).set({
             'baremeId': baremeId,
             'baremeName': baremeName,
             'classId': widget.selectedClass,
             'matiereId': widget.selectedMatiere,
+            'selected': true,
             'selectedAt': DateTime.now(),
           });
-
-          if (_selectedSousBaremes.containsKey(baremeId)) {
-            var sousBaremesRef =
-                selectionsRef.doc(baremeId).collection('sousBaremes');
-            _selectedSousBaremes[baremeId]!
-                .forEach((sousBaremeId, isSelected) async {
-              if (isSelected) {
-                var sousBaremeName =
-                    await _getSousBaremeName(baremeId, sousBaremeId);
-                await sousBaremesRef.doc(sousBaremeId).set({
-                  'selected': true,
-                  'sousBaremeName': sousBaremeName,
-                  'selectedAt': DateTime.now(),
-                });
-              }
-            });
-          }
         }
       });
 
+      // Sauvegarde des sous-barèmes sélectionnés (même sans parent)
+      _selectedSousBaremes.forEach((baremeId, sousBaremesMap) async {
+        sousBaremesMap.forEach((sousBaremeId, isSelected) async {
+          if (isSelected) {
+            DocumentReference baremeDocRef = selectionsRef.doc(baremeId);
+            DocumentSnapshot baremeDoc = await baremeDocRef.get();
+
+            if (!baremeDoc.exists) {
+              String baremeName = await _getBaremeName(baremeId);
+              await baremeDocRef.set({
+                'baremeId': baremeId,
+                'baremeName': baremeName,
+                'classId': widget.selectedClass,
+                'matiereId': widget.selectedMatiere,
+                'selected': false,
+                'selectedAt': DateTime.now(),
+              });
+            }
+
+            String sousBaremeName =
+                await _getSousBaremeName(baremeId, sousBaremeId);
+            await baremeDocRef.collection('sousBaremes').doc(sousBaremeId).set({
+              'sousBaremeId': sousBaremeId,
+              'sousBaremeName': sousBaremeName,
+              'selected': true,
+              'selectedAt': DateTime.now(),
+            });
+          }
+        });
+      });
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => SelectedBaremesPage(
+            selectedClass: widget.selectedClass,
+            selectedMatiere: widget.selectedMatiere,
+          ),
+        ),
+      );
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Sélections enregistrées avec succès!',
-              style: TextStyle(color: Colors.white)),
+          content: Text('Sélections enregistrées avec succès!'),
           backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur lors de l\'enregistrement: $e',
-              style: TextStyle(color: Colors.white)),
+          content: Text('Erreur lors de l\'enregistrement: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -327,10 +362,23 @@ class _SelectionPageState extends State<SelectionPage> {
   List<Map<String, String>> classes = [];
   List<Map<String, String>> matieres = [];
 
+  // Liste de couleurs pour les groupes de 5 classes
+  final List<Color> groupColors = [
+    Colors.blue,
+    Colors.green,
+    Colors.orange,
+    Colors.purple,
+    Colors.red,
+    Colors.teal,
+    Colors.indigo,
+    Colors.amber,
+    Colors.deepPurple,
+    Colors.lightGreen,
+  ];
+
   @override
   void initState() {
     super.initState();
-
     fetchClasses();
     _showIntroDialog(); // Afficher la boîte de dialogue d'introduction
   }
@@ -340,9 +388,12 @@ class _SelectionPageState extends State<SelectionPage> {
       QuerySnapshot snapshot =
           await FirebaseFirestore.instance.collection('classes').get();
       setState(() {
+        // Récupérer les classes et les trier par ordre alphabétique
         classes = snapshot.docs
             .map((doc) => {'id': doc.id, 'name': doc['name'] as String})
-            .toList();
+            .toList()
+          ..sort((a, b) =>
+              a['name']!.toLowerCase().compareTo(b['name']!.toLowerCase()));
       });
     } catch (e) {
       print('Erreur lors de la récupération des classes: $e');
@@ -404,106 +455,124 @@ class _SelectionPageState extends State<SelectionPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Sélectionnez une classe et une matière',
-            style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.blue,
-        elevation: 4, // Ombre sous l'AppBar
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Menu déroulant pour la classe
-              Card(
-                elevation: 4, // Ombre
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10), // Bordures arrondies
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 8.0),
-                  child: DropdownButton<String>(
-                    value: selectedClassName,
-                    hint: Text('Sélectionnez une classe',
-                        style: TextStyle(color: Colors.grey)),
-                    items: classes.map((Map<String, String> classe) {
-                      return DropdownMenuItem<String>(
-                        value: classe['name'],
-                        child: Text(classe['name']!,
-                            style: TextStyle(color: Colors.black)),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        selectedClassName = newValue;
-                        selectedClassId = classes.firstWhere(
-                          (classe) => classe['name'] == newValue,
-                          orElse: () => {'id': '', 'name': ''},
-                        )['id'];
-                        selectedMatiereId = null;
-                        selectedMatiereName = null;
-                        matieres.clear();
-                      });
-                      if (selectedClassId != null &&
-                          selectedClassId!.isNotEmpty) {
-                        fetchMatieres(selectedClassId!);
-                      }
-                    },
-                    isExpanded: true, // Prend toute la largeur disponible
-                    underline: SizedBox(), // Supprime la ligne par défaut
-                  ),
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text('اختر قسما ومادة', style: TextStyle(color: Colors.white)),
+      backgroundColor: Colors.blue,
+      elevation: 4,
+    ),
+    body: Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Dropdown amélioré pour les classes
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 8.0),
+                child: DropdownButton<String>(
+                  value: selectedClassName,
+                  hint: Text('اختر قسما', style: TextStyle(color: Colors.grey)),
+                  items: classes.asMap().entries.map((entry) {
+                    int index = entry.key;
+                    Map<String, String> classe = entry.value;
+                    Color color = groupColors[(index ~/ 5) % groupColors.length];
+                    return DropdownMenuItem<String>(
+                      value: classe['name'],
+                      child: Container(
+                        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: color.withOpacity(0.3)), // Parenthèse fermante ajoutée ici
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.school, color: color), // Icône pour la classe
+                            SizedBox(width: 10),
+                            Text(
+                              classe['name']!,
+                              style: TextStyle(
+                                color: color,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedClassName = newValue;
+                      selectedClassId = classes.firstWhere(
+                        (classe) => classe['name'] == newValue,
+                        orElse: () => {'id': '', 'name': ''},
+                      )['id'];
+                      selectedMatiereId = null;
+                      selectedMatiereName = null;
+                      matieres.clear();
+                    });
+                    if (selectedClassId != null && selectedClassId!.isNotEmpty) {
+                      fetchMatieres(selectedClassId!);
+                    }
+                  },
+                  isExpanded: true,
+                  underline: SizedBox(),
+                  icon: Icon(Icons.arrow_drop_down, color: Colors.blue), // Icône personnalisée
+                  dropdownColor: Colors.white, // Couleur de fond du dropdown
                 ),
               ),
-              SizedBox(height: 20),
-              // Menu déroulant pour la matière
-              Card(
-                elevation: 4, // Ombre
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10), // Bordures arrondies
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 8.0),
-                  child: DropdownButton<String>(
-                    value: selectedMatiereName,
-                    hint: Text('Sélectionnez une matière',
-                        style: TextStyle(color: Colors.grey)),
-                    items: matieres.map((Map<String, String> matiere) {
-                      return DropdownMenuItem<String>(
-                        value: matiere['name'],
-                        child: Text(matiere['name']!,
-                            style: TextStyle(color: Colors.black)),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        selectedMatiereName = newValue;
-                        selectedMatiereId = matieres.firstWhere(
-                          (matiere) => matiere['name'] == newValue,
-                          orElse: () => {'id': '', 'name': ''},
-                        )['id'];
-                      });
-                    },
-                    isExpanded: true, // Prend toute la largeur disponible
-                    underline: SizedBox(), // Supprime la ligne par défaut
-                  ),
+            ),
+            SizedBox(height: 20),
+            // Dropdown pour les matières
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 8.0),
+                child: DropdownButton<String>(
+                  value: selectedMatiereName,
+                  hint: Text('اختر مادة', style: TextStyle(color: Colors.grey)),
+                  items: matieres.map((Map<String, String> matiere) {
+                    return DropdownMenuItem<String>(
+                      value: matiere['name'],
+                      child: Text(matiere['name']!,
+                          style: TextStyle(color: Colors.black)),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedMatiereName = newValue;
+                      selectedMatiereId = matieres.firstWhere(
+                        (matiere) => matiere['name'] == newValue,
+                        orElse: () => {'id': '', 'name': ''},
+                      )['id'];
+                    });
+                  },
+                  isExpanded: true,
+                  underline: SizedBox(),
                 ),
               ),
-              SizedBox(height: 20),
-              // Bouton avec icône d'œil
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.remove_red_eye,
-                        color: Colors.blue, size: 30), // Icône d'œil
-                    onPressed: () {
-                      // Action à effectuer lorsque l'icône est cliquée
+            ),
+            SizedBox(height: 20),
+            // Boutons d'action
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton(
+                  onPressed: () async {
+                    if (selectedClassId != null && selectedMatiereId != null) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -513,57 +582,214 @@ class _SelectionPageState extends State<SelectionPage> {
                           ),
                         ),
                       );
-                    },
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('الرجاء اختيار قسم و مادة',
+                              style: TextStyle(color: Colors.white)),
+                          backgroundColor: Colors.red,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  child: Text('عرض المعايير والجدول الجامع',
+                      style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 4,
                   ),
-                  SizedBox(width: 10), // Espace entre l'icône et le bouton
-                  ElevatedButton(
-                    onPressed: () async {
-                      if (selectedClassId != null &&
-                          selectedMatiereId != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BaremesPage(
-                              selectedClass: selectedClassId!,
-                              selectedMatiere: selectedMatiereId!,
-                            ),
+                ),
+                SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (selectedClassId != null && selectedMatiereId != null) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => BaremesPage(
+                            selectedClass: selectedClassId!,
+                            selectedMatiere: selectedMatiereId!,
                           ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                                'Veuillez sélectionner une classe et une matière',
-                                style: TextStyle(color: Colors.white)),
-                            backgroundColor: Colors.red,
-                            behavior:
-                                SnackBarBehavior.floating, // SnackBar flottante
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                  10), // Bordures arrondies
-                            ),
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('الرجاء اختيار قسم و مادة',
+                              style: TextStyle(color: Colors.white)),
+                          backgroundColor: Colors.red,
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                        );
-                      }
-                    },
-                    child: Text('Programmer un barème',
-                        style: TextStyle(color: Colors.white)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(10), // Bordures arrondies
-                      ),
-                      elevation: 4, // Ombre
+                        ),
+                      );
+                    }
+                  },
+                  child: Text('برمجة معايير',
+                      style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    elevation: 4,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}}
+
+/////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+
+class SelectedBaremesPage extends StatefulWidget {
+  final String selectedClass;
+  final String selectedMatiere;
+
+  SelectedBaremesPage(
+      {required this.selectedClass, required this.selectedMatiere});
+
+  @override
+  _SelectedBaremesPageState createState() => _SelectedBaremesPageState();
+}
+
+class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
+  @override
+  Widget build(BuildContext context) {
+    // Obtenir l'ID de l'utilisateur actuellement connecté
+    String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    if (userId.isEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('البرامج والبرامج الفرعية المحددة'),
+        ),
+        body: Center(
+          child: Text('المستخدم غير متصل. يرجى تسجيل الدخول.'),
+        ),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('المعايير و المؤشرات المحددة'),
+      ),
+      body: Column(
+        children: [
+          // Bouton en haut de la liste
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DynamicTablePage(
+                      selectedClass: widget.selectedClass,
+                      selectedMatiere: widget.selectedMatiere,
                     ),
                   ),
-                ],
-              ),
-            ],
+                );
+              },
+              child: Text('عرض الجدول'), // Traduction en arabe
+            ),
           ),
-        ),
+          // Liste des barèmes et sous-barèmes
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(userId)
+                  .collection('selections')
+                  .doc(widget.selectedClass)
+                  .collection(widget.selectedMatiere)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(child: Text('خطأ: ${snapshot.error}'));
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(child: Text('لا يوجد عناصر محددة'));
+                }
+
+                return ListView.builder(
+                  itemCount: snapshot.data!.docs.length,
+                  itemBuilder: (context, index) {
+                    var doc = snapshot.data!.docs[index];
+                    bool isBaremeSelected = doc['selected'] ?? false;
+                    String baremeName = doc['baremeName'] ?? '';
+
+                    return Column(
+                      children: [
+                        // Affichage du barème si sélectionné
+                        if (isBaremeSelected)
+                          ListTile(
+                            title: Text(
+                              'المعيار: $baremeName',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+
+                        // Affichage des sous-barèmes
+                        StreamBuilder<QuerySnapshot>(
+                          stream: doc.reference
+                              .collection('sousBaremes')
+                              .snapshots(),
+                          builder: (context, sousSnapshot) {
+                            if (sousSnapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return CircularProgressIndicator();
+                            }
+                            if (sousSnapshot.hasError) {
+                              return Text('خطأ: ${sousSnapshot.error}');
+                            }
+
+                            var sousBaremes = sousSnapshot.data?.docs ?? [];
+
+                            return Column(
+                              children: sousBaremes.map((sousDoc) {
+                                String sousBaremeName =
+                                    sousDoc['sousBaremeName'] ?? '';
+                                return ListTile(
+                                  title: Text('المؤشر: $sousBaremeName'),
+                                  subtitle: Text(
+                                    isBaremeSelected
+                                        ? 'المعيار الأب: $baremeName'
+                                        : 'المعيار الأب غير محدد: $baremeName',
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                  leading: Icon(Icons.arrow_right),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

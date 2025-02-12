@@ -17,10 +17,11 @@ class ClassListPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('قائمة الفصول', textDirection: TextDirection.rtl),
-        backgroundColor: Colors.blue,
-        elevation: 4,
-      ),
+        title: Text('قائمة الأقسام', textDirection: TextDirection.rtl, style: TextStyle(color: Colors.white)),
+        backgroundColor:  const Color.fromRGBO(7, 82, 96, 1),
+        elevation: 4,),
+      
+      
       body: Directionality(
         textDirection: TextDirection.rtl,
         child: StreamBuilder<QuerySnapshot>(
@@ -40,7 +41,7 @@ class ClassListPage extends StatelessWidget {
             }
             if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
               return Center(
-                  child: Text('لم يتم العثور على أي فصل.',
+                  child: Text('لم يتم العثور على أي قسم.',
                       textDirection: TextDirection.rtl));
             }
 
@@ -49,7 +50,7 @@ class ClassListPage extends StatelessWidget {
               itemBuilder: (context, index) {
                 var classDoc = snapshot.data!.docs[index];
                 var classData = classDoc.data() as Map<String, dynamic>;
-                var className = classData['class_name'] ?? 'فصل غير معروف';
+                var className = classData['class_name'] ?? 'قسم غير معروف';
                 var classId = classData['class_id'] ?? '';
 
                 return ListTile(
@@ -92,10 +93,10 @@ class MatiereListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('قائمة المواد', textDirection: TextDirection.rtl),
-        backgroundColor: Colors.blue,
-        elevation: 4,
-      ),
+        title: Text('قائمة المواد', textDirection: TextDirection.rtl, style: TextStyle(color: Colors.white)),
+        backgroundColor:  const Color.fromRGBO(7, 82, 96, 1),
+        elevation: 4,),
+       
       body: Directionality(
         textDirection: TextDirection.rtl,
         child: StreamBuilder<QuerySnapshot>(
@@ -441,9 +442,10 @@ class _TablePageState extends State<TablePage> {
       home: Scaffold(
         appBar: AppBar(
           title:
-              Text('الجدول الجامع للنتائج', textDirection: TextDirection.rtl),
-          backgroundColor: Colors.blue,
-          elevation: 4,
+              Text('الجدول الجامع للنتائج', textDirection: TextDirection.rtl, style: TextStyle(color: Colors.white)),
+        backgroundColor:  const Color.fromRGBO(7, 82, 96, 1),
+        elevation: 4,
+          
           actions: [
             ElevatedButton(
               onPressed: _generatePDF,
@@ -609,7 +611,7 @@ class _TablePageState extends State<TablePage> {
         if (!userClassesSnapshot.hasData ||
             userClassesSnapshot.data!.docs.isEmpty) {
           return Center(
-              child: Text('لم يتم العثور على أي فصل.',
+              child: Text('لم يتم العثور على أي قسم.',
                   textDirection: TextDirection.rtl));
         }
 

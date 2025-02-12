@@ -546,92 +546,159 @@ class CarouselSection extends StatelessWidget {
   }
 }
 
+class NewsSection extends StatefulWidget {
+  @override
+  _NewsSectionState createState() => _NewsSectionState();
+}
 
-class NewsSection extends StatelessWidget {
+class _NewsSectionState extends State<NewsSection> {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  late String userId;
+  Set<String> seenNews = {}; // Stocke les IDs des nouvelles vues
+
+  @override
+  void initState() {
+    super.initState();
+    _getUserId();
+  }
+
+  Future<void> _getUserId() async {
+    User? user = _auth.currentUser;
+    if (user != null) {
+      setState(() {
+        userId = user.uid;
+      });
+      _loadSeenNews();
+    }
+  }
+
+  Future<void> _loadSeenNews() async {
+    var seenNewsSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('seen_news')
+        .get();
+
+    setState(() {
+      seenNews = seenNewsSnapshot.docs.map((doc) => doc.id).toSet();
+    });
+  }
+
+  Future<void> _markAsSeen(String newsId) async {
+    setState(() {
+      seenNews.add(newsId);
+    });
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('seen_news')
+        .doc(newsId)
+        .set({'seen': true});
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(
-            height: 10,
-          ),
-          // Titre pour la section des nouvelles
-          Text(
-            'Actualités',
-            selectionColor: Colors.yellow,
-            style: GoogleFonts.roboto(
-              fontSize: 25,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(
-            height: 10,
-          ),
-          // StreamBuilder pour récupérer les dernières nouvelles
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('news')
-                .orderBy('timestamp', descending: true)
-                .limit(5)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('news')
+            .orderBy('timestamp', descending: true)
+            .limit(5)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-              var newsDocs = snapshot.data!.docs;
+          var newsDocs = snapshot.data!.docs;
 
-              return ListView.builder(
+          if (newsDocs.isEmpty) {
+            return const SizedBox(); // Ne rien afficher si aucune actualité
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 10),
+              Text(
+                'Actualités',
+                selectionColor: Colors.yellow,
+                style: GoogleFonts.roboto(
+                    fontSize: 25, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 10),
+              ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: newsDocs.length,
                 itemBuilder: (context, index) {
-                  var news = newsDocs[index].data() as Map<String, dynamic>;
+                  var newsDoc = newsDocs[index];
+                  var news = newsDoc.data() as Map<String, dynamic>;
+                  var newsId = newsDoc.id;
                   var title = news['title'] ?? 'Pas de Titre';
                   var content = news['content'] ?? 'Pas de Contenu';
                   var timestamp = news['timestamp'] as Timestamp;
                   var date = timestamp.toDate();
+                  bool isNew = !seenNews.contains(newsId);
 
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 8),
-                    child: ListTile(
-                      title: Text(
-                        title,
-                        style: GoogleFonts.roboto(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            content,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Publié le ${date.day}/${date.month}/${date.year}',
-                            style: GoogleFonts.roboto(
-                              fontSize: 12,
-                              color: Colors.grey,
+                  return GestureDetector(
+                    onTap: () {
+                      _markAsSeen(newsId);
+                    },
+                    child: Card(
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      child: ListTile(
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                title,
+                                style: GoogleFonts.roboto(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                            if (isNew)
+                              Container(
+                                width: 10,
+                                height: 10,
+                                margin: const EdgeInsets.only(left: 8),
+                                decoration: const BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                          ],
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              content,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Publié le ${date.day}/${date.month}/${date.year}',
+                              style: GoogleFonts.roboto(
+                                  fontSize: 12, color: Colors.grey),
+                            ),
+                          ],
+                        ),
+                        isThreeLine: true,
+                        contentPadding: const EdgeInsets.all(16),
                       ),
-                      isThreeLine: true,
-                      contentPadding: const EdgeInsets.all(16),
                     ),
                   );
                 },
-              );
-            },
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -7,6 +7,7 @@ import 'package:Taqyem/taqyem/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
 import 'package:Taqyem/taqyem/EditPage.dart';
 import 'package:Taqyem/taqyem/ereur_solution.dart';
+import 'package:Taqyem/taqyem/listedeselection.dart';
 import 'package:Taqyem/taqyem/pdf/ManagePDFPage.dart';
 import 'package:Taqyem/taqyem/selectionPage.dart';
 import 'package:Taqyem/taqyem/touttableaux.dart';
@@ -34,6 +35,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       month: DateTime.now().month,
       day: DateTime.now().day,
     ),
+    
   );
 
   User? currentUser = FirebaseAuth.instance.currentUser;
@@ -350,19 +352,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
             //     );
             //   },
             // ),
-            _buildDrawerItem(
-              context,
-              Icons.settings,
-              'Paramètres',
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const SettingsPageUI(),
-                  ),
-                );
-              },
-            ),
+            // _buildDrawerItem(
+            //   context,
+            //   Icons.settings,
+            //   'Paramètres',
+            //   () {
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(
+            //         builder: (context) => const SettingsPageUI(),
+            //       ),
+            //     );
+            //   },
+            // ),
           //   _buildDrawerItem(
           //     context,
           //     Icons.settings,
@@ -552,7 +554,6 @@ class CarouselSection extends StatelessWidget {
     );
   }
 }
-
 class NewsSection extends StatefulWidget {
   @override
   _NewsSectionState createState() => _NewsSectionState();
@@ -608,31 +609,35 @@ class _NewsSectionState extends State<NewsSection> {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 10),
-          Text(
-            'Actualités',
-            selectionColor: Colors.yellow,
-            style:
-                GoogleFonts.roboto(fontSize: 25, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 10),
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('news')
-                .orderBy('timestamp', descending: true)
-                .limit(5)
-                .snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('news')
+            .orderBy('timestamp', descending: true)
+            .limit(5)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-              var newsDocs = snapshot.data!.docs;
+          var newsDocs = snapshot.data!.docs;
 
-              return ListView.builder(
+          if (newsDocs.isEmpty) {
+            return const SizedBox(); // Ne rien afficher si aucune actualité
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 10),
+              Text(
+                'Actualités',
+                selectionColor: Colors.yellow,
+                style: GoogleFonts.roboto(
+                    fontSize: 25, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 10),
+              ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: newsDocs.length,
@@ -698,10 +703,10 @@ class _NewsSectionState extends State<NewsSection> {
                     ),
                   );
                 },
-              );
-            },
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }

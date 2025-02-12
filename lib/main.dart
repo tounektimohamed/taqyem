@@ -83,7 +83,7 @@ class _MyAppState extends State<MyApp> {
         brightness: Brightness.light, // Forcer le mode clair
         scaffoldBackgroundColor: const Color.fromRGBO(241, 250, 251, 1),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Color.fromARGB(255, 241, 250, 251),
+          backgroundColor: const Color.fromRGBO(241, 250, 251, 1),
         ),
         colorSchemeSeed: const Color.fromRGBO(7, 82, 96, 1),
       ),

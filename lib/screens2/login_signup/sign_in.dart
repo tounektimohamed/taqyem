@@ -189,7 +189,7 @@ class _SignInState extends State<SignIn> {
           child: Center(
             child: GlowingOverscrollIndicator(
               axisDirection: AxisDirection.down,
-              color: const Color.fromRGBO(7, 82, 96, 1),
+              color: Color.fromARGB(255, 255, 0, 0),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(35, 0, 35, 0),
                 child: Column(
@@ -204,7 +204,7 @@ class _SignInState extends State<SignIn> {
                       style: GoogleFonts.poppins(
                         fontSize: 30,
                         fontWeight: FontWeight.w600,
-                        color: const Color.fromRGBO(7, 82, 96, 1),
+                        color: Color.fromARGB(255, 0, 0, 0),
                       ),
                     ),
                     const SizedBox(
@@ -214,7 +214,7 @@ class _SignInState extends State<SignIn> {
                       'Welcome back!',
                       style: GoogleFonts.roboto(
                         fontSize: 35,
-                        color: const Color.fromARGB(255, 16, 15, 15),
+                        color: Color.fromARGB(255, 173, 1, 1),
                       ),
                     ),
                     const SizedBox(
@@ -396,7 +396,7 @@ class _SignInState extends State<SignIn> {
                 errorMsg,
                 style: GoogleFonts.roboto(
                   fontSize: 12,
-                  color: const Color.fromRGBO(255, 16, 15, 15),
+                  color: Color.fromARGB(240, 0, 0, 0),
                 ),
                 textAlign: TextAlign.start,
               ),
