@@ -1,4 +1,3 @@
-import 'package:Taqyem/taqyem/test/da3m_tableau%20copy.dart';
 import 'package:Taqyem/taqyem/da3m_tableau.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -68,7 +67,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ClassificationPage2(
+        builder: (context) => ClassificationPage(
           selectedClass: widget.selectedClass,
           selectedBaremeId: baremeId,
           selectedSousBaremeId: sousBaremeId, // Passer le sousBaremeId
