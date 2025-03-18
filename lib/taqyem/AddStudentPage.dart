@@ -260,18 +260,35 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
 
   Future<void> _deleteClass(String classId) async {
     try {
-      await FirebaseFirestore.instance
+      final classDocRef = FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
           .collection('user_classes')
-          .doc(classId)
-          .delete();
+          .doc(classId);
 
+      // Supprimer la sous-collection "students"
+      final studentsSnapshot = await classDocRef.collection('students').get();
+      for (var studentDoc in studentsSnapshot.docs) {
+        await studentDoc.reference.delete();
+      }
+
+      // Supprimer la sous-collection "subjects"
+      final subjectsSnapshot = await classDocRef.collection('subjects').get();
+      for (var subjectDoc in subjectsSnapshot.docs) {
+        await subjectDoc.reference.delete();
+      }
+
+      // Supprimer le document de la classe
+      await classDocRef.delete();
+
+      // Mettre à jour l'état local
       setState(() {
         _classes.removeWhere((classData) => classData['id'] == classId);
       });
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Classe supprimée')));
+
+      // Afficher un message de succès
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Classe et ses données supprimées')));
     } catch (e) {
       print("Erreur lors de la suppression : $e");
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -284,7 +301,8 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Confirmer la suppression'),
-        content: Text('Êtes-vous sûr de vouloir supprimer cette classe ?'),
+        content: Text(
+            'Êtes-vous sûr de vouloir supprimer cette classe et toutes ses données associées (élèves et matières) ?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -1108,7 +1126,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                     final birthDate = studentData['birthDate'];
 
                     return ListTile(
-                      
                       leading: photoUrl != null && photoUrl.isNotEmpty
                           ? CachedNetworkImage(
                               imageUrl: photoUrl,
@@ -1359,8 +1376,10 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title:
-            Text('Gestion des classes', style: TextStyle(color: Colors.white)),
+        title: Text(
+          'Gestion des classes',
+          style: TextStyle(color: Colors.white),
+        ),
         backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
         elevation: 4,
       ),
@@ -1369,6 +1388,12 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Icon(
+                    Icons.class_,
+                    size: 80,
+                    color: Colors.grey.shade400,
+                  ),
+                  SizedBox(height: 20),
                   Text(
                     'Aucune classe trouvée.',
                     style: TextStyle(fontSize: 18, color: Colors.grey),
@@ -1395,7 +1420,42 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                 ],
               ),
             )
-          : _buildClassList(),
+          : Column(
+              children: [
+                // Affichage du message en haut si la liste n'est pas vide
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 10),
+                  decoration: BoxDecoration(
+                    color: const Color.fromRGBO(230, 245, 255, 1),
+                    border: Border(
+                      bottom: BorderSide(
+                        color: const Color.fromRGBO(7, 82, 96, 1),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'هذه الصفحة تمكنك من اسناد العلامات للتلاميذ الموجودون في القسم حسب المواد',
+                        style: TextStyle(fontSize: 16, color: Colors.black87),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'اختر القسم ثم اضغط على المادة المعنية حتى تضهر باللون الأخضر ثم قم بالضغط على اسم التلميذ المراد اسناد الاعداد له',
+                        style: TextStyle(fontSize: 14, color: Colors.black54),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                // Liste des classes
+                Expanded(child: _buildClassList()),
+              ],
+            ),
     );
   }
 }

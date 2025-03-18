@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:Taqyem/taqyem/da3m_tableau.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -33,7 +35,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     fetchMarks(); // Récupérer les marques au chargement de la page
   }
 
-  void _navigateToClassificationPage2(String baremeId,
+  void _navigateToClassificationPage(String baremeId,
       {String? sousBaremeId}) async {
     var classAndMatiereNames = await _getClassAndMatiereNames();
 
@@ -46,7 +48,15 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         .collection('baremes')
         .doc(baremeId)
         .get();
-    var baremeName = baremeDoc['Marks'] ?? 'غير معروف';
+
+    // Déclarer et initialiser baremeName
+    String baremeName = 'غير معروف'; // Valeur par défaut
+    if (baremeDoc.exists && baremeDoc.data()?.containsKey('name') == true) {
+      baremeName = baremeDoc['name'];
+    }
+
+    // Afficher le nom du barème dans la console
+    print('Bareme Name: $baremeName');
 
     // Récupérer le nom du sous-barème si sousBaremeId est fourni
     String? sousBaremeName;
@@ -61,24 +71,33 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .collection('sous_baremes')
           .doc(sousBaremeId)
           .get();
-      sousBaremeName = sousBaremeDoc['Marks'] ?? 'غير معروف';
+
+      if (sousBaremeDoc.exists &&
+          sousBaremeDoc.data()?.containsKey('name') == true) {
+        sousBaremeName = sousBaremeDoc['name'];
+      } else {
+        sousBaremeName = 'غير معروف'; // Valeur par défaut
+      }
+
+      // Afficher le nom du sous-barème dans la console
+      print('Sous-Bareme Name: $sousBaremeName');
     }
 
+    // Utiliser baremeName et sousBaremeName ici
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => ClassificationPage(
           selectedClass: widget.selectedClass,
           selectedBaremeId: baremeId,
-          selectedSousBaremeId: sousBaremeId, // Passer le sousBaremeId
+          selectedSousBaremeId: sousBaremeId, // Passez ce paramètre
           currentUser: currentUser!,
           profName: _profName,
           schoolName: _schoolName,
           className: classAndMatiereNames['className'] ?? 'غير معروف',
           matiereName: classAndMatiereNames['matiereName'] ?? 'غير معروف',
-          matiereId: classAndMatiereNames['matiereId'] ?? 'غير معروف',
           baremeName: baremeName,
-          sousBaremeName: sousBaremeName, // Passer le nom du sous-barème
+          sousBaremeName: sousBaremeName, // Passez ce paramètre
         ),
       ),
     );
@@ -154,13 +173,12 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                       .collection('users')
                       .doc(currentUser!.uid)
                       .set(
-                          {
-                        'profName': profController.text,
-                        'schoolName': schoolController.text,
-                      },
-                          SetOptions(
-                              merge:
-                                  true)); // Merge pour ne pas écraser d'autres données
+                    {
+                      'profName': profController.text,
+                      'schoolName': schoolController.text,
+                    },
+                    SetOptions(merge: true),
+                  );
 
                   setState(() {
                     _profName = profController.text;
@@ -244,32 +262,21 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           if (baremeSnapshot.exists &&
               baremeSnapshot.data()?.containsKey('Marks') == true) {
             var value = baremeSnapshot['Marks'];
-            // print('Valeur récupérée pour le barème $baremeId : $value');
-
             if (value == '( + + + )' || value == '( + + - )') {
               sumCriteriaMaxPerBareme[baremeId] =
                   (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
             }
           } else {
-            // print('Le champ "Marks" n\'existe pas dans le document $baremeId');
-
             // Vérifier dans les sous-barèmes
             var sousBaremesSnapshot =
                 await baremeSnapshot.reference.collection('sous_baremes').get();
             for (var sousBaremeDoc in sousBaremesSnapshot.docs) {
               if (sousBaremeDoc.data().containsKey('Marks')) {
                 var value = sousBaremeDoc['Marks'];
-                // print(
-                //     'Valeur récupérée pour le sous-barème ${sousBaremeDoc.id} : $value');
-
                 if (value == '( + + + )' || value == '( + + - )') {
                   sumCriteriaMaxPerBareme[sousBaremeDoc.id] =
-                      (sumCriteriaMaxPerBareme[sousBaremeDoc.id] ?? 0) +
-                          1; // ID seul
+                      (sumCriteriaMaxPerBareme[sousBaremeDoc.id] ?? 0) + 1;
                 }
-              } else {
-                // print(
-                //     'Le champ "Marks" n\'existe pas dans le sous-barème ${sousBaremeDoc.id}');
               }
             }
           }
@@ -296,8 +303,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         textTheme: TextTheme(
-          bodyMedium: TextStyle(
-              fontFamily: 'ArabicFont', fontSize: 14), // Petite police
+          bodyMedium: TextStyle(fontFamily: 'ArabicFont', fontSize: 14),
         ),
         colorScheme: ColorScheme.light(
           primary: Colors.blue,
@@ -314,105 +320,101 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         ),
         body: Directionality(
           textDirection: TextDirection.rtl,
-          child: Center(
-            child: Column(
-              children: [
-                // En-tête professionnel
-                Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.blue),
-                  ),
-                  child: Row(
-                    children: [
-                      // Professeur, matière et classe à gauche (alignés verticalement)
-                      FutureBuilder<Map<String, String>>(
-                        future: _getClassAndMatiereNames(),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return CircularProgressIndicator();
-                          }
-                          if (snapshot.hasError) {
-                            return Text('خطأ في تحميل البيانات',
-                                textDirection: TextDirection.rtl);
-                          }
-                          if (!snapshot.hasData) {
-                            return Text('لا توجد بيانات',
-                                textDirection: TextDirection.rtl);
-                          }
+          child: ListView(
+            children: [
+              // En-tête professionnel
+              Container(
+                padding: EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Colors.blue),
+                ),
+                child: Row(
+                  children: [
+                    // Professeur, matière et classe à gauche (alignés verticalement)
+                    FutureBuilder<Map<String, String>>(
+                      future: _getClassAndMatiereNames(),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return CircularProgressIndicator();
+                        }
+                        if (snapshot.hasError) {
+                          return Text('خطأ في تحميل البيانات',
+                              textDirection: TextDirection.rtl);
+                        }
+                        if (!snapshot.hasData) {
+                          return Text('لا توجد بيانات',
+                              textDirection: TextDirection.rtl);
+                        }
 
-                          var classAndMatiereNames = snapshot.data!;
-                          return Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start, // Alignement à gauche
-                            children: [
-                              Text(
-                                'الأستاذ: $_profName',
-                                style: TextStyle(fontSize: 14), // Petite police
-                              ),
-                              SizedBox(height: 8), // Espace entre les éléments
-                              Text(
-                                'المادة: ${classAndMatiereNames['matiereName']}',
-                                style: TextStyle(fontSize: 14), // Petite police
-                              ),
-                              SizedBox(height: 8), // Espace entre les éléments
-                              Text(
-                                'القسم: ${classAndMatiereNames['className']}',
-                                style: TextStyle(fontSize: 14), // Petite police
-                              ),
-                            ],
-                          );
-                        },
-                      ),
-                      Spacer(), // Espace entre les éléments
-                      // Logo et nom de l'école à droite
-                      Column(
-                        children: [
-                          SizedBox(height: 8),
-                          Text(
-                            'الجدول الجامع للنتائج', // Ajout de la guillemet fermante manquante
-                            style: TextStyle(fontSize: 18), // Petite police
-                          ),
-                        ],
-                      ),
-                      Spacer(), // Espace entre les éléments
-                      // Logo et nom de l'école à droite
-                      Column(
-                        children: [
-                          Image.asset(
-                            'lib/assets/icons/me/ministere.png', // Chemin vers le logo du ministère
-                            height: 100, // Taille réduite du logo
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'مدرسة: $_schoolName',
-                            style: TextStyle(fontSize: 14), // Petite police
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        var classAndMatiereNames = snapshot.data!;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'الأستاذ: $_profName',
+                              style: TextStyle(fontSize: 10),
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              'المادة: ${classAndMatiereNames['matiereName']}',
+                              style: TextStyle(fontSize: 10),
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              'القسم: ${classAndMatiereNames['className']}',
+                              style: TextStyle(fontSize: 10),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                    Spacer(),
+                    // Logo et nom de l'école à droite
+                    Column(
+                      children: [
+                        SizedBox(height: 5),
+                        Text(
+                          'الجدول الجامع للنتائج',
+                          style: TextStyle(fontSize: 10),
+                        ),
+                      ],
+                    ),
+                    Spacer(),
+                    Column(
+                      children: [
+                        Image.asset(
+                          'lib/assets/icons/me/ministere.png',
+                          height: 70,
+                        ),
+                        SizedBox(height: 5),
+                        Text(
+                          'مدرسة: $_schoolName',
+                          style: TextStyle(fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                Expanded(
-                  flex: 3,
-                  child: _buildMainContent(),
+              ),
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.7,
+                child: _buildMainContent(),
+              ),
+              // Pied de page
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  border: Border.all(color: Colors.blue),
                 ),
-                // Pied de page
-                Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue[50],
-                    border: Border.all(color: Colors.blue),
-                  ),
-                  child: Text(
-                    'تاريخ الإصدار: ${DateTime.now().toString().substring(0, 10)}',
-                    style: TextStyle(fontSize: 14), // Petite police
-                  ),
+                child: Text(
+                  'تاريخ الإصدار: ${DateTime.now().toString().substring(0, 10)}',
+                  style: TextStyle(fontSize: 14),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -486,8 +488,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               currentUser: currentUser!,
               sumCriteriaMaxPerBareme: sumCriteriaMaxPerBareme,
               totalStudents: totalStudents,
-              navigateToClassificationPage2:
-                  _navigateToClassificationPage2, // Ajoutez cette ligne
+              navigateToClassificationPage: _navigateToClassificationPage,
             );
           }
         }
@@ -507,7 +508,8 @@ class StudentsTable extends StatefulWidget {
   final User currentUser;
   final Map<String, int> sumCriteriaMaxPerBareme;
   final int totalStudents;
-  final Function(String) navigateToClassificationPage2;
+  final Function(String, {String? sousBaremeId})
+      navigateToClassificationPage; // Modifier ici
 
   const StudentsTable({
     Key? key,
@@ -517,7 +519,7 @@ class StudentsTable extends StatefulWidget {
     required this.currentUser,
     required this.sumCriteriaMaxPerBareme,
     required this.totalStudents,
-    required this.navigateToClassificationPage2,
+    required this.navigateToClassificationPage, // Modifier ici
   }) : super(key: key);
 
   @override
@@ -532,6 +534,33 @@ class _StudentsTableState extends State<StudentsTable> {
     '( + + + )'
   ];
   final Map<String, Map<String, String>> _selectedValues = {};
+
+  // Map pour stocker les couleurs aléatoires des en-têtes
+  final Map<String, Color> _headerColors = {};
+
+  // Fonction pour générer une couleur aléatoire
+  Color _getRandomColor() {
+    return Color((Random().nextDouble() * 0xFFFFFF).toInt() << 0)
+        .withOpacity(1);
+  }
+
+  // Fonction pour regrouper les barèmes par leurs 4 premiers caractères
+  Map<String, List<Map<String, dynamic>>> groupBaremes(
+      List<Map<String, dynamic>> baremesValues) {
+    Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
+
+    for (var bareme in baremesValues) {
+      String key =
+          bareme['value'].substring(0, 4); // Prendre les 4 premiers caractères
+      if (!groupedBaremes.containsKey(key)) {
+        groupedBaremes[key] = [];
+      }
+      groupedBaremes[key]!.add(bareme);
+    }
+
+    return groupedBaremes;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -565,13 +594,6 @@ class _StudentsTableState extends State<StudentsTable> {
             },
           ),
         ),
-        // Padding(
-        //   padding: const EdgeInsets.all(16.0),
-        //   child: ElevatedButton(
-        //     onPressed: _saveAllChanges,
-        //     child: const Text('حفظ التغييرات', style: TextStyle(fontSize: 18)),
-        //   ),
-        // ),
       ],
     );
   }
@@ -629,6 +651,10 @@ class _StudentsTableState extends State<StudentsTable> {
 
   Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
       List<Map<String, dynamic>> baremesValues) {
+    // Regrouper les barèmes par leurs 4 premiers caractères
+    Map<String, List<Map<String, dynamic>>> groupedBaremes =
+        groupBaremes(baremesValues);
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
@@ -643,19 +669,38 @@ class _StudentsTableState extends State<StudentsTable> {
                       fontWeight: FontWeight.bold, color: Colors.blue)),
             ),
           ),
-          for (final bareme in baremesValues)
-            for (final entry in [
-              {'id': bareme['id'], 'value': bareme['value']},
-              ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-            ])
-              DataColumn(
-                label: SizedBox(
-                  width: 100,
-                  child: Text(entry['value'],
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, color: Colors.blue)),
+          for (var entry in groupedBaremes.entries)
+            for (final bareme in entry.value)
+              for (final subEntry in [
+                {'id': bareme['id'], 'value': bareme['value']},
+                ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+              ])
+                DataColumn(
+                  label: Container(
+                    width: 100,
+                    color: _headerColors.putIfAbsent(
+                        entry.key,
+                        () =>
+                            _getRandomColor()), // Couleur aléatoire pour l'en-tête
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                            entry
+                                .key, // En-tête du groupe (4 premiers caractères)
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors
+                                    .white)), // Texte en blanc pour contraste
+                        Text(subEntry['value'], // Nom du barème ou sous-barème
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors
+                                    .white)), // Texte en blanc pour contraste
+                      ],
+                    ),
+                  ),
                 ),
-              ),
         ],
         rows: [
           ...studentsDocs.map((studentDoc) {
@@ -672,34 +717,38 @@ class _StudentsTableState extends State<StudentsTable> {
                         style: TextStyle(color: Colors.grey.shade800)),
                   ),
                 ),
-                for (final bareme in baremesValues)
-                  for (final entry in [
-                    {'id': bareme['id'], 'type': 'bareme'},
-                    ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-                        .map((s) => {'id': s['id'], 'type': 'sousBareme'})
-                  ])
-                    DataCell(
-                      SizedBox(
-                        width: 100,
-                        child: FutureBuilder<String>(
-                          future: _getSelectedValue(studentId, entry['id']),
-                          builder: (context, snapshot) {
-                            if (snapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return const CircularProgressIndicator();
-                            }
-                            return Text(
-                              snapshot.data ?? _dropdownValues[0],
-                              style: TextStyle(color: Colors.grey.shade800),
-                            );
-                          },
+                for (var entry in groupedBaremes.entries)
+                  for (final bareme in entry.value)
+                    for (final subEntry in [
+                      {'id': bareme['id'], 'type': 'bareme'},
+                      ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+                          .map((s) => {'id': s['id'], 'type': 'sousBareme'})
+                    ])
+                      DataCell(
+                        SizedBox(
+                          width: 100,
+                          child: FutureBuilder<String>(
+                            future:
+                                _getSelectedValue(studentId, subEntry['id']),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const CircularProgressIndicator();
+                              }
+                              return Text(
+                                snapshot.data ?? _dropdownValues[0],
+                                style: TextStyle(
+                                    color: Colors
+                                        .black), // Texte en noir pour contraste
+                              );
+                            },
+                          ),
                         ),
                       ),
-                    )
               ],
             );
           }).toList(),
-          // Statistics Rows
+          // Ligne des statistiques
           DataRow(
             cells: [
               const DataCell(Text('عدد التلاميذ المحققين',
@@ -718,55 +767,117 @@ class _StudentsTableState extends State<StudentsTable> {
                   )),
             ],
           ),
+          // Ligne des pourcentages
           DataRow(
             cells: [
               const DataCell(Text('النسبة المئوية',
                   style: TextStyle(fontWeight: FontWeight.bold))),
-              for (final bareme in baremesValues)
-                for (final entry in [
-                  {'id': bareme['id']},
-                  ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-                ])
-                  DataCell(Text(
-                    widget.totalStudents == 0
-                        ? 'Pas de note'
-                        : '${((widget.sumCriteriaMaxPerBareme[entry['id']] ?? 0) / widget.totalStudents * 100).toStringAsFixed(2)}%',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  )),
+              for (var entry in groupedBaremes.entries)
+                for (final bareme in entry.value)
+                  for (final subEntry in [
+                    {'id': bareme['id']},
+                    ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+                  ])
+                    DataCell(Text(
+                      widget.totalStudents == 0
+                          ? 'لا توجد درجات'
+                          : '${((widget.sumCriteriaMaxPerBareme[subEntry['id']] ?? 0) / widget.totalStudents * 100).toStringAsFixed(2)}٪',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black), // Texte en noir pour contraste
+                    )),
             ],
           ),
-          // Ajouter un bouton sous chaque barème pour la classification
+          // Ligne des boutons "تصنيف"
           DataRow(
             cells: [
               DataCell(Container()), // Cellule vide pour la colonne des noms
-              for (var bareme in baremesValues)
-                for (var entry in [
-                  {'id': bareme['id'], 'type': 'bareme'},
-                  ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-                      .map((s) => {'id': s['id'], 'type': 'sousBareme'})
-                ])
-                  DataCell(
-                    Container(
-                      width: 100,
-                      child: ElevatedButton(
-                        onPressed: () => _classifyStudentsByBarem(
-                          bareme['id']!,
-                          sousBaremeId: entry['type'] == 'sousBareme'
-                              ? entry['id']
-                              : null,
+              for (var entry in groupedBaremes.entries)
+                for (final bareme in entry.value)
+                  for (final subEntry in [
+                    {
+                      'id': bareme['id'],
+                      'type': 'bareme',
+                      'name': bareme['value']
+                    }, // Ajouter le nom du barème
+                    ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
+                        (s) => {
+                              'id': s['id'],
+                              'type': 'sousBareme',
+                              'name': s['value']
+                            }) // Ajouter le nom du sous-barème
+                  ])
+                    DataCell(
+                      Container(
+                        width: 100,
+                        height: 100,
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green, // Couleur verte
-                        ),
-                        child: Text(
-                          'تصنيف',
-                          style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.yellow), // Texte en jaune
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  print(
+                                      'Bareme Name: ${bareme['value']}'); // Afficher le nom du barème
+                                  print(
+                                      'Sous-Bareme Name: ${subEntry['type'] == 'sousBareme' ? subEntry['name'] : 'N/A'}'); // Afficher le nom du sous-barème
+                                  _classifyStudentsByBarem(
+                                    bareme['id']!,
+                                    sousBaremeId:
+                                        subEntry['type'] == 'sousBareme'
+                                            ? subEntry['id']
+                                            : null,
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 8, horizontal: 12),
+                                ),
+                                child: Text(
+                                  'تصنيف',
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.yellow),
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: 5),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  print(
+                                      'Bareme Name: ${bareme['value']}'); // Afficher le nom du barème
+                                  print(
+                                      'Sous-Bareme Name: ${subEntry['type'] == 'sousBareme' ? subEntry['name'] : 'N/A'}'); // Afficher le nom du sous-barème
+                                  widget.navigateToClassificationPage(
+                                    bareme['id']!,
+                                    sousBaremeId:
+                                        subEntry['type'] == 'sousBareme'
+                                            ? subEntry['id']
+                                            : null,
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 8, horizontal: 12),
+                                ),
+                                child: Text(
+                                  'تصنيف آخر',
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ),
             ],
           ),
         ],
