@@ -46,7 +46,9 @@ class _StudentEvaluationPageState extends State<StudentEvaluationPage> {
     } catch (e) {
       print("Erreur lors de la récupération des étudiants : $e");
     }
-  }Future<void> _fetchBaremes() async {
+  }
+  
+  Future<void> _fetchBaremes() async {
   try {
     final baremesSnapshot = await FirebaseFirestore.instance
         .collection('users')

@@ -54,8 +54,8 @@ class _ClassificationPageState extends State<ClassificationPage> {
     print("Nom de la classe: ${widget.className}");
     print("Nom de la matière: ${widget.matiereName}");
     print("Nom du barème: ${widget.baremeName ?? 'Non défini'}"); // Gestion de la valeur nulle
-    print("ID du sous-barème sélectionné: ${widget.selectedSousBaremeId ?? 'Non défini'}"); // Gestion de la valeur nulle
-    print("Nom du sous-barème: ${widget.sousBaremeName ?? 'Non défini'}"); // Gestion de la valeur nulle
+    print("ID du sous-barème sélectionné:  ${widget.selectedBaremeId}");// Gestion de la valeur nulle
+    print("Nom du sous-barème:  ${widget.baremeName ?? 'Non défini'}"); // Gestion de la valeur nulle
   }
 
   // Méthode pour charger les données JSON

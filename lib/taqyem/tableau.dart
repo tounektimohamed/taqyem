@@ -34,56 +34,120 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     _loadUserData(); // Charger les données depuis Firestore
     fetchMarks(); // Récupérer les marques au chargement de la page
   }
+  
+Future<List<Map<String, dynamic>>> _getBaremesValues(
+      List<QueryDocumentSnapshot> selectedBaremes) async {
+    final List<Map<String, dynamic>> result = [];
+    final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
-  void _navigateToClassificationPage(String baremeId,
-      {String? sousBaremeId}) async {
+    print('User ID: $userId');
+    print('Selected Class: ${widget.selectedClass}');
+    print('Selected Matiere: ${widget.selectedMatiere}');
+
+    for (final baremeDoc in selectedBaremes) {
+      final baremeId = baremeDoc['baremeId'];
+      print('Processing baremeId: $baremeId');
+
+      final baremeSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .doc(baremeId)
+          .get();
+
+      final isBaremeSelected = baremeSnapshot['selected'] ?? false;
+      print('Bareme selected: $isBaremeSelected');
+
+      final sousBaremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .doc(baremeId)
+          .collection('sousBaremes')
+          .get();
+
+      final selectedSousBaremes = sousBaremesSnapshot.docs
+          .where((doc) => doc['selected'] == true)
+          .toList();
+
+      print('Number of selected sousBaremes: ${selectedSousBaremes.length}');
+
+      if (isBaremeSelected) {
+        final baremeName = baremeSnapshot['baremeName'] ?? 'غير معروف';
+        print('Adding bareme: $baremeId - $baremeName');
+
+        result.add({
+          'id': baremeId,
+          'value': baremeName,
+          'sousBaremes': [],
+        });
+      } else if (selectedSousBaremes.isNotEmpty) {
+        for (final sousBareme in selectedSousBaremes) {
+          final sousBaremeName = sousBareme['sousBaremeName'] ?? 'غير معروف';
+          print(
+              'Adding sousBareme: ${sousBareme.id} - $sousBaremeName (Parent: $baremeId)');
+
+          result.add({
+            'id': sousBareme.id,
+            'value': sousBaremeName,
+            'parentBaremeId': baremeId, // Track parent bareme ID
+          });
+        }
+      }
+    }
+    print('Final result: $result');
+    return result;
+  }
+  void _navigateToClassificationPage(String baremeId, {String? sousBaremeId}) async {
+  try {
+    // Récupérer les noms de la classe et de la matière
     var classAndMatiereNames = await _getClassAndMatiereNames();
 
-    // Récupérer le nom du barème
-    var baremeDoc = await FirebaseFirestore.instance
-        .collection('classes')
+    // Récupérer les barèmes et sous-barèmes
+    var selectedBaremes = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser!.uid)
+        .collection('selections')
         .doc(widget.selectedClass)
-        .collection('matieres')
-        .doc(widget.selectedMatiere)
-        .collection('baremes')
-        .doc(baremeId)
+        .collection(widget.selectedMatiere)
         .get();
 
-    // Déclarer et initialiser baremeName
-    String baremeName = 'غير معروف'; // Valeur par défaut
-    if (baremeDoc.exists && baremeDoc.data()?.containsKey('name') == true) {
-      baremeName = baremeDoc['name'];
-    }
+    // Récupérer les valeurs des barèmes et sous-barèmes
+    List<Map<String, dynamic>> baremesValues = await _getBaremesValues(selectedBaremes.docs);
+
+    // Trouver le barème correspondant
+    var selectedBareme = baremesValues.firstWhere(
+      (bareme) => bareme['id'] == baremeId,
+      orElse: () => {'id': baremeId, 'value': 'غير معروف'},
+    );
+
+    // Récupérer le nom du barème
+    String baremeName = selectedBareme['value'] ?? 'غير معروف';
 
     // Afficher le nom du barème dans la console
-    print('Bareme Name: $baremeName');
+    print('Barème Name: $baremeName');
 
     // Récupérer le nom du sous-barème si sousBaremeId est fourni
     String? sousBaremeName;
     if (sousBaremeId != null) {
-      var sousBaremeDoc = await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(widget.selectedClass)
-          .collection('matieres')
-          .doc(widget.selectedMatiere)
-          .collection('baremes')
-          .doc(baremeId)
-          .collection('sous_baremes')
-          .doc(sousBaremeId)
-          .get();
+      // Trouver le sous-barème correspondant
+      var selectedSousBareme = baremesValues.firstWhere(
+        (bareme) => bareme['id'] == sousBaremeId && bareme['parentBaremeId'] == baremeId,
+        orElse: () => {'id': sousBaremeId, 'value': 'غير معروف'},
+      );
 
-      if (sousBaremeDoc.exists &&
-          sousBaremeDoc.data()?.containsKey('name') == true) {
-        sousBaremeName = sousBaremeDoc['name'];
-      } else {
-        sousBaremeName = 'غير معروف'; // Valeur par défaut
-      }
+      // Récupérer le nom du sous-barème
+      sousBaremeName = selectedSousBareme['value'] ?? 'غير معروف';
 
       // Afficher le nom du sous-barème dans la console
-      print('Sous-Bareme Name: $sousBaremeName');
+      print('Sous-Barème Name: $sousBaremeName');
     }
 
-    // Utiliser baremeName et sousBaremeName ici
+    // Naviguer vers la page de classification
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -101,8 +165,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         ),
       ),
     );
+  } catch (e) {
+    print('Erreur lors de la navigation vers la page de classification : $e');
   }
-
+}
   // Charger les données depuis Firestore
   void _loadUserData() async {
     if (currentUser != null) {
