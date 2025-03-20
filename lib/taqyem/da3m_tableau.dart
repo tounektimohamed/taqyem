@@ -40,23 +40,10 @@ class _ClassificationPageState extends State<ClassificationPage> {
   @override
   void initState() {
     super.initState();
-    printVariables(); // Afficher les variables dans la console
     loadJsonData(); // Charger les données JSON au démarrage
   }
 
-  // Méthode pour afficher les variables dans la console
-  void printVariables() {
-    print("Classe sélectionnée: ${widget.selectedClass}");
-    print("ID du barème sélectionné: ${widget.selectedBaremeId}");
-    print("Utilisateur actuel: ${widget.currentUser}");
-    print("Nom du professeur: ${widget.profName}");
-    print("Nom de l'école: ${widget.schoolName}");
-    print("Nom de la classe: ${widget.className}");
-    print("Nom de la matière: ${widget.matiereName}");
-    print("Nom du barème: ${widget.baremeName ?? 'Non défini'}"); // Gestion de la valeur nulle
-    print("ID du sous-barème sélectionné:  ${widget.selectedBaremeId}");// Gestion de la valeur nulle
-    print("Nom du sous-barème:  ${widget.baremeName ?? 'Non défini'}"); // Gestion de la valeur nulle
-  }
+
 
   // Méthode pour charger les données JSON
   Future<void> loadJsonData() async {
@@ -71,40 +58,43 @@ class _ClassificationPageState extends State<ClassificationPage> {
   }
 
   // Méthode pour afficher la solution et le problème
-  void showSolutionAndProbleme(String groupName) {
-    // Afficher les valeurs pour déboguer
-    print("Classe sélectionnée: ${widget.className}");
-    print("Matière sélectionnée: ${widget.matiereName}");
-    print("Barème sélectionné: ${widget.baremeName}");
-    print("Sous-barème sélectionné: ${widget.sousBaremeName ?? 'Non défini'}");
+void showSolutionAndProbleme(String groupName) {
+  try {
+    // Debug: Print the values being compared
+    print("Filtering JSON Data for:");
+    print("Classe: ${widget.className.trim().toLowerCase()}");
+    print("Matiere: ${widget.matiereName.trim().toLowerCase()}");
+    print("Bareme: ${(widget.sousBaremeName ?? widget.baremeName).trim().toLowerCase()}");
 
-    // Filtrer les données JSON
+    // Find the matching JSON entry
     var result = jsonData.firstWhere(
       (item) {
-        // Normaliser les chaînes de caractères
-        String jsonClasse = item['classe'].trim().toLowerCase();
-        String jsonMatiere = item['matiere'].trim().toLowerCase();
-        String jsonBareme = item['bareme'].trim().toLowerCase();
+        // Normalize JSON values
+        String jsonClasse = item['classe']?.trim().toLowerCase() ?? '';
+        String jsonMatiere = item['matiere']?.trim().toLowerCase() ?? '';
+        String jsonBareme = item['bareme']?.trim().toLowerCase() ?? '';
 
-        String selectedClasse = widget.className.trim().toLowerCase();
-        String selectedMatiere = widget.matiereName.trim().toLowerCase();
-        String selectedBareme = (widget.sousBaremeName ?? widget.baremeName).trim().toLowerCase(); // Utiliser le sous-barème ou le barème
+        // Debug: Print the JSON item being compared
+        print("Comparing with JSON Item:");
+        print("Classe: $jsonClasse");
+        print("Matiere: $jsonMatiere");
+        print("Bareme: $jsonBareme");
 
-        // Comparer les valeurs normalisées
-        bool condition = jsonClasse == selectedClasse &&
-            jsonMatiere == selectedMatiere &&
-            jsonBareme == selectedBareme;
-
-        return condition;
+        // Check for a match
+        return jsonClasse == widget.className.trim().toLowerCase() &&
+               jsonMatiere == widget.matiereName.trim().toLowerCase() &&
+               jsonBareme == (widget.sousBaremeName ?? widget.baremeName).trim().toLowerCase();
       },
-      orElse: () => null,
+      orElse: () => null, // Return null if no match is found
     );
 
+    // If a match is found
     if (result != null) {
+      print("Match Found: $result"); // Debug print
       String solution = result['solution'];
       String probleme = result['probleme'];
 
-      // Afficher les données dans une boîte de dialogue
+      // Display the solution and problem in a dialog
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -117,8 +107,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                   Text('الحل:', style: TextStyle(fontWeight: FontWeight.bold)),
                   Text(solution),
                   SizedBox(height: 16),
-                  Text('المشكلة:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text('المشكلة:', style: TextStyle(fontWeight: FontWeight.bold)),
                   Text(probleme),
                 ],
               ),
@@ -135,7 +124,8 @@ class _ClassificationPageState extends State<ClassificationPage> {
         },
       );
     } else {
-      // Si aucune donnée correspondante n'est trouvée
+      // If no match is found
+      print("No Match Found"); // Debug print
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -154,7 +144,10 @@ class _ClassificationPageState extends State<ClassificationPage> {
         },
       );
     }
+  } catch (e) {
+    print("Erreur lors de l'affichage de la solution et du problème: $e");
   }
+}
 
   @override
   Widget build(BuildContext context) {

@@ -6,7 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:Taqyem/taqyem/tableau.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 class BaremesPage extends StatefulWidget {
   final String selectedClass;
   final String selectedMatiere;
@@ -20,6 +19,50 @@ class BaremesPage extends StatefulWidget {
 class _BaremesPageState extends State<BaremesPage> {
   Map<String, bool> _selectedBaremes = {};
   Map<String, Map<String, bool>> _selectedSousBaremes = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExistingSelections();
+    _showUtilityDialog(); // Afficher le dialogue d'utilité
+  }
+
+  Future<void> _showUtilityDialog() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? lastShownDate = prefs.getString('lastShownUtilityDate');
+    DateTime now = DateTime.now();
+    String today = "${now.year}-${now.month}-${now.day}";
+
+    if (lastShownDate != today) {
+      // Afficher le dialogue seulement s'il n'a pas été affiché aujourd'hui
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('معلومات عن الواجهة',
+                style:
+                    TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+            content: Text(
+              'هذه الواجهة تتيح لك اختيار المعايير والمؤشرات للقسم والمادة المحددة. '
+              'يمكنك تحديد المعايير والمؤشرات وحفظها للرجوع إليها لاحقًا.',
+              style: TextStyle(fontSize: 16),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('موافق', style: TextStyle(color: Colors.blue)),
+              ),
+            ],
+          );
+        },
+      );
+
+      // Enregistrer la date d'aujourd'hui comme dernière date d'affichage
+      await prefs.setString('lastShownUtilityDate', today);
+    }
+  }
 
   void _toggleBaremeSelection(String baremeId) {
     setState(() {
@@ -97,12 +140,6 @@ class _BaremesPageState extends State<BaremesPage> {
         }
       }
     });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _loadExistingSelections();
   }
 
   @override
@@ -332,7 +369,7 @@ class _BaremesPageState extends State<BaremesPage> {
     }
   }
 
-// Helper function to fetch the name of the bareme
+  // Helper function to fetch the name of the bareme
   Future<String> _getBaremeName(String baremeId) async {
     try {
       var baremeDoc = await FirebaseFirestore.instance
@@ -351,7 +388,7 @@ class _BaremesPageState extends State<BaremesPage> {
     }
   }
 
-// Helper function to fetch the name of the sous-bareme
+  // Helper function to fetch the name of the sous-bareme
   Future<String> _getSousBaremeName(
       String baremeId, String sousBaremeId) async {
     try {
@@ -376,7 +413,6 @@ class _BaremesPageState extends State<BaremesPage> {
 
 //////////////////////////////////////////////
 ////////////////////////////////////////////////
-
 class SelectionPage extends StatefulWidget {
   @override
   _SelectionPageState createState() => _SelectionPageState();
@@ -457,12 +493,12 @@ class _SelectionPageState extends State<SelectionPage> {
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text('Bienvenue !',
+            title: Text('مرحبًا!',
                 style:
                     TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
             content: Text(
-              'Cette page vous permet de sélectionner une classe et une matière pour afficher les barèmes correspondants. '
-              'Utilisez les menus déroulants pour faire votre sélection, puis cliquez sur "Afficher les barèmes".',
+              'هذه الصفحة تتيح لك اختيار قسم ومادة لعرض المعايير المقابلة. '
+              'استخدم القوائم المنسدلة لإجراء الاختيار، ثم انقر على "عرض المعايير".',
               style: TextStyle(fontSize: 16),
             ),
             actions: [
@@ -470,7 +506,7 @@ class _SelectionPageState extends State<SelectionPage> {
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-                child: Text('OK', style: TextStyle(color: Colors.blue)),
+                child: Text('موافق', style: TextStyle(color: Colors.blue)),
               ),
             ],
           );
@@ -634,7 +670,7 @@ class _SelectionPageState extends State<SelectionPage> {
                         );
                       }
                     },
-                    child: Text('عرض المعايير والجدول الجامع',
+                    child: Text('عرض المعايير',
                         style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
@@ -674,7 +710,7 @@ class _SelectionPageState extends State<SelectionPage> {
                         );
                       }
                     },
-                    child: Text('برمجة معايير',
+                    child: Text('برمجة المعايير',
                         style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
@@ -695,10 +731,8 @@ class _SelectionPageState extends State<SelectionPage> {
     );
   }
 }
-
 /////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////
-
 class SelectedBaremesPage extends StatefulWidget {
   final String selectedClass;
   final String selectedMatiere;
@@ -711,6 +745,49 @@ class SelectedBaremesPage extends StatefulWidget {
 }
 
 class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
+  @override
+  void initState() {
+    super.initState();
+    _showUtilityDialog(); // Afficher le dialogue d'utilité
+  }
+
+  Future<void> _showUtilityDialog() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? lastShownDate = prefs.getString('lastShownUtilityDate');
+    DateTime now = DateTime.now();
+    String today = "${now.year}-${now.month}-${now.day}";
+
+    if (lastShownDate != today) {
+      // Afficher le dialogue seulement s'il n'a pas été affiché aujourd'hui
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('معلومات عن الواجهة',
+                style:
+                    TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
+            content: Text(
+              'هذه الواجهة تتيح لك عرض المعايير والمؤشرات المحددة للقسم والمادة المختارة. '
+              'يمكنك أيضًا عرض جدول ديناميكي للمعايير والمؤشرات.',
+              style: TextStyle(fontSize: 16),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('موافق', style: TextStyle(color: Colors.blue)),
+              ),
+            ],
+          );
+        },
+      );
+
+      // Enregistrer la date d'aujourd'hui comme dernière date d'affichage
+      await prefs.setString('lastShownUtilityDate', today);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Obtenir l'ID de l'utilisateur actuellement connecté

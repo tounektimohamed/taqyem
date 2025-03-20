@@ -34,8 +34,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     _loadUserData(); // Charger les données depuis Firestore
     fetchMarks(); // Récupérer les marques au chargement de la page
   }
-  
-Future<List<Map<String, dynamic>>> _getBaremesValues(
+
+  Future<List<Map<String, dynamic>>> _getBaremesValues(
       List<QueryDocumentSnapshot> selectedBaremes) async {
     final List<Map<String, dynamic>> result = [];
     final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
@@ -102,73 +102,79 @@ Future<List<Map<String, dynamic>>> _getBaremesValues(
     print('Final result: $result');
     return result;
   }
-  void _navigateToClassificationPage(String baremeId, {String? sousBaremeId}) async {
-  try {
-    // Récupérer les noms de la classe et de la matière
-    var classAndMatiereNames = await _getClassAndMatiereNames();
 
-    // Récupérer les barèmes et sous-barèmes
-    var selectedBaremes = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('selections')
-        .doc(widget.selectedClass)
-        .collection(widget.selectedMatiere)
-        .get();
+  void _navigateToClassificationPage(String baremeId,
+      {String? sousBaremeId}) async {
+    try {
+      // Récupérer les noms de la classe et de la matière
+      var classAndMatiereNames = await _getClassAndMatiereNames();
 
-    // Récupérer les valeurs des barèmes et sous-barèmes
-    List<Map<String, dynamic>> baremesValues = await _getBaremesValues(selectedBaremes.docs);
+      // Récupérer les barèmes et sous-barèmes
+      var selectedBaremes = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .get();
 
-    // Trouver le barème correspondant
-    var selectedBareme = baremesValues.firstWhere(
-      (bareme) => bareme['id'] == baremeId,
-      orElse: () => {'id': baremeId, 'value': 'غير معروف'},
-    );
+      // Récupérer les valeurs des barèmes et sous-barèmes
+      List<Map<String, dynamic>> baremesValues =
+          await _getBaremesValues(selectedBaremes.docs);
 
-    // Récupérer le nom du barème
-    String baremeName = selectedBareme['value'] ?? 'غير معروف';
-
-    // Afficher le nom du barème dans la console
-    print('Barème Name: $baremeName');
-
-    // Récupérer le nom du sous-barème si sousBaremeId est fourni
-    String? sousBaremeName;
-    if (sousBaremeId != null) {
-      // Trouver le sous-barème correspondant
-      var selectedSousBareme = baremesValues.firstWhere(
-        (bareme) => bareme['id'] == sousBaremeId && bareme['parentBaremeId'] == baremeId,
-        orElse: () => {'id': sousBaremeId, 'value': 'غير معروف'},
+      // Trouver le barème correspondant
+      var selectedBareme = baremesValues.firstWhere(
+        (bareme) => bareme['id'] == baremeId,
+        orElse: () => {'id': baremeId, 'value': 'غير معروف'},
       );
 
-      // Récupérer le nom du sous-barème
-      sousBaremeName = selectedSousBareme['value'] ?? 'غير معروف';
+      // Récupérer le nom du barème
+      String baremeName = selectedBareme['value'] ?? 'غير معروف';
 
-      // Afficher le nom du sous-barème dans la console
-      print('Sous-Barème Name: $sousBaremeName');
-    }
+      // Afficher le nom du barème dans la console
+      print('Barème Name: $baremeName');
 
-    // Naviguer vers la page de classification
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ClassificationPage(
-          selectedClass: widget.selectedClass,
-          selectedBaremeId: baremeId,
-          selectedSousBaremeId: sousBaremeId, // Passez ce paramètre
-          currentUser: currentUser!,
-          profName: _profName,
-          schoolName: _schoolName,
-          className: classAndMatiereNames['className'] ?? 'غير معروف',
-          matiereName: classAndMatiereNames['matiereName'] ?? 'غير معروف',
-          baremeName: baremeName,
-          sousBaremeName: sousBaremeName, // Passez ce paramètre
+      // Récupérer le nom du sous-barème si sousBaremeId est fourni
+      String? sousBaremeName;
+      if (sousBaremeId != null) {
+        // Trouver le sous-barème correspondant
+        var selectedSousBareme = baremesValues.firstWhere(
+          (bareme) =>
+              bareme['id'] == sousBaremeId &&
+              bareme['parentBaremeId'] == baremeId,
+          orElse: () => {'id': sousBaremeId, 'value': 'غير معروف'},
+        );
+
+        // Récupérer le nom du sous-barème
+        sousBaremeName = selectedSousBareme['value'] ?? 'غير معروف';
+
+        // Afficher le nom du sous-barème dans la console
+        print('Sous-Barème Name: $sousBaremeName');
+      }
+
+      // Naviguer vers la page de classification
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ClassificationPage(
+            selectedClass: widget.selectedClass,
+            selectedBaremeId: baremeId,
+            selectedSousBaremeId: sousBaremeId, // Passez ce paramètre
+            currentUser: currentUser!,
+            profName: _profName,
+            schoolName: _schoolName,
+            className: classAndMatiereNames['className'] ?? 'غير معروف',
+            matiereName: classAndMatiereNames['matiereName'] ?? 'غير معروف',
+            baremeName: baremeName,
+            sousBaremeName: sousBaremeName, // Passez ce paramètre
+          ),
         ),
-      ),
-    );
-  } catch (e) {
-    print('Erreur lors de la navigation vers la page de classification : $e');
+      );
+    } catch (e) {
+      print('Erreur lors de la navigation vers la page de classification : $e');
+    }
   }
-}
+
   // Charger les données depuis Firestore
   void _loadUserData() async {
     if (currentUser != null) {
@@ -192,6 +198,74 @@ Future<List<Map<String, dynamic>>> _getBaremesValues(
         });
       }
     }
+  }
+
+  void _showEditDialog() {
+    TextEditingController profController =
+        TextEditingController(text: _profName);
+    TextEditingController schoolController =
+        TextEditingController(text: _schoolName);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('تعديل المعلومات', textDirection: TextDirection.rtl),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: profController,
+                decoration: InputDecoration(
+                  labelText: 'اسم الأستاذ',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: schoolController,
+                decoration: InputDecoration(
+                  labelText: 'اسم المدرسة',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('إلغاء', textDirection: TextDirection.rtl),
+            ),
+            TextButton(
+              onPressed: () async {
+                if (currentUser != null) {
+                  // Enregistrer les données dans Firestore
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(currentUser!.uid)
+                      .set(
+                    {
+                      'profName': profController.text,
+                      'schoolName': schoolController.text,
+                    },
+                    SetOptions(merge: true),
+                  );
+
+                  setState(() {
+                    _profName = profController.text;
+                    _schoolName = schoolController.text;
+                  });
+                }
+                Navigator.of(context).pop();
+              },
+              child: Text('حفظ', textDirection: TextDirection.rtl),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // Afficher la boîte de dialogue pour saisir les informations
@@ -381,8 +455,23 @@ Future<List<Map<String, dynamic>>> _getBaremesValues(
           title: Text('الجدول الجامع للنتائج',
               textDirection: TextDirection.rtl,
               style: TextStyle(color: Colors.white)),
-          backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
+          backgroundColor:
+              const Color.fromRGBO(7, 82, 96, 1), // Couleur de fond de l'AppBar
           elevation: 4,
+          iconTheme:
+              IconThemeData(color: Colors.green), // Couleur des icônes en vert
+          actions: [
+            IconButton(
+              icon: CircleAvatar(
+                backgroundColor: Colors.green, // Couleur de fond de l'avatar
+                child: Icon(Icons.person,
+                    color: Colors.white), // Icône à l'intérieur de l'avatar
+              ),
+              onPressed: () {
+                _showEditDialog();
+              },
+            ),
+          ],
         ),
         body: Directionality(
           textDirection: TextDirection.rtl,
@@ -855,97 +944,113 @@ class _StudentsTableState extends State<StudentsTable> {
             ],
           ),
           // Ligne des boutons "تصنيف"
-          DataRow(
-            cells: [
-              DataCell(Container()), // Cellule vide pour la colonne des noms
-              for (var entry in groupedBaremes.entries)
-                for (final bareme in entry.value)
-                  for (final subEntry in [
-                    {
-                      'id': bareme['id'],
-                      'type': 'bareme',
-                      'name': bareme['value']
-                    }, // Ajouter le nom du barème
-                    ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
-                        (s) => {
-                              'id': s['id'],
-                              'type': 'sousBareme',
-                              'name': s['value']
-                            }) // Ajouter le nom du sous-barème
-                  ])
-                    DataCell(
-                      Container(
-                        width: 100,
-                        height: 100,
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  print(
-                                      'Bareme Name: ${bareme['value']}'); // Afficher le nom du barème
-                                  print(
-                                      'Sous-Bareme Name: ${subEntry['type'] == 'sousBareme' ? subEntry['name'] : 'N/A'}'); // Afficher le nom du sous-barème
-                                  _classifyStudentsByBarem(
-                                    bareme['id']!,
-                                    sousBaremeId:
-                                        subEntry['type'] == 'sousBareme'
-                                            ? subEntry['id']
-                                            : null,
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  padding: EdgeInsets.symmetric(
-                                      vertical: 8, horizontal: 12),
-                                ),
-                                child: Text(
-                                  'تصنيف',
-                                  style: TextStyle(
-                                      fontSize: 12, color: Colors.yellow),
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: 5),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  print(
-                                      'Bareme Name: ${bareme['value']}'); // Afficher le nom du barème
-                                  print(
-                                      'Sous-Bareme Name: ${subEntry['type'] == 'sousBareme' ? subEntry['name'] : 'N/A'}'); // Afficher le nom du sous-barème
-                                  widget.navigateToClassificationPage(
-                                    bareme['id']!,
-                                    sousBaremeId:
-                                        subEntry['type'] == 'sousBareme'
-                                            ? subEntry['id']
-                                            : null,
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  padding: EdgeInsets.symmetric(
-                                      vertical: 8, horizontal: 12),
-                                ),
-                                child: Text(
-                                  'تصنيف آخر',
-                                  style: TextStyle(
-                                      fontSize: 12, color: Colors.white),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-            ],
+         // Première DataRow pour le bouton "تصنيف" (Classer)
+DataRow(
+  cells: [
+    DataCell(Container()), // Cellule vide pour la colonne des noms
+    for (var entry in groupedBaremes.entries)
+      for (final bareme in entry.value)
+        for (final subEntry in [
+          {
+            'id': bareme['id'],
+            'type': 'bareme',
+            'name': bareme['value']
+          }, // Ajouter le nom du barème
+          ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
+              (s) => {
+                    'id': s['id'],
+                    'type': 'sousBareme',
+                    'name': s['value']
+                  }) // Ajouter le nom du sous-barème
+        ])
+          DataCell(
+            Container(
+              width: 100,
+              height: 50, // Hauteur réduite pour un seul bouton
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: ElevatedButton(
+                onPressed: () {
+                  print('Bareme Name: ${bareme['value']}'); // Afficher le nom du barème
+                  print(
+                      'Sous-Bareme Name: ${subEntry['type'] == 'sousBareme' ? subEntry['name'] : 'N/A'}'); // Afficher le nom du sous-barème
+                  _classifyStudentsByBarem(
+                    bareme['id']!,
+                    sousBaremeId: subEntry['type'] == 'sousBareme'
+                        ? subEntry['id']
+                        : null,
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                ),
+                child: Text(
+                  'تصنيف',
+                  style: TextStyle(fontSize: 12, color: Colors.yellow),
+                ),
+              ),
+            ),
           ),
+  ],
+),
+
+// Deuxième DataRow pour le bouton "تصنيف آخر" (Autre classement)
+DataRow(
+  cells: [
+    DataCell(Container()), // Cellule vide pour la colonne des noms
+    for (var entry in groupedBaremes.entries)
+      for (final bareme in entry.value)
+        for (final subEntry in [
+          {
+            'id': bareme['id'],
+            'type': 'bareme',
+            'name': bareme['value']
+          }, // Ajouter le nom du barème
+          ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
+              (s) => {
+                    'id': s['id'],
+                    'type': 'sousBareme',
+                    'name': s['value']
+                  }) // Ajouter le nom du sous-barème
+        ])
+          DataCell(
+            Container(
+              width: 100,
+              height: 50, // Hauteur réduite pour un seul bouton
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: ElevatedButton(
+                onPressed: () {
+                  print('Bareme Name: ${bareme['value']}'); // Afficher le nom du barème
+                  print(
+                      'Sous-Bareme Name: ${subEntry['type'] == 'sousBareme' ? subEntry['name'] : 'N/A'}'); // Afficher le nom du sous-barème
+                  widget.navigateToClassificationPage(
+                    bareme['id']!,
+                    sousBaremeId: subEntry['type'] == 'sousBareme'
+                        ? subEntry['id']
+                        : null,
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                ),
+                child: Text(
+                  'خطة العلاج',
+                  style: TextStyle(fontSize: 12, color: Colors.white),
+                ),
+              ),
+            ),
+          ),
+  ],
+),
         ],
       ),
     );
