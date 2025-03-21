@@ -1,9 +1,14 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:html' as html;
 import 'dart:math';
-
+import 'package:http/http.dart' as http;
 import 'package:Taqyem/taqyem/da3m_tableau.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 
 class DynamicTablePage extends StatefulWidget {
   final String selectedClass;
@@ -23,6 +28,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   String _profName = '';
   String _schoolName = '';
   bool _isDialogCompleted = false;
+  String? selectedBaremeId; // ID du barème sélectionné
+  String? baremeName; // Nom du barème sélectionné
+  String? sousBaremeName; // Nom du sous-barème sélectionné
+  String? selectedSousBaremeId; // ID du sous-barème sélectionné
 
   // Variables pour stocker les marques
   Map<String, int> sumCriteriaMaxPerBareme = {};
@@ -175,6 +184,220 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
+////////////////////////////////////
+  Future<void> _generatePDF() async {
+    var data = {
+      'profName': _profName,
+      'matiereName': await _getMatiereName(),
+      'className': await _getClassName(),
+      'schoolName': _schoolName,
+      'baremes': await _getBaremes(), // Récupérer les barèmes
+      'students': await _getStudents(), // Récupérer les élèves et leurs notes
+      'sumCriteriaMaxPerBareme': sumCriteriaMaxPerBareme,
+      'totalStudents': totalStudents,
+      'selectedClass': widget.selectedClass,
+      'selectedBaremeId': selectedBaremeId,
+      'currentUser': currentUser?.uid,
+      'baremeName': baremeName,
+      'sousBaremeName': sousBaremeName,
+      'selectedSousBaremeId': selectedSousBaremeId,
+    };
+    // print('Données envoyées à Flask:');
+    // print(json.encode(
+    //     data)); // Convertir les données en JSON pour une meilleure lisibilité
+    print('Données envoyées à Flask: ${json.encode(data)}');
+
+    // Envoyer les données à Flask pour générer le PDF
+    await _sendDataToFlask(data);
+  }
+
+  Future<void> _sendDataToFlask(Map<String, dynamic> data) async {
+    try {
+      final url = Uri.parse(
+          'https://imprission.onrender.com/generate_pdf'); // Remplacez par l'URL de votre serveur Flask
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(data),
+      );
+
+      if (response.statusCode == 200) {
+        // Convertir la réponse en bytes
+        final bytes = response.bodyBytes;
+
+        // Créer un Blob à partir des bytes
+        final blob = html.Blob([bytes], 'application/pdf');
+
+        // Créer un lien de téléchargement
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', 'tableau_resultats.pdf')
+          ..click();
+
+        // Libérer l'URL de l'objet
+        html.Url.revokeObjectUrl(url);
+      } else {
+        print('Erreur lors de l\'envoi des données: ${response.statusCode}');
+        print('Réponse: ${response.body}');
+      }
+    } catch (e) {
+      print('Erreur lors de l\'envoi des données: $e');
+    }
+  }
+  // Méthode pour récupérer le nom de la matière
+
+  Future<String> _getMatiereName() async {
+    var matiereDoc = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(widget.selectedClass)
+        .collection('matieres')
+        .doc(widget.selectedMatiere)
+        .get();
+
+    return matiereDoc['name'] ?? 'غير معروف';
+  }
+
+  Future<String> _getClassName() async {
+    var classDoc = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(widget.selectedClass)
+        .get();
+
+    return classDoc['name'] ?? 'غير معروف';
+  }
+
+  // Méthode pour récupérer les barèmes
+  Future<List<dynamic>> _getBaremes() async {
+    try {
+      // Récupérer les barèmes depuis Firestore
+      final baremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .get();
+
+      final List<dynamic> baremes = [];
+      for (final baremeDoc in baremesSnapshot.docs) {
+        final baremeId = baremeDoc['baremeId'];
+        final baremeName = baremeDoc['baremeName'] ?? 'غير معروف';
+        final isBaremeSelected = baremeDoc['selected'] ?? false;
+
+        if (isBaremeSelected) {
+          baremes.add({
+            'id': baremeId,
+            'value': baremeName,
+            'type': 'bareme',
+          });
+        }
+
+        // Récupérer les sous-barèmes pour ce barème
+        final sousBaremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('selections')
+            .doc(widget.selectedClass)
+            .collection(widget.selectedMatiere)
+            .doc(baremeId)
+            .collection('sousBaremes')
+            .get();
+
+        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+          final sousBaremeId = sousBaremeDoc.id;
+          final sousBaremeName = sousBaremeDoc['sousBaremeName'] ?? 'غير معروف';
+          final isSousBaremeSelected = sousBaremeDoc['selected'] ?? false;
+
+          if (isSousBaremeSelected) {
+            baremes.add({
+              'id': sousBaremeId,
+              'value': sousBaremeName,
+              'type': 'sousBareme',
+              'parentBaremeId': baremeId,
+            });
+          }
+        }
+      }
+
+      return baremes;
+    } catch (e) {
+      print('Erreur lors de la récupération des barèmes: $e');
+      return [];
+    }
+  }
+
+  // Méthode pour récupérer la liste des élèves
+  Future<List<dynamic>> _getStudents() async {
+    try {
+      final studentsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(widget.selectedClass)
+          .collection('students')
+          .get();
+
+      print('Nombre d\'élèves récupérés: ${studentsSnapshot.docs.length}');
+
+      final List<dynamic> students = [];
+      for (final studentDoc in studentsSnapshot.docs) {
+        final studentId = studentDoc.id;
+        final studentName = studentDoc['name'] ?? 'Élève inconnu';
+        print('Élève: $studentName (ID: $studentId)');
+
+        // Récupérer les notes pour les barèmes et sous-barèmes
+        final baremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('user_classes')
+            .doc(widget.selectedClass)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .get();
+
+        print(
+            'Nombre de barèmes pour l\'élève $studentName: ${baremesSnapshot.docs.length}');
+
+        final Map<String, String> baremes = {};
+        for (final baremeDoc in baremesSnapshot.docs) {
+          final baremeId = baremeDoc.id;
+          final marks = baremeDoc.data()?['Marks'] ??
+              '( - - - )'; // Valeur par défaut si Marks est manquant
+          print('Barème: $baremeId, Marks: $marks');
+          baremes[baremeId] = marks;
+
+          // Récupérer les notes pour les sous-barèmes
+          final sousBaremesSnapshot =
+              await baremeDoc.reference.collection('sous_baremes').get();
+
+          print(
+              'Nombre de sous-barèmes pour le barème $baremeId: ${sousBaremesSnapshot.docs.length}');
+
+          for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+            final sousBaremeId = sousBaremeDoc.id;
+            final sousMarks = sousBaremeDoc.data()?['Marks'] ??
+                '( - - - )'; // Valeur par défaut si Marks est manquant
+            print('Sous-Barème: $sousBaremeId, Marks: $sousMarks');
+            baremes['$baremeId-$sousBaremeId'] = sousMarks;
+          }
+        }
+
+        students.add({
+          'id': studentId,
+          'name': studentName,
+          'baremes': baremes,
+        });
+      }
+
+      return students;
+    } catch (e) {
+      print('Erreur lors de la récupération des élèves: $e');
+      return [];
+    }
+  }
+
+/////////////////////////////////////////////////////////////////////
   // Charger les données depuis Firestore
   void _loadUserData() async {
     if (currentUser != null) {
@@ -470,6 +693,11 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               onPressed: () {
                 _showEditDialog();
               },
+            ),
+            IconButton(
+              icon: Icon(Icons.print), // Icône d'impression
+              onPressed:
+                  _generatePDF, // Appeler la fonction pour générer le PDF
             ),
           ],
         ),
@@ -914,10 +1142,8 @@ class _StudentsTableState extends State<StudentsTable> {
                   ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
                 ])
                   DataCell(Text(
-                    (widget.sumCriteriaMaxPerBareme[entry['id']] ?? 0) == 0
-                        ? 'لم يُقيّم بعد'
-                        : widget.sumCriteriaMaxPerBareme[entry['id']]
-                            .toString(),
+                    widget.sumCriteriaMaxPerBareme[entry['id']]?.toString() ??
+                        '0',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   )),
             ],
@@ -944,113 +1170,118 @@ class _StudentsTableState extends State<StudentsTable> {
             ],
           ),
           // Ligne des boutons "تصنيف"
-         // Première DataRow pour le bouton "تصنيف" (Classer)
-DataRow(
-  cells: [
-    DataCell(Container()), // Cellule vide pour la colonne des noms
-    for (var entry in groupedBaremes.entries)
-      for (final bareme in entry.value)
-        for (final subEntry in [
-          {
-            'id': bareme['id'],
-            'type': 'bareme',
-            'name': bareme['value']
-          }, // Ajouter le nom du barème
-          ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
-              (s) => {
-                    'id': s['id'],
-                    'type': 'sousBareme',
-                    'name': s['value']
-                  }) // Ajouter le nom du sous-barème
-        ])
-          DataCell(
-            Container(
-              width: 100,
-              height: 50, // Hauteur réduite pour un seul bouton
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: ElevatedButton(
-                onPressed: () {
-                  print('Bareme Name: ${bareme['value']}'); // Afficher le nom du barème
-                  print(
-                      'Sous-Bareme Name: ${subEntry['type'] == 'sousBareme' ? subEntry['name'] : 'N/A'}'); // Afficher le nom du sous-barème
-                  _classifyStudentsByBarem(
-                    bareme['id']!,
-                    sousBaremeId: subEntry['type'] == 'sousBareme'
-                        ? subEntry['id']
-                        : null,
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                ),
-                child: Text(
-                  'تصنيف',
-                  style: TextStyle(fontSize: 12, color: Colors.yellow),
-                ),
-              ),
-            ),
+          // Première DataRow pour le bouton "تصنيف" (Classer)
+          DataRow(
+            cells: [
+              DataCell(Container()), // Cellule vide pour la colonne des noms
+              for (var entry in groupedBaremes.entries)
+                for (final bareme in entry.value)
+                  for (final subEntry in [
+                    {
+                      'id': bareme['id'],
+                      'type': 'bareme',
+                      'name': bareme['value']
+                    }, // Ajouter le nom du barème
+                    ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
+                        (s) => {
+                              'id': s['id'],
+                              'type': 'sousBareme',
+                              'name': s['value']
+                            }) // Ajouter le nom du sous-barème
+                  ])
+                    DataCell(
+                      Container(
+                        width: 100,
+                        height: 50, // Hauteur réduite pour un seul bouton
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            print(
+                                'Bareme Name: ${bareme['value']}'); // Afficher le nom du barème
+                            print(
+                                'Sous-Bareme Name: ${subEntry['type'] == 'sousBareme' ? subEntry['name'] : 'N/A'}'); // Afficher le nom du sous-barème
+                            _classifyStudentsByBarem(
+                              bareme['id']!,
+                              sousBaremeId: subEntry['type'] == 'sousBareme'
+                                  ? subEntry['id']
+                                  : null,
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            padding: EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 12),
+                          ),
+                          child: Text(
+                            'تصنيف',
+                            style:
+                                TextStyle(fontSize: 12, color: Colors.yellow),
+                          ),
+                        ),
+                      ),
+                    ),
+            ],
           ),
-  ],
-),
 
 // Deuxième DataRow pour le bouton "تصنيف آخر" (Autre classement)
-DataRow(
-  cells: [
-    DataCell(Container()), // Cellule vide pour la colonne des noms
-    for (var entry in groupedBaremes.entries)
-      for (final bareme in entry.value)
-        for (final subEntry in [
-          {
-            'id': bareme['id'],
-            'type': 'bareme',
-            'name': bareme['value']
-          }, // Ajouter le nom du barème
-          ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
-              (s) => {
-                    'id': s['id'],
-                    'type': 'sousBareme',
-                    'name': s['value']
-                  }) // Ajouter le nom du sous-barème
-        ])
-          DataCell(
-            Container(
-              width: 100,
-              height: 50, // Hauteur réduite pour un seul bouton
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: ElevatedButton(
-                onPressed: () {
-                  print('Bareme Name: ${bareme['value']}'); // Afficher le nom du barème
-                  print(
-                      'Sous-Bareme Name: ${subEntry['type'] == 'sousBareme' ? subEntry['name'] : 'N/A'}'); // Afficher le nom du sous-barème
-                  widget.navigateToClassificationPage(
-                    bareme['id']!,
-                    sousBaremeId: subEntry['type'] == 'sousBareme'
-                        ? subEntry['id']
-                        : null,
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                ),
-                child: Text(
-                  'خطة العلاج',
-                  style: TextStyle(fontSize: 12, color: Colors.white),
-                ),
-              ),
-            ),
+          DataRow(
+            cells: [
+              DataCell(Container()), // Cellule vide pour la colonne des noms
+              for (var entry in groupedBaremes.entries)
+                for (final bareme in entry.value)
+                  for (final subEntry in [
+                    {
+                      'id': bareme['id'],
+                      'type': 'bareme',
+                      'name': bareme['value']
+                    }, // Ajouter le nom du barème
+                    ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
+                        (s) => {
+                              'id': s['id'],
+                              'type': 'sousBareme',
+                              'name': s['value']
+                            }) // Ajouter le nom du sous-barème
+                  ])
+                    DataCell(
+                      Container(
+                        width: 100,
+                        height: 50, // Hauteur réduite pour un seul bouton
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: ElevatedButton(
+                          onPressed: () {
+                            print(
+                                'Bareme Name: ${bareme['value']}'); // Afficher le nom du barème
+                            print(
+                                'Sous-Bareme Name: ${subEntry['type'] == 'sousBareme' ? subEntry['name'] : 'N/A'}'); // Afficher le nom du sous-barème
+                            widget.navigateToClassificationPage(
+                              bareme['id']!,
+                              sousBaremeId: subEntry['type'] == 'sousBareme'
+                                  ? subEntry['id']
+                                  : null,
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            padding: EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 12),
+                          ),
+                          child: Text(
+                            'خطة العلاج',
+                            style: TextStyle(fontSize: 12, color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ),
+            ],
           ),
-  ],
-),
         ],
       ),
     );
@@ -1195,11 +1426,7 @@ DataRow(
   //     const SnackBar(content: Text('تم حفظ التغييرات بنجاح')),
   //   );
   // }
-
-  Future<String> _getSelectedValue(
-    String studentId,
-    String baremeKey,
-  ) async {
+  Future<String> _getSelectedValue(String studentId, String baremeKey) async {
     try {
       debugPrint(
           'Début de _getSelectedValue pour l\'étudiant $studentId et le barème $baremeKey');
@@ -1219,7 +1446,7 @@ DataRow(
       final parentDoc = await docRef.get();
       if (!parentDoc.exists) {
         debugPrint('Le document pour le barème $baremeKey n\'existe pas');
-        return _dropdownValues[0];
+        return _dropdownValues[0]; // Valeur par défaut
       }
 
       // Vérifier si le barème principal a des sous-barèmes
@@ -1230,7 +1457,7 @@ DataRow(
       // Si le barème a des sous-barèmes, chercher dans la collection "sous_baremes"
       if (haveSoubarem) {
         final sousBaremesSnapshot =
-            await docRef.collection('sous_baremes').limit(1).get();
+            await docRef.collection('sous_baremes').get();
         if (sousBaremesSnapshot.docs.isNotEmpty) {
           // Prendre le premier sous-barème (ou celui que vous voulez)
           final sousBaremeDocRef = sousBaremesSnapshot.docs.first;
@@ -1250,7 +1477,7 @@ DataRow(
       return marks;
     } catch (e) {
       debugPrint("Erreur: $e");
-      return _dropdownValues[0];
+      return _dropdownValues[0]; // Valeur par défaut en cas d'erreur
     }
   }
 

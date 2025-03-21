@@ -266,7 +266,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           .collection('user_classes')
           .doc(classId);
 
-      // Supprimer la sous-collection "students"
+      // Supprimer la sous-collection "students" (au cas où il reste des élèves)
       final studentsSnapshot = await classDocRef.collection('students').get();
       for (var studentDoc in studentsSnapshot.docs) {
         await studentDoc.reference.delete();
@@ -297,27 +297,75 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   }
 
   Future<void> _confirmDeleteClass(String classId) async {
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Confirmer la suppression'),
-        content: Text(
-            'Êtes-vous sûr de vouloir supprimer cette classe et toutes ses données associées (élèves et matières) ?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _deleteClass(classId);
-            },
-            child: Text('Supprimer'),
-          ),
-        ],
-      ),
-    );
+    final classData =
+        _classes.firstWhere((classData) => classData['id'] == classId);
+
+    // Vérifier s'il y a des élèves dans la classe
+    if (classData['students'].isNotEmpty) {
+      // Afficher une boîte de dialogue pour confirmer la suppression des élèves
+      return showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Supprimer tous les élèves'),
+          content: Text(
+              'Cette classe contient des élèves. Voulez-vous d\'abord supprimer tous les élèves avant de supprimer la classe ?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Annuler'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(context); // Fermer la boîte de dialogue
+                await _deleteAllStudents(
+                    classData); // Supprimer tous les élèves
+                await _deleteClass(
+                    classId); // Supprimer la classe après la suppression des élèves
+              },
+              child:
+                  Text('Supprimer tout', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Si la classe est vide, supprimer directement
+      await _deleteClass(classId);
+    }
+  }
+
+  Future<void> _deleteAllStudents(Map<String, dynamic> classData) async {
+    try {
+      final classDocRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(classData['id']);
+
+      // Supprimer tous les élèves de la sous-collection "students"
+      final studentsSnapshot = await classDocRef.collection('students').get();
+      for (var studentDoc in studentsSnapshot.docs) {
+        await studentDoc.reference.delete();
+      }
+
+      // Mettre à jour la liste des élèves dans le document de la classe
+      await classDocRef.update({
+        'students': [],
+      });
+
+      // Mettre à jour l'état local
+      setState(() {
+        classData['students'].clear();
+      });
+
+      // Afficher un message de succès
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Tous les élèves ont été supprimés')));
+    } catch (e) {
+      print("Erreur lors de la suppression des élèves : $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de la suppression des élèves')));
+    }
   }
 
   Future<void> _deleteStudent(
@@ -599,53 +647,51 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       // Référence au document du barème principal
       var baremeRef = baremesCollectionRef.doc(baremeId);
 
-      // Vérifier si le barème principal existe
-      final baremeDoc = await baremeRef.get();
-
-      // Si le document n'existe pas, le créer avec les champs de base
-      if (!baremeDoc.exists) {
-        await baremeRef.set({
-          'createdAt': FieldValue.serverTimestamp(),
-          'haveSoubarem':
-              sousBaremeId != null, // Indique si des sous-barèmes existent
-        });
-        print("Document parent créé pour le barème $baremeId");
-      }
-
-      // Sauvegarder la valeur dans le barème principal ou le sous-barème
+      // Supprimer les anciennes évaluations
       if (sousBaremeId != null) {
-        // Créer ou mettre à jour le sous-barème directement dans la collection baremes
+        // Supprimer le sous-barème dans la collection baremes
         var sousBaremeDirectRef = baremesCollectionRef.doc(sousBaremeId);
-        if (newValue != null) {
-          await sousBaremeDirectRef
-              .set({'Marks': newValue}, SetOptions(merge: true));
-        } else {
-          await sousBaremeDirectRef.update({'Marks': FieldValue.delete()});
-        }
+        await sousBaremeDirectRef.delete();
 
-        // Créer ou mettre à jour le sous-barème dans la collection sous_baremes du barème principal
+        // Supprimer le sous-barème dans la collection sous_baremes du barème principal
         var sousBaremeNestedRef =
             baremeRef.collection('sous_baremes').doc(sousBaremeId);
-        if (newValue != null) {
-          await sousBaremeNestedRef
-              .set({'Marks': newValue}, SetOptions(merge: true));
-        } else {
-          await sousBaremeNestedRef.update({'Marks': FieldValue.delete()});
-        }
-
-        // Mettre à jour haveSoubarem dans le barème principal
-        await baremeRef.update({'haveSoubarem': true});
-
-        print('Sauvegarde réussie pour le sous-barème $sousBaremeId');
+        await sousBaremeNestedRef.delete();
       } else {
-        // Sauvegarder dans le barème principal
-        if (newValue != null) {
-          await baremeRef.set({'Marks': newValue}, SetOptions(merge: true));
-        } else {
-          await baremeRef.update({'Marks': FieldValue.delete()});
-        }
-        print('Sauvegarde réussie pour le barème $baremeId');
+        // Supprimer le barème principal
+        await baremeRef.delete();
       }
+
+      // Enregistrer la nouvelle évaluation
+      if (newValue != null) {
+        if (sousBaremeId != null) {
+          // Enregistrer le sous-barème dans la collection baremes
+          await baremesCollectionRef.doc(sousBaremeId).set({
+            'Marks': newValue,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+          // Enregistrer le sous-barème dans la collection sous_baremes du barème principal
+          await baremeRef.collection('sous_baremes').doc(sousBaremeId).set({
+            'Marks': newValue,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+
+          // Mettre à jour haveSoubarem dans le barème principal
+          await baremeRef.set({
+            'haveSoubarem': true,
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        } else {
+          // Enregistrer le barème principal
+          await baremeRef.set({
+            'Marks': newValue,
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+      }
+
+      print('Sauvegarde réussie pour le barème $baremeId');
     } catch (e) {
       print('Erreur lors de la sauvegarde: $e');
       ScaffoldMessenger.of(context).showSnackBar(

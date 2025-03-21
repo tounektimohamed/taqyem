@@ -73,54 +73,84 @@ class _AddClassPageState extends State<AddClassPage> {
         ..sort((a, b) => a['name']!.compareTo(b['name']!)); // Tri alphabétique
     });
   }
+  
 
   Future<void> _saveClassData(String? newClassName) async {
-    User? currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) {
-      if (_selectedClassName != null && _selectedSubjects.isNotEmpty) {
-        try {
-          var userClassesRef = FirebaseFirestore.instance
-              .collection('users')
-              .doc(currentUser.uid)
-              .collection('user_classes')
-              .doc(_selectedClassName);
-          await userClassesRef.set({
-            'class_id': _selectedClassName,
-            'class_name': newClassName ?? _selectedClassNameDisplay,
-            'subjects': _selectedSubjects.map((subjectId) {
-              var subject = _subjects.firstWhere((s) => s['id'] == subjectId,
-                  orElse: () => {'name': 'Inconnu'});
-              return {
-                'id': subjectId,
-                'name': subject['name'],
-              };
-            }).toList(),
-            'students': _students.map((student) => student['name']).toList(),
-            'timestamp': FieldValue.serverTimestamp(),
-          });
+  User? currentUser = FirebaseAuth.instance.currentUser;
+  if (currentUser != null) {
+    if (_selectedClassName != null && _selectedSubjects.isNotEmpty) {
+      try {
+        // Vérifier si la classe existe déjà dans la collection user_classes de l'utilisateur
+        final existingClass = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .collection('user_classes')
+            .where('class_id', isEqualTo: _selectedClassName)
+            .get();
 
-          setState(() {
-            _students.clear();
-            _selectedSubjects.clear();
-            _selectedClassName = null;
-          });
-
+        if (existingClass.docs.isNotEmpty) {
+          // Afficher un message d'erreur si la classe existe déjà
           ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Classe enregistrée avec succès!')));
-        } catch (e) {
-          print("Erreur lors de l'enregistrement : $e");
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Erreur lors de l\'enregistrement: $e')));
+            SnackBar(
+              content: Text('هذا القسم مسجل مسبقًا!'), // Texte en arabe
+              backgroundColor: Colors.red,
+            ),
+          );
+          return; // Arrêter l'exécution de la méthode
         }
-      } else {
+
+        // Enregistrer la classe si elle n'existe pas déjà
+        var userClassesRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .collection('user_classes')
+            .doc(_selectedClassName);
+        await userClassesRef.set({
+          'class_id': _selectedClassName,
+          'class_name': newClassName ?? _selectedClassNameDisplay,
+          'subjects': _selectedSubjects.map((subjectId) {
+            var subject = _subjects.firstWhere(
+              (s) => s['id'] == subjectId,
+              orElse: () => {'name': 'غير معروف'}, // Texte en arabe
+            );
+            return {
+              'id': subjectId,
+              'name': subject['name'],
+            };
+          }).toList(),
+          'students': _students.map((student) => student['name']).toList(),
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+
+        setState(() {
+          _students.clear();
+          _selectedSubjects.clear();
+          _selectedClassName = null;
+        });
+
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Veuillez compléter tous les champs.')));
+          SnackBar(content: Text('تم حفظ القسم بنجاح!')), // Texte en arabe
+        );
+
+        // Quitter la page après l'enregistrement
+        Navigator.pop(context);
+      } catch (e) {
+        print("Erreur lors de l'enregistrement : $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('حدث خطأ أثناء الحفظ: $e')), // Texte en arabe
+        );
       }
     } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Utilisateur non connecté')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('يرجى ملء جميع الحقول.')), // Texte en arabe
+      );
     }
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('المستخدم غير متصل')), // Texte en arabe
+    );
   }
+}
 
   // void _showRenameDialog() {
   //   showDialog(
@@ -237,154 +267,185 @@ class _AddClassPageState extends State<AddClassPage> {
           content: Text('Erreur lors de la récupération des matières')));
     }
   }
-@override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: Text('إدارة المواد', style: TextStyle(color: Colors.white)),
-      backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
-      elevation: 4,
-    ),
-    body: SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '1. اختر القسم', // Texte en arabe
-            style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.blueGrey),
-          ),
-          SizedBox(height: 10),
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      labelText: 'بحث', // Texte en arabe
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      suffixIcon: Icon(Icons.search),
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    value: _selectedClassName,
-                    items: _filteredClassNames.asMap().entries.map((entry) {
-                      int index = entry.key;
-                      Map<String, String> classData = entry.value;
-                      Color color = groupColors[(index ~/ 5) % groupColors.length];
-                      return DropdownMenuItem<String>(
-                        value: classData['id'],
-                        child: Container(
-                          padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: color.withOpacity(0.3)),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.school, color: color), // Icône pour la classe
-                              SizedBox(width: 10),
-                              Text(
-                                classData['name'] ?? 'اسم غير معروف', // Texte en arabe
-                                style: TextStyle(
-                                  color: color,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (value) async {
-                      setState(() {
-                        _selectedClassName = value;
-                        _selectedClassNameDisplay = _classNames.firstWhere(
-                          (classData) => classData['id'] == value,
-                          orElse: () => {'name': 'اسم غير معروف'}, // Texte en arabe
-                        )['name'];
-                      });
-                      if (value != null) {
-                        await _loadSubjects(value);
-                      }
-                    },
-                    decoration: InputDecoration(
-                      labelText: 'اختر القسم', // Texte en arabe
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    isExpanded: true,
-                    icon: Icon(Icons.arrow_drop_down, color: Colors.blue), // Icône personnalisée
-                    dropdownColor: Colors.white, // Couleur de fond du dropdown
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 20),
-          // Afficher le nom de la classe sélectionnée avec la couleur correspondante
-          if (_selectedClassNameDisplay != null)
-            Container(
-              padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-              decoration: BoxDecoration(
-                color: groupColors[(_filteredClassNames.indexWhere((classData) => classData['id'] == _selectedClassName) ~/ 5) % groupColors.length].withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: groupColors[(_filteredClassNames.indexWhere((classData) => classData['id'] == _selectedClassName) ~/ 5) % groupColors.length].withOpacity(0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.school, color: groupColors[(_filteredClassNames.indexWhere((classData) => classData['id'] == _selectedClassName) ~/ 5) % groupColors.length]),
-                  SizedBox(width: 10),
-                  Text(
-                    _selectedClassNameDisplay!,
-                    style: TextStyle(
-                      color: groupColors[(_filteredClassNames.indexWhere((classData) => classData['id'] == _selectedClassName) ~/ 5) % groupColors.length],
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          SizedBox(height: 20),
-          _buildSubjectCheckboxes(),
-          SizedBox(height: 20),
-          Center(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: Colors.blueAccent, // Couleur du texte
-                padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: (_selectedClassName != null && _selectedSubjects.isNotEmpty)
-                  ? () async {
-                      await _saveClassData(_selectedClassNameDisplay);
-                    }
-                  : null,
-              child: Text(
-                'تأكيد الإضافة', // Texte en arabe
-                style: TextStyle(fontSize: 16),
-              ),
-            ),
-          ),
-        ],
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('إدارة المواد', style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
+        elevation: 4,
       ),
-    ),
-  );
-}
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '1. اختر القسم', // Texte en arabe
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blueGrey),
+            ),
+            SizedBox(height: 10),
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        labelText: 'بحث', // Texte en arabe
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        suffixIcon: Icon(Icons.search),
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      value: _selectedClassName,
+                      items: _filteredClassNames.asMap().entries.map((entry) {
+                        int index = entry.key;
+                        Map<String, String> classData = entry.value;
+                        Color color =
+                            groupColors[(index ~/ 5) % groupColors.length];
+                        return DropdownMenuItem<String>(
+                          value: classData['id'],
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                                vertical: 8, horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: color.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.school,
+                                    color: color), // Icône pour la classe
+                                SizedBox(width: 10),
+                                Text(
+                                  classData['name'] ??
+                                      'اسم غير معروف', // Texte en arabe
+                                  style: TextStyle(
+                                    color: color,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) async {
+                        setState(() {
+                          _selectedClassName = value;
+                          _selectedClassNameDisplay = _classNames.firstWhere(
+                            (classData) => classData['id'] == value,
+                            orElse: () =>
+                                {'name': 'اسم غير معروف'}, // Texte en arabe
+                          )['name'];
+                        });
+                        if (value != null) {
+                          await _loadSubjects(value);
+                        }
+                      },
+                      decoration: InputDecoration(
+                        labelText: 'اختر القسم', // Texte en arabe
+                        border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      isExpanded: true,
+                      icon: Icon(Icons.arrow_drop_down,
+                          color: Colors.blue), // Icône personnalisée
+                      dropdownColor:
+                          Colors.white, // Couleur de fond du dropdown
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 20),
+            // Afficher le nom de la classe sélectionnée avec la couleur correspondante
+            if (_selectedClassNameDisplay != null)
+              Container(
+                padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                decoration: BoxDecoration(
+                  color: groupColors[(_filteredClassNames.indexWhere(
+                                  (classData) =>
+                                      classData['id'] == _selectedClassName) ~/
+                              5) %
+                          groupColors.length]
+                      .withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: groupColors[(_filteredClassNames.indexWhere(
+                                    (classData) =>
+                                        classData['id'] ==
+                                        _selectedClassName) ~/
+                                5) %
+                            groupColors.length]
+                        .withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.school,
+                        color: groupColors[(_filteredClassNames.indexWhere(
+                                    (classData) =>
+                                        classData['id'] ==
+                                        _selectedClassName) ~/
+                                5) %
+                            groupColors.length]),
+                    SizedBox(width: 10),
+                    Text(
+                      _selectedClassNameDisplay!,
+                      style: TextStyle(
+                        color: groupColors[(_filteredClassNames.indexWhere(
+                                    (classData) =>
+                                        classData['id'] ==
+                                        _selectedClassName) ~/
+                                5) %
+                            groupColors.length],
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            SizedBox(height: 20),
+            _buildSubjectCheckboxes(),
+            SizedBox(height: 20),
+            Center(
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.blueAccent,
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed:
+                    (_selectedClassName != null && _selectedSubjects.isNotEmpty)
+                        ? () async {
+                            await _saveClassData(_selectedClassNameDisplay);
+                          }
+                        : null,
+                child: Text(
+                  'تأكيد الإضافة', // Texte en arabe
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
