@@ -6,6 +6,8 @@ import 'package:Taqyem/screens2/users/User%20Management.dart';
 import 'package:Taqyem/taqyem/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
 import 'package:Taqyem/taqyem/EditPage.dart';
+import 'package:Taqyem/taqyem/adminpyment.dart';
+import 'package:Taqyem/taqyem/demande.dart';
 import 'package:Taqyem/taqyem/ereur_solution.dart';
 import 'package:Taqyem/taqyem/listedeselection.dart';
 import 'package:Taqyem/taqyem/pdf/ManagePDFPage.dart';
@@ -257,6 +259,32 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => AddClassPage(),
+                  ),
+                );
+              },
+            ),
+             _buildDrawerItem(
+              context,
+              Icons.add,
+              'payment page ',
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PaymentManagementPage(),
+                  ),
+                );
+              },
+            ),
+             _buildDrawerItem(
+              context,
+              Icons.add,
+              'payment demand ',
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DemandManagementPage(),
                   ),
                 );
               },

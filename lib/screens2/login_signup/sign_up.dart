@@ -52,9 +52,7 @@ class _SignUpState extends State<SignUp> {
   bool isEmail(String input) => RegExp(
           r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
       .hasMatch(input);
-  bool isPassword(String input) =>
-      RegExp(r'^.{8,}$')
-          .hasMatch(input);
+  bool isPassword(String input) => RegExp(r'^.{8,}$').hasMatch(input);
 
   @override
   void initState() {
@@ -75,99 +73,103 @@ class _SignUpState extends State<SignUp> {
       return false;
     }
   }
-Future signUp() async {
-  if (_nameController.text.isEmpty) {
-    focusNode_name.requestFocus();
-  } else if (_emailController.text.isEmpty) {
-    focusNode_email.requestFocus();
-  } else if (_passwordController.text.isEmpty) {
-    focusNode_pwd.requestFocus();
-  } else if (_confirmpasswordController.text.isEmpty) {
-    focusNode_pwdConfirm.requestFocus();
-  } else {
-    // Validate input fields
-    if (!isName(_nameController.text)) {
-      setState(() {
-        _isName = true;
-      });
-      return;
+
+  Future signUp() async {
+    if (_nameController.text.isEmpty) {
+      focusNode_name.requestFocus();
+    } else if (_emailController.text.isEmpty) {
+      focusNode_email.requestFocus();
+    } else if (_passwordController.text.isEmpty) {
+      focusNode_pwd.requestFocus();
+    } else if (_confirmpasswordController.text.isEmpty) {
+      focusNode_pwdConfirm.requestFocus();
     } else {
-      setState(() {
-        _isName = false;
-      });
-    }
-    if (!isEmail(_emailController.text)) {
-      setState(() {
-        _isEmail = true;
-      });
-      return;
-    } else {
-      setState(() {
-        _isEmail = false;
-      });
-    }
-    if (!isPassword(_passwordController.text)) {
-      setState(() {
-        _isPwd = true;
-      });
-      return;
-    } else {
-      setState(() {
-        _isPwd = false;
-      });
-    }
+      // Validate input fields
+      if (!isName(_nameController.text)) {
+        setState(() {
+          _isName = true;
+        });
+        return;
+      } else {
+        setState(() {
+          _isName = false;
+        });
+      }
+      if (!isEmail(_emailController.text)) {
+        setState(() {
+          _isEmail = true;
+        });
+        return;
+      } else {
+        setState(() {
+          _isEmail = false;
+        });
+      }
+      if (!isPassword(_passwordController.text)) {
+        setState(() {
+          _isPwd = true;
+        });
+        return;
+      } else {
+        setState(() {
+          _isPwd = false;
+        });
+      }
 
-    // Check if passwords match
-    if (!isPasswordConfirmed()) {
-      setState(() {
-        _isPwdConfirm = true;
-      });
-      return;
-    } else {
-      setState(() {
-        _isPwdConfirm = false;
-      });
-    }
+      // Check if passwords match
+      if (!isPasswordConfirmed()) {
+        setState(() {
+          _isPwdConfirm = true;
+        });
+        return;
+      } else {
+        setState(() {
+          _isPwdConfirm = false;
+        });
+      }
 
-    try {
-      // Create user in Firebase Authentication
-      UserCredential userCredential =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+      try {
+        // Create user in Firebase Authentication
+        UserCredential userCredential =
+            await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: _emailController.text.trim(),
+          password: _passwordController.text.trim(),
+        );
 
-      // Add user data to Firestore
-      await FirebaseFirestore.instance.collection('Users').doc(userCredential.user!.uid).set(
-        {
-          'name': _nameController.text.trim(),
-          'dob': null,
-          'gender': null,
-          'nic': null,
-          'address': null,
-          'mobile': null,
-          'isAgent': false, // Ajout du champ isAgent avec valeur par défaut false
-        },
-      );
+        // Add user data to Firestore
+        await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(userCredential.user!.uid)
+            .set(
+          {
+            'name': _nameController.text.trim(),
+            'dob': null,
+            'gender': null,
+            'nic': null,
+            'address': null,
+            'mobile': null,
+            'isAgent': false, // Champ existant
+            'isActive': false, // Nouveau champ avec valeur par défaut false
+          },
+        );
 
-      setState(() {
-        _isError = false;
-        _isSuccess = true;
-        isLoading = false;
-      });
+        setState(() {
+          _isError = false;
+          _isSuccess = true;
+          isLoading = false;
+        });
 
-      // Handle success UI or navigation here
-    } on FirebaseAuthException catch (e) {
-      setState(() {
-        _isError = true;
-        _isSuccess = false;
-        isLoading = false;
-        errorMsg = getErrorMessage(e.code);
-      });
+        // Handle success UI or navigation here
+      } on FirebaseAuthException catch (e) {
+        setState(() {
+          _isError = true;
+          _isSuccess = false;
+          isLoading = false;
+          errorMsg = getErrorMessage(e.code);
+        });
+      }
     }
   }
-}
-
 
   @override
   void dispose() {
@@ -533,6 +535,9 @@ Future signUp() async {
                               'nic': null,
                               'address': null,
                               'mobile': null,
+                              'isAgent': false, // Champ existant
+                              'isActive':
+                                  false, // Nouveau champ avec valeur par défaut false
                             },
                           );
                           setState(() {
@@ -582,8 +587,8 @@ Future signUp() async {
                           ),
                         ),
                         ElevatedButton(
-                      //
-                       onPressed: () {
+                          //
+                          onPressed: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(

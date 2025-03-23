@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:html' as html;
 import 'dart:math';
+import 'package:Taqyem/taqyem/PaymentPage.dart';
 import 'package:http/http.dart' as http;
 import 'package:Taqyem/taqyem/da3m_tableau.dart';
 import 'package:flutter/material.dart';
@@ -186,13 +187,22 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
 ////////////////////////////////////
   Future<void> _generatePDF() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Utilisateur non connecté.')),
+      );
+      return;
+    }
+
+    // Récupérer les informations nécessaires pour générer le PDF
     var data = {
       'profName': _profName,
       'matiereName': await _getMatiereName(),
       'className': await _getClassName(),
       'schoolName': _schoolName,
-      'baremes': await _getBaremes(), // Récupérer les barèmes
-      'students': await _getStudents(), // Récupérer les élèves et leurs notes
+      'baremes': await _getBaremes(),
+      'students': await _getStudents(),
       'sumCriteriaMaxPerBareme': sumCriteriaMaxPerBareme,
       'totalStudents': totalStudents,
       'selectedClass': widget.selectedClass,
@@ -202,12 +212,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       'sousBaremeName': sousBaremeName,
       'selectedSousBaremeId': selectedSousBaremeId,
     };
-    // print('Données envoyées à Flask:');
-    // print(json.encode(
-    //     data)); // Convertir les données en JSON pour une meilleure lisibilité
-    print('Données envoyées à Flask: ${json.encode(data)}');
 
-    // Envoyer les données à Flask pour générer le PDF
+    print('Données envoyées à Flask: ${json.encode(data)}');
     await _sendDataToFlask(data);
   }
 
@@ -678,26 +684,79 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           title: Text('الجدول الجامع للنتائج',
               textDirection: TextDirection.rtl,
               style: TextStyle(color: Colors.white)),
-          backgroundColor:
-              const Color.fromRGBO(7, 82, 96, 1), // Couleur de fond de l'AppBar
+          backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
           elevation: 4,
-          iconTheme:
-              IconThemeData(color: Colors.green), // Couleur des icônes en vert
+          iconTheme: IconThemeData(color: Colors.green),
           actions: [
+            // Indicateur de compte activé ou non
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('Users')
+                  .doc(currentUser?.uid)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Icon(Icons.circle, color: Colors.grey); // En attente
+                }
+                if (snapshot.hasError) {
+                  return Icon(Icons.error, color: Colors.red); // Erreur
+                }
+                final isActive = snapshot.data?['isActive'] ?? false;
+                return Icon(
+                  Icons.circle,
+                  color: isActive
+                      ? Colors.green
+                      : Colors.red, // Vert si activé, rouge sinon
+                );
+              },
+            ),
+            SizedBox(width: 8), // Espacement
             IconButton(
               icon: CircleAvatar(
-                backgroundColor: Colors.green, // Couleur de fond de l'avatar
-                child: Icon(Icons.person,
-                    color: Colors.white), // Icône à l'intérieur de l'avatar
+                backgroundColor: Colors.green,
+                child: Icon(Icons.person, color: Colors.white),
               ),
               onPressed: () {
                 _showEditDialog();
               },
             ),
             IconButton(
-              icon: Icon(Icons.print), // Icône d'impression
-              onPressed:
-                  _generatePDF, // Appeler la fonction pour générer le PDF
+              icon: Icon(Icons.print),
+              onPressed: () async {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Utilisateur non connecté.')),
+                  );
+                  return;
+                }
+
+                // Récupérer les informations de l'utilisateur
+                final userDoc = await FirebaseFirestore.instance
+                    .collection('Users')
+                    .doc(user.uid)
+                    .get();
+
+                final isActive = userDoc['isActive'] ?? false;
+
+                // Vérifier si le compte est activé
+                if (isActive) {
+                  // Si le compte est activé, générer le PDF
+                  await _generatePDF();
+                } else {
+                  // Si le compte n'est pas activé, rediriger vers la page de paiement
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text(
+                            'Votre compte n\'est pas activé. Veuillez effectuer un paiement pour activer votre compte.')),
+                  );
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => PaymentPage()),
+                  );
+                }
+              },
             ),
           ],
         ),
