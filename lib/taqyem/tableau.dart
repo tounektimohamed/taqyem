@@ -1,8 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:html' as html;
 import 'dart:math';
-import 'package:Taqyem/taqyem/PaymentPage.dart';
+import 'package:Taqyem/taqyem/payment/PaymentPage.dart';
 import 'package:http/http.dart' as http;
 import 'package:Taqyem/taqyem/da3m_tableau.dart';
 import 'package:flutter/material.dart';
@@ -29,20 +30,70 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   String _profName = '';
   String _schoolName = '';
   bool _isDialogCompleted = false;
-  String? selectedBaremeId; // ID du barème sélectionné
-  String? baremeName; // Nom du barème sélectionné
-  String? sousBaremeName; // Nom du sous-barème sélectionné
-  String? selectedSousBaremeId; // ID du sous-barème sélectionné
-
-  // Variables pour stocker les marques
+  String? selectedBaremeId;
+  String? baremeName;
+  String? sousBaremeName;
+  String? selectedSousBaremeId;
+  int _remainingPrints = 5; // Crédit initial de 5 impressions
   Map<String, int> sumCriteriaMaxPerBareme = {};
   int totalStudents = 0;
+  Duration _remainingTime = Duration.zero;
+  bool _isAccountActive = false;
 
   @override
   void initState() {
     super.initState();
-    _loadUserData(); // Charger les données depuis Firestore
-    fetchMarks(); // Récupérer les marques au chargement de la page
+    _loadUserData();
+    fetchMarks();
+    _startTimer();
+    _checkPrintCredit();
+  }
+// Ajoutez cette méthode pour vérifier le crédit d'impression
+
+  Future<void> _checkPrintCredit() async {
+    if (currentUser == null) return;
+
+    final userDoc = await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUser!.uid)
+        .get();
+
+    if (userDoc.exists) {
+      setState(() {
+        _remainingPrints = userDoc['remainingPrints'] ?? 5;
+      });
+    }
+  }
+
+  void _startTimer() {
+    // Vérifier l'état du compte toutes les minutes
+    const oneMinute = Duration(minutes: 1);
+    Timer.periodic(oneMinute, (timer) {
+      _checkAccountStatus();
+    });
+    // Vérifier immédiatement
+    _checkAccountStatus();
+  }
+
+  Future<void> _checkAccountStatus() async {
+    if (currentUser == null) return;
+
+    final userDoc = await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUser!.uid)
+        .get();
+
+    if (userDoc.exists) {
+      final isActive = userDoc['isActive'] ?? false;
+      final expirationDate = userDoc['accountExpiration']?.toDate();
+
+      setState(() {
+        _isAccountActive = isActive;
+        if (expirationDate != null) {
+          _remainingTime = expirationDate.difference(DateTime.now());
+        }
+      });
+    }
   }
 
   Future<List<Map<String, dynamic>>> _getBaremesValues(
@@ -186,6 +237,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   }
 
 ////////////////////////////////////
+
   Future<void> _generatePDF() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -195,7 +247,39 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       return;
     }
 
-    // Récupérer les informations nécessaires pour générer le PDF
+    // Vérifier si on a encore des crédits ou si le compte est actif
+    if (_remainingPrints <= 0 && !_isAccountActive) {
+      // Cas: Compte inactif ET crédits épuisés
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Votre compte n\'est pas activé et vous n\'avez plus de crédits. Veuillez effectuer un paiement.'),
+        ),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => PaymentPage()),
+      );
+      return;
+    }
+
+    // Cas où on peut générer le PDF:
+    // - Soit compte actif (peu importe les crédits)
+    // - Soit compte inactif mais crédits > 0
+
+    // Décrémenter le crédit seulement si compte inactif
+    if (!_isAccountActive && _remainingPrints > 0) {
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .update({'remainingPrints': FieldValue.increment(-1)});
+
+      setState(() {
+        _remainingPrints--;
+      });
+    }
+
+    // Préparer les données pour le PDF
     var data = {
       'profName': _profName,
       'matiereName': await _getMatiereName(),
@@ -218,38 +302,49 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   }
 
   Future<void> _sendDataToFlask(Map<String, dynamic> data) async {
-    try {
-      final url = Uri.parse(
-          'https://imprission.onrender.com/generate_pdf'); // Remplacez par l'URL de votre serveur Flask
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(data),
+  try {
+    final url = Uri.parse('https://imprission.onrender.com/generate_pdf');
+    print('Envoi des données à: $url');
+    
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: json.encode(data),
+    ).timeout(const Duration(seconds: 30));
+
+    if (response.statusCode == 200) {
+      final bytes = response.bodyBytes;
+      final blob = html.Blob([bytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', 'tableau_resultats.pdf')
+        ..click();
+      html.Url.revokeObjectUrl(url);
+    } else {
+      print('Erreur HTTP: ${response.statusCode}');
+      print('Réponse: ${response.body}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de la génération du PDF')),
       );
-
-      if (response.statusCode == 200) {
-        // Convertir la réponse en bytes
-        final bytes = response.bodyBytes;
-
-        // Créer un Blob à partir des bytes
-        final blob = html.Blob([bytes], 'application/pdf');
-
-        // Créer un lien de téléchargement
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: url)
-          ..setAttribute('download', 'tableau_resultats.pdf')
-          ..click();
-
-        // Libérer l'URL de l'objet
-        html.Url.revokeObjectUrl(url);
-      } else {
-        print('Erreur lors de l\'envoi des données: ${response.statusCode}');
-        print('Réponse: ${response.body}');
-      }
-    } catch (e) {
-      print('Erreur lors de l\'envoi des données: $e');
     }
+  } on TimeoutException {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Timeout - Le serveur a mis trop de temps à répondre')),
+    );
+  } on SocketException {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Erreur de connexion - Vérifiez votre internet')),
+    );
+  } catch (e) {
+    print('Erreur inattendue: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Erreur technique: ${e.toString()}')),
+    );
   }
+}
   // Méthode pour récupérer le nom de la matière
 
   Future<String> _getMatiereName() async {
@@ -417,10 +512,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           _profName = userDoc['profName'] ?? '';
           _schoolName = userDoc['schoolName'] ?? '';
           _isDialogCompleted = _profName.isNotEmpty && _schoolName.isNotEmpty;
+          _remainingPrints = userDoc['remainingPrints'] ?? 5;
         });
       }
 
-      // Afficher la boîte de dialogue uniquement si les données ne sont pas déjà enregistrées
       if (!_isDialogCompleted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _showInputDialog();
@@ -537,7 +632,6 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             TextButton(
               onPressed: () async {
                 if (currentUser != null) {
-                  // Enregistrer les données dans Firestore
                   await FirebaseFirestore.instance
                       .collection('users')
                       .doc(currentUser!.uid)
@@ -545,6 +639,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                     {
                       'profName': profController.text,
                       'schoolName': schoolController.text,
+                      'remainingPrints':
+                          5, // Initialiser le crédit d'impression
                     },
                     SetOptions(merge: true),
                   );
@@ -658,6 +754,121 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
+  Widget _buildPrintCreditWidget() {
+    return Tooltip(
+      message: 'Crédit d\'impression restant',
+      child: Container(
+        margin: EdgeInsets.symmetric(horizontal: 4),
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+        decoration: BoxDecoration(
+          color:
+              _remainingPrints > 0 ? Colors.blue.shade700 : Colors.red.shade700,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Colors.white.withOpacity(0.5), width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.print, size: 18, color: Colors.white),
+            SizedBox(width: 6),
+            Text(
+              '$_remainingPrints/5',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccountTimeRemaining() {
+    return Tooltip(
+      message: 'Temps restant avant expiration',
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.teal.shade700,
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Text(
+          '${_remainingTime.inDays}j ${_remainingTime.inHours % 24}h',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccountStatusIndicator() {
+    return Tooltip(
+      message: _isAccountActive ? 'Compte actif' : 'Compte inactif',
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+        decoration: BoxDecoration(
+          color: _isAccountActive ? Colors.green.shade700 : Colors.red.shade700,
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.circle,
+              size: 14,
+              color: Colors.white,
+            ),
+            SizedBox(width: 6),
+            Text(
+              _isAccountActive ? 'Actif' : 'Inactif',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileButton() {
+    return IconButton(
+      icon: Container(
+        padding: EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 1),
+        ),
+        child: Icon(Icons.person, color: Colors.white),
+      ),
+      onPressed: _showEditDialog,
+    );
+  }
+
+////////////////////////////////////////////////////////
+  Widget _buildPrintButton() {
+    return IconButton(
+      icon: Container(
+        padding: EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+        ),
+        child: Icon(
+          Icons.print,
+          color: const Color.fromRGBO(7, 82, 96, 1),
+        ),
+      ),
+      onPressed: _generatePDF,
+    );
+  }
+
+///////////////////////////////////////
   @override
   Widget build(BuildContext context) {
     if (currentUser == null) {
@@ -683,81 +894,29 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         appBar: AppBar(
           title: Text('الجدول الجامع للنتائج',
               textDirection: TextDirection.rtl,
-              style: TextStyle(color: Colors.white)),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold)),
           backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
           elevation: 4,
-          iconTheme: IconThemeData(color: Colors.green),
+          iconTheme: IconThemeData(color: Colors.white),
           actions: [
-            // Indicateur de compte activé ou non
-            StreamBuilder<DocumentSnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('Users')
-                  .doc(currentUser?.uid)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Icon(Icons.circle, color: Colors.grey); // En attente
-                }
-                if (snapshot.hasError) {
-                  return Icon(Icons.error, color: Colors.red); // Erreur
-                }
-                final isActive = snapshot.data?['isActive'] ?? false;
-                return Icon(
-                  Icons.circle,
-                  color: isActive
-                      ? Colors.green
-                      : Colors.red, // Vert si activé, rouge sinon
-                );
-              },
-            ),
-            SizedBox(width: 8), // Espacement
-            IconButton(
-              icon: CircleAvatar(
-                backgroundColor: Colors.green,
-                child: Icon(Icons.person, color: Colors.white),
-              ),
-              onPressed: () {
-                _showEditDialog();
-              },
-            ),
-            IconButton(
-              icon: Icon(Icons.print),
-              onPressed: () async {
-                final user = FirebaseAuth.instance.currentUser;
-                if (user == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Utilisateur non connecté.')),
-                  );
-                  return;
-                }
+            // Widget de crédit d'impression amélioré
+            _buildPrintCreditWidget(),
 
-                // Récupérer les informations de l'utilisateur
-                final userDoc = await FirebaseFirestore.instance
-                    .collection('Users')
-                    .doc(user.uid)
-                    .get();
+            // Indicateur de temps restant
+            if (_isAccountActive && _remainingTime.inDays >= 0)
+              _buildAccountTimeRemaining(),
 
-                final isActive = userDoc['isActive'] ?? false;
+            // Indicateur d'état du compte
+            _buildAccountStatusIndicator(),
 
-                // Vérifier si le compte est activé
-                if (isActive) {
-                  // Si le compte est activé, générer le PDF
-                  await _generatePDF();
-                } else {
-                  // Si le compte n'est pas activé, rediriger vers la page de paiement
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(
-                            'Votre compte n\'est pas activé. Veuillez effectuer un paiement pour activer votre compte.')),
-                  );
+            // Bouton profil
+            _buildProfileButton(),
 
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => PaymentPage()),
-                  );
-                }
-              },
-            ),
+            // Bouton impression
+            _buildPrintButton(),
           ],
         ),
         body: Directionality(

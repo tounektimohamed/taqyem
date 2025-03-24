@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:Taqyem/taqyem/header.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Pour utiliser rootBundle
+import 'dart:convert'; // Pour décoder le JSON
 
 class ClassificationPage extends StatefulWidget {
   final String selectedClass;
@@ -12,9 +13,9 @@ class ClassificationPage extends StatefulWidget {
   final String schoolName;
   final String className;
   final String matiereName;
-  final String baremeName;
-  final String? sousBaremeName;
-  final String? selectedSousBaremeId;
+  final String baremeName; // Nom du barème
+  final String? sousBaremeName; // Nom du sous-barème (optionnel)
+  final String? selectedSousBaremeId; // ID du sous-barème (optionnel)
 
   ClassificationPage({
     required this.selectedClass,
@@ -25,8 +26,8 @@ class ClassificationPage extends StatefulWidget {
     required this.className,
     required this.matiereName,
     required this.baremeName,
-    this.sousBaremeName,
-    this.selectedSousBaremeId,
+    this.sousBaremeName, // Ajoutez ce paramètre
+    this.selectedSousBaremeId, // Ajoutez ce paramètre
   });
 
   @override
@@ -34,61 +35,296 @@ class ClassificationPage extends StatefulWidget {
 }
 
 class _ClassificationPageState extends State<ClassificationPage> {
-  List<Map<String, String>> students = [];
+  List<dynamic> jsonData = []; // Pour stocker les données JSON
 
   @override
   void initState() {
     super.initState();
-    _loadStudents();
+    printVariables(); // Afficher les variables dans la console
+    loadJsonData(); // Charger les données JSON au démarrage
   }
 
-  Future<void> _loadStudents() async {
-    final studentsData = await _getClassifiedStudents(
-      widget.selectedClass,
-      widget.selectedBaremeId,
-    );
-    setState(() {
-      students = studentsData;
-    });
+  // Méthode pour afficher les variables dans la console
+  void printVariables() {
+    print("Classe sélectionnée: ${widget.selectedClass}");
+    print("ID du barème sélectionné: ${widget.selectedBaremeId}");
+    print("Utilisateur actuel: ${widget.currentUser}");
+    print("Nom du professeur: ${widget.profName}");
+    print("Nom de l'école: ${widget.schoolName}");
+    print("Nom de la classe: ${widget.className}");
+    print("Nom de la matière: ${widget.matiereName}");
+    print("Nom du barème: ${widget.baremeName ?? 'Non défini'}"); // Gestion de la valeur nulle
+    print("ID du sous-barème sélectionné:  ${widget.selectedBaremeId}");// Gestion de la valeur nulle
+    print("Nom du sous-barème:  ${widget.baremeName ?? 'Non défini'}"); // Gestion de la valeur nulle
   }
 
-  // Préparer les données pour le PDF
-  Map<String, dynamic> preparePdfData() {
-    return {
-      'profName': widget.profName,
-      'schoolName': widget.schoolName,
-      'className': widget.className,
-      'matiereName': widget.matiereName,
-      'baremeName': widget.baremeName,
-      'sousBaremeName': widget.sousBaremeName,
-      'students': students.map((student) => {
-        'name': student['name'],
-        'group': student['group'],
-      }).toList(),
-    };
-  }
-
-  // Envoyer les données à Flask
-  Future<void> sendDataToFlask(Map<String, dynamic> data) async {
-    final url = Uri.parse('http://votre-adresse-flask/generate-pdf'); // Remplacez par l'URL de votre API Flask
-    final headers = {"Content-Type": "application/json"};
-    final body = json.encode(data);
-
+  // Méthode pour charger les données JSON
+  Future<void> loadJsonData() async {
     try {
-      final response = await http.post(url, headers: headers, body: body);
-
-      if (response.statusCode == 200) {
-        print('PDF généré avec succès');
-        // Vous pouvez ajouter ici une logique pour télécharger ou afficher le PDF
-      } else {
-        print('Erreur lors de la génération du PDF: ${response.statusCode}');
-      }
+      String jsonString = await rootBundle.loadString('assets/data.json');
+      setState(() {
+        jsonData = json.decode(jsonString); // Décoder le JSON
+      });
     } catch (e) {
-      print('Erreur lors de l\'envoi des données: $e');
+      print("Erreur lors du chargement du fichier JSON: $e");
     }
   }
 
-  // Récupérer les élèves classés depuis Firestore
+  // Méthode pour afficher la solution et le problème
+  void showSolutionAndProbleme(String groupName) {
+    // Afficher les valeurs pour déboguer
+    print("Classe sélectionnée: ${widget.className}");
+    print("Matière sélectionnée: ${widget.matiereName}");
+    print("Barème sélectionné: ${widget.baremeName}");
+    print("Sous-barème sélectionné: ${widget.sousBaremeName ?? 'Non défini'}");
+
+    // Filtrer les données JSON
+    var result = jsonData.firstWhere(
+      (item) {
+        // Normaliser les chaînes de caractères
+        String jsonClasse = item['classe'].trim().toLowerCase();
+        String jsonMatiere = item['matiere'].trim().toLowerCase();
+        String jsonBareme = item['bareme'].trim().toLowerCase();
+
+        String selectedClasse = widget.className.trim().toLowerCase();
+        String selectedMatiere = widget.matiereName.trim().toLowerCase();
+        String selectedBareme = (widget.sousBaremeName ?? widget.baremeName).trim().toLowerCase(); // Utiliser le sous-barème ou le barème
+
+        // Comparer les valeurs normalisées
+        bool condition = jsonClasse == selectedClasse &&
+            jsonMatiere == selectedMatiere &&
+            jsonBareme == selectedBareme;
+
+        return condition;
+      },
+      orElse: () => null,
+    );
+
+    if (result != null) {
+      String solution = result['solution'];
+      String probleme = result['probleme'];
+
+      // Afficher les données dans une boîte de dialogue
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('خطة العلاج وأصل الخطأ لـ $groupName'),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('الحل:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(solution),
+                  SizedBox(height: 16),
+                  Text('المشكلة:',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(probleme),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('إغلاق'),
+              ),
+            ],
+          );
+        },
+      );
+    } else {
+      // Si aucune donnée correspondante n'est trouvée
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('خطأ'),
+            content: Text('لا توجد بيانات متاحة لـ $groupName'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('إغلاق'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('خطة العلاج وأصل الخطأ'),
+          centerTitle: true,
+        ),
+        body: Column(
+          children: [
+            PageHeader(
+              profName: widget.profName,
+              schoolName: widget.schoolName,
+              className: widget.className,
+              matiereName: widget.matiereName,
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              alignment: Alignment.center,
+              child: Column(
+                children: [
+                  Text(
+                    'خطة العلاج وأصل الخطأ',
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.normal),
+                  ),
+                  Text(
+                    'في مادة ${widget.matiereName} في معيار ${widget.sousBaremeName ?? widget.baremeName}', // Afficher le sous-barème ou le barème
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+            _buildLegend(),
+            Expanded(
+              child: FutureBuilder<List<Map<String, String>>>(
+                future: _getClassifiedStudents(
+                    widget.selectedClass, widget.selectedBaremeId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text('خطأ: ${snapshot.error}'));
+                  }
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Center(child: Text('لا توجد بيانات'));
+                  }
+
+                  var students = snapshot.data!;
+                  Map<String, List<Map<String, String>>> groupedStudents = {};
+
+                  // Grouper les élèves par nom de groupe
+                  for (var student in students) {
+                    String group = student['group'] ?? '';
+                    if (!groupedStudents.containsKey(group)) {
+                      groupedStudents[group] = [];
+                    }
+                    groupedStudents[group]!.add(student);
+                  }
+
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columns: [
+                        DataColumn(
+                          label: Container(
+                            alignment: Alignment.centerRight,
+                            child: Text('اسم التلميذ'),
+                          ),
+                        ),
+                        DataColumn(
+                          label: Container(
+                            alignment: Alignment.centerRight,
+                            child: Text('العمل'),
+                          ),
+                        ),
+                      ],
+                      rows: groupedStudents.entries.map((groupEntry) {
+                        String groupName = groupEntry.key;
+                        List<Map<String, String>> groupStudents =
+                            groupEntry.value;
+
+                        return DataRow(
+                          color: MaterialStateProperty.resolveWith<Color>(
+                              (Set<MaterialState> states) {
+                            Color rowColor;
+                            switch (groupName) {
+                              case 'مجموعة العلاج':
+                                rowColor = Colors.red.withOpacity(0.7);
+                                break;
+                              case 'مجموعة الدعم':
+                                rowColor = Colors.orange.withOpacity(0.7);
+                                break;
+                              case 'مجموعة التميز':
+                                rowColor = Colors.green.withOpacity(0.7);
+                                break;
+                              default:
+                                rowColor = Colors.transparent;
+                            }
+                            return rowColor;
+                          }),
+                          cells: [
+                            DataCell(
+                              Text(groupStudents
+                                  .map((student) =>
+                                      student['name'] ?? 'غير معروف')
+                                  .join(", ")),
+                            ),
+                            DataCell(
+                              ElevatedButton(
+                                onPressed: () {
+                                  // Afficher les valeurs sélectionnées dans le terminal
+                                  print(
+                                      "Classe sélectionnée: ${widget.className}");
+                                  print(
+                                      "Matière sélectionnée: ${widget.matiereName}");
+                                  print(
+                                      "Barème sélectionné: ${widget.baremeName}");
+                                  print(
+                                      "Sous-barème sélectionné: ${widget.sousBaremeName ?? 'Non défini'}");
+
+                                  // Appeler la méthode pour afficher la solution et le problème
+                                  showSolutionAndProbleme(groupName);
+                                },
+                                child: Text('عمل لـ $groupName'),
+                              ),
+                            ),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegend() {
+    return Container(
+      padding: EdgeInsets.all(8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildLegendItem('مجموعة العلاج', Colors.red.withOpacity(0.7)),
+          SizedBox(width: 16),
+          _buildLegendItem('مجموعة الدعم', Colors.orange.withOpacity(0.7)),
+          SizedBox(width: 16),
+          _buildLegendItem('مجموعة التميز', Colors.green.withOpacity(0.7)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(String text, Color color) {
+    return Row(
+      children: [
+        Container(width: 16, height: 16, color: color),
+        SizedBox(width: 8),
+        Text(text, textDirection: TextDirection.rtl),
+      ],
+    );
+  }
+
   Future<List<Map<String, String>>> _getClassifiedStudents(
       String classId, String baremeId) async {
     List<Map<String, String>> students = [];
@@ -133,6 +369,8 @@ class _ClassificationPageState extends State<ClassificationPage> {
 
           students.add({
             'name': studentName,
+            'treatmentPlan': baremeData['treatmentPlan'] ?? '',
+            'errorOrigin': baremeData['errorOrigin'] ?? '',
             'group': group,
           });
         }
@@ -141,127 +379,5 @@ class _ClassificationPageState extends State<ClassificationPage> {
 
     await Future.wait(futures);
     return students;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('خطة العلاج وأصل الخطأ'),
-          centerTitle: true,
-        ),
-        body: Column(
-          children: [
-            // En-tête
-            Container(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Text(
-                    'المدرسة: ${widget.schoolName}',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                  Text(
-                    'الصف: ${widget.className}',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                  Text(
-                    'المادة: ${widget.matiereName}',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                  Text(
-                    'المعيار: ${widget.baremeName}',
-                    style: TextStyle(fontSize: 18),
-                  ),
-                  if (widget.sousBaremeName != null)
-                    Text(
-                      'المعيار الفرعي: ${widget.sousBaremeName}',
-                      style: TextStyle(fontSize: 18),
-                    ),
-                ],
-              ),
-            ),
-
-            // Légende
-            _buildLegend(),
-
-            // Tableau des élèves
-            Expanded(
-              child: ListView.builder(
-                itemCount: students.length,
-                itemBuilder: (context, index) {
-                  final student = students[index];
-                  return ListTile(
-                    title: Text(student['name'] ?? ''),
-                    subtitle: Text(student['group'] ?? ''),
-                    tileColor: _getGroupColor(student['group']),
-                  );
-                },
-              ),
-            ),
-
-            // Bouton pour générer le PDF
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: ElevatedButton(
-                onPressed: () async {
-                  final pdfData = preparePdfData();
-                  await sendDataToFlask(pdfData);
-                },
-                child: Text('Générer PDF'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Couleur de fond en fonction du groupe
-  Color _getGroupColor(String? group) {
-    switch (group) {
-      case 'مجموعة العلاج':
-        return Colors.red.withOpacity(0.7);
-      case 'مجموعة الدعم':
-        return Colors.orange.withOpacity(0.7);
-      case 'مجموعة التميز':
-        return Colors.green.withOpacity(0.7);
-      default:
-        return Colors.transparent;
-    }
-  }
-
-  // Légende
-  Widget _buildLegend() {
-    return Container(
-      padding: EdgeInsets.all(8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildLegendItem('مجموعة العلاج', Colors.red.withOpacity(0.7)),
-          SizedBox(width: 16),
-          _buildLegendItem('مجموعة الدعم', Colors.orange.withOpacity(0.7)),
-          SizedBox(width: 16),
-          _buildLegendItem('مجموعة التميز', Colors.green.withOpacity(0.7)),
-        ],
-      ),
-    );
-  }
-
-  // Élément de légende
-  Widget _buildLegendItem(String text, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 16,
-          height: 16,
-          color: color,
-        ),
-        SizedBox(width: 8),
-        Text(text),
-      ],
-    );
   }
 }
