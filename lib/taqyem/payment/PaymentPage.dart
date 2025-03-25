@@ -237,26 +237,29 @@ class _PaymentPageState extends State<PaymentPage> {
                     }
 
                     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.access_time,
-                              size: 60,
-                              color: Colors.orange,
-                            ),
-                            SizedBox(height: 20),
-                            Text(
-                              'طلبك قيد المعالجة',
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Tajawal',
-                                color: Colors.grey[800],
+                      return SizedBox.expand(
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.access_time,
+                                size: 60,
+                                color: Colors.orange,
                               ),
-                            ),
-                          ],
+                              SizedBox(height: 20),
+                              Text(
+                                'طلبك قيد المعالجة',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Tajawal',
+                                  color: Colors.grey[800],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     }

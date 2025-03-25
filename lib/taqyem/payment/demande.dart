@@ -31,105 +31,392 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Gestion des Demandes'),
+        centerTitle: true,
+        elevation: 0,
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _firestore.collectionGroup('payments').snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(child: Text('Aucune demande trouvée.'));
-          }
-
-          final demands = snapshot.data!.docs;
-
-          return ListView.builder(
-            itemCount: demands.length,
-            itemBuilder: (context, index) {
-              final demand = demands[index];
-              final data = demand.data() as Map<String, dynamic>;
-              final status = data['status'] ?? 'pending';
-              final userId = demand.reference.parent.parent!.id;
-              final photoUrl = data['photoUrl'];
-              final adminMessage = data['adminMessage'] ?? '';
-              final forfaitType = data['forfait'];
-
-              return Card(
-                margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: ListTile(
-                  leading: GestureDetector(
-                    onTap: () {
-                      if (photoUrl != null) {
-                        _showPhotoDialog(context, photoUrl);
-                      }
-                    },
-                    child: CircleAvatar(
-                      backgroundImage: photoUrl != null 
-                          ? NetworkImage(photoUrl) 
-                          : null,
-                      child: photoUrl == null ? Icon(Icons.person) : null,
-                    ),
-                  ),
-                  title: Text('${data['nom']} ${data['prenom']}'),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Forfait: ${data['forfait']}'),
-                      Text('Statut: ${_getStatusText(status)}'),
-                      if (adminMessage.isNotEmpty)
-                        Padding(
-                          padding: EdgeInsets.only(top: 4),
-                          child: Text(
-                            'Message: $adminMessage',
-                            style: TextStyle(
-                              color: _getMessageColor(status),
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ),
-                      if (status == 'approved' && data['activationEnd'] != null)
-                        Padding(
-                          padding: EdgeInsets.only(top: 4),
-                          child: Text(
-                            'Valide jusqu\'au: ${_formatDate(data['activationEnd'].toDate())}',
-                            style: TextStyle(
-                              color: Colors.blue,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.check, color: Colors.green),
-                        onPressed: () => _showActivationDialog(
-                          context,
-                          demand.reference,
-                          userId,
-                          forfaitType,
-                        ),
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.close, color: Colors.red),
-                        onPressed: () => _showMessageDialog(
-                          context,
-                          demand.reference,
-                          'rejected',
-                          userId,
-                        ),
-                      ),
-                    ],
+      body: Container(
+        padding: EdgeInsets.all(8),
+        child: StreamBuilder<QuerySnapshot>(
+          stream: _firestore.collectionGroup('payments').snapshots(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).primaryColor,
                   ),
                 ),
               );
-            },
-          );
-        },
+            }
+
+            if (snapshot.hasError) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red, size: 48),
+                    SizedBox(height: 16),
+                    Text(
+                      'Erreur de chargement',
+                      style: TextStyle(fontSize: 18, color: Colors.red),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Veuillez réessayer plus tard',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue, size: 48),
+                    SizedBox(height: 16),
+                    Text(
+                      'Aucune demande trouvée',
+                      style: TextStyle(fontSize: 18),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final demands = snapshot.data!.docs;
+
+            return ListView.separated(
+              itemCount: demands.length,
+              separatorBuilder: (context, index) => Divider(height: 1),
+              itemBuilder: (context, index) {
+                final demand = demands[index];
+                final data = demand.data() as Map<String, dynamic>;
+                final status = data['status'] ?? 'pending';
+                final userId = demand.reference.parent.parent!.id;
+                final photoUrl = data['photoUrl'];
+                final adminMessage = data['adminMessage'] ?? '';
+                final forfaitType = data['forfait'];
+
+                return Card(
+                  elevation: 2,
+                  margin: EdgeInsets.symmetric(vertical: 4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => _showDemandDetails(context, data, status),
+                    child: Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // User Avatar
+                          _buildUserAvatar(photoUrl),
+
+                          SizedBox(width: 12),
+
+                          // User Info
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${data['nom']} ${data['prenom']}',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                _buildInfoRow(
+                                    Icons.credit_card, 'Forfait: $forfaitType'),
+                                SizedBox(height: 4),
+                                _buildStatusRow(status),
+                                if (adminMessage.isNotEmpty) ...[
+                                  SizedBox(height: 4),
+                                  _buildAdminMessage(adminMessage, status),
+                                ],
+                                if (status == 'approved' &&
+                                    data['activationEnd'] != null) ...[
+                                  SizedBox(height: 4),
+                                  _buildActivationDate(
+                                      data['activationEnd'].toDate()),
+                                ],
+                              ],
+                            ),
+                          ),
+
+                          // Action Buttons
+                          _buildActionButtons(
+                            context,
+                            demand.reference,
+                            userId,
+                            forfaitType,
+                            status,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserAvatar(String? photoUrl) {
+    return GestureDetector(
+      onTap:
+          photoUrl != null ? () => _showPhotoDialog(context, photoUrl) : null,
+      child: CircleAvatar(
+        radius: 24,
+        backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+        backgroundColor: photoUrl == null ? Colors.grey[200] : null,
+        child: photoUrl == null
+            ? Icon(Icons.person, color: Colors.grey[600])
+            : null,
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.grey[600]),
+        SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusRow(String status) {
+    return Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: _getStatusColor(status),
+            shape: BoxShape.circle,
+          ),
+        ),
+        SizedBox(width: 6),
+        Text(
+          'Statut: ${_getStatusText(status)}',
+          style: TextStyle(
+            fontSize: 14,
+            color: _getStatusColor(status),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAdminMessage(String message, String status) {
+    return Container(
+      padding: EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: _getMessageBackgroundColor(status),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        message,
+        style: TextStyle(
+          fontSize: 13,
+          color: _getMessageColor(status),
+          fontStyle: FontStyle.italic,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActivationDate(DateTime date) {
+    return Row(
+      children: [
+        Icon(Icons.calendar_today, size: 14, color: Colors.blue),
+        SizedBox(width: 4),
+        Text(
+          'Valide jusqu\'au: ${_formatDate(date)}',
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.blue,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _deactivateAccount(
+      DocumentReference demandRef, String userId) async {
+    try {
+      await demandRef.update({
+        'status': 'rejected',
+        'adminMessage': 'Compte désactivé par l\'admin',
+      });
+
+      await _firestore.collection('Users').doc(userId).update({
+        'isActive': false,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Compte désactivé avec succès'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _reactivateAccount(
+      DocumentReference demandRef, String userId) async {
+    try {
+      await demandRef.update({
+        'status': 'approved',
+        'adminMessage': 'Compte réactivé par l\'admin',
+      });
+
+      await _firestore.collection('Users').doc(userId).update({
+        'isActive': true,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Compte réactivé avec succès'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Widget _buildActionButtons(
+    BuildContext context,
+    DocumentReference demandRef,
+    String userId,
+    String forfaitType,
+    String status,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (status == 'pending') ...[
+          IconButton(
+            icon: Icon(Icons.check_circle, color: Colors.green),
+            tooltip: 'Approuver',
+            onPressed: () => _showActivationDialog(
+              context,
+              demandRef,
+              userId,
+              forfaitType,
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.cancel, color: Colors.red),
+            tooltip: 'Rejeter',
+            onPressed: () => _showMessageDialog(
+              context,
+              demandRef,
+              'rejected',
+              userId,
+            ),
+          ),
+        ] else if (status == 'approved') ...[
+          IconButton(
+            icon: Icon(Icons.toggle_on, color: Colors.green),
+            tooltip: 'Désactiver',
+            onPressed: () => _deactivateAccount(demandRef, userId),
+          ),
+        ] else if (status == 'rejected') ...[
+          IconButton(
+            icon: Icon(Icons.toggle_off, color: Colors.red),
+            tooltip: 'Réactiver',
+            onPressed: () => _reactivateAccount(demandRef, userId),
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _showDemandDetails(
+      BuildContext context, Map<String, dynamic> data, String status) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Détails de la demande'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDetailItem('Nom', data['nom']),
+                _buildDetailItem('Prénom', data['prenom']),
+                _buildDetailItem('Forfait', data['forfait']),
+                _buildDetailItem('Statut', _getStatusText(status)),
+                if (data['adminMessage'] != null)
+                  _buildDetailItem('Message', data['adminMessage']),
+                if (status == 'approved' && data['activationEnd'] != null)
+                  _buildDetailItem('Valide jusqu\'au',
+                      _formatDate(data['activationEnd'].toDate())),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Fermer'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDetailItem(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[600],
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(fontSize: 16),
+          ),
+          Divider(height: 16),
+        ],
       ),
     );
   }
@@ -151,33 +438,47 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Activer le compte'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Type de forfait: $forfaitType'),
-              SizedBox(height: 10),
-              Text('Durée: ${monthsToAdd} mois'),
-              SizedBox(height: 10),
-              Text('Date de fin: ${_formatDate(_activationEndDate!)}'),
-              SizedBox(height: 20),
-              TextField(
-                controller: _messageController,
-                decoration: InputDecoration(
-                  labelText: 'Message (optionnel)',
-                  border: OutlineInputBorder(),
+          title: Text('Activer le compte',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildDialogInfoRow('Type de forfait:', forfaitType),
+                _buildDialogInfoRow('Durée:', '$monthsToAdd mois'),
+                _buildDialogInfoRow(
+                    'Date de fin:', _formatDate(_activationEndDate!)),
+                SizedBox(height: 20),
+                Text(
+                  'Message (optionnel)',
+                  style: TextStyle(fontWeight: FontWeight.w500),
                 ),
-                maxLines: 3,
-              ),
-            ],
+                SizedBox(height: 8),
+                TextField(
+                  controller: _messageController,
+                  decoration: InputDecoration(
+                    hintText: 'Entrez un message personnalisé...',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.all(12),
+                  ),
+                  maxLines: 3,
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Annuler'),
+              child: Text('ANNULER', style: TextStyle(color: Colors.grey[600])),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Theme.of(context).primaryColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
               onPressed: () async {
                 await _activateAccount(
                   demandRef,
@@ -187,11 +488,30 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
                 );
                 Navigator.pop(context);
               },
-              child: Text('Confirmer'),
+              child: Text('CONFIRMER'),
             ),
           ],
         );
       },
+    );
+  }
+
+  Widget _buildDialogInfoRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Text(
+            label,
+            style: TextStyle(fontWeight: FontWeight.w500),
+          ),
+          SizedBox(width: 8),
+          Text(
+            value,
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
     );
   }
 
@@ -221,6 +541,10 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
         SnackBar(
           content: Text('Compte activé jusqu\'au ${_formatDate(endDate)}'),
           backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
       );
     } catch (e) {
@@ -228,8 +552,36 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
         SnackBar(
           content: Text('Erreur: ${e.toString()}'),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
       );
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      case 'pending':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Color _getMessageBackgroundColor(String status) {
+    switch (status) {
+      case 'approved':
+        return Colors.green[50]!;
+      case 'rejected':
+        return Colors.red[50]!;
+      default:
+        return Colors.grey[100]!;
     }
   }
 
@@ -249,11 +601,11 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
   Color _getMessageColor(String status) {
     switch (status) {
       case 'approved':
-        return Colors.green;
+        return Colors.green[800]!;
       case 'rejected':
-        return Colors.red;
+        return Colors.red[800]!;
       default:
-        return Colors.grey;
+        return Colors.grey[800]!;
     }
   }
 
@@ -262,27 +614,70 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
       context: context,
       builder: (context) {
         return Dialog(
-          child: Container(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.network(
-                  photoUrl,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return CircularProgressIndicator();
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return Icon(Icons.error, color: Colors.red);
-                  },
-                ),
-                SizedBox(height: 16),
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('Fermer'),
-                ),
-              ],
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.all(16),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.9),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Stack(
+                    children: [
+                      Image.network(
+                        photoUrl,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            height: 200,
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes !=
+                                        null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 200,
+                            color: Colors.grey[200],
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.error,
+                                      color: Colors.red, size: 48),
+                                  Text('Erreur de chargement'),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                        fit: BoxFit.contain,
+                      ),
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: CircleAvatar(
+                          radius: 16,
+                          backgroundColor: Colors.black54,
+                          child: IconButton(
+                            icon: Icon(Icons.close,
+                                size: 16, color: Colors.white),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -305,43 +700,64 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              title: Text('Envoyer un message'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: _selectedMessageType,
-                    items: predefinedMessages.entries.map((entry) {
-                      return DropdownMenuItem(
-                        value: entry.key,
-                        child: Text(entry.value),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedMessageType = value;
-                        _messageController.text = predefinedMessages[value]!;
-                      });
-                    },
-                    decoration: InputDecoration(labelText: 'Type de message'),
-                  ),
-                  SizedBox(height: 16),
-                  TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      labelText: 'Message',
-                      border: OutlineInputBorder(),
+              title: Text('Envoyer un message',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      value: _selectedMessageType,
+                      items: predefinedMessages.entries.map((entry) {
+                        return DropdownMenuItem(
+                          value: entry.key,
+                          child: Text(
+                            entry.value,
+                            style: TextStyle(fontSize: 14),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedMessageType = value;
+                          _messageController.text = predefinedMessages[value]!;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        labelText: 'Type de message',
+                        border: OutlineInputBorder(),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                      ),
+                      isExpanded: true,
                     ),
-                    maxLines: 3,
-                  ),
-                ],
+                    SizedBox(height: 16),
+                    TextField(
+                      controller: _messageController,
+                      decoration: InputDecoration(
+                        labelText: 'Message',
+                        hintText: 'Modifiez le message si nécessaire...',
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.all(12),
+                      ),
+                      maxLines: 3,
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text('Annuler'),
-                ),
+                  child: Text('ANNULER',
+                      style: TextStyle(color: Colors.grey[600])),
+                ), // This closing parenthesis was missing
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
                   onPressed: () async {
                     await _updateDemandStatus(
                       demandRef,
@@ -351,7 +767,7 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
                     );
                     Navigator.pop(context);
                   },
-                  child: Text('Envoyer'),
+                  child: Text('ENVOYER'),
                 ),
               ],
             );
@@ -385,6 +801,10 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
         SnackBar(
           content: Text('Demande mise à jour avec succès!'),
           backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
       );
     } catch (e) {
@@ -392,6 +812,10 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
         SnackBar(
           content: Text('Erreur: ${e.toString()}'),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
       );
     }
