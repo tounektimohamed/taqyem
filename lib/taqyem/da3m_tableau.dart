@@ -1,9 +1,16 @@
+import 'dart:io';
+
 import 'package:Taqyem/taqyem/header.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Pour utiliser rootBundle
-import 'dart:convert'; // Pour décoder le JSON
+import 'package:flutter/services.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
+import 'dart:typed_data';
+import 'dart:html' as html; // Pour Flutter Web seulement
 
 class ClassificationPage extends StatefulWidget {
   final String selectedClass;
@@ -13,9 +20,9 @@ class ClassificationPage extends StatefulWidget {
   final String schoolName;
   final String className;
   final String matiereName;
-  final String baremeName; // Nom du barème
-  final String? sousBaremeName; // Nom du sous-barème (optionnel)
-  final String? selectedSousBaremeId; // ID du sous-barème (optionnel)
+  final String baremeName;
+  final String? sousBaremeName;
+  final String? selectedSousBaremeId;
 
   ClassificationPage({
     required this.selectedClass,
@@ -26,8 +33,8 @@ class ClassificationPage extends StatefulWidget {
     required this.className,
     required this.matiereName,
     required this.baremeName,
-    this.sousBaremeName, // Ajoutez ce paramètre
-    this.selectedSousBaremeId, // Ajoutez ce paramètre
+    this.sousBaremeName,
+    this.selectedSousBaremeId,
   });
 
   @override
@@ -35,16 +42,15 @@ class ClassificationPage extends StatefulWidget {
 }
 
 class _ClassificationPageState extends State<ClassificationPage> {
-  List<dynamic> jsonData = []; // Pour stocker les données JSON
+  List<dynamic> jsonData = [];
 
   @override
   void initState() {
     super.initState();
-    printVariables(); // Afficher les variables dans la console
-    loadJsonData(); // Charger les données JSON au démarrage
+    printVariables();
+    loadJsonData();
   }
 
-  // Méthode pour afficher les variables dans la console
   void printVariables() {
     print("Classe sélectionnée: ${widget.selectedClass}");
     print("ID du barème sélectionné: ${widget.selectedBaremeId}");
@@ -53,49 +59,42 @@ class _ClassificationPageState extends State<ClassificationPage> {
     print("Nom de l'école: ${widget.schoolName}");
     print("Nom de la classe: ${widget.className}");
     print("Nom de la matière: ${widget.matiereName}");
-    print("Nom du barème: ${widget.baremeName ?? 'Non défini'}"); // Gestion de la valeur nulle
-    print("ID du sous-barème sélectionné:  ${widget.selectedBaremeId}");// Gestion de la valeur nulle
-    print("Nom du sous-barème:  ${widget.baremeName ?? 'Non défini'}"); // Gestion de la valeur nulle
+    print("Nom du barème: ${widget.baremeName ?? 'Non défini'}");
+    print("ID du sous-barème sélectionné: ${widget.selectedBaremeId}");
+    print("Nom du sous-barème: ${widget.baremeName ?? 'Non défini'}");
   }
 
-  // Méthode pour charger les données JSON
   Future<void> loadJsonData() async {
     try {
       String jsonString = await rootBundle.loadString('assets/data.json');
       setState(() {
-        jsonData = json.decode(jsonString); // Décoder le JSON
+        jsonData = json.decode(jsonString);
       });
     } catch (e) {
       print("Erreur lors du chargement du fichier JSON: $e");
     }
   }
 
-  // Méthode pour afficher la solution et le problème
   void showSolutionAndProbleme(String groupName) {
-    // Afficher les valeurs pour déboguer
     print("Classe sélectionnée: ${widget.className}");
     print("Matière sélectionnée: ${widget.matiereName}");
     print("Barème sélectionné: ${widget.baremeName}");
     print("Sous-barème sélectionné: ${widget.sousBaremeName ?? 'Non défini'}");
 
-    // Filtrer les données JSON
     var result = jsonData.firstWhere(
       (item) {
-        // Normaliser les chaînes de caractères
         String jsonClasse = item['classe'].trim().toLowerCase();
         String jsonMatiere = item['matiere'].trim().toLowerCase();
         String jsonBareme = item['bareme'].trim().toLowerCase();
 
         String selectedClasse = widget.className.trim().toLowerCase();
         String selectedMatiere = widget.matiereName.trim().toLowerCase();
-        String selectedBareme = (widget.sousBaremeName ?? widget.baremeName).trim().toLowerCase(); // Utiliser le sous-barème ou le barème
+        String selectedBareme =
+            (widget.sousBaremeName ?? widget.baremeName).trim().toLowerCase();
 
-        // Comparer les valeurs normalisées
-        bool condition = jsonClasse == selectedClasse &&
+        return jsonClasse == selectedClasse &&
             jsonMatiere == selectedMatiere &&
             jsonBareme == selectedBareme;
-
-        return condition;
       },
       orElse: () => null,
     );
@@ -104,7 +103,6 @@ class _ClassificationPageState extends State<ClassificationPage> {
       String solution = result['solution'];
       String probleme = result['probleme'];
 
-      // Afficher les données dans une boîte de dialogue
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -135,7 +133,6 @@ class _ClassificationPageState extends State<ClassificationPage> {
         },
       );
     } else {
-      // Si aucune donnée correspondante n'est trouvée
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -156,6 +153,105 @@ class _ClassificationPageState extends State<ClassificationPage> {
     }
   }
 
+Future<void> _generateAndSavePDF() async {
+  try {
+    final groupedStudents = await _getGroupedStudentsData();
+    
+    // Récupérer les données de solutions depuis jsonData (une seule fois)
+    Map<String, dynamic> solutionsData = {};
+    
+    var result = jsonData.firstWhere(
+      (item) {
+        String jsonClasse = item['classe'].trim().toLowerCase();
+        String jsonMatiere = item['matiere'].trim().toLowerCase();
+        String jsonBareme = item['bareme'].trim().toLowerCase();
+
+        String selectedClasse = widget.className.trim().toLowerCase();
+        String selectedMatiere = widget.matiereName.trim().toLowerCase();
+        String selectedBareme = 
+            (widget.sousBaremeName ?? widget.baremeName).trim().toLowerCase();
+
+        return jsonClasse == selectedClasse &&
+            jsonMatiere == selectedMatiere &&
+            jsonBareme == selectedBareme;
+      },
+      orElse: () => null,
+    );
+
+    if (result != null) {
+      solutionsData = {
+        'solution': result['solution'],
+        'probleme': result['probleme'],
+      };
+    }
+
+    const serverUrl = 'http://localhost:5000/generate-pdf';
+    
+    final response = await http.post(
+      Uri.parse(serverUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'groupedStudents': groupedStudents,
+        'className': widget.className,
+        'matiereName': widget.matiereName,
+        'baremeName': widget.baremeName,
+        'sousBaremeName': widget.sousBaremeName,
+        'profName': widget.profName,
+        'schoolName': widget.schoolName,
+        'solutionsData': solutionsData, // Données uniques
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      // Pour Flutter Web
+      final bytes = response.bodyBytes;
+      final blob = html.Blob([bytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', 'classification.pdf')
+        ..click();
+      
+      html.Url.revokeObjectUrl(url);
+    } else {
+      throw Exception('Erreur serveur: ${response.statusCode}');
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Erreur: ${e.toString()}')),
+    );
+  }
+}
+
+  // Future<void> saveAndOpenPDF(Uint8List bytes) async {
+  //   final directory = await getApplicationDocumentsDirectory();
+  //   final file = File('${directory.path}/classification.pdf');
+  //   await file.writeAsBytes(bytes);
+  //   OpenFile.open(file.path);
+  // }
+
+  Future<Map<String, dynamic>> _getGroupedStudentsData() async {
+    var students = await _getClassifiedStudents(
+        widget.selectedClass, widget.selectedBaremeId);
+    Map<String, List<Map<String, String>>> groupedStudents = {};
+
+    for (var student in students) {
+      String group = student['group'] ?? '';
+      if (!groupedStudents.containsKey(group)) {
+        groupedStudents[group] = [];
+      }
+      groupedStudents[group]!.add(student);
+    }
+
+    return groupedStudents;
+  }
+
+  Future<void> _saveAndLaunchPDF(Uint8List bytes, String fileName) async {
+    final directory = await getExternalStorageDirectory();
+    final file = File('${directory?.path}/$fileName');
+    await file.writeAsBytes(bytes, flush: true);
+    OpenFile.open(file.path);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
@@ -164,6 +260,13 @@ class _ClassificationPageState extends State<ClassificationPage> {
         appBar: AppBar(
           title: Text('خطة العلاج وأصل الخطأ'),
           centerTitle: true,
+          actions: [
+            IconButton(
+              icon: Icon(Icons.print),
+              onPressed: _generateAndSavePDF,
+              tooltip: 'Exporter en PDF',
+            ),
+          ],
         ),
         body: Column(
           children: [
@@ -184,7 +287,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                         TextStyle(fontSize: 18, fontWeight: FontWeight.normal),
                   ),
                   Text(
-                    'في مادة ${widget.matiereName} في معيار ${widget.sousBaremeName ?? widget.baremeName}', // Afficher le sous-barème ou le barème
+                    'في مادة ${widget.matiereName} في معيار ${widget.sousBaremeName ?? widget.baremeName}',
                     style: TextStyle(fontSize: 16),
                   ),
                 ],
@@ -209,7 +312,6 @@ class _ClassificationPageState extends State<ClassificationPage> {
                   var students = snapshot.data!;
                   Map<String, List<Map<String, String>>> groupedStudents = {};
 
-                  // Grouper les élèves par nom de groupe
                   for (var student in students) {
                     String group = student['group'] ?? '';
                     if (!groupedStudents.containsKey(group)) {
@@ -269,17 +371,6 @@ class _ClassificationPageState extends State<ClassificationPage> {
                             DataCell(
                               ElevatedButton(
                                 onPressed: () {
-                                  // Afficher les valeurs sélectionnées dans le terminal
-                                  print(
-                                      "Classe sélectionnée: ${widget.className}");
-                                  print(
-                                      "Matière sélectionnée: ${widget.matiereName}");
-                                  print(
-                                      "Barème sélectionné: ${widget.baremeName}");
-                                  print(
-                                      "Sous-barème sélectionné: ${widget.sousBaremeName ?? 'Non défini'}");
-
-                                  // Appeler la méthode pour afficher la solution et le problème
                                   showSolutionAndProbleme(groupName);
                                 },
                                 child: Text('عمل لـ $groupName'),

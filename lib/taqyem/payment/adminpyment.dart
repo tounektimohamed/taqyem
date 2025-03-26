@@ -25,7 +25,7 @@ class PaymentManagementPage extends StatelessWidget {
               final userData = user.data() as Map<String, dynamic>;
 
               return ExpansionTile(
-                title: Text(userData['email'] ?? 'No Email'),
+                title: Text(userData['name'] ?? 'No name'),
                 subtitle: Text(userData['isActive'] == true ? 'Compte activé' : 'Compte désactivé'),
                 trailing: Switch(
                   value: userData['isActive'] ?? false,

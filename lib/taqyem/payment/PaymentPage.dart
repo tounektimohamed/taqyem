@@ -19,6 +19,7 @@ class _PaymentPageState extends State<PaymentPage> {
   bool _isEditingExistingRequest = false;
   String? _existingPaymentId;
   String? _existingPhotoUrl;
+  bool _useOnlinePayment = false;
 
   final List<Map<String, dynamic>> forfaits = [
     {
@@ -54,19 +55,18 @@ class _PaymentPageState extends State<PaymentPage> {
         .get();
 
     if (paymentSnapshot.docs.isNotEmpty) {
-      final paymentData =
-          paymentSnapshot.docs.first.data() as Map<String, dynamic>;
+      final paymentData = paymentSnapshot.docs.first.data();
       setState(() {
         _hasSubmittedForm = true;
         _existingPaymentId = paymentSnapshot.docs.first.id;
         _existingPhotoUrl = paymentData['photoUrl'];
+        _useOnlinePayment = paymentData['paymentMethod'] == 'online';
       });
     }
   }
 
   Future<void> _pickImage() async {
-    final html.FileUploadInputElement uploadInput =
-        html.FileUploadInputElement();
+    final html.FileUploadInputElement uploadInput = html.FileUploadInputElement();
     uploadInput.accept = 'image/*';
     uploadInput.click();
 
@@ -82,6 +82,21 @@ class _PaymentPageState extends State<PaymentPage> {
     });
   }
 
+  void _validateOnlinePayment() {
+    if (selectedForfait == null) {
+      _showErrorSnackbar('الرجاء اختيار الباقة المفضلة');
+      return;
+    }
+
+    if (_nomController.text.isEmpty || _prenomController.text.isEmpty) {
+      _showErrorSnackbar('الرجاء إدخال الاسم العائلي والاسم الشخصي');
+      return;
+    }
+
+    html.window.open('https://gateway.konnect.network/me/taqyem', '_blank');
+    _submitPayment();
+  }
+
   Future<void> _submitPayment() async {
     if (selectedForfait == null ||
         _nomController.text.isEmpty ||
@@ -90,9 +105,7 @@ class _PaymentPageState extends State<PaymentPage> {
       return;
     }
 
-    if (_photo == null &&
-        _existingPhotoUrl == null &&
-        !_isEditingExistingRequest) {
+    if (!_useOnlinePayment && _photo == null && _existingPhotoUrl == null) {
       _showErrorSnackbar('الرجاء إرفاق صورة الحوالة البريدية');
       return;
     }
@@ -115,13 +128,15 @@ class _PaymentPageState extends State<PaymentPage> {
         'timestamp': FieldValue.serverTimestamp(),
         'status': 'pending',
         'adminMessage': null,
+        'paymentMethod': _useOnlinePayment ? 'online' : 'manual',
       };
 
-      // Upload new photo if selected
-      if (_photo != null) {
-        paymentData['photoUrl'] = await _uploadPhoto(_photo!);
-      } else if (_existingPhotoUrl != null) {
-        paymentData['photoUrl'] = _existingPhotoUrl;
+      if (!_useOnlinePayment) {
+        if (_photo != null) {
+          paymentData['photoUrl'] = await _uploadPhoto(_photo!);
+        } else if (_existingPhotoUrl != null) {
+          paymentData['photoUrl'] = _existingPhotoUrl;
+        }
       }
 
       if (_isEditingExistingRequest && _existingPaymentId != null) {
@@ -144,7 +159,8 @@ class _PaymentPageState extends State<PaymentPage> {
         _isEditingExistingRequest = false;
       });
 
-      _showSuccessSnackbar('تم تسجيل طلب الدفع بنجاح!');
+      _showSuccessSnackbar(
+          'تم تسجيل طلب الدفع بنجاح! ${_useOnlinePayment ? 'يرجى إتمام الدفع الإلكتروني' : ''}');
     } catch (e) {
       _showErrorSnackbar('حدث خطأ أثناء إرسال الطلب: ${e.toString()}');
     } finally {
@@ -176,6 +192,7 @@ class _PaymentPageState extends State<PaymentPage> {
       _prenomController.text = data['prenom'] ?? '';
       _existingPhotoUrl = data['photoUrl'];
       _hasSubmittedForm = false;
+      _useOnlinePayment = data['paymentMethod'] == 'online';
     });
   }
 
@@ -218,240 +235,238 @@ class _PaymentPageState extends State<PaymentPage> {
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: _hasSubmittedForm
-              ? StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('Users')
-                      .doc(FirebaseAuth.instance.currentUser?.uid)
-                      .collection('payments')
-                      .orderBy('timestamp', descending: true)
-                      .limit(1)
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Center(
-                        child: CircularProgressIndicator(
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.blue),
-                        ),
-                      );
-                    }
-
-                    if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                      return SizedBox.expand(
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.access_time,
-                                size: 60,
-                                color: Colors.orange,
-                              ),
-                              SizedBox(height: 20),
-                              Text(
-                                'طلبك قيد المعالجة',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Tajawal',
-                                  color: Colors.grey[800],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }
-
-                    final payment = snapshot.data!.docs.first;
-                    final data = payment.data() as Map<String, dynamic>;
-                    final status = data['status'] ?? 'pending';
-                    final adminMessage = data['adminMessage'] ?? '';
-
-                    return SingleChildScrollView(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(20),
-                            child: Column(
-                              children: [
-                                Container(
-                                  padding: EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: status == 'approved'
-                                        ? Colors.green.withOpacity(0.1)
-                                        : status == 'rejected'
-                                            ? Colors.red.withOpacity(0.1)
-                                            : Colors.orange.withOpacity(0.1),
-                                  ),
-                                  child: Icon(
-                                    status == 'approved'
-                                        ? Icons.check_circle
-                                        : status == 'rejected'
-                                            ? Icons.error_outline
-                                            : Icons.access_time,
-                                    size: 60,
-                                    color: status == 'approved'
-                                        ? Colors.green
-                                        : status == 'rejected'
-                                            ? Colors.red
-                                            : Colors.orange,
-                                  ),
-                                ),
-                                SizedBox(height: 24),
-                                Text(
-                                  status == 'approved'
-                                      ? 'تم تفعيل حسابك بنجاح'
-                                      : status == 'rejected'
-                                          ? 'تم رفض طلبك'
-                                          : 'طلبك قيد المراجعة',
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Tajawal',
-                                    color: status == 'approved'
-                                        ? Colors.green
-                                        : status == 'rejected'
-                                            ? Colors.red
-                                            : Colors.orange,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                SizedBox(height: 16),
-                                if (adminMessage.isNotEmpty) ...[
-                                  Container(
-                                    width: double.infinity,
-                                    padding: EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey[50],
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(
-                                        color: Colors.grey[200]!,
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          'رسالة الإدارة:',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            fontFamily: 'Tajawal',
-                                            color: Colors.grey[700],
-                                          ),
-                                        ),
-                                        SizedBox(height: 8),
-                                        Text(
-                                          adminMessage,
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontFamily: 'Tajawal',
-                                            color: Colors.grey[800],
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  SizedBox(height: 20),
-                                ],
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 24, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: status == 'approved'
-                                        ? Colors.green.withOpacity(0.05)
-                                        : status == 'rejected'
-                                            ? Colors.red.withOpacity(0.05)
-                                            : Colors.orange.withOpacity(0.05),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    status == 'approved'
-                                        ? 'يمكنك الآن الاستفادة من جميع ميزات التطبيق'
-                                        : status == 'rejected'
-                                            ? 'يرجى مراجعة المعلومات المقدمة وتعديل الطلب'
-                                            : 'سيتم مراجعة طلبك وإعلامك عند التأكيد',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontFamily: 'Tajawal',
-                                      color: Colors.grey[700],
-                                    ),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                // Afficher le bouton de modification seulement si rejected ET il y a un message admin
-                                if (status == 'rejected' &&
-                                    adminMessage.isNotEmpty) ...[
-                                  SizedBox(height: 30),
-                                  ElevatedButton(
-                                    onPressed: () =>
-                                        _loadExistingRequest(payment),
-                                    style: ElevatedButton.styleFrom(
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 32, vertical: 12),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      backgroundColor: Colors.blue[700],
-                                    ),
-                                    child: Text(
-                                      'تعديل الطلب',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontFamily: 'Tajawal',
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(height: 10),
-                                  if (_existingPhotoUrl != null)
-                                    TextButton(
-                                      onPressed: () {
-                                        showDialog(
-                                          context: context,
-                                          builder: (context) => Dialog(
-                                            child: Container(
-                                              padding: EdgeInsets.all(16),
-                                              child: Column(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  Image.network(
-                                                      _existingPhotoUrl!),
-                                                  SizedBox(height: 16),
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(context),
-                                                    child: Text('إغلاق'),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      child: Text(
-                                        'عرض إثبات الدفع السابق',
-                                        style: TextStyle(
-                                          fontFamily: 'Tajawal',
-                                          color: Colors.blue,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                )
+              ? _buildStatusView()
               : _buildPaymentForm(),
         ),
       ),
+    );
+  }
+
+  Widget _buildStatusView() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('Users')
+          .doc(FirebaseAuth.instance.currentUser?.uid)
+          .collection('payments')
+          .orderBy('timestamp', descending: true)
+          .limit(1)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.access_time,
+                  size: 60,
+                  color: Colors.orange,
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'طلبك قيد المعالجة',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Tajawal',
+                    color: Colors.grey[800],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final payment = snapshot.data!.docs.first;
+        final data = payment.data() as Map<String, dynamic>;
+        final status = data['status'] ?? 'pending';
+        final adminMessage = data['adminMessage'] ?? '';
+        final paymentMethod = data['paymentMethod'] ?? 'manual';
+
+        return SingleChildScrollView(
+          child: Column(
+            children: [
+              Container(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: status == 'approved'
+                            ? Colors.green.withOpacity(0.1)
+                            : status == 'rejected'
+                                ? Colors.red.withOpacity(0.1)
+                                : Colors.orange.withOpacity(0.1),
+                      ),
+                      child: Icon(
+                        status == 'approved'
+                            ? Icons.check_circle
+                            : status == 'rejected'
+                                ? Icons.error_outline
+                                : Icons.access_time,
+                        size: 60,
+                        color: status == 'approved'
+                            ? Colors.green
+                            : status == 'rejected'
+                                ? Colors.red
+                                : Colors.orange,
+                      ),
+                    ),
+                    SizedBox(height: 24),
+                    Text(
+                      status == 'approved'
+                          ? 'تم تفعيل حسابك بنجاح'
+                          : status == 'rejected'
+                              ? 'تم رفض طلبك'
+                              : 'طلبك قيد المراجعة',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Tajawal',
+                        color: status == 'approved'
+                            ? Colors.green
+                            : status == 'rejected'
+                                ? Colors.red
+                                : Colors.orange,
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'طريقة الدفع: ${paymentMethod == 'online' ? 'إلكتروني' : 'يدوي'}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontFamily: 'Tajawal',
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    if (adminMessage.isNotEmpty) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey[200]!),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              'رسالة الإدارة:',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Tajawal',
+                                color: Colors.grey[700],
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              adminMessage,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontFamily: 'Tajawal',
+                                color: Colors.grey[800],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                    ],
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: status == 'approved'
+                            ? Colors.green.withOpacity(0.05)
+                            : status == 'rejected'
+                                ? Colors.red.withOpacity(0.05)
+                                : Colors.orange.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        status == 'approved'
+                            ? 'يمكنك الآن الاستفادة من جميع ميزات التطبيق'
+                            : status == 'rejected'
+                                ? 'يرجى مراجعة المعلومات المقدمة وتعديل الطلب'
+                                : 'سيتم مراجعة طلبك وإعلامك عند التأكيد',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontFamily: 'Tajawal',
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                    if (status == 'rejected' && adminMessage.isNotEmpty) ...[
+                      SizedBox(height: 30),
+                      ElevatedButton(
+                        onPressed: () => _loadExistingRequest(payment),
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          backgroundColor: Colors.blue[700],
+                        ),
+                        child: Text(
+                          'تعديل الطلب',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontFamily: 'Tajawal',
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 10),
+                      if (_existingPhotoUrl != null && paymentMethod != 'online')
+                        TextButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => Dialog(
+                                child: Container(
+                                  padding: EdgeInsets.all(16),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Image.network(_existingPhotoUrl!),
+                                      SizedBox(height: 16),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: Text('إغلاق'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                          child: Text(
+                            'عرض إثبات الدفع السابق',
+                            style: TextStyle(
+                              fontFamily: 'Tajawal',
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -514,7 +529,7 @@ class _PaymentPageState extends State<PaymentPage> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'يمكنكم إرسال مبلغ الباقة عن طريق حوالة بريدية أو عن طريق D17 مع إرفاق صورة للحوالة.',
+                    'يمكنكم إرسال مبلغ الباقة عن طريق حوالة بريدية أو عن طريق D17 أو الدفع الإلكتروني عبر الرابط التالي.',
                     style: TextStyle(fontSize: 16, fontFamily: 'Tajawal'),
                   ),
                 ],
@@ -542,14 +557,17 @@ class _PaymentPageState extends State<PaymentPage> {
                       color: selectedForfait == forfait['type']
                           ? Colors.blue[50]
                           : Colors.white,
-                      border: selectedForfait == forfait['type']
-                          ? Border.all(color: Colors.blue, width: 2)
-                          : null,
+                      border: Border.all(
+                        color: selectedForfait == forfait['type']
+                            ? Colors.blue
+                            : Colors.grey[300]!,
+                        width: 2,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black12,
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
                         ),
                       ],
                     ),
@@ -564,12 +582,21 @@ class _PaymentPageState extends State<PaymentPage> {
                         padding: const EdgeInsets.all(16.0),
                         child: Column(
                           children: [
-                            Icon(
-                              forfait['icon'],
-                              size: 40,
-                              color: selectedForfait == forfait['type']
-                                  ? Colors.blue
-                                  : Colors.grey,
+                            Container(
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: selectedForfait == forfait['type']
+                                    ? Colors.blue.withOpacity(0.1)
+                                    : Colors.grey.withOpacity(0.1),
+                              ),
+                              child: Icon(
+                                forfait['icon'],
+                                size: 30,
+                                color: selectedForfait == forfait['type']
+                                    ? Colors.blue
+                                    : Colors.grey,
+                              ),
                             ),
                             SizedBox(height: 10),
                             Text(
@@ -615,6 +642,135 @@ class _PaymentPageState extends State<PaymentPage> {
           ),
           SizedBox(height: 30),
           Text(
+            'طريقة الدفع:',
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Tajawal'),
+          ),
+          SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () {
+                    setState(() {
+                      _useOnlinePayment = false;
+                    });
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: !_useOnlinePayment ? Colors.blue[50] : Colors.grey[50],
+                      border: Border.all(
+                        color: !_useOnlinePayment ? Colors.blue : Colors.grey[300]!,
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.money,
+                          color: !_useOnlinePayment ? Colors.blue : Colors.grey,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'حوالة بريدية / D17',
+                          style: TextStyle(
+                            fontFamily: 'Tajawal',
+                            color: !_useOnlinePayment ? Colors.blue : Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () {
+                    setState(() {
+                      _useOnlinePayment = true;
+                    });
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: _useOnlinePayment ? Colors.green[50] : Colors.grey[50],
+                      border: Border.all(
+                        color: _useOnlinePayment ? Colors.green : Colors.grey[300]!,
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.credit_card,
+                          color: _useOnlinePayment ? Colors.green : Colors.grey,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'دفع إلكتروني',
+                          style: TextStyle(
+                            fontFamily: 'Tajawal',
+                            color: _useOnlinePayment ? Colors.green : Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          if (_useOnlinePayment) ...[
+            Card(
+              color: Colors.green[50],
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Text(
+                      'الدفع الإلكتروني عبر Konnect',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Tajawal',
+                          color: Colors.green[800]),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      'سيتم فتح صفحة الدفع الإلكتروني بعد تأكيد المعلومات',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontFamily: 'Tajawal',
+                          color: Colors.grey[700]),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      'الرجاء التأكد من صحة المعلومات قبل المتابعة',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontFamily: 'Tajawal',
+                          color: Colors.red[700]),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 20),
+          ],
+          Text(
             'المعلومات الشخصية:',
             style: TextStyle(
                 fontSize: 18,
@@ -654,157 +810,190 @@ class _PaymentPageState extends State<PaymentPage> {
             textAlign: TextAlign.right,
           ),
           SizedBox(height: 20),
-          Text(
-            'إثبات الدفع:',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Tajawal'),
-          ),
-          SizedBox(height: 10),
-          Text(
-            'يرجى تحميل صورة الحوالة البريدية أو إثبات التحويل:',
-            style: TextStyle(
-                fontSize: 14, color: Colors.grey[700], fontFamily: 'Tajawal'),
-          ),
-          SizedBox(height: 15),
-          AnimatedContainer(
-            duration: Duration(milliseconds: 300),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              color: _photo != null || _existingPhotoUrl != null
-                  ? Colors.green[50]
-                  : Colors.grey[50],
-              border: Border.all(
-                color: _photo != null || _existingPhotoUrl != null
-                    ? Colors.green
-                    : Colors.grey[300]!,
-                width: 1.5,
-              ),
+          if (!_useOnlinePayment) ...[
+            Text(
+              'إثبات الدفع:',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Tajawal'),
             ),
-            child: Column(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _pickImage,
-                  icon: Icon(Icons.upload),
-                  label: Text(_photo != null || _existingPhotoUrl != null
-                      ? 'تغيير الصورة'
-                      : 'تحميل صورة الحوالة البريدية'),
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: _photo != null || _existingPhotoUrl != null
-                        ? Colors.green
-                        : Colors.blue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
+            SizedBox(height: 10),
+            Text(
+              'يرجى تحميل صورة الحوالة البريدية أو إثبات التحويل:',
+              style: TextStyle(
+                  fontSize: 14, color: Colors.grey[700], fontFamily: 'Tajawal'),
+            ),
+            SizedBox(height: 15),
+            AnimatedContainer(
+              duration: Duration(milliseconds: 300),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: _photo != null || _existingPhotoUrl != null
+                    ? Colors.green[50]
+                    : Colors.grey[50],
+                border: Border.all(
+                  color: _photo != null || _existingPhotoUrl != null
+                      ? Colors.green
+                      : Colors.grey[300]!,
+                  width: 1.5,
                 ),
-                if (_photo != null)
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            html.Url.createObjectUrl(_photo!),
-                            height: 150,
-                            width: 150,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'صورة الحوالة المرفقة',
-                          style: TextStyle(
-                            fontFamily: 'Tajawal',
-                            color: Colors.green[700],
-                          ),
-                        ),
-                      ],
+              ),
+              child: Column(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _pickImage,
+                    icon: Icon(Icons.upload),
+                    label: Text(_photo != null || _existingPhotoUrl != null
+                        ? 'تغيير الصورة'
+                        : 'تحميل صورة الحوالة البريدية'),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor: _photo != null || _existingPhotoUrl != null
+                          ? Colors.green
+                          : Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
-                if (_existingPhotoUrl != null && _photo == null)
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        Text(
-                          'تم تحميل صورة سابقة',
-                          style: TextStyle(
-                            fontFamily: 'Tajawal',
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => Dialog(
-                                child: Container(
-                                  padding: EdgeInsets.all(16),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Image.network(_existingPhotoUrl!),
-                                      SizedBox(height: 16),
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: Text('إغلاق'),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                          child: Text(
-                            'عرض الصورة السابقة',
-                            style: TextStyle(
-                              fontFamily: 'Tajawal',
-                              color: Colors.blue,
+                  if (_photo != null)
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              html.Url.createObjectUrl(_photo!),
+                              height: 150,
+                              width: 150,
+                              fit: BoxFit.cover,
                             ),
                           ),
-                        ),
-                      ],
+                          SizedBox(height: 8),
+                          Text(
+                            'صورة الحوالة المرفقة',
+                            style: TextStyle(
+                              fontFamily: 'Tajawal',
+                              color: Colors.green[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_existingPhotoUrl != null && _photo == null)
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          Text(
+                            'تم تحميل صورة سابقة',
+                            style: TextStyle(
+                              fontFamily: 'Tajawal',
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          TextButton(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => Dialog(
+                                  child: Container(
+                                    padding: EdgeInsets.all(16),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Image.network(_existingPhotoUrl!),
+                                        SizedBox(height: 16),
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(context),
+                                          child: Text('إغلاق'),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'عرض الصورة السابقة',
+                              style: TextStyle(
+                                fontFamily: 'Tajawal',
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            SizedBox(height: 30),
+          ],
+          _buildSubmitButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300),
+      child: _isLoading
+          ? Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    height: 50,
+                    width: 50,
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation(Colors.blue),
+                      strokeWidth: 5,
                     ),
                   ),
-              ],
-            ),
-          ),
-          SizedBox(height: 30),
-          AnimatedContainer(
-            duration: Duration(milliseconds: 300),
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _submitPayment,
-              child: _isLoading
-                  ? SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation(Colors.white),
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : Text(
-                      _isEditingExistingRequest ? 'تحديث الطلب' : 'إرسال الطلب',
-                      style: TextStyle(fontSize: 16, fontFamily: 'Tajawal'),
+                  SizedBox(height: 16),
+                  Text(
+                    'جاري معالجة طلبك...',
+                    style: TextStyle(
+                      fontFamily: 'Tajawal',
+                      fontSize: 16,
+                      color: Colors.grey[700],
                     ),
+                  ),
+                ],
+              ),
+            )
+          : ElevatedButton(
+              onPressed: _useOnlinePayment ? _validateOnlinePayment : _submitPayment,
+              child: Text(
+                _isEditingExistingRequest
+                    ? 'تحديث الطلب'
+                    : _useOnlinePayment
+                        ? 'تأكيد ومتابعة الدفع'
+                        : 'إرسال الطلب',
+                style: TextStyle(fontSize: 16, fontFamily: 'Tajawal'),
+              ),
               style: ElevatedButton.styleFrom(
                 padding: EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.blue[700],
+                backgroundColor:
+                    _useOnlinePayment ? Colors.green[700] : Colors.blue[700],
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
                 elevation: 3,
-                shadowColor: Colors.blue.withOpacity(0.3),
+                shadowColor: (_useOnlinePayment ? Colors.green : Colors.blue)
+                    .withOpacity(0.3),
               ),
             ),
-          ),
-        ],
-      ),
     );
   }
 }

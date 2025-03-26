@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:Taqyem/taqyem/tableau.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 class BaremesPage extends StatefulWidget {
   final String selectedClass;
   final String selectedMatiere;
@@ -733,22 +734,27 @@ class _SelectionPageState extends State<SelectionPage> {
 }
 /////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////
+
 class SelectedBaremesPage extends StatefulWidget {
   final String selectedClass;
   final String selectedMatiere;
 
-  SelectedBaremesPage(
-      {required this.selectedClass, required this.selectedMatiere});
+  SelectedBaremesPage({
+    required this.selectedClass,
+    required this.selectedMatiere,
+  });
 
   @override
   _SelectedBaremesPageState createState() => _SelectedBaremesPageState();
 }
 
 class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
+  bool _isLoading = true;
+
   @override
   void initState() {
     super.initState();
-    _showUtilityDialog(); // Afficher le dialogue d'utilité
+    _showUtilityDialog();
   }
 
   Future<void> _showUtilityDialog() async {
@@ -758,158 +764,322 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
     String today = "${now.year}-${now.month}-${now.day}";
 
     if (lastShownDate != today) {
-      // Afficher le dialogue seulement s'il n'a pas été affiché aujourd'hui
-      showDialog(
+      await showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             title: Text('معلومات عن الواجهة',
-                style:
-                    TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-            content: Text(
-              'هذه الواجهة تتيح لك عرض المعايير والمؤشرات المحددة للقسم والمادة المختارة. '
-              'يمكنك أيضًا عرض جدول ديناميكي للمعايير والمؤشرات.',
-              style: TextStyle(fontSize: 16),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Colors.blue.shade700,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18)),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInfoItem(Icons.list,
+                      'هذه الواجهة تعرض المعايير والمؤشرات المحددة'),
+                  SizedBox(height: 8),
+                  _buildInfoItem(Icons.table_chart,
+                      'اضغط على زر الجدول لعرض البيانات بشكل جدولي'),
+                  SizedBox(height: 8),
+                  _buildInfoItem(Icons.help_outline,
+                      'يمكنك الرجوع لتعديل الاختيارات في أي وقت'),
+                ],
+              ),
             ),
             actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('موافق', style: TextStyle(color: Colors.blue)),
+              Center(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('فهمت', style: TextStyle(color: Colors.white)),
+                ),
               ),
             ],
           );
         },
       );
-
-      // Enregistrer la date d'aujourd'hui comme dernière date d'affichage
       await prefs.setString('lastShownUtilityDate', today);
     }
   }
 
+  Widget _buildInfoItem(IconData icon, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: Colors.blue.shade700),
+        SizedBox(width: 8),
+        Expanded(child: Text(text, style: TextStyle(fontSize: 15))),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Obtenir l'ID de l'utilisateur actuellement connecté
     String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
     if (userId.isEmpty) {
       return Scaffold(
         appBar: AppBar(
-          title: Text('البرامج والبرامج الفرعية المحددة'),
+          title: Text('المعايير المحددة',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          centerTitle: true,
         ),
         body: Center(
-          child: Text('المستخدم غير متصل. يرجى تسجيل الدخول.'),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.warning_amber_rounded, size: 48, color: Colors.orange),
+              SizedBox(height: 16),
+              Text('يجب تسجيل الدخول لعرض المعايير المحددة',
+                  style: TextStyle(fontSize: 16)),
+              SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade700,
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('العودة', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
         ),
       );
     }
-
     return Scaffold(
       appBar: AppBar(
-        title: Text('المعايير و المؤشرات المحددة'),
-      ),
-      body: Column(
-        children: [
-          // Bouton en haut de la liste
+        title: Text('المعايير المحددة',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        centerTitle: true,
+        actions: [
+          // AppBar button with better text fitting
           Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DynamicTablePage(
-                      selectedClass: widget.selectedClass,
-                      selectedMatiere: widget.selectedMatiere,
-                    ),
+            padding: EdgeInsets.only(right: 16.0),
+            child: ElevatedButton.icon(
+              icon: Icon(Icons.table_chart, size: 20),
+              label: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'عرض الجدول',
+                  style: TextStyle(fontSize: 14), // Adjusted font size
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade700,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                elevation: 3,
+                padding: EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 8), // Adjusted padding
+              ),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DynamicTablePage(
+                    selectedClass: widget.selectedClass,
+                    selectedMatiere: widget.selectedMatiere,
                   ),
-                );
-              },
-              child: Text('عرض الجدول'), // Traduction en arabe
-            ),
-          ),
-          // Liste des barèmes et sous-barèmes
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(userId)
-                  .collection('selections')
-                  .doc(widget.selectedClass)
-                  .collection(widget.selectedMatiere)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('خطأ: ${snapshot.error}'));
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return Center(child: Text('لا يوجد عناصر محددة'));
-                }
-
-                return ListView.builder(
-                  itemCount: snapshot.data!.docs.length,
-                  itemBuilder: (context, index) {
-                    var doc = snapshot.data!.docs[index];
-                    bool isBaremeSelected = doc['selected'] ?? false;
-                    String baremeName = doc['baremeName'] ?? '';
-
-                    return Column(
-                      children: [
-                        // Affichage du barème si sélectionné
-                        if (isBaremeSelected)
-                          ListTile(
-                            title: Text(
-                              'المعيار: $baremeName',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-
-                        // Affichage des sous-barèmes
-                        StreamBuilder<QuerySnapshot>(
-                          stream: doc.reference
-                              .collection('sousBaremes')
-                              .snapshots(),
-                          builder: (context, sousSnapshot) {
-                            if (sousSnapshot.connectionState ==
-                                ConnectionState.waiting) {
-                              return CircularProgressIndicator();
-                            }
-                            if (sousSnapshot.hasError) {
-                              return Text('خطأ: ${sousSnapshot.error}');
-                            }
-
-                            var sousBaremes = sousSnapshot.data?.docs ?? [];
-
-                            return Column(
-                              children: sousBaremes.map((sousDoc) {
-                                String sousBaremeName =
-                                    sousDoc['sousBaremeName'] ?? '';
-                                return ListTile(
-                                  title: Text('المؤشر: $sousBaremeName'),
-                                  subtitle: Text(
-                                    isBaremeSelected
-                                        ? 'المعيار الأب: $baremeName'
-                                        : 'المعيار الأب غير محدد: $baremeName',
-                                    style: TextStyle(color: Colors.grey),
-                                  ),
-                                  leading: Icon(Icons.arrow_right),
-                                );
-                              }).toList(),
-                            );
-                          },
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
+                ),
+              ),
             ),
           ),
         ],
       ),
+      body: _buildContent(userId),
+      // Improved Floating Action Button with full text visibility
+      floatingActionButton: Container(
+        height: 56,
+        width: 220, // Increased width to accommodate text
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.blue.withOpacity(0.3),
+              blurRadius: 10,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          icon: Icon(Icons.table_chart, size: 24),
+          label: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              'عرض الجدول الجامع للنتائج',
+              style: TextStyle(
+                fontSize: 14, // Slightly reduced font size
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          backgroundColor: Colors.blue.shade700,
+          foregroundColor: Colors.white,
+          elevation: 6,
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => DynamicTablePage(
+                selectedClass: widget.selectedClass,
+                selectedMatiere: widget.selectedMatiere,
+              ),
+            ),
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+    );
+  }
+
+  Widget _buildContent(String userId) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator(color: Colors.blue));
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 48, color: Colors.red),
+                SizedBox(height: 16),
+                Text('حدث خطأ في تحميل البيانات',
+                    style: TextStyle(fontSize: 16, color: Colors.red)),
+              ],
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.info_outline, size: 48, color: Colors.blue),
+                SizedBox(height: 16),
+                Text('لم يتم تحديد أي معايير بعد',
+                    style: TextStyle(fontSize: 16)),
+                SizedBox(height: 24),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  ),
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('تحديد المعايير',
+                      style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          itemCount: snapshot.data!.docs.length,
+          itemBuilder: (context, index) {
+            var doc = snapshot.data!.docs[index];
+            bool isBaremeSelected = doc['selected'] ?? false;
+            String baremeName = doc['baremeName'] ?? '';
+
+            return Column(
+              children: [
+                if (isBaremeSelected) _buildBaremeCard(baremeName, true),
+                _buildSousBaremesList(
+                    doc.reference, baremeName, isBaremeSelected),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildBaremeCard(String baremeName, bool isSelected) {
+    return Card(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        leading: Icon(Icons.star, color: Colors.amber),
+        title: Text(baremeName,
+            style: TextStyle(
+                fontWeight: FontWeight.bold, color: Colors.blue.shade700)),
+        subtitle:
+            Text('معيار رئيسي', style: TextStyle(color: Colors.grey.shade600)),
+        trailing: Icon(Icons.check_circle, color: Colors.green),
+      ),
+    );
+  }
+
+  Widget _buildSousBaremesList(
+      DocumentReference docRef, String baremeName, bool isBaremeSelected) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: docRef.collection('sousBaremes').snapshots(),
+      builder: (context, sousSnapshot) {
+        if (sousSnapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator(color: Colors.blue));
+        }
+
+        if (sousSnapshot.hasError) {
+          return Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Text('خطأ في تحميل المؤشرات',
+                style: TextStyle(color: Colors.red)),
+          );
+        }
+
+        var sousBaremes = sousSnapshot.data?.docs ?? [];
+        if (sousBaremes.isEmpty) return SizedBox();
+
+        return Column(
+          children: sousBaremes.map((sousDoc) {
+            String sousBaremeName = sousDoc['sousBaremeName'] ?? '';
+            return Card(
+              margin: EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              elevation: 1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: ListTile(
+                leading: Icon(Icons.arrow_forward_ios, size: 16),
+                title: Text(sousBaremeName, style: TextStyle(fontSize: 14)),
+                subtitle: Text(
+                  isBaremeSelected ? 'تابع لـ $baremeName' : 'مؤشر',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                trailing: Icon(Icons.check_circle_outline,
+                    color: Colors.green.shade400),
+                contentPadding: EdgeInsets.symmetric(horizontal: 16),
+              ),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 }
