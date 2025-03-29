@@ -80,47 +80,49 @@ class _ClassificationPageState extends State<ClassificationPage> {
     }
   }
 
-  Future<void> _saveUserProposal(
-      String solution, String probleme, String groupName) async {
-    final userId = FirebaseAuth.instance.currentUser!.uid;
-    final proposalRef = FirebaseFirestore.instance
-        .collection('users_proposals')
-        .doc(userId)
-        .collection('user_proposals')
-        .doc();
+ Future<void> _saveUserProposal(
+    String solution, String probleme, String groupName) async {
+  final userId = FirebaseAuth.instance.currentUser!.uid;
+  final proposalRef = FirebaseFirestore.instance
+      .collection('users_proposals')
+      .doc(userId)
+      .collection('user_proposals')
+      .doc();
 
-    final globalProposalRef = FirebaseFirestore.instance
-        .collection('users_proposals')
-        .doc('global_proposals')
-        .collection('approved_proposals')
-        .doc(proposalRef.id);
+  final globalProposalRef = FirebaseFirestore.instance
+      .collection('users_proposals')
+      .doc('global_proposals')
+      .collection('approved_proposals')
+      .doc(proposalRef.id);
 
-    final batch = FirebaseFirestore.instance.batch();
+  final batch = FirebaseFirestore.instance.batch();
 
-    // 1. Ajout à la collection utilisateur
-    batch.set(proposalRef, {
-      'solution': solution,
-      'probleme': probleme,
-      'groupName': groupName,
-      'status': 'pending',
-      'createdAt': FieldValue.serverTimestamp(),
-      'userId': userId,
-      'userName': FirebaseAuth.instance.currentUser!.displayName ?? 'Anonymous',
-      'className': widget.className,
-      'matiereName': widget.matiereName,
-      'baremeName': widget.baremeName,
-      'sousBaremeName': widget.sousBaremeName ?? '',
-    });
+  // Ajout à la collection utilisateur
+  batch.set(proposalRef, {
+    'solution': solution,
+    'probleme': probleme,
+    'groupName': groupName,
+    'status': 'pending',
+    'createdAt': FieldValue.serverTimestamp(),
+    'userId': userId,
+    'userName': FirebaseAuth.instance.currentUser!.displayName ?? 'Anonymous',
+    'className': widget.className,
+    'matiereName': widget.matiereName,
+    'baremeName': widget.baremeName,
+    'sousBaremeName': widget.sousBaremeName ?? '',
+    'isUserProposal': true, // Marquer comme proposition utilisateur
+  });
 
-    // 2. Ajout à la collection globale (en attente)
-    batch.set(globalProposalRef, {
-      'originalRef': proposalRef.path,
-      'status': 'pending',
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+  // Ajout à la collection globale (en attente)
+  batch.set(globalProposalRef, {
+    'originalRef': proposalRef.path,
+    'status': 'pending',
+    'createdAt': FieldValue.serverTimestamp(),
+    'isGlobalProposal': false, // Ce n'est pas une proposition globale
+  });
 
-    await batch.commit();
-  }
+  await batch.commit();
+}
 
   Future<void> _approveProposal(String proposalPath) async {
     final proposalRef = FirebaseFirestore.instance.doc(proposalPath);
@@ -147,101 +149,137 @@ class _ClassificationPageState extends State<ClassificationPage> {
 
     await batch.commit();
   }
+void showSolutionAndProbleme(String groupName) async {
+  // Charger les propositions de l'utilisateur
+  final userProposals = await _getUserProposals();
+  
+  var result = jsonData.firstWhere(
+    (item) {
+      String jsonClasse = item['classe'].trim().toLowerCase();
+      String jsonMatiere = item['matiere'].trim().toLowerCase();
+      String jsonBareme = item['bareme'].trim().toLowerCase();
 
-  void showSolutionAndProbleme(String groupName) {
-    print("Classe sélectionnée: ${widget.className}");
-    print("Matière sélectionnée: ${widget.matiereName}");
-    print("Barème sélectionné: ${widget.baremeName}");
-    print("Sous-barème sélectionné: ${widget.sousBaremeName ?? 'Non défini'}");
+      String selectedClasse = widget.className.trim().toLowerCase();
+      String selectedMatiere = widget.matiereName.trim().toLowerCase();
+      String selectedBareme =
+          (widget.sousBaremeName ?? widget.baremeName).trim().toLowerCase();
 
-    var result = jsonData.firstWhere(
-      (item) {
-        String jsonClasse = item['classe'].trim().toLowerCase();
-        String jsonMatiere = item['matiere'].trim().toLowerCase();
-        String jsonBareme = item['bareme'].trim().toLowerCase();
+      return jsonClasse == selectedClasse &&
+          jsonMatiere == selectedMatiere &&
+          jsonBareme == selectedBareme;
+    },
+    orElse: () => null,
+  );
 
-        String selectedClasse = widget.className.trim().toLowerCase();
-        String selectedMatiere = widget.matiereName.trim().toLowerCase();
-        String selectedBareme =
-            (widget.sousBaremeName ?? widget.baremeName).trim().toLowerCase();
+  TextEditingController solutionController = TextEditingController();
+  TextEditingController problemeController = TextEditingController();
 
-        return jsonClasse == selectedClasse &&
-            jsonMatiere == selectedMatiere &&
-            jsonBareme == selectedBareme;
-      },
-      orElse: () => null,
-    );
-
-    // Contrôleurs pour les nouveaux champs de texte
-    TextEditingController solutionController = TextEditingController();
-    TextEditingController problemeController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('خطة العلاج وأصل الخطأ لـ $groupName'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('الحل:', style: TextStyle(fontWeight: FontWeight.bold)),
-                Text(result != null ? result['solution'] : 'لا يوجد حل متاح'),
-                SizedBox(height: 16),
-                Text('المشكلة:', style: TextStyle(fontWeight: FontWeight.bold)),
-                Text(result != null
-                    ? result['probleme']
-                    : 'لا يوجد مشكلة محددة'),
-                SizedBox(height: 24),
-                Text('أضف مقترحاتك:',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: Text('خطة العلاج وأصل الخطأ لـ $groupName'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Solutions par défaut
+              Text('الحل:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(result != null ? result['solution'] : 'لا يوجد حل متاح'),
+              SizedBox(height: 16),
+              Text('المشكلة:', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(result != null ? result['probleme'] : 'لا يوجد مشكلة محددة'),
+              
+              SizedBox(height: 24),
+              
+              // Propositions de l'utilisateur
+              if (userProposals.isNotEmpty) ...[
+                Text('مقترحاتك:', style: TextStyle(fontWeight: FontWeight.bold)),
                 SizedBox(height: 8),
-                TextField(
-                  controller: solutionController,
-                  decoration: InputDecoration(
-                    labelText: 'الحل المقترح',
-                    border: OutlineInputBorder(),
+                ...userProposals.map((proposal) => Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (proposal['solution']?.isNotEmpty == true) ...[
+                          Text('الحل المقترح: ${proposal['solution']}'),
+                          SizedBox(height: 4),
+                        ],
+                        if (proposal['probleme']?.isNotEmpty == true) ...[
+                          Text('أصل المشكلة المقترح: ${proposal['probleme']}'),
+                          SizedBox(height: 4),
+                        ],
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                _deleteUserProposal(proposal['id']);
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  maxLines: 3,
-                ),
+                )).toList(),
                 SizedBox(height: 16),
-                TextField(
-                  controller: problemeController,
-                  decoration: InputDecoration(
-                    labelText: 'أصل المشكلة المقترح',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 3,
-                ),
               ],
-            ),
+              
+              // Formulaire pour ajouter de nouvelles propositions
+              Text('أضف مقترحات جديدة:',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              TextField(
+                controller: solutionController,
+                decoration: InputDecoration(
+                  labelText: 'الحل المقترح',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: problemeController,
+                decoration: InputDecoration(
+                  labelText: 'أصل المشكلة المقترح',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('إغلاق'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (solutionController.text.isNotEmpty ||
+                  problemeController.text.isNotEmpty) {
+                await _saveUserProposal(
+                  solutionController.text,
+                  problemeController.text,
+                  groupName,
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('تم حفظ المقترحات بنجاح')),
+                );
                 Navigator.of(context).pop();
-              },
-              child: Text('إغلاق'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (solutionController.text.isNotEmpty ||
-                    problemeController.text.isNotEmpty) {
-                  await _saveUserProposal(solutionController.text,
-                      problemeController.text, groupName);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('تم حفظ المقترحات بنجاح')),
-                  );
-                  Navigator.of(context).pop();
-                }
-              },
-              child: Text('حفظ المقترحات'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+              }
+            },
+            child: Text('حفظ المقترحات الجديدة'),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   Future<void> _generateAndSavePDF() async {
     try {
@@ -275,7 +313,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
         };
       }
 
-      const serverUrl = 'http://localhost:5000/generate-pdf';
+      const serverUrl = 'https://print-maker.onrender.com/generate-pdf';
 
       final response = await http.post(
         Uri.parse(serverUrl),
@@ -442,7 +480,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
     debugPrint('[TreatmentPlan] Données envoyées: ${jsonEncode(reportData)}');
 
     // 4. Envoi au serveur Flask
-    const serverUrl = 'http://localhost:5000/generate-treatment-plan';
+    const serverUrl = 'https://print-maker.onrender.com/generate-treatment-plan';
     final response = await http
         .post(
           Uri.parse(serverUrl),
@@ -899,4 +937,63 @@ class _ClassificationPageState extends State<ClassificationPage> {
     await Future.wait(futures);
     return students;
   }
+  
+  Future<List<Map<String, dynamic>>> _getUserProposal() async {
+  final userId = FirebaseAuth.instance.currentUser!.uid;
+  
+  try {
+    final query = FirebaseFirestore.instance
+        .collection('users_proposals')
+        .doc(userId)
+        .collection('user_proposals')
+        .where('className', isEqualTo: widget.className)
+        .where('matiereName', isEqualTo: widget.matiereName)
+        .where('baremeName', isEqualTo: widget.baremeName);
+
+    if (widget.sousBaremeName != null) {
+      query.where('sousBaremeName', isEqualTo: widget.sousBaremeName);
+    }
+
+    final snapshot = await query.get();
+    
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      return {
+        'id': doc.id,
+        ...data,
+      };
+    }).toList();
+  } catch (e) {
+    print('Error getting user proposals: $e');
+    return [];
+  }
+}
+Future<void> _deleteUserProposal(String proposalId) async {
+  final userId = FirebaseAuth.instance.currentUser!.uid;
+  
+  try {
+    await FirebaseFirestore.instance
+        .collection('users_proposals')
+        .doc(userId)
+        .collection('user_proposals')
+        .doc(proposalId)
+        .delete();
+    
+    // Supprimez également la référence dans les propositions globales si elle existe
+    await FirebaseFirestore.instance
+        .collection('users_proposals')
+        .doc('global_proposals')
+        .collection('approved_proposals')
+        .doc(proposalId)
+        .delete();
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('تم حذف المقترح بنجاح')),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('خطأ في حذف المقترح: $e')),
+    );
+  }
+}
 }
