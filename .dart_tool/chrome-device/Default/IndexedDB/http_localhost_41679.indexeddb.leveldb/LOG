@@ -1,0 +1,3 @@
+2025/03/27-21:12:16.744 afb3 Creating DB /tmp/flutter_tools.OGMCQE/flutter_tools_chrome_device.ERPFEH/Default/IndexedDB/http_localhost_41679.indexeddb.leveldb since it was missing.
+2025/03/27-21:12:16.779 afb3 Reusing MANIFEST /tmp/flutter_tools.OGMCQE/flutter_tools_chrome_device.ERPFEH/Default/IndexedDB/http_localhost_41679.indexeddb.leveldb/MANIFEST-000001
+2025/03/27-21:12:16.858 afb5 Manual compaction at level-0 from '\x00\x01\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x02\x00\x00\x00' @ 0 : 0; will stop at (end)

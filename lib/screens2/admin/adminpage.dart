@@ -5,6 +5,7 @@ import 'package:Taqyem/screens2/news/gerenews.dart';
 import 'package:Taqyem/screens2/users/User%20Management.dart';
 import 'package:Taqyem/taqyem/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
+import 'package:Taqyem/taqyem/AdminProposalsPage.dart';
 import 'package:Taqyem/taqyem/EditPage.dart';
 import 'package:Taqyem/taqyem/payment/PaymentPage.dart';
 import 'package:Taqyem/taqyem/payment/adminpyment.dart';
@@ -535,12 +536,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
             _buildDrawerItem(
               context,
               Icons.payment,
-              'payment page',
+              'AdminProposalsPage',
               () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => PaymentManagementPage(),
+                    builder: (context) => AdminProposalsPage(),
                   ),
                 );
               },

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:Taqyem/taqyem/listedeselection.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -414,6 +416,8 @@ class _BaremesPageState extends State<BaremesPage> {
 
 //////////////////////////////////////////////
 ////////////////////////////////////////////////
+
+
 class SelectionPage extends StatefulWidget {
   @override
   _SelectionPageState createState() => _SelectionPageState();
@@ -426,8 +430,8 @@ class _SelectionPageState extends State<SelectionPage> {
   String? selectedMatiereName;
   List<Map<String, String>> classes = [];
   List<Map<String, String>> matieres = [];
+  List<Map<String, dynamic>> lastAccessList = [];
 
-  // Liste de couleurs pour les groupes de 5 classes
   final List<Color> groupColors = [
     Colors.blue,
     Colors.green,
@@ -445,7 +449,8 @@ class _SelectionPageState extends State<SelectionPage> {
   void initState() {
     super.initState();
     fetchClasses();
-    _showIntroDialog(); // Afficher la boîte de dialogue d'introduction
+    _loadLastAccessList();
+    _showIntroDialog();
   }
 
   Future<void> fetchClasses() async {
@@ -453,7 +458,6 @@ class _SelectionPageState extends State<SelectionPage> {
       QuerySnapshot snapshot =
           await FirebaseFirestore.instance.collection('classes').get();
       setState(() {
-        // Récupérer les classes et les trier par ordre alphabétique
         classes = snapshot.docs
             .map((doc) => {'id': doc.id, 'name': doc['name'] as String})
             .toList()
@@ -482,6 +486,55 @@ class _SelectionPageState extends State<SelectionPage> {
     }
   }
 
+  Future<void> _saveLastAccess() async {
+    if (selectedClassId == null || selectedMatiereId == null) return;
+
+    final newAccess = {
+      'classId': selectedClassId,
+      'className': selectedClassName,
+      'matiereId': selectedMatiereId,
+      'matiereName': selectedMatiereName,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
+    };
+
+    // Vérifier si l'accès existe déjà
+    final existingIndex = lastAccessList.indexWhere((access) =>
+        access['classId'] == selectedClassId &&
+        access['matiereId'] == selectedMatiereId);
+
+    setState(() {
+      if (existingIndex != -1) {
+        // Mettre à jour l'accès existant
+        lastAccessList[existingIndex] = newAccess;
+      } else {
+        // Ajouter le nouvel accès
+        lastAccessList.insert(0, newAccess);
+        
+        // Garder seulement les 5 derniers accès
+        if (lastAccessList.length > 5) {
+          lastAccessList = lastAccessList.sublist(0, 5);
+        }
+      }
+    });
+
+    await _saveLastAccessList();
+  }
+
+  Future<void> _saveLastAccessList() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('lastAccessList', json.encode(lastAccessList));
+  }
+
+  Future<void> _loadLastAccessList() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? data = prefs.getString('lastAccessList');
+    if (data != null) {
+      setState(() {
+        lastAccessList = List<Map<String, dynamic>>.from(json.decode(data));
+      });
+    }
+  }
+
   Future<void> _showIntroDialog() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? lastShownDate = prefs.getString('lastShownDate');
@@ -489,7 +542,6 @@ class _SelectionPageState extends State<SelectionPage> {
     String today = "${now.year}-${now.month}-${now.day}";
 
     if (lastShownDate != today) {
-      // Afficher la boîte de dialogue seulement si elle n'a pas été affichée aujourd'hui
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -498,8 +550,7 @@ class _SelectionPageState extends State<SelectionPage> {
                 style:
                     TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
             content: Text(
-              'هذه الصفحة تتيح لك اختيار قسم ومادة لعرض المعايير المقابلة. '
-              'استخدم القوائم المنسدلة لإجراء الاختيار، ثم انقر على "عرض المعايير".',
+              'سيتم حفظ آخر 5 اختيارات للوصول السريع تلقائياً.',
               style: TextStyle(fontSize: 16),
             ),
             actions: [
@@ -514,7 +565,6 @@ class _SelectionPageState extends State<SelectionPage> {
         },
       );
 
-      // Enregistrer la date d'aujourd'hui comme dernière date d'affichage
       await prefs.setString('lastShownDate', today);
     }
   }
@@ -527,13 +577,45 @@ class _SelectionPageState extends State<SelectionPage> {
         backgroundColor: Colors.blue,
         elevation: 4,
       ),
-      body: Center(
+      body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Dropdown amélioré pour les classes
+              // Affichage des derniers accès
+              if (lastAccessList.isNotEmpty) ...[
+                Text('آخر الاختيارات', 
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                SizedBox(height: 10),
+                ...lastAccessList.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final access = entry.value;
+                  return Card(
+                    margin: EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: Icon(Icons.history, 
+                          color: groupColors[index % groupColors.length]),
+                      title: Text('${access['className']} - ${access['matiereName']}'),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SelectedBaremesPage(
+                              selectedClass: access['classId'],
+                              selectedMatiere: access['matiereId'],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                }).toList(),
+                Divider(thickness: 2),
+                SizedBox(height: 20),
+              ],
+
+              // Dropdown pour les classes (existant)
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(
@@ -560,13 +642,12 @@ class _SelectionPageState extends State<SelectionPage> {
                             color: color.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                                color: color.withOpacity(
-                                    0.3)), // Parenthèse fermante ajoutée ici
+                                color: color.withOpacity(0.3)),
                           ),
                           child: Row(
                             children: [
                               Icon(Icons.school,
-                                  color: color), // Icône pour la classe
+                                  color: color),
                               SizedBox(width: 10),
                               Text(
                                 classe['name']!,
@@ -599,13 +680,14 @@ class _SelectionPageState extends State<SelectionPage> {
                     isExpanded: true,
                     underline: SizedBox(),
                     icon: Icon(Icons.arrow_drop_down,
-                        color: Colors.blue), // Icône personnalisée
-                    dropdownColor: Colors.white, // Couleur de fond du dropdown
+                        color: Colors.blue),
+                    dropdownColor: Colors.white,
                   ),
                 ),
               ),
               SizedBox(height: 20),
-              // Dropdown pour les matières
+              
+              // Dropdown pour les matières (existant)
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(
@@ -640,7 +722,8 @@ class _SelectionPageState extends State<SelectionPage> {
                 ),
               ),
               SizedBox(height: 20),
-              // Boutons d'action
+              
+              // Boutons d'action (existants)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -648,6 +731,7 @@ class _SelectionPageState extends State<SelectionPage> {
                     onPressed: () async {
                       if (selectedClassId != null &&
                           selectedMatiereId != null) {
+                        await _saveLastAccess(); // Sauvegarder l'accès
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -688,6 +772,7 @@ class _SelectionPageState extends State<SelectionPage> {
                     onPressed: () async {
                       if (selectedClassId != null &&
                           selectedMatiereId != null) {
+                        await _saveLastAccess(); // Sauvegarder l'accès
                         Navigator.push(
                           context,
                           MaterialPageRoute(

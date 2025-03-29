@@ -39,6 +39,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   int totalStudents = 0;
   Duration _remainingTime = Duration.zero;
   bool _isAccountActive = false;
+  bool _isGeneratingReport = false;
 
   @override
   void initState() {
@@ -753,7 +754,152 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       print('Erreur lors de la récupération des marques : $e');
     }
   }
+///////////  Raport html ////////
+Future<void> _generateHTMLReport() async {
+  final user = FirebaseAuth.instance.currentUser;
+  if (user == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Utilisateur non connecté.')),
+    );
+    return;
+  }
 
+  // Vérification des crédits/statut du compte
+  if (_remainingPrints <= 0 && !_isAccountActive) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+            'Votre compte n\'est pas activé et vous n\'avez plus de crédits. Veuillez effectuer un paiement.'),
+      ),
+    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => PaymentPage()),
+    );
+    return;
+  }
+
+  setState(() {
+    _isGeneratingReport = true;
+  });
+
+  try {
+    // Afficher le dialogue de chargement
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 20),
+              Text("Génération du rapport en cours...",
+                  style: TextStyle(fontSize: 16)),
+              SizedBox(height: 10),
+              Text("Veuillez patienter, cette opération peut prendre quelques instants.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: Colors.grey)),
+            ],
+          ),
+        );
+      },
+    );
+
+    // Décrémenter le crédit si compte inactif
+    if (!_isAccountActive && _remainingPrints > 0) {
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .update({'remainingPrints': FieldValue.increment(-1)});
+
+      setState(() {
+        _remainingPrints--;
+      });
+    }
+
+    // Préparer les données pour le HTML
+    var data = {
+      'profName': _profName,
+      'matiereName': await _getMatiereName(),
+      'className': await _getClassName(),
+      'schoolName': _schoolName,
+      'baremes': await _getBaremes(),
+      'students': await _getStudents(),
+      'sumCriteriaMaxPerBareme': sumCriteriaMaxPerBareme,
+      'totalStudents': totalStudents,
+      'selectedClass': widget.selectedClass,
+      'selectedBaremeId': selectedBaremeId,
+      'currentUser': currentUser?.uid,
+      'baremeName': baremeName,
+      'sousBaremeName': sousBaremeName,
+      'selectedSousBaremeId': selectedSousBaremeId,
+    };
+
+    print('Données envoyées à Flask pour HTML: ${json.encode(data)}');
+    await _sendHTMLDataToFlask(data);
+  } catch (e) {
+    print('Erreur lors de la génération du rapport: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Erreur lors de la génération du rapport: $e')),
+    );
+  } finally {
+    setState(() {
+      _isGeneratingReport = false;
+    });
+    Navigator.of(context).pop(); // Fermer le dialogue de chargement
+  }
+}
+Future<void> _sendHTMLDataToFlask(Map<String, dynamic> data) async {
+  try {
+    final url = Uri.parse('https://imprission.onrender.com/generate-html-report');
+    print('Envoi des données HTML à: $url');
+    
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: json.encode(data),
+    ).timeout(const Duration(seconds: 60)); // Augmentez le timeout si nécessaire
+
+    if (response.statusCode == 200) {
+      // Ouvrir le HTML dans un nouvel onglet/nouvelle fenêtre
+      final blob = html.Blob([response.bodyBytes], 'text/html');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.window.open(url, '_blank');
+      html.Url.revokeObjectUrl(url);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Rapport généré avec succès')),
+      );
+    } else {
+      print('Erreur HTTP: ${response.statusCode}');
+      print('Réponse: ${response.body}');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de la génération du rapport HTML: ${response.statusCode}')),
+      );
+    }
+  } on TimeoutException {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Timeout - Le serveur a mis trop de temps à répondre. Veuillez réessayer.')),
+    );
+  } on SocketException {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Erreur de connexion - Vérifiez votre connexion internet')),
+    );
+  } catch (e) {
+    print('Erreur inattendue: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Erreur technique: ${e.toString()}')),
+    );
+  }
+}
+///////////////////////////////////////////////////
+  
+  
   Widget _buildPrintCreditWidget() {
     return Tooltip(
       message: 'Crédit d\'impression restant',
@@ -851,23 +997,35 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   }
 
 ////////////////////////////////////////////////////////
-  Widget _buildPrintButton() {
-    return IconButton(
-      icon: Container(
-        padding: EdgeInsets.all(2),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white,
-        ),
-        child: Icon(
-          Icons.print,
-          color: const Color.fromRGBO(7, 82, 96, 1),
-        ),
+Widget _buildPrintButton() {
+  return PopupMenuButton<String>(
+    icon: Container(
+      padding: EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: _isGeneratingReport ? Colors.grey : Colors.white,
       ),
-      onPressed: _generatePDF,
-    );
-  }
-
+      child: Icon(
+        Icons.print,
+        color: _isGeneratingReport 
+            ? Colors.grey 
+            : const Color.fromRGBO(7, 82, 96, 1),
+      ),
+    ),
+    onSelected: _isGeneratingReport ? null : (value) {
+      if (value == 'html') {
+        _generateHTMLReport();
+      }
+    },
+    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+      PopupMenuItem<String>(
+        value: 'html',
+        child: Text('طباعة الجدول'),
+        enabled: !_isGeneratingReport,
+      ),
+    ],
+  );
+}
 ///////////////////////////////////////
   @override
   Widget build(BuildContext context) {
