@@ -281,6 +281,7 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
+    - assets/education_loader.svg
     - assets/data.json
     - assets/images/placeholder.png
     - assets/tataouine.geojson

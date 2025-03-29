@@ -149,9 +149,11 @@ class _ClassificationPageState extends State<ClassificationPage> {
 
     await batch.commit();
   }
-void showSolutionAndProbleme(String groupName) async {
+
+
+  void showSolutionAndProbleme(String groupName) async {
   // Charger les propositions de l'utilisateur
-  final userProposals = await _getUserProposals();
+  final userProposals = await _getUserProposal();
   
   var result = jsonData.firstWhere(
     (item) {
@@ -213,13 +215,14 @@ void showSolutionAndProbleme(String groupName) async {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () {
-                                _deleteUserProposal(proposal['id']);
-                                Navigator.of(context).pop();
-                              },
-                            ),
+                            if (proposal['isUserProposal'] == true) // Seulement pour les propositions utilisateur
+                              IconButton(
+                                icon: Icon(Icons.delete, color: Colors.red),
+                                onPressed: () {
+                                  _deleteUserProposal(proposal['id']);
+                                  Navigator.of(context).pop();
+                                },
+                              ),
                           ],
                         ),
                       ],
@@ -280,7 +283,6 @@ void showSolutionAndProbleme(String groupName) async {
     },
   );
 }
-
   Future<void> _generateAndSavePDF() async {
     try {
       final groupedStudents = await _getGroupedStudentsData();
@@ -937,8 +939,8 @@ void showSolutionAndProbleme(String groupName) async {
     await Future.wait(futures);
     return students;
   }
-  
-  Future<List<Map<String, dynamic>>> _getUserProposal() async {
+ 
+ Future<List<Map<String, dynamic>>> _getUserProposal() async {
   final userId = FirebaseAuth.instance.currentUser!.uid;
   
   try {
@@ -961,6 +963,7 @@ void showSolutionAndProbleme(String groupName) async {
       return {
         'id': doc.id,
         ...data,
+        'isUserProposal': true, // Marquer comme proposition utilisateur
       };
     }).toList();
   } catch (e) {
@@ -968,6 +971,7 @@ void showSolutionAndProbleme(String groupName) async {
     return [];
   }
 }
+
 Future<void> _deleteUserProposal(String proposalId) async {
   final userId = FirebaseAuth.instance.currentUser!.uid;
   
