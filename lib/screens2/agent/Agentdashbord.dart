@@ -5,8 +5,11 @@ import 'package:Taqyem/screens2/news/gerenews.dart';
 import 'package:Taqyem/screens2/users/User%20Management.dart';
 import 'package:Taqyem/taqyem/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
+import 'package:Taqyem/taqyem/AdminProposalsPage.dart';
 import 'package:Taqyem/taqyem/EditPage.dart';
 import 'package:Taqyem/taqyem/ereur_solution.dart';
+import 'package:Taqyem/taqyem/feedback_management_page.dart';
+import 'package:Taqyem/taqyem/payment/demande.dart';
 import 'package:Taqyem/taqyem/pdf/ManagePDFPage.dart';
 import 'package:Taqyem/taqyem/selectionPage.dart';
 import 'package:Taqyem/taqyem/touttableaux.dart';
@@ -165,7 +168,19 @@ Widget build(BuildContext context) {
     ),
   );
 }
-
+ Widget _buildDrawerSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+      child: Text(
+        title,
+        style: GoogleFonts.roboto(
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+          color: Colors.white70,
+        ),
+      ),
+    );
+  }
 
   Widget _buildModernDrawer(BuildContext context) {
     return Drawer(
@@ -220,9 +235,11 @@ Widget build(BuildContext context) {
                 ],
               ),
             ),
+          
+           _buildDrawerSectionHeader('Gestion des Utilisateurs'),
             _buildDrawerItem(
               context,
-              Icons.people,
+              Icons.manage_accounts,
               'إدارة المستخدمين',
               () {
                 Navigator.push(
@@ -233,6 +250,34 @@ Widget build(BuildContext context) {
                 );
               },
             ),
+              _buildDrawerSectionHeader('Gestion des Paiements'),
+            _buildDrawerItem(
+              context,
+              Icons.payment,
+              'AdminProposalsPage',
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AdminProposalsPage(),
+                  ),
+                );
+              },
+            ),
+            _buildDrawerItem(
+              context,
+              Icons.request_page,
+              'payment demand',
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DemandManagementPage(),
+                  ),
+                );
+              },
+            ),
+           
             _buildDrawerItem(
               context,
               Icons.people,
@@ -398,6 +443,20 @@ Widget build(BuildContext context) {
                   context,
                   MaterialPageRoute(
                     builder: (context) => ManageCarouselItemsPage(),
+                  ),
+                );
+              },
+              
+            ),
+            _buildDrawerItem(
+              context,
+              Icons.feedback,
+              'إدارة التعليقات',
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const FeedbackManagementPage(),
                   ),
                 );
               },

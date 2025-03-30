@@ -142,14 +142,18 @@ class _SignUpState extends State<SignUp> {
             .doc(userCredential.user!.uid)
             .set(
           {
-            'name': _nameController.text.trim(),
+            'name': userCredential?.user!.displayName,
+            'email': userCredential?.user!.email,
+            'isAgent': false,
+            'isActive': false,
+            'address': userCredential?.user!.email,
             'dob': null,
             'gender': null,
             'nic': null,
-            'address': null,
             'mobile': null,
-            'isAgent': false, // Champ existant
-            'isActive': false, // Nouveau champ avec valeur par défaut false
+            'accountExpiration': null, // Initialize as null
+            'createdAt': FieldValue.serverTimestamp(),
+            'lastLogin': FieldValue.serverTimestamp(),
           },
         );
 
@@ -530,14 +534,17 @@ class _SignUpState extends State<SignUp> {
                               .set(
                             {
                               'name': userCredential?.user!.displayName,
+                              'email': userCredential?.user!.email,
+                              'isAgent': false,
+                              'isActive': false,
+                              'address': userCredential?.user!.email,
                               'dob': null,
                               'gender': null,
                               'nic': null,
-                              'address': null,
                               'mobile': null,
-                              'isAgent': false, // Champ existant
-                              'isActive':
-                                  false, // Nouveau champ avec valeur par défaut false
+                              'accountExpiration': null, // Initialize as null
+                              'createdAt': FieldValue.serverTimestamp(),
+                              'lastLogin': FieldValue.serverTimestamp(),
                             },
                           );
                           setState(() {

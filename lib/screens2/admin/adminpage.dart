@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:Taqyem/landing/views/ManageCarouselItemsPage.dart';
 import 'package:Taqyem/screens2/admin/AccessLogsPage.dart';
 import 'package:Taqyem/screens2/news/add_news_screen.dart';
@@ -7,6 +10,8 @@ import 'package:Taqyem/taqyem/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
 import 'package:Taqyem/taqyem/AdminProposalsPage.dart';
 import 'package:Taqyem/taqyem/EditPage.dart';
+import 'package:Taqyem/taqyem/feedback_management_page.dart';
+import 'package:Taqyem/taqyem/feedback_system.dart';
 import 'package:Taqyem/taqyem/payment/PaymentPage.dart';
 import 'package:Taqyem/taqyem/payment/adminpyment.dart';
 import 'package:Taqyem/taqyem/payment/demande.dart';
@@ -48,12 +53,76 @@ class _AdminDashboardState extends State<AdminDashboard> {
   String userName = "Utilisateur";
   bool _isDrawerOpen = false;
   int _currentCarouselIndex = 0;
+   Timer? _feedbackTimer; // Utilisez un Timer nullable
+  bool _feedbackShown = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _setupRandomFeedback();
   }
+
+@override
+void dispose() {
+  _feedbackTimer?.cancel(); // Utilisez l'opérateur ?. pour éviter les erreurs
+  super.dispose();
+}
+
+void _setupRandomFeedback() {
+  // Annule tout timer existant
+  _feedbackTimer?.cancel();
+
+  // Génère un délai aléatoire entre 2 et 8 heures (en millisecondes)
+  final random = Random();
+  final delayHours = 2 + random.nextInt(6); // Entre 2 et 7 heures
+  final delayMillis = delayHours * 60 * 60 * 1000;
+
+  _feedbackTimer = Timer(Duration(milliseconds: delayMillis), () {
+    if (!_feedbackShown && mounted) {
+      _showRandomFeedback();
+      _feedbackShown = true;
+    }
+  });
+}
+
+void _showRandomFeedback() {
+  // Vérifie l'heure actuelle (entre 9h et 20h)
+  final now = DateTime.now();
+ // if (now.hour >= 12 && now.hour <= 12) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('شاركنا رأيك'),
+          content: const Text('كيف تجد تجربتك مع التطبيق حتى الآن؟'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                FeedbackSystem.showFeedbackDialog(context);
+              },
+              child: const Text('إعطاء رأي'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _setupRandomFeedback(); // Reprogramme pour plus tard
+                _feedbackShown = false;
+              },
+              child: const Text('لاحقاً'),
+            ),
+          ],
+        ),
+      );
+    });
+  // } else {
+  //   // Si c'est en dehors des heures normales, reprogramme pour le lendemain
+  //   _setupRandomFeedback();
+  // }
+}
+
 
   Future<void> _loadUserData() async {
     if (currentUser != null) {
@@ -486,22 +555,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
               ),
             ),
 
-            // User Management Section
-            _buildDrawerSectionHeader('Gestion des Utilisateurs'),
-            _buildDrawerItem(
-              context,
-              Icons.manage_accounts,
-              'إدارة المستخدمين',
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const UserManagement(),
-                  ),
-                );
-              },
-            ),
-
             // Class Management Section
             _buildDrawerSectionHeader('Gestion des Classes'),
             _buildDrawerItem(
@@ -531,35 +584,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
               },
             ),
 
-            // Payment Section
-            _buildDrawerSectionHeader('Gestion des Paiements'),
-            _buildDrawerItem(
-              context,
-              Icons.payment,
-              'AdminProposalsPage',
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => AdminProposalsPage(),
-                  ),
-                );
-              },
-            ),
-            _buildDrawerItem(
-              context,
-              Icons.request_page,
-              'payment demand',
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => DemandManagementPage(),
-                  ),
-                );
-              },
-            ),
-
             // Tables Section
             _buildDrawerSectionHeader('Gestion des Tableaux'),
             _buildDrawerItem(
@@ -575,19 +599,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 );
               },
             ),
-            _buildDrawerItem(
-              context,
-              Icons.list_alt,
-              'قائمة الجداول الجامعة',
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ClassListPage(),
-                  ),
-                );
-              },
-            ),
+            // _buildDrawerItem(
+            //   context,
+            //   Icons.list_alt,
+            //   'قائمة الجداول الجامعة',
+            //   () {
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(
+            //         builder: (context) => ClassListPage(),
+            //       ),
+            //     );
+            //   },
+            // ),
 
             // Documents Section
             _buildDrawerSectionHeader('Documents'),
@@ -604,6 +628,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 );
               },
             ),
+            
           ],
         ),
       ),
@@ -1175,6 +1200,7 @@ class _NewsSectionState extends State<NewsSection> {
     );
   }
 }
+
 Widget _buildQuickAccessSection(BuildContext context) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1195,7 +1221,7 @@ Widget _buildQuickAccessSection(BuildContext context) {
             final crossAxisCount = constraints.maxWidth > 400 ? 4 : 2;
             final childAspectRatio = constraints.maxWidth > 600 ? 1.0 : 0.9;
             final isLargeScreen = constraints.maxWidth > 600;
-            
+
             return GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -1211,7 +1237,8 @@ Widget _buildQuickAccessSection(BuildContext context) {
                   'إضافة قسم',
                   Colors.blue[700]!,
                   isLargeScreen,
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => AddClassPage())),
+                  () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => AddClassPage())),
                 ),
                 _buildResponsiveQuickAccessCard(
                   context,
@@ -1219,7 +1246,8 @@ Widget _buildQuickAccessSection(BuildContext context) {
                   'إدارة الأقسام',
                   Colors.green[700]!,
                   isLargeScreen,
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => ManageClassesPage())),
+                  () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => ManageClassesPage())),
                 ),
                 _buildResponsiveQuickAccessCard(
                   context,
@@ -1227,7 +1255,8 @@ Widget _buildQuickAccessSection(BuildContext context) {
                   'إعداد جدول جامع',
                   Colors.orange[700]!,
                   isLargeScreen,
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => SelectionPage())),
+                  () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => SelectionPage())),
                 ),
                 _buildResponsiveQuickAccessCard(
                   context,
@@ -1235,9 +1264,11 @@ Widget _buildQuickAccessSection(BuildContext context) {
                   'تفعيل الحساب',
                   Colors.purple[700]!,
                   isLargeScreen,
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => PaymentPage())),
+                  () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => PaymentPage())),
                   showBadge: true,
                 ),
+                
               ],
             );
           },
@@ -1271,7 +1302,8 @@ Widget _buildResponsiveQuickAccessCard(
         padding: EdgeInsets.all(isLargeScreen ? 16 : 12),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min, // Important pour éviter le débordement
+          mainAxisSize:
+              MainAxisSize.min, // Important pour éviter le débordement
           children: [
             Stack(
               alignment: Alignment.center,
@@ -1308,7 +1340,8 @@ Widget _buildResponsiveQuickAccessCard(
               ],
             ),
             const SizedBox(height: 8), // Espacement réduit
-            Flexible( // Utilisation de Flexible pour le texte
+            Flexible(
+              // Utilisation de Flexible pour le texte
               child: Text(
                 title,
                 textAlign: TextAlign.center,

@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:Taqyem/auth/main_page.dart';
 import 'package:Taqyem/components/language_constants.dart';
+import 'package:feedback/feedback.dart'; // Ajout de l'import
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,9 +28,22 @@ void main() async {
   }
 
   await Alarm.init(showDebugLogs: true);
-  runApp(const MyApp());
+  runApp(
+    BetterFeedback( // Enveloppez votre application ici
+      child: const MyApp(),
+      theme: FeedbackThemeData(
+        background: Colors.grey,
+        feedbackSheetColor: Colors.white,
+        drawColors: [
+          Colors.red,
+          Colors.green,
+          Colors.blue,
+          Colors.yellow,
+        ],
+      ),
+    ),
+  );
 }
-
 Future<void> _configureSystemUI() async {
   // Forcer l'application à s'ouvrir en mode paysage
   await SystemChrome.setPreferredOrientations([

@@ -1,0 +1,50 @@
+void _setupRandomFeedback() {
+  // Génère un délai aléatoire entre 2 et 8 heures (en millisecondes)
+  final random = Random();
+  final delayHours = 2 + random.nextInt(6); // Entre 2 et 7 heures
+  final delayMillis = delayHours * 60 * 60 * 1000;
+
+  _feedbackTimer = Timer(Duration(milliseconds: delayMillis), () {
+    if (!_feedbackShown && mounted) {
+      _showRandomFeedback();
+      _feedbackShown = true;
+    }
+  });
+}
+
+void _showRandomFeedback() {
+  // Vérifie l'heure actuelle (entre 9h et 20h)
+  final now = DateTime.now();
+  if (now.hour >= 9 && now.hour <= 20) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          title: const Text('شاركنا رأيك'),
+          content: const Text('كيف تجد تجربتك مع التطبيق حتى الآن؟'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                FeedbackSystem.showFeedbackDialog(context);
+              },
+              child: const Text('إعطاء رأي'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _setupRandomFeedback(); // Reprogramme pour plus tard
+                _feedbackShown = false;
+              },
+              child: const Text('لاحقاً'),
+            ),
+          ],
+        ),
+      );
+    });
+  } else {
+    // Si c'est en dehors des heures normales, reprogramme pour le lendemain
+    _setupRandomFeedback();
+  }
+}

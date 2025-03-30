@@ -31,7 +31,7 @@ class _SignInState extends State<SignIn> {
   bool _isEmail = false;
   bool _isError = false;
   String errorMsg = '';
-  bool _isPasswordVisible = false; // New variable for password visibility
+  bool _isPasswordVisible = false;
 
   @override
   void initState() {
@@ -90,40 +90,7 @@ class _SignInState extends State<SignIn> {
         password: _passwordController.text.trim(),
       );
 
-      DocumentSnapshot userDoc = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(userCredential.user!.uid)
-          .get();
-
-      if (userDoc.exists) {
-        await FirebaseFirestore.instance.collection('access_logs').add({
-          'userId': userCredential.user!.uid,
-          'email': userCredential.user!.email,
-          'name': userDoc.get('name'),
-          'timestamp': Timestamp.now(),
-        });
-        bool isAgent = userDoc.get('isAgent') ?? false;
-
-        if (!mounted) return;
-
-        if (isAgent) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const AdminDashboard(),
-            ),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const Agentdashboard(),
-            ),
-          );
-        }
-      } else {
-        print('User document not found in Firestore');
-      }
+      await handleUserNavigation(userCredential);
     } on FirebaseAuthException catch (e) {
       print(e.code);
       if (!mounted) return;
@@ -137,6 +104,106 @@ class _SignInState extends State<SignIn> {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  Future<void> handleUserNavigation(UserCredential userCredential) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(userCredential.user!.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        throw Exception("User account not found");
+      }
+
+      // Safely get all fields with defaults
+      final userData = userDoc.data() ?? {};
+      final isAgent = userData['isAgent'] ?? false;
+      final isActive = userData['isActive'] ?? false;
+      final accountExpiration = userData['accountExpiration'] as Timestamp?;
+
+      // Check account expiration if it exists
+      if (accountExpiration != null &&
+          accountExpiration.toDate().isBefore(DateTime.now())) {
+        throw Exception("Account has expired");
+      }
+
+      if (!isActive) {
+        throw Exception("Account is not active");
+      }
+
+      // Log access
+      await FirebaseFirestore.instance.collection('access_logs').add({
+        'userId': userCredential.user!.uid,
+        'email': userCredential.user!.email,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              isAgent ? const AdminDashboard() : const Agentdashboard(),
+        ),
+      );
+    } catch (e) {
+      print('Navigation Error: $e');
+      if (!mounted) return;
+      setState(() {
+        _isError = true;
+        errorMsg = e.toString().replaceAll('Exception: ', '');
+      });
+      await FirebaseAuth.instance.signOut();
+    }
+  }
+
+  Future<void> signInWithGoogle() async {
+    setState(() {
+      isLoadingGoogle = true;
+      _isError = false;
+    });
+
+    try {
+      UserCredential userCredential =
+          await AuthService().signInWithGoogle(context);
+      final user = userCredential.user!;
+
+      // Reference to user document
+      final userDocRef =
+          FirebaseFirestore.instance.collection('Users').doc(user.uid);
+
+      // Create or update user document with all required fields
+      await userDocRef.set({
+        'name': user.displayName,
+        'email': user.email,
+        'isAgent': false,
+        'isActive': false,
+        'address': user.email,
+        'dob': null,
+        'gender': null,
+        'nic': null,
+        'mobile': null,
+        'accountExpiration': null, // Initialize as null
+        'createdAt': FieldValue.serverTimestamp(),
+        'lastLogin': FieldValue.serverTimestamp(),
+        // Add any other required fields here
+      }, SetOptions(merge: true));
+
+      await handleUserNavigation(userCredential);
+    } catch (e) {
+      print('Google Sign-In Error: $e');
+      if (!mounted) return;
+      setState(() {
+        _isError = true;
+        errorMsg = "Sign-in failed. Please try again.";
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() => isLoadingGoogle = false);
     }
   }
 
@@ -238,50 +305,7 @@ class _SignInState extends State<SignIn> {
                       width: double.infinity,
                       height: 55,
                       child: FilledButton.tonalIcon(
-                        onPressed: () async {
-                          setState(() {
-                            isLoadingGoogle = true;
-                          });
-                          try {
-                            UserCredential user =
-                                await AuthService().signInWithGoogle(context);
-                            String? userEmail = user.user!.email;
-                            print('Email : $userEmail');
-
-                            try {
-                              var a = await FirebaseFirestore.instance
-                                  .collection('Users')
-                                  .doc(user.user!.email)
-                                  .get();
-                              if (a.exists) {
-                                print('Already Registered user');
-                              } else {
-                                print('New USER');
-                                await FirebaseFirestore.instance
-                                    .collection('Users')
-                                    .doc(userEmail)
-                                    .set(
-                                  {
-                                    'name': user.user!.displayName,
-                                    'dob': null,
-                                    'gender': null,
-                                    'nic': null,
-                                    'address': null,
-                                    'mobile': null,
-                                  },
-                                );
-                              }
-                            } catch (e) {
-                              print(e);
-                            }
-                          } catch (e) {
-                            print(e);
-                          }
-
-                          setState(() {
-                            isLoadingGoogle = false;
-                          });
-                        },
+                        onPressed: signInWithGoogle,
                         style: const ButtonStyle(
                           elevation: MaterialStatePropertyAll(2),
                           shape: MaterialStatePropertyAll(
@@ -409,8 +433,7 @@ class _SignInState extends State<SignIn> {
         TextField(
           controller: _passwordController,
           focusNode: focusNode_pwd,
-          obscureText:
-              !_isPasswordVisible, // Updated line for password visibility
+          obscureText: !_isPasswordVisible,
           decoration: InputDecoration(
             labelText: 'Password',
             hintText: 'Password',
@@ -420,8 +443,7 @@ class _SignInState extends State<SignIn> {
               ),
               onPressed: () {
                 setState(() {
-                  _isPasswordVisible =
-                      !_isPasswordVisible; // Toggle password visibility
+                  _isPasswordVisible = !_isPasswordVisible;
                 });
               },
             ),
