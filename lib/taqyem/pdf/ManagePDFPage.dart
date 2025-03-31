@@ -131,6 +131,7 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
           ),
         ],
       ),
+      
       body: Column(
         children: [
           if (_uploadProgress > 0)

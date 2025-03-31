@@ -475,6 +475,7 @@ class _ErrorOriginState extends State<ErrorOrigin> {
         centerTitle: true,
         backgroundColor: Colors.teal,
       ),
+      
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(

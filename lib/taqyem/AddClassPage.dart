@@ -276,6 +276,7 @@ class _AddClassPageState extends State<AddClassPage> {
         backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
         elevation: 4,
       ),
+      
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(

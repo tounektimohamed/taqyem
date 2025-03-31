@@ -30,35 +30,116 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   Map<String, dynamic>? _selectedClass;
   List<Map<String, dynamic>> _students = [];
   bool _showStudentsList = false;
-final Map<String, String> subjectImages = {
-  'التواصل الشفوي': 'assets/images/oral.png',
-  'قراءة': 'assets/images/reading.png',
-  'انتاج كتابي': 'assets/images/writing.png',
-  'قواعد لغة': 'assets/images/grammar.png',
-  'رياضيات': 'assets/images/math.png',
-  'ايقاظ علمي': 'assets/images/science.png',
-  'تربية اسلامية': 'assets/images/islamic.png',
-  'تربية تكنولوجية': 'assets/images/technology.png',
-  'تربية موسيقية': 'assets/images/music.png',
-  'تربية تشكيلية': 'assets/images/art.png',
-  'تربية بدنية': 'assets/images/sport.png',
-  'التاريخ': 'assets/images/history.png',
-  'الجغرافيا': 'assets/images/geography.png',
-  'التربية المدنية': 'assets/images/civics.png',
-  'Expression orale et récitation': 'assets/images/french_oral.png',
-  'Lecture': 'assets/images/french_reading.png',
-  'Production écrite': 'assets/images/french_writing.png',
-  'écriture': 'assets/images/french_writing2.png',
-  'dictée': 'assets/images/dictation.png',
-  'langue': 'assets/images/french_language.png',
-  'لغة انقليزية': 'assets/images/english.png',
-};
+  bool _showHelpSection = true;
+  final Map<String, String> subjectImages = {
+    'التواصل الشفوي': 'assets/images/oral.png',
+    'قراءة': 'assets/images/reading.png',
+    'انتاج كتابي': 'assets/images/writing.png',
+    'قواعد لغة': 'assets/images/grammar.png',
+    'رياضيات': 'assets/images/math.png',
+    'ايقاظ علمي': 'assets/images/science.png',
+    'تربية اسلامية': 'assets/images/islamic.png',
+    'تربية تكنولوجية': 'assets/images/technology.png',
+    'تربية موسيقية': 'assets/images/music.png',
+    'تربية تشكيلية': 'assets/images/art.png',
+    'تربية بدنية': 'assets/images/sport.png',
+    'التاريخ': 'assets/images/history.png',
+    'الجغرافيا': 'assets/images/geography.png',
+    'التربية المدنية': 'assets/images/civics.png',
+    'Expression orale et récitation': 'assets/images/french_oral.png',
+    'Lecture': 'assets/images/french_reading.png',
+    'Production écrite': 'assets/images/french_writing.png',
+    'écriture': 'assets/images/french_writing2.png',
+    'dictée': 'assets/images/dictation.png',
+    'langue': 'assets/images/french_language.png',
+    'لغة انقليزية': 'assets/images/english.png',
+  };
   @override
   void initState() {
     super.initState();
     if (currentUser != null) {
       _fetchClasses();
     }
+  }
+
+  void _buildHelpSection(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('تعليمات الاستخدام',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('كيفية استخدام التطبيق:',
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                SizedBox(height: 8),
+                _buildHelpItem(
+                    '1. اضغط على أي فصل لرؤية المواد والطلاب المرتبطين به'),
+                _buildHelpItem(
+                    '2. استخدم زر "إضافة تلميذ" لإضافة طالب جديد للفصل'),
+                _buildHelpItem(
+                    '3. استخدم زر "إضافة مادة" لإضافة مواد دراسية للفصل'),
+                _buildHelpItem('4. اضغط على أيقونة السلة الحمراء لحذف الفصل'),
+                _buildHelpItem(
+                    '5. اضغط على اسم المادة لرؤية قائمة الطلاب وتقييمهم'),
+                _buildHelpItem(
+                    '6. بعد اختيار المادة، اضغط على اسم التلميذ الذي ترغب في تقييمه'),
+                SizedBox(height: 8),
+                Text('إرشادات سريعة:',
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                SizedBox(height: 8),
+                _buildHelpItemWithIcon(
+                    Icons.touch_app, 'اضغط على الفصل لعرض محتوياته'),
+                _buildHelpItemWithIcon(
+                    Icons.add, 'استخدم الأزرار الزرقاء للإضافة'),
+                _buildHelpItemWithIcon(
+                    Icons.delete, 'استخدم الأيقونات الحمراء للحذف'),
+                _buildHelpItemWithIcon(
+                    Icons.info, 'اضغط على معلومات الطالب لرؤية التفاصيل'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('إغلاق', style: TextStyle(fontSize: 16)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildHelpItem(String text) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('• ', style: TextStyle(fontSize: 16)),
+          Expanded(child: Text(text, style: TextStyle(fontSize: 15))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelpItemWithIcon(IconData icon, String text) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 18),
+          SizedBox(width: 8),
+          Expanded(child: Text(text, style: TextStyle(fontSize: 15))),
+        ],
+      ),
+    );
   }
 
   Future<String?> _getEvaluation({
@@ -116,49 +197,97 @@ final Map<String, String> subjectImages = {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Ajouter une matière'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DropdownButton<String>(
-              value: _selectedSubject,
-              hint: Text('Sélectionnez une matière'),
-              onChanged: (String? newValue) {
-                setState(() {
-                  _selectedSubject = newValue;
-                });
-              },
-              items: _subjects.map<DropdownMenuItem<String>>((subject) {
-                return DropdownMenuItem<String>(
-                  value: subject['id'],
-                  child: Text(subject['name']),
-                );
-              }).toList(),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text(
+              'Ajouter une matière',
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (_selectedSubject != null) {
-                var selectedSubject = _subjects
-                    .firstWhere((subject) => subject['id'] == _selectedSubject);
-                await _addSubjectToClass(classData, selectedSubject['name']!,
-                    selectedSubject['id']!);
-                Navigator.pop(context);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('Veuillez sélectionner une matière')));
-              }
-            },
-            child: Text('Ajouter'),
-          ),
-        ],
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Sélectionnez une matière à ajouter :',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: _selectedSubject,
+                      underline: const SizedBox(),
+                      icon: const Icon(Icons.arrow_drop_down),
+                      hint: const Text('Choisir une matière'),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          _selectedSubject = newValue;
+                        });
+                      },
+                      items: _subjects.map<DropdownMenuItem<String>>((subject) {
+                        return DropdownMenuItem<String>(
+                          value: subject['id'],
+                          child: Text(
+                            subject['name'],
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  if (_subjects.isEmpty) ...[
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Aucune matière disponible',
+                      style: TextStyle(color: Colors.orange),
+                    ),
+                    // const SizedBox(height: 8),
+                    // TextButton.icon(
+                    //   icon: const Icon(Icons.add, size: 18),
+                    //   label: const Text('Créer une nouvelle matière'),
+                    //   onPressed: () {
+                    //     // Ajouter la logique pour créer une nouvelle matière
+                    //   },
+                    // ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child:
+                    const Text('ANNULER', style: TextStyle(color: Colors.grey)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _selectedSubject == null
+                      ? Colors.grey.shade300
+                      : Colors.green, // Couleur verte ici
+                  foregroundColor: Colors.white, // Texte en blanc
+                ),
+                onPressed: _selectedSubject == null
+                    ? null
+                    : () async {
+                        final selectedSubject = _subjects.firstWhere(
+                            (subject) => subject['id'] == _selectedSubject);
+                        await _addSubjectToClass(classData,
+                            selectedSubject['name']!, selectedSubject['id']!);
+                        if (mounted) Navigator.pop(context);
+                      },
+                child: const Text('AJOUTER'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -486,66 +615,121 @@ final Map<String, String> subjectImages = {
   }
 
   Future<void> _addStudent(Map<String, dynamic> classData) async {
-    TextEditingController studentNameController = TextEditingController();
+    List<TextEditingController> studentControllers = [TextEditingController()];
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Ajouter un élève'),
-        content: TextField(
-          controller: studentNameController,
-          decoration: InputDecoration(labelText: 'Nom de l\'élève'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                final studentsCollection = FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(currentUser!.uid)
-                    .collection('user_classes')
-                    .doc(classData['id'])
-                    .collection('students');
-
-                final studentRef = await studentsCollection.add({
-                  'name': studentNameController.text,
-                  'parentName': '',
-                  'parentPhone': '',
-                  'birthDate': '',
-                  'remarks': '',
-                  'photoUrl': '',
-                });
-
-                List<String> updatedStudents = List.from(classData['students']);
-                updatedStudents.add(studentRef.id);
-
-                await FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(currentUser!.uid)
-                    .collection('user_classes')
-                    .doc(classData['id'])
-                    .update({
-                  'students': updatedStudents,
-                });
-
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Élève ajouté avec succès')));
-                _fetchClasses();
-              } catch (e) {
-                print("Erreur lors de l'ajout de l'élève : $e");
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('Erreur lors de l\'ajout de l\'élève')));
-              }
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Ajouter des élèves'),
+          content: StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    height: 200,
+                    width: double.maxFinite,
+                    child: ListView.builder(
+                      itemCount: studentControllers.length,
+                      itemBuilder: (context, index) {
+                        return Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: studentControllers[index],
+                                decoration: InputDecoration(
+                                  labelText: 'Nom de l\'élève ${index + 1}',
+                                ),
+                              ),
+                            ),
+                            if (studentControllers.length > 1)
+                              IconButton(
+                                icon: Icon(Icons.remove_circle,
+                                    color: Colors.red),
+                                onPressed: () {
+                                  setState(() {
+                                    studentControllers.removeAt(index);
+                                  });
+                                },
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  ElevatedButton.icon(
+                    icon: Icon(Icons.add),
+                    label: Text('Ajouter un autre élève'),
+                    onPressed: () {
+                      setState(() {
+                        studentControllers.add(TextEditingController());
+                      });
+                    },
+                  ),
+                ],
+              );
             },
-            child: Text('Ajouter'),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Annuler'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  final studentsCollection = FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(currentUser!.uid)
+                      .collection('user_classes')
+                      .doc(classData['id'])
+                      .collection('students');
+
+                  List<String> updatedStudents =
+                      List.from(classData['students']);
+
+                  for (var controller in studentControllers) {
+                    if (controller.text.isNotEmpty) {
+                      final studentRef = await studentsCollection.add({
+                        'name': controller.text,
+                        'parentName': '',
+                        'parentPhone': '',
+                        'birthDate': '',
+                        'remarks': '',
+                        'photoUrl': '',
+                      });
+
+                      updatedStudents.add(studentRef.id);
+                    }
+                  }
+
+                  await FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(currentUser!.uid)
+                      .collection('user_classes')
+                      .doc(classData['id'])
+                      .update({
+                    'students': updatedStudents,
+                  });
+
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(
+                          '${studentControllers.length} élèves ajoutés avec succès')));
+                  _fetchClasses();
+                } catch (e) {
+                  print("Erreur lors de l'ajout des élèves : $e");
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('Erreur lors de l\'ajout des élèves')));
+                }
+              },
+              child: Text('Ajouter'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -999,181 +1183,257 @@ final Map<String, String> subjectImages = {
 
   Widget _buildClassList() {
     if (_selectedClass == null) {
-      return ListView.builder(
-        itemCount: _classes.length,
-        itemBuilder: (context, index) {
-          var classData = _classes[index];
-          return Card(
-            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-            child: ListTile(
-              title: Text(classData['class_name']),
-              subtitle: Text(
-                  'Élèves: ${classData['students'].length} | Matières: ${classData['subjects'].length}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
+      return _buildClassListView();
+    } else {
+      return _buildClassDetailsView();
+    }
+  }
+
+  Widget _buildClassListView() {
+    return ListView.builder(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      itemCount: _classes.length,
+      itemBuilder: (context, index) {
+        final classData = _classes[index];
+        return _buildClassListItem(classData);
+      },
+    );
+  }
+
+  Widget _buildClassListItem(Map<String, dynamic> classData) {
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _selectClass(classData),
+        child: Padding(
+          padding: EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  TextButton(
-                    child: Row(
-                      children: [
-                        Text(
-                          'Ajouter élève',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Theme.of(context).primaryColor,
-                          ),
-                        ),
-                        SizedBox(width: 4),
-                        Icon(
-                          Icons.add,
-                          size: 20,
-                          color: Theme.of(context).primaryColor,
-                        ),
-                      ],
+                  Text(
+                    classData['class_name'],
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
-                    onPressed: () => _addStudent(classData),
                   ),
                   IconButton(
-                    icon: Icon(Icons.delete),
+                    icon: Icon(Icons.delete, color: Colors.red),
                     onPressed: () => _confirmDeleteClass(classData['id']),
                   ),
                 ],
               ),
-              onTap: () async {
-                setState(() {
-                  _selectedClass = classData;
-                  selectedClassId = classData['class_id'];
-                  _showStudentsList = false;
-                });
-              },
-            ),
-          );
-        },
-      );
-    } else {
-      return Column(
-        children: [
-          AppBar(
-            leading: IconButton(
-              icon: Icon(Icons.arrow_back),
-              onPressed: () {
-                setState(() {
-                  _selectedClass = null;
-                  _showStudentsList = false;
-                });
-              },
-            ),
-            title: Text(_selectedClass!['class_name']),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.add),
-                
-                onPressed: () => _addSubjectDialog(_selectedClass!),
+              SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Élèves: ${classData['students'].length} | Matières: ${classData['subjects'].length}',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                  TextButton.icon(
+                    icon: Icon(Icons.add, size: 16),
+                    label: Text('Ajouter élève'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).primaryColor,
+                    ),
+                    onPressed: () => _addStudent(classData),
+                  ),
+                ],
               ),
             ],
           ),
-          if (!_showStudentsList) _buildSubjectsGrid(),
-          if (_showStudentsList) _buildStudentsList(),
-        ],
-      );
-    }
+        ),
+      ),
+    );
+  }
+
+  void _selectClass(Map<String, dynamic> classData) {
+    setState(() {
+      _selectedClass = classData;
+      selectedClassId = classData['class_id'];
+      _showStudentsList = false;
+    });
+  }
+
+  Widget _buildClassDetailsView() {
+    return Column(
+      children: [
+        AppBar(
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () {
+              setState(() {
+                _selectedClass = null;
+                _showStudentsList = false;
+              });
+            },
+          ),
+          title: Text(_selectedClass!['class_name']),
+          actions: [
+            TextButton(
+              onPressed: () => _addSubjectDialog(_selectedClass!),
+              child: Text(
+                'Ajouter matière',
+                style: TextStyle(color: Colors.blue),
+              ),
+            ),
+            IconButton(
+              icon: Icon(Icons.add, color: Colors.blue),
+              tooltip: 'Ajouter une matière',
+              onPressed: () => _addSubjectDialog(_selectedClass!),
+            ),
+          ],
+        ),
+        Expanded(
+          child:
+              _showStudentsList ? _buildStudentsList() : _buildSubjectsGrid(),
+        ),
+      ],
+    );
   }
 
   Widget _buildSubjectsGrid() {
-  return Expanded(
-    child: GridView.builder(
+    final subjects = _selectedClass!['subjects'];
+    final isSmallScreen = MediaQuery.of(context).size.width < 600;
+
+    return GridView.builder(
       padding: EdgeInsets.all(16),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3, // 3 colonnes
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.9, // Format légèrement rectangulaire
+        crossAxisCount: isSmallScreen ? 2 : 3,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: isSmallScreen ? 0.85 : 0.9,
       ),
-      itemCount: _selectedClass!['subjects'].length,
+      itemCount: subjects.length,
       itemBuilder: (context, index) {
-        var subject = _selectedClass!['subjects'][index];
+        final subject = subjects[index];
         final subjectName = subject['name'];
-        final icon = SubjectHelper.getIconForSubject(subjectName);
-        final color = SubjectHelper.getSubjectColor(subjectName);
-        
-        return _buildSubjectGridItem(subject, subjectName, icon, color);
+        return _buildSubjectGridItem(
+          subject,
+          subjectName,
+          SubjectHelper.getIconForSubject(subjectName),
+          SubjectHelper.getSubjectColor(subjectName),
+        );
       },
-    ),
-  );
-}
-Widget _buildSubjectGridItem(Map<String, dynamic> subject, String subjectName, IconData icon, Color color) {
-  return Card(
-    elevation: 4,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-    clipBehavior: Clip.antiAlias, // Important pour que l'icône ne soit pas coupée
-    child: Stack(
-      children: [
-        // Contenu principal de la carte
-        InkWell(
-          onTap: () async {
-            setState(() {
-              selectedSubjectId = subject['id'];
-              _showStudentsList = true;
-            });
-            await _loadStudentsForClass();
-          },
-          child: Container(
-            padding: EdgeInsets.all(12),
+    );
+  }
+
+  Widget _buildSubjectGridItem(
+    Map<String, dynamic> subject,
+    String subjectName,
+    IconData icon,
+    Color color,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 400;
+
+        return Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () async {
+              setState(() {
+                selectedSubjectId = subject['id'];
+                _showStudentsList = true;
+              });
+              await _loadStudentsForClass();
+            },
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.2),
-                    shape: BoxShape.circle,
+                // Main content
+                Expanded(
+                  child: Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: isSmallScreen ? 50 : 60,
+                          height: isSmallScreen ? 50 : 60,
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            icon,
+                            size: isSmallScreen ? 28 : 32,
+                            color: color,
+                          ),
+                        ),
+                        SizedBox(height: isSmallScreen ? 8 : 12),
+                        Text(
+                          subjectName,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 14 : 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
-                  child: Icon(icon, size: 30, color: color),
                 ),
-                SizedBox(height: 10),
-                Text(
-                  subjectName,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+
+                // Delete button at bottom
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border: Border(
+                      top: BorderSide(
+                        color: Theme.of(context).dividerColor,
+                        width: 1,
+                      ),
+                    ),
                   ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      foregroundColor: Colors.red,
+                      minimumSize: Size.zero, // Reduces tap target to minimum
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: () =>
+                        _confirmDeleteSubject(_selectedClass!, subject['id']),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.delete_outline,
+                          size: isSmallScreen ? 16 : 18,
+                        ),
+                        SizedBox(width: isSmallScreen ? 4 : 8),
+                        Text(
+                          'Supprimer',
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 13 : 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-        ),
-        
-        // Bouton de suppression positionné absolument
-        Positioned(
-          top: 0,
-          right: 0,
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(12),
-              ),
-              onTap: () => _confirmDeleteSubject(_selectedClass!, subject['id']),
-              child: Container(
-                padding: EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Color.fromARGB(123, 255, 19, 2),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.close, size: 16, color: Colors.white),
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
+        );
+      },
+    );
+  }
+
   Future<void> _loadStudentsForClass() async {
     try {
       final students = _selectedClass!['students'];
@@ -1207,230 +1467,233 @@ Widget _buildSubjectGridItem(Map<String, dynamic> subject, String subjectName, I
     }
   }
 
-Widget _buildStudentsList() {
-  return Expanded(
-    child: _students.isEmpty
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.people_alt_outlined, size: 60, color: Colors.grey[400]),
-                SizedBox(height: 16),
-                Text(
-                  "Aucun étudiant trouvé",
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                if (_selectedClass != null)
-                  TextButton(
-                    onPressed: () {
-                      // Ajouter un nouvel étudiant
-                    },
-                    child: Text("AJOUTER UN ÉTUDIANT"),
-                  ),
-              ],
-            ),
-          )
-        : ListView.separated(
-            padding: EdgeInsets.all(12),
-            itemCount: _students.length,
-            separatorBuilder: (context, index) => SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final student = _students[index];
-              final photoUrl = student['photoUrl'];
-              final parentName = student['parentName'] ?? 'Non renseigné';
-              final birthDate = student['birthDate'];
-
-              return StatefulBuilder(
-                builder: (context, setState) {
-                  bool isLoading = false;
-                  
-                  return FutureBuilder<Color>(
-                    future: _getStudentIndicatorColor(
-                      _selectedClass!['class_id'], 
-                      student['id'], 
-                      selectedSubjectId
+  Widget _buildStudentsList() {
+    return Expanded(
+      child: _students.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.people_alt_outlined,
+                      size: 60, color: Colors.grey[400]),
+                  SizedBox(height: 16),
+                  Text(
+                    "Aucun étudiant trouvé",
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[600],
                     ),
-                    builder: (context, snapshot) {
-                      final statusColor = snapshot.data ?? Colors.grey;
-                      
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () async {
-                          if (selectedClassId != null && selectedSubjectId != null) {
-                            setState(() => isLoading = true);
-                            await _showSelectionsDialog(
-                              selectedClassId!,
-                              selectedSubjectId!,
-                              student['id']
-                            );
-                            setState(() => isLoading = false);
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
+                  ),
+                  if (_selectedClass != null)
+                    TextButton(
+                      onPressed: () => _addStudent(_selectedClass!),
+                      child: Text("AJOUTER UN ÉTUDIANT"),
+                    ),
+                ],
+              ),
+            )
+          : ListView.separated(
+              padding: EdgeInsets.all(12),
+              itemCount: _students.length,
+              separatorBuilder: (context, index) => SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final student = _students[index];
+                final photoUrl = student['photoUrl'];
+                final parentName = student['parentName'] ?? 'Non renseigné';
+                final birthDate = student['birthDate'];
+
+                return StatefulBuilder(
+                  builder: (context, setState) {
+                    bool isLoading = false;
+
+                    return FutureBuilder<Color>(
+                      future: _getStudentIndicatorColor(
+                          _selectedClass!['class_id'],
+                          student['id'],
+                          selectedSubjectId),
+                      builder: (context, snapshot) {
+                        final statusColor = snapshot.data ?? Colors.grey;
+
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () async {
+                            if (selectedClassId != null &&
+                                selectedSubjectId != null) {
+                              setState(() => isLoading = true);
+                              await _showSelectionsDialog(selectedClassId!,
+                                  selectedSubjectId!, student['id']);
+                              setState(() => isLoading = false);
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  content: Text(
+                                      "Veuillez sélectionner une classe et une matière"),
+                                  duration: Duration(seconds: 2),
                                 ),
-                                content: Text("Veuillez sélectionner une classe et une matière"),
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          }
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 4,
-                                offset: Offset(0, 2),
-                            )  ],
-                          ),
-                          padding: EdgeInsets.all(12),
-                          child: Row(
-                            children: [
-                              // Photo et statut
-                              Stack(
-                                alignment: Alignment.bottomRight,
-                                children: [
-                                  Container(
-                                    width: 56,
-                                    height: 56,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.grey[200],
-                                    ),
-                                    child: photoUrl != null && photoUrl.isNotEmpty
-                                        ? ClipOval(
-                                            child: CachedNetworkImage(
-                                              imageUrl: photoUrl,
-                                              fit: BoxFit.cover,
-                                              placeholder: (context, url) => Center(
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: 2),
-                                              ),
-                                              errorWidget: (context, url, error) => 
-                                                Icon(Icons.person, size: 30),
-                                            ),
-                                          )
-                                        : Icon(Icons.person, size: 30),
-                                  ),
-                                  Container(
-                                    width: 16,
-                                    height: 16,
-                                    decoration: BoxDecoration(
-                                      color: statusColor,
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: Colors.white,
-                                        width: 2,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              
-                              SizedBox(width: 16),
-                              
-                              // Infos étudiant
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                              );
+                            }
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).cardColor,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                )
+                              ],
+                            ),
+                            padding: EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                // Photo et statut
+                                Stack(
+                                  alignment: Alignment.bottomRight,
                                   children: [
-                                    Text(
-                                      student['name'],
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
+                                    Container(
+                                      width: 56,
+                                      height: 56,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.grey[200],
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      child: photoUrl != null &&
+                                              photoUrl.isNotEmpty
+                                          ? ClipOval(
+                                              child: CachedNetworkImage(
+                                                imageUrl: photoUrl,
+                                                fit: BoxFit.cover,
+                                                placeholder: (context, url) =>
+                                                    Center(
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                          strokeWidth: 2),
+                                                ),
+                                                errorWidget:
+                                                    (context, url, error) =>
+                                                        Icon(Icons.person,
+                                                            size: 30),
+                                              ),
+                                            )
+                                          : Icon(Icons.person, size: 30),
                                     ),
-                                    
-                                    SizedBox(height: 4),
-                                    
-                                    Row(
-                                      children: [
-                                        Icon(Icons.people_outline, 
-                                            size: 14, 
-                                            color: Colors.grey),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          parentName,
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.grey[600],
+                                    Container(
+                                      width: 16,
+                                      height: 16,
+                                      decoration: BoxDecoration(
+                                        color: statusColor,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 2,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                SizedBox(width: 16),
+
+                                // Infos étudiant
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        student['name'],
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.people_outline,
+                                              size: 14, color: Colors.grey),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            parentName,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      if (birthDate != null &&
+                                          birthDate.isNotEmpty)
+                                        Padding(
+                                          padding: EdgeInsets.only(top: 4),
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.cake_outlined,
+                                                  size: 14, color: Colors.grey),
+                                              SizedBox(width: 4),
+                                              Text(
+                                                birthDate,
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                    
-                                    if (birthDate != null && birthDate.isNotEmpty)
-                                      Padding(
-                                        padding: EdgeInsets.only(top: 4),
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.cake_outlined, 
-                                                size: 14, 
-                                                color: Colors.grey),
-                                            SizedBox(width: 4),
-                                            Text(
-                                              birthDate,
-                                              style: TextStyle(
-                                                fontSize: 13,
-                                                color: Colors.grey[600],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                    ],
+                                  ),
+                                ),
+
+                                // Actions
+                                if (isLoading)
+                                  Padding(
+                                    padding:
+                                        EdgeInsets.symmetric(horizontal: 8),
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                else
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(Icons.info_outline,
+                                            color: Colors.blue),
+                                        onPressed: () => _showStudentDetails(
+                                            _selectedClass!, student['id']),
+                                        tooltip: "Détails",
                                       ),
-                                  ],
-                                ),
-                              ),
-                              
-                              // Actions
-                              if (isLoading)
-                                Padding(
-                                  padding: EdgeInsets.symmetric(horizontal: 8),
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              else
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(Icons.info_outline,
-                                          color: Colors.blue),
-                                      onPressed: () => _showStudentDetails(
-                                          _selectedClass!, student['id']),
-                                      tooltip: "Détails",
-                                    ),
-                                    IconButton(
-                                      icon: Icon(Icons.delete_outline,
-                                          color: Colors.red[400]),
-                                      onPressed: () => _confirmDeleteStudent(
-                                          _selectedClass!, student['id']),
-                                      tooltip: "Supprimer",
-                                    ),
-                                  ],
-                                ),
-                            ],
+                                      IconButton(
+                                        icon: Icon(Icons.delete_outline,
+                                            color: Colors.red[400]),
+                                        onPressed: () => _confirmDeleteStudent(
+                                            _selectedClass!, student['id']),
+                                        tooltip: "Supprimer",
+                                      ),
+                                    ],
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              );
-            },
-          ),
-  );
-}
+                        );
+                      },
+                    );
+                  },
+                );
+              },
+            ),
+    );
+  }
+
   Future<void> _showStudentDetails(
       Map<String, dynamic> classData, String studentId) async {
     TextEditingController parentNameController = TextEditingController();
@@ -1582,6 +1845,23 @@ Widget _buildStudentsList() {
         ),
         backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
         elevation: 4,
+        actions: [
+          if (_selectedClass == null)
+            Row(
+              children: [
+                Text(
+                  "Aide",
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.help_outline, color: Colors.red),
+                  onPressed: () {
+                    _buildHelpSection(context); // Ouvre le dialogue d'aide
+                  },
+                ),
+              ],
+            ),
+        ],
       ),
       body: _classes.isEmpty
           ? Center(
@@ -1619,7 +1899,7 @@ Widget _buildStudentsList() {
                 ],
               ),
             )
-          : _buildClassList(),
+          : Expanded(child: _buildClassList()),
     );
   }
 }

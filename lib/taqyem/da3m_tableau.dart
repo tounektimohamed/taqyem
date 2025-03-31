@@ -708,6 +708,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
           ),
           ],
         ),
+        
         body: Column(
           children: [
             PageHeader(

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:Taqyem/components/language_constants.dart';
 import 'package:Taqyem/components/medcard.dart';
 import 'package:Taqyem/screens2/login_signup/account_settings.dart';
-import 'package:Taqyem/taqyem/add_dev.dart';
 import 'package:alarm/alarm.dart';
 import 'package:alarm/model/alarm_settings.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -660,37 +659,37 @@ class _HomePage2State extends State<HomePage2> {
                                   const SizedBox(
                                     height: 20,
                                   ),
-                                  FilledButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              AddMedication1(),
-                                        ),
-                                      );
-                                    },
-                                    style: const ButtonStyle(
-                                      backgroundColor: MaterialStatePropertyAll(
-                                          Color.fromARGB(255, 217, 237, 239)),
-                                      foregroundColor: MaterialStatePropertyAll(
-                                          Color.fromRGBO(7, 82, 96, 1)),
-                                      shape: MaterialStatePropertyAll(
-                                        RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.all(
-                                            Radius.circular(20),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      translation(context).buttonText,
-                                      style: GoogleFonts.roboto(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
+                                  // FilledButton(
+                                  //   // onPressed: () {
+                                  //   //   Navigator.push(
+                                  //   //     context,
+                                  //   //     MaterialPageRoute(
+                                  //   //       builder: (context) =>
+                                  //   //           AddMedication1(),
+                                  //   //     ),
+                                  //   //   );
+                                  //   // },
+                                  //   style: const ButtonStyle(
+                                  //     backgroundColor: MaterialStatePropertyAll(
+                                  //         Color.fromARGB(255, 217, 237, 239)),
+                                  //     foregroundColor: MaterialStatePropertyAll(
+                                  //         Color.fromRGBO(7, 82, 96, 1)),
+                                  //     shape: MaterialStatePropertyAll(
+                                  //       RoundedRectangleBorder(
+                                  //         borderRadius: BorderRadius.all(
+                                  //           Radius.circular(20),
+                                  //         ),
+                                  //       ),
+                                  //     ),
+                                  //   ),
+                                  //   child: Text(
+                                  //     translation(context).buttonText,
+                                  //     style: GoogleFonts.roboto(
+                                  //       fontWeight: FontWeight.w600,
+                                  //       fontSize: 16,
+                                  //     ),
+                                  //   ),
+                                  // ),
                                 ],
                               );
                             } else {

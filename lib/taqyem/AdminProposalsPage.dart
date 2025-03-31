@@ -86,6 +86,7 @@ Future<void> _updateProposalStatus(String proposalPath, String status) async {
         title: const Text('مراجعة المقترحات'),
         centerTitle: true,
       ),
+      
       body: StreamBuilder<QuerySnapshot>(
         stream: pendingProposals,
         builder: (context, snapshot) {

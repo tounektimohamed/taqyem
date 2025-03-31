@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:Taqyem/screens2/admin/adminpage.dart';
 import 'package:Taqyem/screens2/agent/Agentdashbord.dart';
 import 'package:Taqyem/screens2/login_signup/account_settings.dart';
-import 'package:Taqyem/taqyem/add_dev.dart';
 import 'package:alarm/alarm.dart';
 import 'package:alarm/model/alarm_settings.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';

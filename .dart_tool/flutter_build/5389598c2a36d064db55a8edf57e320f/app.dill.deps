@@ -1,6 +1,3 @@
-file:///home/tounekti/.pub-cache/git/weekday_selector-e9c604a8cabb04ea3a169c3379c270c59810e4b0/lib/src/weekday_selector.dart
-file:///home/tounekti/.pub-cache/git/weekday_selector-e9c604a8cabb04ea3a169c3379c270c59810e4b0/lib/src/weekday_selector_theme.dart
-file:///home/tounekti/.pub-cache/git/weekday_selector-e9c604a8cabb04ea3a169c3379c270c59810e4b0/lib/weekday_selector.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/_flutterfire_internals-1.3.36/lib/_flutterfire_internals.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/_flutterfire_internals-1.3.36/lib/src/exception.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/alarm-3.1.4/lib/alarm.dart
@@ -295,11 +292,6 @@ file:///home/tounekti/.pub-cache/hosted/pub.dev/csslib-0.17.3/lib/src/tree.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/csslib-0.17.3/lib/src/tree_base.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/csslib-0.17.3/lib/src/tree_printer.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/csslib-0.17.3/lib/visitor.dart
-file:///home/tounekti/.pub-cache/hosted/pub.dev/custom_radio_grouped_button-2.2.1/lib/CustomButtons/ButtonTextStyle.dart
-file:///home/tounekti/.pub-cache/hosted/pub.dev/custom_radio_grouped_button-2.2.1/lib/CustomButtons/CustomCheckBoxGroup.dart
-file:///home/tounekti/.pub-cache/hosted/pub.dev/custom_radio_grouped_button-2.2.1/lib/CustomButtons/CustomListViewSpacing.dart
-file:///home/tounekti/.pub-cache/hosted/pub.dev/custom_radio_grouped_button-2.2.1/lib/CustomButtons/CustomRadioButton.dart
-file:///home/tounekti/.pub-cache/hosted/pub.dev/custom_radio_grouped_button-2.2.1/lib/custom_radio_grouped_button.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/fake_async-1.3.1/lib/fake_async.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/feedback-3.1.0/lib/feedback.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/feedback-3.1.0/lib/src/better_feedback.dart
@@ -2222,8 +2214,6 @@ file:///home/tounekti/Bureau/DREHATT_app/.dart_tool/package_config.json
 file:///home/tounekti/Bureau/DREHATT_app/lib/auth/auth_page.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/auth/main_page.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/components/alert.dart
-file:///home/tounekti/Bureau/DREHATT_app/lib/components/category_model.dart
-file:///home/tounekti/Bureau/DREHATT_app/lib/components/controller_data.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/components/language.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/components/language_constants.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/components/onboarding_content.dart
@@ -2262,14 +2252,10 @@ file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/AddStudentPage.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/AdminProposalsPage.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/EditPage.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/SubjectHelper.dart
-file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/add_dev.dart
-file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/add_dev3.dart
-file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/add_dev4.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/da3m_tableau.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/ereur_solution.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/feedback_management_page.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/feedback_system.dart
-file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/frequi.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/header.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/listedeselection.dart
 file:///home/tounekti/Bureau/DREHATT_app/lib/taqyem/payment/PaymentPage.dart

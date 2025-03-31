@@ -151,9 +151,49 @@ class _BaremesPageState extends State<BaremesPage> {
       appBar: AppBar(
         title: Text('المعايير و المؤشرات'),
         actions: [
-          IconButton(
-            icon: Icon(Icons.save, color: Color.fromARGB(255, 23, 192, 23)),
+          // Premier bouton avec l'icône "save"
+          TextButton.icon(
             onPressed: _saveSelections,
+            label: Text(
+              'حفظ',
+              style: TextStyle(
+                  color: const Color.fromARGB(255, 34, 34, 34), fontSize: 16),
+            ),
+            icon: Icon(
+              Icons.save,
+              color: Color.fromARGB(255, 23, 192, 23),
+            ),
+          ),
+
+          // Deuxième bouton avec l'icône "table_chart"
+          ElevatedButton.icon(
+            icon: Icon(Icons.table_chart, size: 20),
+            label: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'عرض الجدول',
+                style: TextStyle(fontSize: 14), // Taille de la police ajustée
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 3,
+              padding: EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 8), // Padding ajusté
+            ),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DynamicTablePage(
+                  selectedClass: widget.selectedClass,
+                  selectedMatiere: widget.selectedMatiere,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -416,8 +456,6 @@ class _BaremesPageState extends State<BaremesPage> {
 
 //////////////////////////////////////////////
 ////////////////////////////////////////////////
-
-
 class SelectionPage extends StatefulWidget {
   @override
   _SelectionPageState createState() => _SelectionPageState();
@@ -509,7 +547,7 @@ class _SelectionPageState extends State<SelectionPage> {
       } else {
         // Ajouter le nouvel accès
         lastAccessList.insert(0, newAccess);
-        
+
         // Garder seulement les 5 derniers accès
         if (lastAccessList.length > 5) {
           lastAccessList = lastAccessList.sublist(0, 5);
@@ -571,6 +609,10 @@ class _SelectionPageState extends State<SelectionPage> {
 
   @override
   Widget build(BuildContext context) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    double padding = screenWidth > 600 ? 32.0 : 16.0;
+    double fontSize = screenWidth > 600 ? 18.0 : 14.0;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('اختر قسما ومادة', style: TextStyle(color: Colors.white)),
@@ -579,14 +621,15 @@ class _SelectionPageState extends State<SelectionPage> {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: EdgeInsets.all(padding),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // Affichage des derniers accès
               if (lastAccessList.isNotEmpty) ...[
-                Text('آخر الاختيارات', 
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text('آخر الاختيارات',
+                    style: TextStyle(
+                        fontSize: fontSize, fontWeight: FontWeight.bold)),
                 SizedBox(height: 10),
                 ...lastAccessList.asMap().entries.map((entry) {
                   final index = entry.key;
@@ -594,9 +637,10 @@ class _SelectionPageState extends State<SelectionPage> {
                   return Card(
                     margin: EdgeInsets.only(bottom: 8),
                     child: ListTile(
-                      leading: Icon(Icons.history, 
+                      leading: Icon(Icons.history,
                           color: groupColors[index % groupColors.length]),
-                      title: Text('${access['className']} - ${access['matiereName']}'),
+                      title: Text(
+                          '${access['className']} - ${access['matiereName']}'),
                       onTap: () {
                         Navigator.push(
                           context,
@@ -622,8 +666,8 @@ class _SelectionPageState extends State<SelectionPage> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 8.0),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                   child: DropdownButton<String>(
                     value: selectedClassName,
                     hint:
@@ -641,13 +685,11 @@ class _SelectionPageState extends State<SelectionPage> {
                           decoration: BoxDecoration(
                             color: color.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                                color: color.withOpacity(0.3)),
+                            border: Border.all(color: color.withOpacity(0.3)),
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.school,
-                                  color: color),
+                              Icon(Icons.school, color: color),
                               SizedBox(width: 10),
                               Text(
                                 classe['name']!,
@@ -679,14 +721,13 @@ class _SelectionPageState extends State<SelectionPage> {
                     },
                     isExpanded: true,
                     underline: SizedBox(),
-                    icon: Icon(Icons.arrow_drop_down,
-                        color: Colors.blue),
+                    icon: Icon(Icons.arrow_drop_down, color: Colors.blue),
                     dropdownColor: Colors.white,
                   ),
                 ),
               ),
               SizedBox(height: 20),
-              
+
               // Dropdown pour les matières (existant)
               Card(
                 elevation: 4,
@@ -694,8 +735,8 @@ class _SelectionPageState extends State<SelectionPage> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0, vertical: 8.0),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                   child: DropdownButton<String>(
                     value: selectedMatiereName,
                     hint:
@@ -722,41 +763,40 @@ class _SelectionPageState extends State<SelectionPage> {
                 ),
               ),
               SizedBox(height: 20),
-              
+
               // Boutons d'action (existants)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  // Bouton "عرض المعايير"
                   ElevatedButton(
                     onPressed: () async {
                       if (selectedClassId != null &&
                           selectedMatiereId != null) {
-                        await _saveLastAccess(); // Sauvegarder l'accès
+                        await _saveLastAccess();
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => SelectedBaremesPage(
-                              selectedClass: selectedClassId ?? '',
-                              selectedMatiere: selectedMatiereId ?? '',
+                              selectedClass: selectedClassId!,
+                              selectedMatiere: selectedMatiereId!,
                             ),
                           ),
                         );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('الرجاء اختيار قسم و مادة',
-                                style: TextStyle(color: Colors.white)),
+                            content: Text(
+                              'الرجاء اختيار قسم و مادة',
+                              style: TextStyle(color: Colors.white),
+                            ),
                             backgroundColor: Colors.red,
                             behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
                           ),
                         );
                       }
                     },
-                    child: Text('عرض المعايير',
-                        style: TextStyle(color: Colors.white)),
+                    child: Text('عرض المعايير'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
                       padding:
@@ -764,10 +804,12 @@ class _SelectionPageState extends State<SelectionPage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      elevation: 4,
                     ),
                   ),
+                  SizedBox(width: 20),
                   SizedBox(width: 10),
+
+                  // Bouton "برمجة المعايير"
                   ElevatedButton(
                     onPressed: () async {
                       if (selectedClassId != null &&
@@ -808,6 +850,44 @@ class _SelectionPageState extends State<SelectionPage> {
                       elevation: 4,
                     ),
                   ),
+                  SizedBox(width: 10),
+                  ElevatedButton(
+                    onPressed: () async {
+                      if (selectedClassId != null &&
+                          selectedMatiereId != null) {
+                        await _saveLastAccess();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => DynamicTablePage(
+                              selectedClass: selectedClassId!,
+                              selectedMatiere: selectedMatiereId!,
+                            ),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'الرجاء اختيار قسم و مادة',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            backgroundColor: Colors.red,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                      }
+                    },
+                    child: Text('عرض الجدول'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ],
@@ -817,6 +897,7 @@ class _SelectionPageState extends State<SelectionPage> {
     );
   }
 }
+
 /////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////
 

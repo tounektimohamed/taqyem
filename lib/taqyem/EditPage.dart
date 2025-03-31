@@ -262,6 +262,7 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
         elevation: 10,
         centerTitle: true,
       ),
+      
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
