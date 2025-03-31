@@ -9,7 +9,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart' show Uint8List;
+import 'package:flutter/foundation.dart' show Uint8List, kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
 
 class ManageClassesPage extends StatefulWidget {
@@ -54,6 +54,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     'langue': 'assets/images/french_language.png',
     'لغة انقليزية': 'assets/images/english.png',
   };
+
   @override
   void initState() {
     super.initState();
@@ -79,14 +80,14 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                         TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 SizedBox(height: 8),
                 _buildHelpItem(
-                    '1. اضغط على أي فصل لرؤية المواد والطلاب المرتبطين به'),
+                    '1. اضغط على أي قسم لرؤية المواد والتلاميذ المرتبطين به'),
                 _buildHelpItem(
-                    '2. استخدم زر "إضافة تلميذ" لإضافة طالب جديد للفصل'),
+                    '2. استخدم زر "إضافة تلميذ" لإضافة تلميذ جديد للقسم'),
                 _buildHelpItem(
-                    '3. استخدم زر "إضافة مادة" لإضافة مواد دراسية للفصل'),
-                _buildHelpItem('4. اضغط على أيقونة السلة الحمراء لحذف الفصل'),
+                    '3. استخدم زر "إضافة مادة" لإضافة مواد دراسية للقسم'),
+                _buildHelpItem('4. اضغط على أيقونة السلة الحمراء لحذف القسم'),
                 _buildHelpItem(
-                    '5. اضغط على اسم المادة لرؤية قائمة الطلاب وتقييمهم'),
+                    '5. اضغط على اسم المادة لرؤية قائمة التلاميذ وتقييمهم'),
                 _buildHelpItem(
                     '6. بعد اختيار المادة، اضغط على اسم التلميذ الذي ترغب في تقييمه'),
                 SizedBox(height: 8),
@@ -95,13 +96,13 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                         TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 SizedBox(height: 8),
                 _buildHelpItemWithIcon(
-                    Icons.touch_app, 'اضغط على الفصل لعرض محتوياته'),
+                    Icons.touch_app, 'اضغط على القسم لعرض محتوياته'),
                 _buildHelpItemWithIcon(
                     Icons.add, 'استخدم الأزرار الزرقاء للإضافة'),
                 _buildHelpItemWithIcon(
                     Icons.delete, 'استخدم الأيقونات الحمراء للحذف'),
                 _buildHelpItemWithIcon(
-                    Icons.info, 'اضغط على معلومات الطالب لرؤية التفاصيل'),
+                    Icons.info, 'اضغط على معلومات التلميذ لرؤية التفاصيل'),
               ],
             ),
           ),
@@ -191,107 +192,107 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       });
     }
   }
+Future<void> _addSubjectDialog(Map<String, dynamic> classData) async {
+  await _loadSubjects(classData['class_id']);
 
-  Future<void> _addSubjectDialog(Map<String, dynamic> classData) async {
-    await _loadSubjects(classData['class_id']);
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) {
-          return AlertDialog(
-            title: const Text(
-              'Ajouter une matière',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Sélectionnez une matière à ajouter :',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: _selectedSubject,
-                      underline: const SizedBox(),
-                      icon: const Icon(Icons.arrow_drop_down),
-                      hint: const Text('Choisir une matière'),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedSubject = newValue;
-                        });
-                      },
-                      items: _subjects.map<DropdownMenuItem<String>>((subject) {
-                        return DropdownMenuItem<String>(
-                          value: subject['id'],
-                          child: Text(
-                            subject['name'],
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                  if (_subjects.isEmpty) ...[
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Aucune matière disponible',
-                      style: TextStyle(color: Colors.orange),
-                    ),
-                    // const SizedBox(height: 8),
-                    // TextButton.icon(
-                    //   icon: const Icon(Icons.add, size: 18),
-                    //   label: const Text('Créer une nouvelle matière'),
-                    //   onPressed: () {
-                    //     // Ajouter la logique pour créer une nouvelle matière
-                    //   },
-                    // ),
-                  ],
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child:
-                    const Text('ANNULER', style: TextStyle(color: Colors.grey)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _selectedSubject == null
-                      ? Colors.grey.shade300
-                      : Colors.green, // Couleur verte ici
-                  foregroundColor: Colors.white, // Texte en blanc
+  showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) {
+        return AlertDialog(
+          title: const Text(
+            'إضافة مادة دراسية',
+            style: TextStyle(fontWeight: FontWeight.bold),
+            textDirection: TextDirection.rtl,
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end, // Alignement à droite
+              children: [
+                const Text(
+                  'اختر المادة المطلوبة:',
+                  style: TextStyle(color: Colors.grey),
+                  textDirection: TextDirection.rtl,
                 ),
-                onPressed: _selectedSubject == null
-                    ? null
-                    : () async {
-                        final selectedSubject = _subjects.firstWhere(
-                            (subject) => subject['id'] == _selectedSubject);
-                        await _addSubjectToClass(classData,
-                            selectedSubject['name']!, selectedSubject['id']!);
-                        if (mounted) Navigator.pop(context);
-                      },
-                child: const Text('AJOUTER'),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DropdownButton<String>(
+                    isExpanded: true,
+                    value: _selectedSubject,
+                    underline: const SizedBox(),
+                    icon: const Icon(Icons.arrow_drop_down),
+                    hint: const Text(
+                      'اختر مادة',
+                      textDirection: TextDirection.rtl,
+                    ),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _selectedSubject = newValue;
+                      });
+                    },
+                    items: _subjects.map<DropdownMenuItem<String>>((subject) {
+                      return DropdownMenuItem<String>(
+                        value: subject['id'],
+                        child: Text(
+                          subject['name'],
+                          overflow: TextOverflow.ellipsis,
+                          textDirection: TextDirection.rtl,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                if (_subjects.isEmpty) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'لا توجد مواد متاحة',
+                    style: TextStyle(color: Colors.orange),
+                    textDirection: TextDirection.rtl,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'إلغاء',
+                style: TextStyle(color: Colors.grey),
               ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _selectedSubject == null
+                    ? Colors.grey.shade300
+                    : Colors.green,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: _selectedSubject == null
+                  ? null
+                  : () async {
+                      final selectedSubject = _subjects.firstWhere(
+                          (subject) => subject['id'] == _selectedSubject);
+                      await _addSubjectToClass(classData,
+                          selectedSubject['name']!, selectedSubject['id']!);
+                      if (mounted) Navigator.pop(context);
+                    },
+              child: const Text('إضافة'),
+            ),
+          ],
+          actionsAlignment: MainAxisAlignment.start, // Alignement des boutons à gauche
+        );
+      },
+    ),
+  );
+}
   Future<void> _addSubjectToClass(Map<String, dynamic> classData,
       String subjectName, String subjectId) async {
     try {
@@ -428,11 +429,11 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Classe et ses données supprimées')));
+          SnackBar(content: Text('تم حذف القسم وبياناته')));
     } catch (e) {
-      print("Erreur lors de la suppression : $e");
+      print("خطأ أثناء الحذف: $e");
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erreur lors de la suppression de la classe')));
+          content: Text('حدث خطأ أثناء حذف القسم')));
     }
   }
 
@@ -444,13 +445,13 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       return showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: Text('Supprimer tous les élèves'),
+          title: Text('حذف جميع التلاميذ'),
           content: Text(
-              'Cette classe contient des élèves. Voulez-vous d\'abord supprimer tous les élèves avant de supprimer la classe ?'),
+              'هذا القسم يحتوي على تلاميذ. هل تريد حذف جميع التلاميذ قبل حذف القسم؟'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: Text('Annuler'),
+              child: Text('إلغاء'),
             ),
             TextButton(
               onPressed: () async {
@@ -459,7 +460,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                 await _deleteClass(classId);
               },
               child:
-                  Text('Supprimer tout', style: TextStyle(color: Colors.red)),
+                  Text('حذف الكل', style: TextStyle(color: Colors.red)),
             ),
           ],
         ),
@@ -491,11 +492,11 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Tous les élèves ont été supprimés')));
+          SnackBar(content: Text('تم حذف جميع التلاميذ')));
     } catch (e) {
-      print("Erreur lors de la suppression des élèves : $e");
+      print("خطأ أثناء حذف التلاميذ: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de la suppression des élèves')));
+          SnackBar(content: Text('حدث خطأ أثناء حذف التلاميذ')));
     }
   }
 
@@ -529,11 +530,11 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       });
 
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Élève supprimé')));
+          .showSnackBar(SnackBar(content: Text('تم حذف التلميذ')));
     } catch (e) {
-      print("Erreur lors de la suppression de l'élève : $e");
+      print("خطأ أثناء حذف التلميذ: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors de la suppression de l\'élève')),
+        SnackBar(content: Text('حدث خطأ أثناء حذف التلميذ')),
       );
     }
   }
@@ -543,19 +544,19 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Confirmer la suppression'),
-        content: Text('Êtes-vous sûr de vouloir supprimer cet élève ?'),
+        title: Text('تأكيد الحذف'),
+        content: Text('هل أنت متأكد من رغبتك في حذف هذا التلميذ؟'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Annuler'),
+            child: Text('إلغاء'),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               _deleteStudent(classData, studentId);
             },
-            child: Text('Supprimer'),
+            child: Text('حذف'),
           ),
         ],
       ),
@@ -582,11 +583,11 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
         classData['subjects'] = updatedSubjects;
       });
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Matière supprimée')));
+          .showSnackBar(SnackBar(content: Text('تم حذف المادة')));
     } catch (e) {
-      print("Erreur lors de la suppression de la matière : $e");
+      print("خطأ أثناء حذف المادة: $e");
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erreur lors de la suppression de la matière')));
+          content: Text('حدث خطأ أثناء حذف المادة')));
     }
   }
 
@@ -595,143 +596,145 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     return showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Confirmer la suppression'),
-        content: Text('Êtes-vous sûr de vouloir supprimer cette matière ?'),
+        title: Text('تأكيد الحذف'),
+        content: Text('هل أنت متأكد من رغبتك في حذف هذه المادة؟'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Annuler'),
+            child: Text('إلغاء'),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(context);
               _deleteSubject(classData, subjectId);
             },
-            child: Text('Supprimer'),
+            child: Text('حذف'),
           ),
         ],
       ),
     );
   }
+Future<void> _addStudent(Map<String, dynamic> classData) async {
+  List<TextEditingController> studentControllers = [TextEditingController()];
 
-  Future<void> _addStudent(Map<String, dynamic> classData) async {
-    List<TextEditingController> studentControllers = [TextEditingController()];
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Ajouter des élèves'),
-          content: StatefulBuilder(
-            builder: (context, setState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    height: 200,
-                    width: double.maxFinite,
-                    child: ListView.builder(
-                      itemCount: studentControllers.length,
-                      itemBuilder: (context, index) {
-                        return Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: studentControllers[index],
-                                decoration: InputDecoration(
-                                  labelText: 'Nom de l\'élève ${index + 1}',
-                                ),
+  showDialog(
+    context: context,
+    builder: (context) {
+      return AlertDialog(
+        title: Text('إضافة تلاميذ', textDirection: TextDirection.rtl),
+        content: StatefulBuilder(
+          builder: (context, setState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  height: 200,
+                  width: double.maxFinite,
+                  child: ListView.builder(
+                    itemCount: studentControllers.length,
+                    itemBuilder: (context, index) {
+                      return Row(
+                        textDirection: TextDirection.rtl,
+                        children: [
+                          if (studentControllers.length > 1)
+                            IconButton(
+                              icon: Icon(Icons.remove_circle, color: Colors.red),
+                              onPressed: () {
+                                setState(() {
+                                  studentControllers.removeAt(index);
+                                });
+                              },
+                            ),
+                          Expanded(
+                            child: TextField(
+                              controller: studentControllers[index],
+                              textAlign: TextAlign.right,
+                              decoration: InputDecoration(
+                                labelText: 'اسم التلميذ ${index + 1}',
+                                floatingLabelAlignment: FloatingLabelAlignment.start,
                               ),
                             ),
-                            if (studentControllers.length > 1)
-                              IconButton(
-                                icon: Icon(Icons.remove_circle,
-                                    color: Colors.red),
-                                onPressed: () {
-                                  setState(() {
-                                    studentControllers.removeAt(index);
-                                  });
-                                },
-                              ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  ElevatedButton.icon(
-                    icon: Icon(Icons.add),
-                    label: Text('Ajouter un autre élève'),
-                    onPressed: () {
-                      setState(() {
-                        studentControllers.add(TextEditingController());
-                      });
+                          ),
+                        ],
+                      );
                     },
                   ),
-                ],
-              );
-            },
+                ),
+                SizedBox(height: 10),
+                ElevatedButton.icon(
+                  icon: Icon(Icons.add),
+                  label: Text('إضافة تلميذ آخر'),
+                  onPressed: () {
+                    setState(() {
+                      studentControllers.add(TextEditingController());
+                    });
+                  },
+                ),
+              ],
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('إلغاء', textDirection: TextDirection.rtl),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Annuler'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  final studentsCollection = FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(currentUser!.uid)
-                      .collection('user_classes')
-                      .doc(classData['id'])
-                      .collection('students');
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                final studentsCollection = FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser!.uid)
+                    .collection('user_classes')
+                    .doc(classData['id'])
+                    .collection('students');
 
-                  List<String> updatedStudents =
-                      List.from(classData['students']);
+                List<String> updatedStudents = List.from(classData['students']);
 
-                  for (var controller in studentControllers) {
-                    if (controller.text.isNotEmpty) {
-                      final studentRef = await studentsCollection.add({
-                        'name': controller.text,
-                        'parentName': '',
-                        'parentPhone': '',
-                        'birthDate': '',
-                        'remarks': '',
-                        'photoUrl': '',
-                      });
+                for (var controller in studentControllers) {
+                  if (controller.text.isNotEmpty) {
+                    final studentRef = await studentsCollection.add({
+                      'name': controller.text,
+                      'parentName': '',
+                      'parentPhone': '',
+                      'birthDate': '',
+                      'remarks': '',
+                      'photoUrl': '',
+                    });
 
-                      updatedStudents.add(studentRef.id);
-                    }
+                    updatedStudents.add(studentRef.id);
                   }
-
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(currentUser!.uid)
-                      .collection('user_classes')
-                      .doc(classData['id'])
-                      .update({
-                    'students': updatedStudents,
-                  });
-
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(
-                          '${studentControllers.length} élèves ajoutés avec succès')));
-                  _fetchClasses();
-                } catch (e) {
-                  print("Erreur lors de l'ajout des élèves : $e");
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Erreur lors de l\'ajout des élèves')));
                 }
-              },
-              child: Text('Ajouter'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser!.uid)
+                    .collection('user_classes')
+                    .doc(classData['id'])
+                    .update({
+                  'students': updatedStudents,
+                });
+
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(
+                        'تم إضافة ${studentControllers.length} تلميذ بنجاح',
+                        textDirection: TextDirection.rtl)));
+                _fetchClasses();
+              } catch (e) {
+                print("خطأ في إضافة التلاميذ: $e");
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('حدث خطأ أثناء إضافة التلاميذ',
+                        textDirection: TextDirection.rtl)));
+              }
+            },
+            child: Text('إضافة', textDirection: TextDirection.rtl),
+          ),
+        ],
+      );
+    },
+  );
+}
 
   Future<void> _saveEvaluation({
     required String classId,
@@ -755,39 +758,31 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
 
       var baremeRef = baremesCollectionRef.doc(baremeId);
 
-      // Utiliser un batch pour les opérations multiples
       WriteBatch batch = FirebaseFirestore.instance.batch();
 
       if (sousBaremeId != null) {
-        // Supprimer le sous-barème dans la collection baremes
         var sousBaremeDirectRef = baremesCollectionRef.doc(sousBaremeId);
         batch.delete(sousBaremeDirectRef);
 
-        // Supprimer le sous-barème dans la collection sous_baremes du barème principal
         var sousBaremeNestedRef =
             baremeRef.collection('sous_baremes').doc(sousBaremeId);
         batch.delete(sousBaremeNestedRef);
       } else {
-        // Supprimer le barème principal
         batch.delete(baremeRef);
       }
 
-      // Enregistrer la nouvelle évaluation
       if (newValue != null) {
         if (sousBaremeId != null) {
-          // Enregistrer le sous-barème dans la collection baremes
           batch.set(baremesCollectionRef.doc(sousBaremeId), {
             'Marks': newValue,
             'createdAt': FieldValue.serverTimestamp(),
           });
 
-          // Enregistrer le sous-barème dans la collection sous_baremes du barème principal
           batch.set(baremeRef.collection('sous_baremes').doc(sousBaremeId), {
             'Marks': newValue,
             'createdAt': FieldValue.serverTimestamp(),
           });
 
-          // Mettre à jour haveSoubarem dans le barème principal
           batch.set(
               baremeRef,
               {
@@ -796,7 +791,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
               },
               SetOptions(merge: true));
         } else {
-          // Enregistrer le barème principal
           batch.set(
               baremeRef,
               {
@@ -807,7 +801,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
         }
       }
 
-      // Exécuter toutes les opérations en une seule transaction
       await batch.commit();
 
       print('Sauvegarde réussie pour le barème $baremeId');
@@ -822,7 +815,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
 
   Future<void> _showSelectionsDialog(
       String classId, String matiereId, String studentId) async {
-    // Afficher immédiatement un indicateur de chargement
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -856,7 +848,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
 
       List<Map<String, dynamic>> selections = [];
 
-      // Charger les données en parallèle pour améliorer les performances
       await Future.wait(selectionsSnapshot.docs.map((doc) async {
         var sousBaremesRef = doc.reference.collection('sousBaremes');
         var sousBaremesSnapshot = await sousBaremesRef.get();
@@ -891,7 +882,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
         });
       }));
 
-      // Fermer le dialogue de chargement
       Navigator.of(context).pop();
 
       if (selections.isEmpty) {
@@ -920,7 +910,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           ),
         );
       } else {
-        // Afficher le dialogue d'évaluation
         await showDialog(
           context: context,
           builder: (context) => StatefulBuilder(
@@ -1035,7 +1024,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                               );
 
                               if (confirm) {
-                                // Afficher un indicateur pendant la sauvegarde
                                 showDialog(
                                   context: context,
                                   barrierDismissible: false,
@@ -1161,7 +1149,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       final selectionsSnapshot = await selectionsRef.get();
       if (selectionsSnapshot.docs.isEmpty) return Colors.red;
 
-      // Vérifier rapidement si l'élève a des évaluations
       final evaluationsSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
@@ -1182,11 +1169,9 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   }
 
   Widget _buildClassList() {
-    if (_selectedClass == null) {
-      return _buildClassListView();
-    } else {
-      return _buildClassDetailsView();
-    }
+    return _selectedClass == null
+        ? _buildClassListView()
+        : _buildClassDetailsView();
   }
 
   Widget _buildClassListView() {
@@ -1240,7 +1225,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                   ),
                   TextButton.icon(
                     icon: Icon(Icons.add, size: 16),
-                    label: Text('Ajouter élève'),
+                    label: Text('إضافة تلاميذ'),
                     style: TextButton.styleFrom(
                       foregroundColor: Theme.of(context).primaryColor,
                     ),
@@ -1278,16 +1263,13 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           ),
           title: Text(_selectedClass!['class_name']),
           actions: [
-            TextButton(
-              onPressed: () => _addSubjectDialog(_selectedClass!),
-              child: Text(
-                'Ajouter matière',
-                style: TextStyle(color: Colors.blue),
+            // Version avec TextButton
+            TextButton.icon(
+              icon: Icon(Icons.add, size: 20),
+              label: Text('إضافة مادة'),
+              style: TextButton.styleFrom(
+                foregroundColor: Color.fromARGB(255, 10, 101, 236),
               ),
-            ),
-            IconButton(
-              icon: Icon(Icons.add, color: Colors.blue),
-              tooltip: 'Ajouter une matière',
               onPressed: () => _addSubjectDialog(_selectedClass!),
             ),
           ],
@@ -1332,105 +1314,91 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     IconData icon,
     Color color,
   ) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isSmallScreen = constraints.maxWidth < 400;
-
-        return Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () async {
+          setState(() {
+            selectedSubjectId = subject['id'];
+            _showStudentsList = true;
+          });
+          await _loadStudentsForClass();
+        },
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minHeight: 150, // Set a minimum height
           ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: () async {
-              setState(() {
-                selectedSubjectId = subject['id'];
-                _showStudentsList = true;
-              });
-              await _loadStudentsForClass();
-            },
-            child: Column(
-              children: [
-                // Main content
-                Expanded(
-                  child: Container(
-                    padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: isSmallScreen ? 50 : 60,
-                          height: isSmallScreen ? 50 : 60,
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.15),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            icon,
-                            size: isSmallScreen ? 28 : 32,
-                            color: color,
-                          ),
-                        ),
-                        SizedBox(height: isSmallScreen ? 8 : 12),
-                        Text(
-                          subjectName,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 14 : 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Delete button at bottom
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: Theme.of(context).dividerColor,
-                        width: 1,
+          child: Column(
+            mainAxisSize: MainAxisSize.min, // Important for GridView items
+            children: [
+              Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        icon,
+                        size: 32,
+                        color: color,
                       ),
                     ),
-                  ),
-                  child: TextButton(
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      foregroundColor: Colors.red,
-                      minimumSize: Size.zero, // Reduces tap target to minimum
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    SizedBox(height: 12),
+                    Text(
+                      subjectName,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    onPressed: () =>
-                        _confirmDeleteSubject(_selectedClass!, subject['id']),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.delete_outline,
-                          size: isSmallScreen ? 16 : 18,
-                        ),
-                        SizedBox(width: isSmallScreen ? 4 : 8),
-                        Text(
-                          'Supprimer',
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 13 : 14,
-                          ),
-                        ),
-                      ],
+                  ],
+                ),
+              ),
+              Spacer(),
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(
+                      color: Theme.of(context).dividerColor,
+                      width: 1,
                     ),
                   ),
                 ),
-              ],
-            ),
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    foregroundColor: Colors.red,
+                  ),
+                  onPressed: () =>
+                      _confirmDeleteSubject(_selectedClass!, subject['id']),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.delete_outline, size: 18),
+                      SizedBox(width: 8),
+                      Text('حذف'),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -1468,438 +1436,422 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   }
 
   Widget _buildStudentsList() {
-    return Expanded(
-      child: _students.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.people_alt_outlined,
-                      size: 60, color: Colors.grey[400]),
-                  SizedBox(height: 16),
-                  Text(
-                    "Aucun étudiant trouvé",
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey[600],
+    return _students.isEmpty
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.people_alt_outlined,
+                    size: 60, color: Colors.grey[400]),
+                SizedBox(height: 16),
+                Text(
+                  "لا يوجد تلاميذ",
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                if (_selectedClass != null)
+                  Padding(
+                    padding: EdgeInsets.only(top: 16),
+                    child: ElevatedButton(
+                      onPressed: () => _addStudent(_selectedClass!),
+                      child: Text("إضافة تلاميذ"),
                     ),
                   ),
-                  if (_selectedClass != null)
-                    TextButton(
-                      onPressed: () => _addStudent(_selectedClass!),
-                      child: Text("AJOUTER UN ÉTUDIANT"),
-                    ),
-                ],
-              ),
-            )
-          : ListView.separated(
-              padding: EdgeInsets.all(12),
-              itemCount: _students.length,
-              separatorBuilder: (context, index) => SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final student = _students[index];
-                final photoUrl = student['photoUrl'];
-                final parentName = student['parentName'] ?? 'Non renseigné';
-                final birthDate = student['birthDate'];
-
-                return StatefulBuilder(
-                  builder: (context, setState) {
-                    bool isLoading = false;
-
-                    return FutureBuilder<Color>(
-                      future: _getStudentIndicatorColor(
-                          _selectedClass!['class_id'],
-                          student['id'],
-                          selectedSubjectId),
-                      builder: (context, snapshot) {
-                        final statusColor = snapshot.data ?? Colors.grey;
-
-                        return InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () async {
-                            if (selectedClassId != null &&
-                                selectedSubjectId != null) {
-                              setState(() => isLoading = true);
-                              await _showSelectionsDialog(selectedClassId!,
-                                  selectedSubjectId!, student['id']);
-                              setState(() => isLoading = false);
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  content: Text(
-                                      "Veuillez sélectionner une classe et une matière"),
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                            }
-                          },
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).cardColor,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black12,
-                                  blurRadius: 4,
-                                  offset: Offset(0, 2),
-                                )
-                              ],
-                            ),
-                            padding: EdgeInsets.all(12),
-                            child: Row(
-                              children: [
-                                // Photo et statut
-                                Stack(
-                                  alignment: Alignment.bottomRight,
-                                  children: [
-                                    Container(
-                                      width: 56,
-                                      height: 56,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.grey[200],
-                                      ),
-                                      child: photoUrl != null &&
-                                              photoUrl.isNotEmpty
-                                          ? ClipOval(
-                                              child: CachedNetworkImage(
-                                                imageUrl: photoUrl,
-                                                fit: BoxFit.cover,
-                                                placeholder: (context, url) =>
-                                                    Center(
-                                                  child:
-                                                      CircularProgressIndicator(
-                                                          strokeWidth: 2),
-                                                ),
-                                                errorWidget:
-                                                    (context, url, error) =>
-                                                        Icon(Icons.person,
-                                                            size: 30),
-                                              ),
-                                            )
-                                          : Icon(Icons.person, size: 30),
-                                    ),
-                                    Container(
-                                      width: 16,
-                                      height: 16,
-                                      decoration: BoxDecoration(
-                                        color: statusColor,
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Colors.white,
-                                          width: 2,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-
-                                SizedBox(width: 16),
-
-                                // Infos étudiant
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        student['name'],
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Icon(Icons.people_outline,
-                                              size: 14, color: Colors.grey),
-                                          SizedBox(width: 4),
-                                          Text(
-                                            parentName,
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color: Colors.grey[600],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      if (birthDate != null &&
-                                          birthDate.isNotEmpty)
-                                        Padding(
-                                          padding: EdgeInsets.only(top: 4),
-                                          child: Row(
-                                            children: [
-                                              Icon(Icons.cake_outlined,
-                                                  size: 14, color: Colors.grey),
-                                              SizedBox(width: 4),
-                                              Text(
-                                                birthDate,
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  color: Colors.grey[600],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-
-                                // Actions
-                                if (isLoading)
-                                  Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(horizontal: 8),
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2),
-                                  )
-                                else
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                        icon: Icon(Icons.info_outline,
-                                            color: Colors.blue),
-                                        onPressed: () => _showStudentDetails(
-                                            _selectedClass!, student['id']),
-                                        tooltip: "Détails",
-                                      ),
-                                      IconButton(
-                                        icon: Icon(Icons.delete_outline,
-                                            color: Colors.red[400]),
-                                        onPressed: () => _confirmDeleteStudent(
-                                            _selectedClass!, student['id']),
-                                        tooltip: "Supprimer",
-                                      ),
-                                    ],
-                                  ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                );
-              },
+              ],
             ),
-    );
+          )
+        : ListView.builder(
+            padding: EdgeInsets.all(12),
+            itemCount: _students.length,
+            itemBuilder: (context, index) {
+              final student = _students[index];
+              return Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: _buildStudentCard(student),
+              );
+            },
+          );
   }
 
-  Future<void> _showStudentDetails(
-      Map<String, dynamic> classData, String studentId) async {
-    TextEditingController parentNameController = TextEditingController();
-    TextEditingController parentPhoneController = TextEditingController();
-    TextEditingController birthDateController = TextEditingController();
-    TextEditingController remarksController = TextEditingController();
+  Widget _buildStudentCard(Map<String, dynamic> student) {
+    final photoUrl = student['photoUrl'];
+    final parentName = student['parentName'] ?? 'Non renseigné';
+    final birthDate = student['birthDate'];
 
-    final studentsCollection = FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('user_classes')
-        .doc(classData['id'])
-        .collection('students');
+    return FutureBuilder<Color>(
+      future: _getStudentIndicatorColor(
+          _selectedClass!['class_id'], student['id'], selectedSubjectId),
+      builder: (context, snapshot) {
+        final statusColor = snapshot.data ?? Colors.grey;
 
-    final studentDoc = await studentsCollection.doc(studentId).get();
-
-    if (studentDoc.exists) {
-      parentNameController.text = studentDoc.get('parentName') ?? '';
-      parentPhoneController.text = studentDoc.get('parentPhone') ?? '';
-      birthDateController.text = studentDoc.get('birthDate') ?? '';
-      remarksController.text = studentDoc.get('remarks') ?? '';
-      _photoUrl = studentDoc.get('photoUrl') ?? '';
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Détails de l\'élève'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_imageBytes != null)
-                CircleAvatar(
-                  radius: 50,
-                  backgroundImage: MemoryImage(_imageBytes!),
-                )
-              else if (_photoUrl != null && _photoUrl!.isNotEmpty)
-                CachedNetworkImage(
-                  imageUrl: _photoUrl!,
-                  placeholder: (context, url) => CircularProgressIndicator(),
-                  errorWidget: (context, url, error) => Icon(Icons.error),
-                  imageBuilder: (context, imageProvider) => CircleAvatar(
-                    radius: 50,
-                    backgroundImage: imageProvider,
-                  ),
-                )
-              else
-                CircleAvatar(
-                  radius: 50,
-                  child: Icon(Icons.person, size: 50),
-                ),
-              SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  ElevatedButton(
-                    onPressed: () => _pickImage(ImageSource.camera),
-                    child: Text('Prendre une photo'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => _pickImage(ImageSource.gallery),
-                    child: Text('Choisir une photo'),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
-              TextField(
-                controller: parentNameController,
-                decoration: InputDecoration(labelText: 'Nom du parent'),
-              ),
-              TextField(
-                controller: parentPhoneController,
-                decoration: InputDecoration(labelText: 'Numéro du parent'),
-              ),
-              TextField(
-                controller: birthDateController,
-                decoration: InputDecoration(labelText: 'Date de naissance'),
-              ),
-              TextField(
-                controller: remarksController,
-                decoration: InputDecoration(labelText: 'Remarques'),
-              ),
-            ],
+        return Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                String? photoUrl = _photoUrl;
-
-                if (_imageBytes != null) {
-                  final storageRef = FirebaseStorage.instance.ref().child(
-                      'students/${currentUser!.uid}/${classData['id']}/$studentId.jpg');
-
-                  await storageRef.putData(_imageBytes!);
-                  photoUrl = await storageRef.getDownloadURL();
-                }
-
-                await studentsCollection.doc(studentId).update({
-                  'parentName': parentNameController.text,
-                  'parentPhone': parentPhoneController.text,
-                  'birthDate': birthDateController.text,
-                  'remarks': remarksController.text,
-                  'photoUrl': photoUrl ?? '',
-                });
-
-                setState(() {
-                  _photoUrl = photoUrl;
-                });
-
-                Navigator.pop(context);
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Informations mises à jour')),
-                );
-
-                await _fetchClasses();
-              } catch (e) {
-                print("Erreur lors de la mise à jour des informations : $e");
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                      content: Text(
-                          'Erreur lors de la mise à jour des informations')),
-                );
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () async {
+              if (selectedClassId != null && selectedSubjectId != null) {
+                await _showSelectionsDialog(
+                    selectedClassId!, selectedSubjectId!, student['id']);
               }
             },
-            child: Text('Enregistrer'),
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey[200],
+                        ),
+                        child: photoUrl != null && photoUrl.isNotEmpty
+                            ? ClipOval(
+                                child: CachedNetworkImage(
+                                  imageUrl: photoUrl,
+                                  fit: BoxFit.cover,
+                                  placeholder: (context, url) => Center(
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  ),
+                                  errorWidget: (context, url, error) =>
+                                      Icon(Icons.person, size: 30),
+                                ),
+                              )
+                            : Icon(Icons.person, size: 30),
+                      ),
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          student['name'],
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          parentName,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        if (birthDate != null && birthDate.isNotEmpty)
+                          Text(
+                            birthDate,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.info_outline, color: Colors.blue),
+                        onPressed: () =>
+                            _showStudentDetails(_selectedClass!, student['id']),
+                      ),
+                      IconButton(
+                        icon:
+                            Icon(Icons.delete_outline, color: Colors.red[400]),
+                        onPressed: () => _confirmDeleteStudent(
+                            _selectedClass!, student['id']),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
+Future<void> _showStudentDetails(
+    Map<String, dynamic> classData, String studentId) async {
+  TextEditingController parentNameController = TextEditingController();
+  TextEditingController parentPhoneController = TextEditingController();
+  TextEditingController birthDateController = TextEditingController();
+  TextEditingController remarksController = TextEditingController();
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _selectedClass == null
-              ? 'Gestion des classes'
-              : _selectedClass!['class_name'],
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
-        elevation: 4,
-        actions: [
-          if (_selectedClass == null)
-            Row(
-              children: [
-                Text(
-                  "Aide",
-                  style: TextStyle(color: Colors.white, fontSize: 16),
+  final studentsCollection = FirebaseFirestore.instance
+      .collection('users')
+      .doc(currentUser!.uid)
+      .collection('user_classes')
+      .doc(classData['id'])
+      .collection('students');
+
+  final studentDoc = await studentsCollection.doc(studentId).get();
+
+  if (studentDoc.exists) {
+    parentNameController.text = studentDoc.get('parentName') ?? '';
+    parentPhoneController.text = studentDoc.get('parentPhone') ?? '';
+    birthDateController.text = studentDoc.get('birthDate') ?? '';
+    remarksController.text = studentDoc.get('remarks') ?? '';
+    _photoUrl = studentDoc.get('photoUrl') ?? '';
+  }
+
+  // Fonction pour sélectionner la date
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      birthDateController.text = "${picked.day}/${picked.month}/${picked.year}";
+    }
+  }
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text('تفاصيل التلميذ', textDirection: TextDirection.rtl),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_imageBytes != null)
+              CircleAvatar(
+                radius: 50,
+                backgroundImage: MemoryImage(_imageBytes!),
+              )
+            else if (_photoUrl != null && _photoUrl!.isNotEmpty)
+              CachedNetworkImage(
+                imageUrl: _photoUrl!,
+                placeholder: (context, url) => CircularProgressIndicator(),
+                errorWidget: (context, url, error) => Icon(Icons.error),
+                imageBuilder: (context, imageProvider) => CircleAvatar(
+                  radius: 50,
+                  backgroundImage: imageProvider,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.help_outline, color: Colors.red),
-                  onPressed: () {
-                    _buildHelpSection(context); // Ouvre le dialogue d'aide
-                  },
+              )
+            else
+              CircleAvatar(
+                radius: 50,
+                child: Icon(Icons.person, size: 50),
+              ),
+            SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ElevatedButton(
+                  onPressed: () => _pickImage(ImageSource.camera),
+                  child: Text('التقاط صورة'),
+                ),
+                ElevatedButton(
+                  onPressed: () => _pickImage(ImageSource.gallery),
+                  child: Text('اختيار صورة'),
                 ),
               ],
             ),
-        ],
+            SizedBox(height: 20),
+            TextField(
+              controller: parentNameController,
+              textAlign: TextAlign.right,
+              decoration: InputDecoration(
+                labelText: 'اسم ولي الأمر',
+                floatingLabelAlignment: FloatingLabelAlignment.start,
+              ),
+            ),
+            TextField(
+              controller: parentPhoneController,
+              textAlign: TextAlign.right,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                labelText: 'رقم هاتف ولي الأمر',
+                floatingLabelAlignment: FloatingLabelAlignment.start,
+              ),
+            ),
+            GestureDetector(
+              onTap: () => _selectDate(context),
+              child: AbsorbPointer(
+                child: TextField(
+                  controller: birthDateController,
+                  textAlign: TextAlign.right,
+                  decoration: InputDecoration(
+                    labelText: 'تاريخ الميلاد',
+                    floatingLabelAlignment: FloatingLabelAlignment.start,
+                    suffixIcon: Icon(Icons.calendar_today),
+                  ),
+                ),
+              ),
+            ),
+            TextField(
+              controller: remarksController,
+              textAlign: TextAlign.right,
+              decoration: InputDecoration(
+                labelText: 'ملاحظات',
+                floatingLabelAlignment: FloatingLabelAlignment.start,
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
       ),
-      body: _classes.isEmpty
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text('إلغاء'),
+        ),
+        ElevatedButton(
+          onPressed: () async {
+            try {
+              String? photoUrl = _photoUrl;
+
+              if (_imageBytes != null) {
+                final storageRef = FirebaseStorage.instance.ref().child(
+                    'students/${currentUser!.uid}/${classData['id']}/$studentId.jpg');
+
+                await storageRef.putData(_imageBytes!);
+                photoUrl = await storageRef.getDownloadURL();
+              }
+
+              await studentsCollection.doc(studentId).update({
+                'parentName': parentNameController.text,
+                'parentPhone': parentPhoneController.text,
+                'birthDate': birthDateController.text,
+                'remarks': remarksController.text,
+                'photoUrl': photoUrl ?? '',
+              });
+
+              setState(() {
+                _photoUrl = photoUrl;
+              });
+
+              Navigator.pop(context);
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('تم تحديث المعلومات بنجاح')),
+              );
+
+              await _fetchClasses();
+            } catch (e) {
+              print("خطأ في تحديث المعلومات: $e");
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('حدث خطأ أثناء تحديث المعلومات')),
+              );
+            }
+          },
+          child: Text('حفظ'),
+        ),
+      ],
+    ),
+  );
+}
+
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text(
+        _selectedClass == null
+            ? 'إدارة الاقسام'
+            : _selectedClass!['class_name'],
+        style: TextStyle(color: Colors.white),
+      ),
+      backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
+      elevation: 4,
+      actions: [
+        IconButton(
+          icon: Icon(Icons.help_outline, color: Colors.white),
+          onPressed: () => _buildHelpSection(context),
+        ),
+      ],
+    ),
+    body: SafeArea(
+      child: _classes.isEmpty
           ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.class_,
-                    size: 80,
-                    color: Colors.grey.shade400,
-                  ),
-                  SizedBox(height: 20),
-                  Text(
-                    'Aucune classe trouvée.',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    'Vous devez ajouter une classe dans l\'onglet "Ajouter une classe".',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AddClassPage(),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(16),
+                child: Directionality(
+                  textDirection: TextDirection.rtl,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.class_,
+                        size: 80,
+                        color: Colors.grey.shade400,
+                      ),
+                      SizedBox(height: 20),
+                      Text(
+                        'لا توجد اقسام متاحة',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                      SizedBox(height: 10),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Text(
+                          'يجب عليك إضافة قسم من خلال قسم "إضافة قسم جديد"',
+                          style: TextStyle(fontSize: 16, color: Colors.grey),
+                          textAlign: TextAlign.center,
                         ),
-                      );
-                    },
-                    child: Text('Ajouter une classe'),
+                      ),
+                      SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AddClassPage(),
+                            ),
+                          );
+                        },
+                        child: Text('إضافة قسم جديد'),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             )
-          : Expanded(child: _buildClassList()),
-    );
-  }
+          : Directionality(
+              textDirection: TextDirection.rtl,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return _buildClassList();
+                },
+              ),
+            ),
+    ),
+  );
+}
 }

@@ -613,6 +613,8 @@ class _SelectionPageState extends State<SelectionPage> {
     double padding = screenWidth > 600 ? 32.0 : 16.0;
     double fontSize = screenWidth > 600 ? 18.0 : 14.0;
 
+    double buttonPadding = screenWidth > 600 ? 32.0 : 12.0;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('اختر قسما ومادة', style: TextStyle(color: Colors.white)),
@@ -631,6 +633,7 @@ class _SelectionPageState extends State<SelectionPage> {
                     style: TextStyle(
                         fontSize: fontSize, fontWeight: FontWeight.bold)),
                 SizedBox(height: 10),
+                // Dans la partie où vous affichez les derniers accès
                 ...lastAccessList.asMap().entries.map((entry) {
                   final index = entry.key;
                   final access = entry.value;
@@ -642,15 +645,15 @@ class _SelectionPageState extends State<SelectionPage> {
                       title: Text(
                           '${access['className']} - ${access['matiereName']}'),
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SelectedBaremesPage(
-                              selectedClass: access['classId'],
-                              selectedMatiere: access['matiereId'],
-                            ),
-                          ),
-                        );
+                        setState(() {
+                          selectedClassId = access['classId'];
+                          selectedClassName = access['className'];
+                          selectedMatiereId = access['matiereId'];
+                          selectedMatiereName = access['matiereName'];
+                        });
+
+                        // Rafraîchir la liste des matières pour la classe sélectionnée
+                        fetchMatieres(access['classId']).then((_) {});
                       },
                     ),
                   );
@@ -765,10 +768,15 @@ class _SelectionPageState extends State<SelectionPage> {
               SizedBox(height: 20),
 
               // Boutons d'action (existants)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              // Dans votre méthode build, remplacez seulement le Row par ce Wrap
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: screenWidth > 600
+                    ? 20.0
+                    : 10.0, // Espacement horizontal adaptatif
+                runSpacing: 10.0, // Espacement vertical constant
                 children: [
-                  // Bouton "عرض المعايير"
+                  // Bouton "عرض المعايير" - Identique à l'original
                   ElevatedButton(
                     onPressed: () async {
                       if (selectedClassId != null &&
@@ -799,22 +807,24 @@ class _SelectionPageState extends State<SelectionPage> {
                     child: Text('عرض المعايير'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth > 600
+                            ? 32.0
+                            : 16.0, // Padding adaptatif
+                        vertical: 16,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                   ),
-                  SizedBox(width: 20),
-                  SizedBox(width: 10),
 
-                  // Bouton "برمجة المعايير"
+                  // Bouton "برمجة المعايير" - Identique à l'original
                   ElevatedButton(
                     onPressed: () async {
                       if (selectedClassId != null &&
                           selectedMatiereId != null) {
-                        await _saveLastAccess(); // Sauvegarder l'accès
+                        await _saveLastAccess();
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -842,15 +852,20 @@ class _SelectionPageState extends State<SelectionPage> {
                         style: TextStyle(color: Colors.white)),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth > 600
+                            ? 32.0
+                            : 16.0, // Padding adaptatif
+                        vertical: 16,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                       elevation: 4,
                     ),
                   ),
-                  SizedBox(width: 10),
+
+                  // Bouton "عرض الجدول" - Identique à l'original
                   ElevatedButton(
                     onPressed: () async {
                       if (selectedClassId != null &&
@@ -881,8 +896,12 @@ class _SelectionPageState extends State<SelectionPage> {
                     child: Text('عرض الجدول'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blue,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth > 600
+                            ? 32.0
+                            : 16.0, // Padding adaptatif
+                        vertical: 16,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),

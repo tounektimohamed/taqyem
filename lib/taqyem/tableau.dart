@@ -756,25 +756,29 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   }
 ///////////  Raport html ////////
 Future<void> _generateHTMLReport() async {
+  // Vérifier la connexion de l'utilisateur
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Utilisateur non connecté.')),
+      SnackBar(content: Text('Veuillez vous connecter pour imprimer')),
     );
     return;
   }
 
-  // Vérification des crédits/statut du compte
-  if (_remainingPrints <= 0 && !_isAccountActive) {
+  // Vérifier l'état du compte et les crédits
+  if (!_isAccountActive && _remainingPrints <= 0) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-            'Votre compte n\'est pas activé et vous n\'avez plus de crédits. Veuillez effectuer un paiement.'),
+          'Crédits épuisés. Veuillez activer votre compte ou acheter des crédits.'),
+        action: SnackBarAction(
+          label: 'Paiement',
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => PaymentPage()),
+          ),
+        ),
       ),
-    );
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => PaymentPage()),
     );
     return;
   }
@@ -783,72 +787,110 @@ Future<void> _generateHTMLReport() async {
     _isGeneratingReport = true;
   });
 
-  try {
-    // Afficher le dialogue de chargement
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 20),
-              Text("Génération du rapport en cours...",
-                  style: TextStyle(fontSize: 16)),
-              SizedBox(height: 10),
-              Text("Veuillez patienter, cette opération peut prendre quelques instants.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.grey)),
-            ],
-          ),
-        );
-      },
-    );
+  // Afficher l'indicateur de chargement
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(),
+          SizedBox(height: 20),
+          Text("Préparation du rapport..."),
+        ],
+      ),
+    ),
+  );
 
-    // Décrémenter le crédit si compte inactif
-    if (!_isAccountActive && _remainingPrints > 0) {
+  try {
+    // Décrémenter le crédit avant la génération (si compte inactif)
+    if (!_isAccountActive) {
       await FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
           .update({'remainingPrints': FieldValue.increment(-1)});
-
+      
+      // Mettre à jour l'état local immédiatement
       setState(() {
-        _remainingPrints--;
+        _remainingPrints = _remainingPrints - 1;
       });
     }
 
-    // Préparer les données pour le HTML
-    var data = {
+    // Préparer les données pour le rapport
+    final reportData = {
       'profName': _profName,
-      'matiereName': await _getMatiereName(),
-      'className': await _getClassName(),
       'schoolName': _schoolName,
-      'baremes': await _getBaremes(),
+      'className': await _getClassName(),
+      'matiereName': await _getMatiereName(),
       'students': await _getStudents(),
+      'baremes': await _getBaremes(),
       'sumCriteriaMaxPerBareme': sumCriteriaMaxPerBareme,
       'totalStudents': totalStudents,
-      'selectedClass': widget.selectedClass,
-      'selectedBaremeId': selectedBaremeId,
-      'currentUser': currentUser?.uid,
-      'baremeName': baremeName,
-      'sousBaremeName': sousBaremeName,
-      'selectedSousBaremeId': selectedSousBaremeId,
+      'timestamp': DateTime.now().toIso8601String(),
     };
 
-    print('Données envoyées à Flask pour HTML: ${json.encode(data)}');
-    await _sendHTMLDataToFlask(data);
-  } catch (e) {
-    print('Erreur lors de la génération du rapport: $e');
+    // Envoyer les données au serveur
+    final response = await http.post(
+      Uri.parse('https://imprission.onrender.com/generate-html-report'),
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode(reportData),
+    ).timeout(Duration(seconds: 60));
+
+    if (response.statusCode == 200) {
+      // Ouvrir le rapport dans un nouvel onglet
+      final blob = html.Blob([response.bodyBytes], 'text/html');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.window.open(url, '_blank');
+      html.Url.revokeObjectUrl(url);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Rapport généré avec succès')),
+      );
+    } else {
+      throw Exception('Erreur serveur: ${response.statusCode}');
+    }
+  } on TimeoutException {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Erreur lors de la génération du rapport: $e')),
+      SnackBar(content: Text('Timeout - Le serveur a mis trop de temps à répondre')),
     );
+    // Restaurer le crédit en cas de timeout
+    if (!_isAccountActive) {
+      await _restorePrintCredit(user.uid);
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Erreur: ${e.toString()}')),
+    );
+    // Restaurer le crédit en cas d'erreur
+    if (!_isAccountActive) {
+      await _restorePrintCredit(user.uid);
+    }
   } finally {
-    setState(() {
-      _isGeneratingReport = false;
-    });
-    Navigator.of(context).pop(); // Fermer le dialogue de chargement
+    // Fermer le dialogue et mettre à jour l'état
+    if (mounted) {
+      Navigator.of(context).pop(); // Fermer le dialogue
+      setState(() {
+        _isGeneratingReport = false;
+      });
+    }
+  }
+}
+
+Future<void> _restorePrintCredit(String userId) async {
+  try {
+    await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(userId)
+        .update({'remainingPrints': FieldValue.increment(1)});
+    
+    if (mounted) {
+      setState(() {
+        _remainingPrints = _remainingPrints + 1;
+      });
+    }
+  } catch (e) {
+    print('Erreur lors de la restauration du crédit: $e');
   }
 }
 Future<void> _sendHTMLDataToFlask(Map<String, dynamic> data) async {
