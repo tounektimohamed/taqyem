@@ -1,4 +1,6 @@
+import 'package:Taqyem/screens2/admin/AccessLogsPage.dart';
 import 'package:Taqyem/taqyem/AddClassPage.dart';
+import 'package:Taqyem/taqyem/SubjectHelper.dart';
 import 'package:Taqyem/taqyem/selectionPage.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,19 +19,40 @@ class ManageClassesPage extends StatefulWidget {
 
 class _ManageClassesPageState extends State<ManageClassesPage> {
   User? currentUser = FirebaseAuth.instance.currentUser;
-
-//  User? currentUser = FirebaseAuth.instance.currentUser;
   List<Map<String, dynamic>> _classes = [];
-  List<Map<String, dynamic>> _subjects = []; // Liste des matières disponibles
+  List<Map<String, dynamic>> _subjects = [];
   Uint8List? _imageBytes;
   String? _photoUrl;
-  String? _selectedSubject; // Variable pour stocker la matière sélectionnée
-  List<Map<String, String>> _selectedSubjects =
-      []; // Stocke les ID et noms des matières sélectionnées
-  // Ajoutez ces deux variables
+  String? _selectedSubject;
+  List<Map<String, String>> _selectedSubjects = [];
   String? selectedClassId;
   String? selectedSubjectId;
-
+  Map<String, dynamic>? _selectedClass;
+  List<Map<String, dynamic>> _students = [];
+  bool _showStudentsList = false;
+final Map<String, String> subjectImages = {
+  'التواصل الشفوي': 'assets/images/oral.png',
+  'قراءة': 'assets/images/reading.png',
+  'انتاج كتابي': 'assets/images/writing.png',
+  'قواعد لغة': 'assets/images/grammar.png',
+  'رياضيات': 'assets/images/math.png',
+  'ايقاظ علمي': 'assets/images/science.png',
+  'تربية اسلامية': 'assets/images/islamic.png',
+  'تربية تكنولوجية': 'assets/images/technology.png',
+  'تربية موسيقية': 'assets/images/music.png',
+  'تربية تشكيلية': 'assets/images/art.png',
+  'تربية بدنية': 'assets/images/sport.png',
+  'التاريخ': 'assets/images/history.png',
+  'الجغرافيا': 'assets/images/geography.png',
+  'التربية المدنية': 'assets/images/civics.png',
+  'Expression orale et récitation': 'assets/images/french_oral.png',
+  'Lecture': 'assets/images/french_reading.png',
+  'Production écrite': 'assets/images/french_writing.png',
+  'écriture': 'assets/images/french_writing2.png',
+  'dictée': 'assets/images/dictation.png',
+  'langue': 'assets/images/french_language.png',
+  'لغة انقليزية': 'assets/images/english.png',
+};
   @override
   void initState() {
     super.initState();
@@ -42,7 +65,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     required String classId,
     required String studentId,
     required String baremeId,
-    String? sousBaremeId, // Nouveau paramètre pour l'ID du sous-barème
+    String? sousBaremeId,
   }) async {
     try {
       User? currentUser = FirebaseAuth.instance.currentUser;
@@ -50,7 +73,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
         throw Exception("Aucun utilisateur connecté");
       }
 
-      // Construire la référence de base du document
       var docRef = FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
@@ -61,19 +83,16 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           .collection('baremes')
           .doc(baremeId);
 
-      // Si sousBaremeId est fourni, ajuster la référence à la sous-collection des sous-barèmes
       if (sousBaremeId != null) {
         docRef = docRef.collection('sous_baremes').doc(sousBaremeId);
       }
 
-      // Récupérer le document
       var doc = await docRef.get();
 
-      // Vérifier si le document existe et si le champ `value` existe
       if (doc.exists && doc.data()?.containsKey('Marks') == true) {
-        return doc['Marks'] as String?; // Retourner la valeur du champ `value`
+        return doc['Marks'] as String?;
       }
-      return null; // Retourner null si le document ou le champ `value` n'existe pas
+      return null;
     } catch (e) {
       print('Erreur lors de la récupération de l\'évaluation: $e');
       return null;
@@ -192,8 +211,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           _subjects.addAll(classDoc.docs.map((doc) {
             return {
               'id': doc.id,
-              'name': doc['name']
-                  as String, // Assurez-vous que 'name' est une String
+              'name': doc['name'] as String,
             };
           }).toList());
         });
@@ -219,33 +237,27 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
 
       setState(() {
         _classes = classDocs.docs.map((doc) {
-          // Convertir les sujets en List<Map<String, String>>
           List<Map<String, String>> subjects = [];
           if (doc['subjects'] != null) {
             subjects = (doc['subjects'] as List).map((subject) {
               return {
-                'id': subject['id']
-                    .toString(), // Assurez-vous que c'est une String
-                'name': subject['name']
-                    .toString(), // Assurez-vous que c'est une String
+                'id': subject['id'].toString(),
+                'name': subject['name'].toString(),
               };
             }).toList();
           }
 
-          // Convertir les étudiants en List<String>
           List<String> students = [];
           if (doc['students'] != null) {
             students = (doc['students'] as List).map((student) {
-              return student.toString(); // Assurez-vous que c'est une String
+              return student.toString();
             }).toList();
           }
 
           return {
             'id': doc.id,
-            'class_id':
-                doc['class_id'].toString(), // Assurez-vous que c'est une String
-            'class_name': doc['class_name']
-                .toString(), // Assurez-vous que c'est une String
+            'class_id': doc['class_id'].toString(),
+            'class_name': doc['class_name'].toString(),
             'subjects': subjects,
             'students': students,
           };
@@ -266,27 +278,26 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           .collection('user_classes')
           .doc(classId);
 
-      // Supprimer la sous-collection "students" (au cas où il reste des élèves)
       final studentsSnapshot = await classDocRef.collection('students').get();
       for (var studentDoc in studentsSnapshot.docs) {
         await studentDoc.reference.delete();
       }
 
-      // Supprimer la sous-collection "subjects"
       final subjectsSnapshot = await classDocRef.collection('subjects').get();
       for (var subjectDoc in subjectsSnapshot.docs) {
         await subjectDoc.reference.delete();
       }
 
-      // Supprimer le document de la classe
       await classDocRef.delete();
 
-      // Mettre à jour l'état local
       setState(() {
         _classes.removeWhere((classData) => classData['id'] == classId);
+        if (_selectedClass != null && _selectedClass!['id'] == classId) {
+          _selectedClass = null;
+          _showStudentsList = false;
+        }
       });
 
-      // Afficher un message de succès
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Classe et ses données supprimées')));
     } catch (e) {
@@ -300,9 +311,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     final classData =
         _classes.firstWhere((classData) => classData['id'] == classId);
 
-    // Vérifier s'il y a des élèves dans la classe
     if (classData['students'].isNotEmpty) {
-      // Afficher une boîte de dialogue pour confirmer la suppression des élèves
       return showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -316,11 +325,9 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
             ),
             TextButton(
               onPressed: () async {
-                Navigator.pop(context); // Fermer la boîte de dialogue
-                await _deleteAllStudents(
-                    classData); // Supprimer tous les élèves
-                await _deleteClass(
-                    classId); // Supprimer la classe après la suppression des élèves
+                Navigator.pop(context);
+                await _deleteAllStudents(classData);
+                await _deleteClass(classId);
               },
               child:
                   Text('Supprimer tout', style: TextStyle(color: Colors.red)),
@@ -329,7 +336,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
         ),
       );
     } else {
-      // Si la classe est vide, supprimer directement
       await _deleteClass(classId);
     }
   }
@@ -342,23 +348,19 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           .collection('user_classes')
           .doc(classData['id']);
 
-      // Supprimer tous les élèves de la sous-collection "students"
       final studentsSnapshot = await classDocRef.collection('students').get();
       for (var studentDoc in studentsSnapshot.docs) {
         await studentDoc.reference.delete();
       }
 
-      // Mettre à jour la liste des élèves dans le document de la classe
       await classDocRef.update({
         'students': [],
       });
 
-      // Mettre à jour l'état local
       setState(() {
         classData['students'].clear();
       });
 
-      // Afficher un message de succès
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Tous les élèves ont été supprimés')));
     } catch (e) {
@@ -371,7 +373,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   Future<void> _deleteStudent(
       Map<String, dynamic> classData, String studentId) async {
     try {
-      // Étape 1 : Supprimer l'élève de la liste `students` dans le document de la classe
       List<String> updatedStudents = List.from(classData['students']);
       updatedStudents.remove(studentId);
 
@@ -384,7 +385,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
         'students': updatedStudents,
       });
 
-      // Étape 2 : Supprimer le document de l'élève dans la sous-collection `students`
       await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
@@ -394,16 +394,14 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           .doc(studentId)
           .delete();
 
-      // Mettre à jour l'état local
       setState(() {
         classData['students'] = updatedStudents;
+        _students.removeWhere((student) => student['id'] == studentId);
       });
 
-      // Afficher un message de succès
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Élève supprimé')));
     } catch (e) {
-      // Gérer les erreurs
       print("Erreur lors de la suppression de l'élève : $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erreur lors de la suppression de l\'élève')),
@@ -551,77 +549,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     );
   }
 
-  Future<void> _editStudent(
-      Map<String, dynamic> classData, String studentId) async {
-    TextEditingController studentNameController = TextEditingController();
-
-    final studentDoc = await FirebaseFirestore.instance
-        .collection('students')
-        .doc(studentId)
-        .get();
-
-    if (studentDoc.exists) {
-      studentNameController.text = studentDoc['name'];
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Modifier le nom de l\'élève'),
-        content: TextField(
-          controller: studentNameController,
-          decoration: InputDecoration(labelText: 'Nouveau nom de l\'élève'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Annuler'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await FirebaseFirestore.instance
-                    .collection('students')
-                    .doc(studentId)
-                    .update({
-                  'name': studentNameController.text,
-                });
-
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Nom de l\'élève modifié')));
-                _fetchClasses();
-              } catch (e) {
-                print("Erreur lors de la modification de l'élève : $e");
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content:
-                        Text('Erreur lors de la modification de l\'élève')));
-              }
-            },
-            child: Text('Modifier'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<String?> _getStudentName(String studentId) async {
-    try {
-      final studentDoc = await FirebaseFirestore.instance
-          .collection('students')
-          .doc(studentId)
-          .get();
-
-      if (studentDoc.exists) {
-        return studentDoc['name'];
-      }
-      return null;
-    } catch (e) {
-      print("Erreur lors de la récupération du nom de l'élève : $e");
-      return null;
-    }
-  }
-
   Future<void> _saveEvaluation({
     required String classId,
     required String studentId,
@@ -630,11 +557,9 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     String? sousBaremeId,
   }) async {
     try {
-      // Vérifier si un utilisateur est connecté
       User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) throw Exception("Aucun utilisateur connecté");
 
-      // Référence à la collection baremes
       var baremesCollectionRef = FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
@@ -644,52 +569,62 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           .doc(studentId)
           .collection('baremes');
 
-      // Référence au document du barème principal
       var baremeRef = baremesCollectionRef.doc(baremeId);
 
-      // Supprimer les anciennes évaluations
+      // Utiliser un batch pour les opérations multiples
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+
       if (sousBaremeId != null) {
         // Supprimer le sous-barème dans la collection baremes
         var sousBaremeDirectRef = baremesCollectionRef.doc(sousBaremeId);
-        await sousBaremeDirectRef.delete();
+        batch.delete(sousBaremeDirectRef);
 
         // Supprimer le sous-barème dans la collection sous_baremes du barème principal
         var sousBaremeNestedRef =
             baremeRef.collection('sous_baremes').doc(sousBaremeId);
-        await sousBaremeNestedRef.delete();
+        batch.delete(sousBaremeNestedRef);
       } else {
         // Supprimer le barème principal
-        await baremeRef.delete();
+        batch.delete(baremeRef);
       }
 
       // Enregistrer la nouvelle évaluation
       if (newValue != null) {
         if (sousBaremeId != null) {
           // Enregistrer le sous-barème dans la collection baremes
-          await baremesCollectionRef.doc(sousBaremeId).set({
+          batch.set(baremesCollectionRef.doc(sousBaremeId), {
             'Marks': newValue,
             'createdAt': FieldValue.serverTimestamp(),
           });
 
           // Enregistrer le sous-barème dans la collection sous_baremes du barème principal
-          await baremeRef.collection('sous_baremes').doc(sousBaremeId).set({
+          batch.set(baremeRef.collection('sous_baremes').doc(sousBaremeId), {
             'Marks': newValue,
             'createdAt': FieldValue.serverTimestamp(),
           });
 
           // Mettre à jour haveSoubarem dans le barème principal
-          await baremeRef.set({
-            'haveSoubarem': true,
-            'createdAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
+          batch.set(
+              baremeRef,
+              {
+                'haveSoubarem': true,
+                'createdAt': FieldValue.serverTimestamp(),
+              },
+              SetOptions(merge: true));
         } else {
           // Enregistrer le barème principal
-          await baremeRef.set({
-            'Marks': newValue,
-            'createdAt': FieldValue.serverTimestamp(),
-          }, SetOptions(merge: true));
+          batch.set(
+              baremeRef,
+              {
+                'Marks': newValue,
+                'createdAt': FieldValue.serverTimestamp(),
+              },
+              SetOptions(merge: true));
         }
       }
+
+      // Exécuter toutes les opérations en une seule transaction
+      await batch.commit();
 
       print('Sauvegarde réussie pour le barème $baremeId');
     } catch (e) {
@@ -697,25 +632,35 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Erreur lors de la sauvegarde')),
       );
+      rethrow;
     }
   }
 
   Future<void> _showSelectionsDialog(
       String classId, String matiereId, String studentId) async {
-    final List<String> evaluationOptions = [
-      '( - - - )',
-      '( + - - )',
-      '( + + - )',
-      '( + + + )'
-    ];
-    final Map<String, Color> evaluationColors = {
-      '( - - - )': Colors.red,
-      '( + - - )': Colors.orange,
-      '( + + - )': Colors.amber,
-      '( + + + )': Colors.green,
-    };
+    // Afficher immédiatement un indicateur de chargement
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
 
     try {
+      final List<String> evaluationOptions = [
+        '( - - - )',
+        '( + - - )',
+        '( + + - )',
+        '( + + + )'
+      ];
+      final Map<String, Color> evaluationColors = {
+        '( - - - )': Colors.red,
+        '( + - - )': Colors.orange,
+        '( + + - )': Colors.amber,
+        '( + + + )': Colors.green,
+      };
+
       CollectionReference selectionsRef = FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
@@ -726,12 +671,14 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       var selectionsSnapshot = await selectionsRef.get();
 
       List<Map<String, dynamic>> selections = [];
-      for (var doc in selectionsSnapshot.docs) {
+
+      // Charger les données en parallèle pour améliorer les performances
+      await Future.wait(selectionsSnapshot.docs.map((doc) async {
         var sousBaremesRef = doc.reference.collection('sousBaremes');
         var sousBaremesSnapshot = await sousBaremesRef.get();
         List<Map<String, dynamic>> sousBaremes = [];
 
-        for (var sousDoc in sousBaremesSnapshot.docs) {
+        await Future.wait(sousBaremesSnapshot.docs.map((sousDoc) async {
           String? savedEvaluation = await _getEvaluation(
             classId: classId,
             studentId: studentId,
@@ -744,7 +691,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
             'sousBaremeName': sousDoc['sousBaremeName'],
             'evaluation': savedEvaluation ?? '( - - - )',
           });
-        }
+        }));
 
         String? savedEvaluation = sousBaremes.isEmpty
             ? await _getEvaluation(
@@ -758,7 +705,10 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           'evaluation': savedEvaluation ?? '( - - - )',
           'sousBaremes': sousBaremes,
         });
-      }
+      }));
+
+      // Fermer le dialogue de chargement
+      Navigator.of(context).pop();
 
       if (selections.isEmpty) {
         showDialog(
@@ -786,7 +736,8 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           ),
         );
       } else {
-        showDialog(
+        // Afficher le dialogue d'évaluation
+        await showDialog(
           context: context,
           builder: (context) => StatefulBuilder(
             builder: (context, setState) {
@@ -900,11 +851,22 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                               );
 
                               if (confirm) {
-                                for (var selection in selections) {
+                                // Afficher un indicateur pendant la sauvegarde
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (context) => Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+
+                                await Future.wait(
+                                    selections.map((selection) async {
                                   if ((selection['sousBaremes'] as List)
                                       .isNotEmpty) {
-                                    for (var sousBareme
-                                        in selection['sousBaremes']) {
+                                    await Future.wait(
+                                        (selection['sousBaremes'] as List)
+                                            .map((sousBareme) async {
                                       await _saveEvaluation(
                                         classId: classId,
                                         studentId: studentId,
@@ -912,7 +874,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                         sousBaremeId: sousBareme['id'],
                                         newValue: sousBareme['evaluation'],
                                       );
-                                    }
+                                    }));
                                   } else {
                                     await _saveEvaluation(
                                       classId: classId,
@@ -921,13 +883,17 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                       newValue: selection['evaluation'],
                                     );
                                   }
-                                }
+                                }));
+
+                                Navigator.of(context)
+                                    .pop(); // Fermer l'indicateur
+                                Navigator.of(context)
+                                    .pop(); // Fermer le dialogue
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                       content: Text('تم حفظ التقييمات بنجاح!')),
                                 );
-                                Navigator.pop(context);
                               }
                             },
                             icon: Icon(Icons.save),
@@ -944,6 +910,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
         );
       }
     } catch (e) {
+      Navigator.of(context).pop(); // Fermer le dialogue en cas d'erreur
       print('Erreur lors du chargement des sélections: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('حدث خطأ أثناء تحميل التقييمات')),
@@ -995,33 +962,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     );
   }
 
-// Widget pour construire un bouton d'évaluation
-  Widget _buildEvaluationButton({
-    required String Marks,
-    required bool isSelected,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? color : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color),
-        ),
-        child: Text(
-          Marks,
-          style: TextStyle(
-            color: isSelected ? Colors.white : color,
-            fontSize: 14,
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<Color> _getStudentIndicatorColor(
       String classId, String studentId, String? subjectId) async {
     if (subjectId == null) return Colors.red;
@@ -1037,248 +977,460 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       final selectionsSnapshot = await selectionsRef.get();
       if (selectionsSnapshot.docs.isEmpty) return Colors.red;
 
-      int total = 0;
-      int evaluated = 0;
+      // Vérifier rapidement si l'élève a des évaluations
+      final evaluationsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(classId)
+          .collection('students')
+          .doc(studentId)
+          .collection('baremes')
+          .where('Marks', isNotEqualTo: '( - - - )')
+          .limit(1)
+          .get();
 
-      for (var baremeDoc in selectionsSnapshot.docs) {
-        final baremeId = baremeDoc.id;
-        final hasSousBaremes = baremeDoc['haveSoubarem'] ?? false;
-
-        if (hasSousBaremes) {
-          final sousBaremesSnapshot =
-              await baremeDoc.reference.collection('sousBaremes').get();
-          total += sousBaremesSnapshot.size;
-
-          for (var sousDoc in sousBaremesSnapshot.docs) {
-            final eval = await _getEvaluation(
-              classId: classId,
-              studentId: studentId,
-              baremeId: baremeId,
-              sousBaremeId: sousDoc.id,
-            );
-            if (eval != null && eval != '( - - - )') evaluated++;
-          }
-        } else {
-          total++;
-          final eval = await _getEvaluation(
-            classId: classId,
-            studentId: studentId,
-            baremeId: baremeId,
-          );
-          if (eval != null && eval != '( - - - )') evaluated++;
-        }
-      }
-
-      if (evaluated == 0) return Colors.red;
-      return evaluated == total ? Colors.green : Colors.orange;
+      return evaluationsSnapshot.docs.isEmpty ? Colors.red : Colors.green;
     } catch (e) {
       print('Error getting indicator color: $e');
       return Colors.red;
     }
   }
 
-/////////////////////////////////////////////////////////////////////////////
   Widget _buildClassList() {
-    return ListView.builder(
-      itemCount: _classes.length,
-      itemBuilder: (context, index) {
-        var classData = _classes[index];
-        return ExpansionTile(
-          title: Text(classData['class_name']),
-          subtitle: Text(
-              'Élèves: ${classData['students'].length} | Matières: ${classData['subjects'].length}'),
-          onExpansionChanged: (expanded) {
-            if (expanded) {
-              setState(() {
-                selectedClassId = classData['class_id'];
-                selectedSubjectId =
-                    null; // Réinitialiser la sélection de la matière
-              });
-
-              String message = "ID de la classe : ${classData['class_id']}\n";
-              message += "Matières :\n";
-              for (var subject in classData['subjects']) {
-                message += "- ${subject['name']} (ID: ${subject['id']})\n";
-              }
-
-              // showDialog(
-              //   context: context,
-              //   builder: (context) => AlertDialog(
-              //     title: Text("Détails de la classe"),
-              //     content: Text(message),
-              //     actions: [
-              //       TextButton(
-              //         onPressed: () => Navigator.pop(context),
-              //         child: Text("Fermer"),
-              //       ),
-              //     ],
-              //   ),
-              // );
-            }
-          },
-          children: [
-            ...classData['subjects'].map<Widget>((subject) {
-              return ListTile(
-                title: Text(subject['name']),
-                tileColor: selectedSubjectId == subject['id']
-                    ? const Color.fromARGB(255, 0, 255, 8)
-                    : null, // Colorer en vert si sélectionné
-                leading: selectedSubjectId == subject['id']
-                    ? Icon(Icons.check_box,
-                        color: Color.fromARGB(
-                            255, 226, 107, 9)) // Icône de sélection
-                    : Icon(Icons.check_box_outline_blank,
-                        color: Colors.grey), // Icône non sélectionnée
-                onTap: () {
-                  setState(() {
-                    selectedSubjectId = subject['id'];
-                  });
-                  print("ID de la classe : ${classData['class_id']}");
-                  print("ID de la matière sélectionnée : ${subject['id']}");
-                },
-                trailing: IconButton(
-                  icon: Icon(Icons.delete),
-                  onPressed: () =>
-                      _confirmDeleteSubject(classData, subject['id']),
-                ),
-              );
-            }).toList(),
-            ...classData['students'].map<Widget>((studentId) {
-              return FutureBuilder<DocumentSnapshot>(
-                future: FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(currentUser!.uid)
-                    .collection('user_classes')
-                    .doc(classData['id'])
-                    .collection('students')
-                    .doc(studentId)
-                    .get(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return ListTile(
-                      title: Text('Chargement...'),
-                    );
-                  } else if (snapshot.hasError ||
-                      !snapshot.hasData ||
-                      !snapshot.data!.exists) {
-                    return ListTile(
-                      title: Text('Élève inconnu'),
-                    );
-                  } else {
-                    final studentData =
-                        snapshot.data!.data() as Map<String, dynamic>;
-                    final photoUrl = studentData['photoUrl'];
-                    final parentPhone = studentData['parentPhone'];
-                    final birthDate = studentData['birthDate'];
-
-                    return ListTile(
-                      leading: photoUrl != null && photoUrl.isNotEmpty
-                          ? CachedNetworkImage(
-                              imageUrl: photoUrl,
-                              placeholder: (context, url) => CircleAvatar(
-                                child: CircularProgressIndicator(),
-                              ),
-                              errorWidget: (context, url, error) {
-                                print(
-                                    'Erreur de chargement de l\'image: $error');
-                                return CircleAvatar(
-                                  child: Icon(Icons.error),
-                                );
-                              },
-                              imageBuilder: (context, imageProvider) =>
-                                  CircleAvatar(
-                                backgroundImage: imageProvider,
-                              ),
-                            )
-                          : CircleAvatar(
-                              child: Icon(Icons.person),
-                            ),
-                      title: Text(studentData['name']),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Parent: ${studentData['parentName']}'),
-                          Text(
-                              'Date de naissance: ${birthDate ?? "Non renseignée"}'),
-                          if (parentPhone != null && parentPhone.isNotEmpty)
-                            Text('Téléphone: $parentPhone'),
-                        ],
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.edit),
-                            onPressed: () =>
-                                _showStudentDetails(classData, studentId),
+    if (_selectedClass == null) {
+      return ListView.builder(
+        itemCount: _classes.length,
+        itemBuilder: (context, index) {
+          var classData = _classes[index];
+          return Card(
+            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            child: ListTile(
+              title: Text(classData['class_name']),
+              subtitle: Text(
+                  'Élèves: ${classData['students'].length} | Matières: ${classData['subjects'].length}'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton(
+                    child: Row(
+                      children: [
+                        Text(
+                          'Ajouter élève',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Theme.of(context).primaryColor,
                           ),
-                          IconButton(
-                            icon: Icon(Icons.delete),
-                            onPressed: () =>
-                                _confirmDeleteStudent(classData, studentId),
-                          ),
-                          if (parentPhone != null && parentPhone.isNotEmpty)
-                            IconButton(
-                              icon: Icon(Icons.phone),
-                              onPressed: () async {
-                                final url = 'tel:$parentPhone';
-                                if (await canLaunch(url)) {
-                                  await launch(url);
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                        content: Text(
-                                            'Impossible de passer un appel')),
-                                  );
-                                }
-                              },
-                            ),
-                        ],
-                      ),
-                      onTap: () {
-                        print("ID de l'élève sélectionné : $studentId");
-
-                        if (selectedClassId != null &&
-                            selectedSubjectId != null) {
-                          _showSelectionsDialog(
-                              selectedClassId!, selectedSubjectId!, studentId!);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text(
-                                    "Veuillez sélectionner une classe et une matière")),
-                          );
-                        }
-                      },
-                    );
-                  }
-                },
-              );
-            }).toList(),
-            ListTile(
-              title: Text('Ajouter une matière'),
-              trailing: IconButton(
-                icon: Icon(Icons.add),
-                onPressed: () => _addSubjectDialog(classData),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(
+                          Icons.add,
+                          size: 20,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ],
+                    ),
+                    onPressed: () => _addStudent(classData),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.delete),
+                    onPressed: () => _confirmDeleteClass(classData['id']),
+                  ),
+                ],
               ),
+              onTap: () async {
+                setState(() {
+                  _selectedClass = classData;
+                  selectedClassId = classData['class_id'];
+                  _showStudentsList = false;
+                });
+              },
             ),
-            ListTile(
-              title: Text('Ajouter un élève'),
-              trailing: IconButton(
+          );
+        },
+      );
+    } else {
+      return Column(
+        children: [
+          AppBar(
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back),
+              onPressed: () {
+                setState(() {
+                  _selectedClass = null;
+                  _showStudentsList = false;
+                });
+              },
+            ),
+            title: Text(_selectedClass!['class_name']),
+            actions: [
+              IconButton(
                 icon: Icon(Icons.add),
-                onPressed: () => _addStudent(classData),
+                
+                onPressed: () => _addSubjectDialog(_selectedClass!),
               ),
-            ),
-          ],
-          trailing: IconButton(
-            icon: Icon(Icons.delete),
-            onPressed: () => _confirmDeleteClass(classData['id']),
+            ],
           ),
-        );
-      },
-    );
+          if (!_showStudentsList) _buildSubjectsGrid(),
+          if (_showStudentsList) _buildStudentsList(),
+        ],
+      );
+    }
   }
 
+  Widget _buildSubjectsGrid() {
+  return Expanded(
+    child: GridView.builder(
+      padding: EdgeInsets.all(16),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3, // 3 colonnes
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.9, // Format légèrement rectangulaire
+      ),
+      itemCount: _selectedClass!['subjects'].length,
+      itemBuilder: (context, index) {
+        var subject = _selectedClass!['subjects'][index];
+        final subjectName = subject['name'];
+        final icon = SubjectHelper.getIconForSubject(subjectName);
+        final color = SubjectHelper.getSubjectColor(subjectName);
+        
+        return _buildSubjectGridItem(subject, subjectName, icon, color);
+      },
+    ),
+  );
+}
+Widget _buildSubjectGridItem(Map<String, dynamic> subject, String subjectName, IconData icon, Color color) {
+  return Card(
+    elevation: 4,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    clipBehavior: Clip.antiAlias, // Important pour que l'icône ne soit pas coupée
+    child: Stack(
+      children: [
+        // Contenu principal de la carte
+        InkWell(
+          onTap: () async {
+            setState(() {
+              selectedSubjectId = subject['id'];
+              _showStudentsList = true;
+            });
+            await _loadStudentsForClass();
+          },
+          child: Container(
+            padding: EdgeInsets.all(12),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 30, color: color),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  subjectName,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        // Bouton de suppression positionné absolument
+        Positioned(
+          top: 0,
+          right: 0,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(12),
+              ),
+              onTap: () => _confirmDeleteSubject(_selectedClass!, subject['id']),
+              child: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Color.fromARGB(123, 255, 19, 2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.close, size: 16, color: Colors.white),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+  Future<void> _loadStudentsForClass() async {
+    try {
+      final students = _selectedClass!['students'];
+      List<Map<String, dynamic>> studentsData = [];
+
+      for (var studentId in students) {
+        final studentDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('user_classes')
+            .doc(_selectedClass!['id'])
+            .collection('students')
+            .doc(studentId)
+            .get();
+
+        if (studentDoc.exists) {
+          studentsData.add(
+              {'id': studentId, ...studentDoc.data() as Map<String, dynamic>});
+        }
+      }
+
+      studentsData.sort((a, b) => a['name'].compareTo(b['name']));
+
+      setState(() {
+        _students = studentsData;
+      });
+    } catch (e) {
+      print("Erreur lors du chargement des élèves : $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors du chargement des élèves')));
+    }
+  }
+
+Widget _buildStudentsList() {
+  return Expanded(
+    child: _students.isEmpty
+        ? Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.people_alt_outlined, size: 60, color: Colors.grey[400]),
+                SizedBox(height: 16),
+                Text(
+                  "Aucun étudiant trouvé",
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                if (_selectedClass != null)
+                  TextButton(
+                    onPressed: () {
+                      // Ajouter un nouvel étudiant
+                    },
+                    child: Text("AJOUTER UN ÉTUDIANT"),
+                  ),
+              ],
+            ),
+          )
+        : ListView.separated(
+            padding: EdgeInsets.all(12),
+            itemCount: _students.length,
+            separatorBuilder: (context, index) => SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final student = _students[index];
+              final photoUrl = student['photoUrl'];
+              final parentName = student['parentName'] ?? 'Non renseigné';
+              final birthDate = student['birthDate'];
+
+              return StatefulBuilder(
+                builder: (context, setState) {
+                  bool isLoading = false;
+                  
+                  return FutureBuilder<Color>(
+                    future: _getStudentIndicatorColor(
+                      _selectedClass!['class_id'], 
+                      student['id'], 
+                      selectedSubjectId
+                    ),
+                    builder: (context, snapshot) {
+                      final statusColor = snapshot.data ?? Colors.grey;
+                      
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () async {
+                          if (selectedClassId != null && selectedSubjectId != null) {
+                            setState(() => isLoading = true);
+                            await _showSelectionsDialog(
+                              selectedClassId!,
+                              selectedSubjectId!,
+                              student['id']
+                            );
+                            setState(() => isLoading = false);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                content: Text("Veuillez sélectionner une classe et une matière"),
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          }
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                            )  ],
+                          ),
+                          padding: EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              // Photo et statut
+                              Stack(
+                                alignment: Alignment.bottomRight,
+                                children: [
+                                  Container(
+                                    width: 56,
+                                    height: 56,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.grey[200],
+                                    ),
+                                    child: photoUrl != null && photoUrl.isNotEmpty
+                                        ? ClipOval(
+                                            child: CachedNetworkImage(
+                                              imageUrl: photoUrl,
+                                              fit: BoxFit.cover,
+                                              placeholder: (context, url) => Center(
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2),
+                                              ),
+                                              errorWidget: (context, url, error) => 
+                                                Icon(Icons.person, size: 30),
+                                            ),
+                                          )
+                                        : Icon(Icons.person, size: 30),
+                                  ),
+                                  Container(
+                                    width: 16,
+                                    height: 16,
+                                    decoration: BoxDecoration(
+                                      color: statusColor,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 2,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              
+                              SizedBox(width: 16),
+                              
+                              // Infos étudiant
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      student['name'],
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    
+                                    SizedBox(height: 4),
+                                    
+                                    Row(
+                                      children: [
+                                        Icon(Icons.people_outline, 
+                                            size: 14, 
+                                            color: Colors.grey),
+                                        SizedBox(width: 4),
+                                        Text(
+                                          parentName,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: Colors.grey[600],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    
+                                    if (birthDate != null && birthDate.isNotEmpty)
+                                      Padding(
+                                        padding: EdgeInsets.only(top: 4),
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.cake_outlined, 
+                                                size: 14, 
+                                                color: Colors.grey),
+                                            SizedBox(width: 4),
+                                            Text(
+                                              birthDate,
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              
+                              // Actions
+                              if (isLoading)
+                                Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 8),
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              else
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(Icons.info_outline,
+                                          color: Colors.blue),
+                                      onPressed: () => _showStudentDetails(
+                                          _selectedClass!, student['id']),
+                                      tooltip: "Détails",
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.delete_outline,
+                                          color: Colors.red[400]),
+                                      onPressed: () => _confirmDeleteStudent(
+                                          _selectedClass!, student['id']),
+                                      tooltip: "Supprimer",
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+  );
+}
   Future<void> _showStudentDetails(
       Map<String, dynamic> classData, String studentId) async {
     TextEditingController parentNameController = TextEditingController();
@@ -1423,7 +1575,9 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Gestion des classes',
+          _selectedClass == null
+              ? 'Gestion des classes'
+              : _selectedClass!['class_name'],
           style: TextStyle(color: Colors.white),
         ),
         backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
@@ -1453,7 +1607,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                   SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () {
-                      // Naviguer vers AddClassPage
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -1466,42 +1619,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                 ],
               ),
             )
-          : Column(
-              children: [
-                // Affichage du message en haut si la liste n'est pas vide
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  margin: const EdgeInsets.only(bottom: 10),
-                  decoration: BoxDecoration(
-                    color: const Color.fromRGBO(230, 245, 255, 1),
-                    border: Border(
-                      bottom: BorderSide(
-                        color: const Color.fromRGBO(7, 82, 96, 1),
-                        width: 2,
-                      ),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'هذه الصفحة تمكنك من اسناد العلامات للتلاميذ الموجودون في القسم حسب المواد',
-                        style: TextStyle(fontSize: 16, color: Colors.black87),
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'اختر القسم ثم اضغط على المادة المعنية حتى تضهر باللون الأخضر ثم قم بالضغط على اسم التلميذ المراد اسناد الاعداد له',
-                        style: TextStyle(fontSize: 14, color: Colors.black54),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-                // Liste des classes
-                Expanded(child: _buildClassList()),
-              ],
-            ),
+          : _buildClassList(),
     );
   }
 }

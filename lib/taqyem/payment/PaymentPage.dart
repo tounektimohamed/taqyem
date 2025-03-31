@@ -82,21 +82,26 @@ class _PaymentPageState extends State<PaymentPage> {
     });
   }
 
-  void _validateOnlinePayment() {
-    if (selectedForfait == null) {
-      _showErrorSnackbar('الرجاء اختيار الباقة المفضلة');
-      return;
-    }
-
-    if (_nomController.text.isEmpty || _prenomController.text.isEmpty) {
-      _showErrorSnackbar('الرجاء إدخال الاسم العائلي والاسم الشخصي');
-      return;
-    }
-
-    html.window.open('https://gateway.konnect.network/me/taqyem', '_blank');
-    _submitPayment();
+void _validateOnlinePayment() {
+  if (selectedForfait == null) {
+    _showErrorSnackbar('الرجاء اختيار الباقة المفضلة');
+    return;
   }
 
+  if (_nomController.text.isEmpty || _prenomController.text.isEmpty) {
+    _showErrorSnackbar('الرجاء إدخال الاسم العائلي والاسم الشخصي');
+    return;
+  }
+
+  // Nouveaux liens de paiement
+  if (selectedForfait == 'ثلاثية') {
+    html.window.open('https://knct.me/Kpli6qsCL', '_blank');
+  } else if (selectedForfait == 'سنوي') {
+    html.window.open('https://knct.me/lPHexB7Ju5', '_blank');
+  }
+  
+  _submitPayment();
+}
   Future<void> _submitPayment() async {
     if (selectedForfait == null ||
         _nomController.text.isEmpty ||
