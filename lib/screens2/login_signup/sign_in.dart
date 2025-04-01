@@ -176,22 +176,23 @@ class _SignInState extends State<SignIn> {
       final userDocRef =
           FirebaseFirestore.instance.collection('Users').doc(user.uid);
 
-      // Create or update user document with all required fields
-      await userDocRef.set({
-        'name': user.displayName,
-        'email': user.email,
-        'isAgent': false,
-        'isActive': false,
-        'address': user.email,
-        'dob': null,
-        'gender': null,
-        'nic': null,
-        'mobile': null,
-        'accountExpiration': null, // Initialize as null
-        'createdAt': FieldValue.serverTimestamp(),
-        'lastLogin': FieldValue.serverTimestamp(),
-        // Add any other required fields here
-      }, SetOptions(merge: true));
+      await userDocRef.set(
+          {
+            'name': user.displayName,
+            'email': user.email,
+            'isAgent': false,
+            'isActive': false,
+            'address': user.email,
+            'dob': null,
+            'gender': null,
+            'nic': null,
+            'mobile': null,
+            'accountExpiration': null,
+            'createdAt': FieldValue.serverTimestamp(),
+            'lastLogin': FieldValue.serverTimestamp(), // Dernière connexion
+          },
+          SetOptions(
+              merge: true)); // Merge pour ne pas écraser les données existantes
 
       await handleUserNavigation(userCredential);
     } catch (e) {

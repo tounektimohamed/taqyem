@@ -7,7 +7,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:Taqyem/auth/main_page.dart';
 import 'package:Taqyem/components/language_constants.dart';
-import 'package:feedback/feedback.dart'; // Ajout de l'import
+import 'package:feedback/feedback.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:js' as js; // Pour les fonctionnalités web spécifiques
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,8 +30,14 @@ void main() async {
   }
 
   await Alarm.init(showDebugLogs: true);
+  
+  // Ajout du contrôle de version pour le web
+  if (kIsWeb) {
+    await _registerServiceWorker();
+  }
+
   runApp(
-    BetterFeedback( // Enveloppez votre application ici
+    BetterFeedback(
       child: const MyApp(),
       theme: FeedbackThemeData(
         background: Colors.grey,
@@ -44,6 +52,46 @@ void main() async {
     ),
   );
 }
+
+// Nouvelle fonction pour gérer le Service Worker sur le web
+Future<void> _registerServiceWorker() async {
+  try {
+    // Version de l'application - changez cette valeur à chaque déploiement
+    const appVersion = '1.0.1';
+    js.context['serviceWorkerVersion'] = appVersion;
+    
+    // Stratégie agressive pour les mises à jour
+    js.context.callMethod('eval', ['''
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('flutter_service_worker.js?v=$appVersion')
+            .then(function(registration) {
+              console.log('ServiceWorker registration successful');
+              registration.addEventListener('updatefound', function() {
+                console.log('New update found!');
+                registration.installing.addEventListener('statechange', function() {
+                  if (this.state === 'installed') {
+                    window.location.reload();
+                  }
+                });
+              });
+            })
+            .catch(function(err) {
+              console.log('ServiceWorker registration failed: ', err);
+            });
+          
+          // Vérification périodique des mises à jour
+          setInterval(function() {
+            registration.update().catch(err => console.log('Update check failed:', err));
+          }, 60 * 60 * 1000); // Toutes les heures
+        });
+      }
+    ''']);
+  } catch (e) {
+    print('Error setting up service worker: $e');
+  }
+}
+
 Future<void> _configureSystemUI() async {
   // Forcer l'application à s'ouvrir en mode paysage
   await SystemChrome.setPreferredOrientations([
@@ -87,7 +135,6 @@ Future<void> _updateExistingUsers() async {
     }
   } catch (e) {
     print('Erreur lors de la mise à jour des utilisateurs: $e');
-    // Vous pourriez vouloir relancer l'erreur ou la gérer différemment
   }
 }
 

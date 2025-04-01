@@ -40,14 +40,29 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   Duration _remainingTime = Duration.zero;
   bool _isAccountActive = false;
   bool _isGeneratingReport = false;
-
   @override
   void initState() {
     super.initState();
     _loadUserData();
     fetchMarks();
     _startTimer();
-    _checkPrintCredit();
+    _setupUserListener();
+  }
+
+  void _setupUserListener() {
+    if (currentUser == null) return;
+
+    FirebaseFirestore.instance
+        .collection('Users')
+        .doc(currentUser!.uid)
+        .snapshots()
+        .listen((snapshot) {
+      if (snapshot.exists) {
+        setState(() {
+          _remainingPrints = snapshot['remainingPrints'] ?? 5;
+        });
+      }
+    });
   }
 // Ajoutez cette méthode pour vérifier le crédit d'impression
 
@@ -303,49 +318,54 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   }
 
   Future<void> _sendDataToFlask(Map<String, dynamic> data) async {
-  try {
-    final url = Uri.parse('https://imprission.onrender.com/generate_pdf');
-    print('Envoi des données à: $url');
-    
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: json.encode(data),
-    ).timeout(const Duration(seconds: 30));
+    try {
+      final url = Uri.parse('https://imprission.onrender.com/generate_pdf');
+      print('Envoi des données à: $url');
 
-    if (response.statusCode == 200) {
-      final bytes = response.bodyBytes;
-      final blob = html.Blob([bytes], 'application/pdf');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute('download', 'tableau_resultats.pdf')
-        ..click();
-      html.Url.revokeObjectUrl(url);
-    } else {
-      print('Erreur HTTP: ${response.statusCode}');
-      print('Réponse: ${response.body}');
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: json.encode(data),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+        final blob = html.Blob([bytes], 'application/pdf');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', 'tableau_resultats.pdf')
+          ..click();
+        html.Url.revokeObjectUrl(url);
+      } else {
+        print('Erreur HTTP: ${response.statusCode}');
+        print('Réponse: ${response.body}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de la génération du PDF')),
+        );
+      }
+    } on TimeoutException {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors de la génération du PDF')),
+        SnackBar(
+            content:
+                Text('Timeout - Le serveur a mis trop de temps à répondre')),
+      );
+    } on SocketException {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Erreur de connexion - Vérifiez votre internet')),
+      );
+    } catch (e) {
+      print('Erreur inattendue: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur technique: ${e.toString()}')),
       );
     }
-  } on TimeoutException {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Timeout - Le serveur a mis trop de temps à répondre')),
-    );
-  } on SocketException {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Erreur de connexion - Vérifiez votre internet')),
-    );
-  } catch (e) {
-    print('Erreur inattendue: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Erreur technique: ${e.toString()}')),
-    );
   }
-}
   // Méthode pour récupérer le nom de la matière
 
   Future<String> _getMatiereName() async {
@@ -513,7 +533,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           _profName = userDoc['profName'] ?? '';
           _schoolName = userDoc['schoolName'] ?? '';
           _isDialogCompleted = _profName.isNotEmpty && _schoolName.isNotEmpty;
-          _remainingPrints = userDoc['remainingPrints'] ?? 5;
+         // _remainingPrints = userDoc['remainingPrints'] ??
+         //     5; // Toujours prendre la valeur Firestore
         });
       }
 
@@ -634,14 +655,14 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               onPressed: () async {
                 if (currentUser != null) {
                   await FirebaseFirestore.instance
-                      .collection('users')
+                      .collection('Users')
                       .doc(currentUser!.uid)
                       .set(
                     {
                       'profName': profController.text,
                       'schoolName': schoolController.text,
                       'remainingPrints':
-                          5, // Initialiser le crédit d'impression
+                          _remainingPrints, // Conserver la valeur existante
                     },
                     SetOptions(merge: true),
                   );
@@ -754,194 +775,170 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       print('Erreur lors de la récupération des marques : $e');
     }
   }
+
 ///////////  Raport html ////////
-Future<void> _generateHTMLReport() async {
-  // Vérifier la connexion de l'utilisateur
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Veuillez vous connecter pour imprimer')),
-    );
-    return;
-  }
-
-  // Vérifier l'état du compte et les crédits
-  if (!_isAccountActive && _remainingPrints <= 0) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Crédits épuisés. Veuillez activer votre compte ou acheter des crédits.'),
-        action: SnackBarAction(
-          label: 'Paiement',
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => PaymentPage()),
-          ),
-        ),
-      ),
-    );
-    return;
-  }
-
-  setState(() {
-    _isGeneratingReport = true;
-  });
-
-  // Afficher l'indicateur de chargement
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => AlertDialog(
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircularProgressIndicator(),
-          SizedBox(height: 20),
-          Text("Préparation du rapport..."),
-        ],
-      ),
-    ),
-  );
-
-  try {
-    // Décrémenter le crédit avant la génération (si compte inactif)
-    if (!_isAccountActive) {
-      await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(user.uid)
-          .update({'remainingPrints': FieldValue.increment(-1)});
-      
-      // Mettre à jour l'état local immédiatement
-      setState(() {
-        _remainingPrints = _remainingPrints - 1;
-      });
-    }
-
-    // Préparer les données pour le rapport
-    final reportData = {
-      'profName': _profName,
-      'schoolName': _schoolName,
-      'className': await _getClassName(),
-      'matiereName': await _getMatiereName(),
-      'students': await _getStudents(),
-      'baremes': await _getBaremes(),
-      'sumCriteriaMaxPerBareme': sumCriteriaMaxPerBareme,
-      'totalStudents': totalStudents,
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-
-    // Envoyer les données au serveur
-    final response = await http.post(
-      Uri.parse('https://imprission.onrender.com/generate-html-report'),
-      headers: {'Content-Type': 'application/json'},
-      body: json.encode(reportData),
-    ).timeout(Duration(seconds: 60));
-
-    if (response.statusCode == 200) {
-      // Ouvrir le rapport dans un nouvel onglet
-      final blob = html.Blob([response.bodyBytes], 'text/html');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      html.window.open(url, '_blank');
-      html.Url.revokeObjectUrl(url);
-      
+  Future<void> _generateHTMLReport() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Rapport généré avec succès')),
+        SnackBar(content: Text('Utilisateur non connecté.')),
       );
-    } else {
-      throw Exception('Erreur serveur: ${response.statusCode}');
+      return;
     }
-  } on TimeoutException {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Timeout - Le serveur a mis trop de temps à répondre')),
-    );
-    // Restaurer le crédit en cas de timeout
-    if (!_isAccountActive) {
-      await _restorePrintCredit(user.uid);
+
+    // Logique de crédit/statut du compte
+    if (_remainingPrints <= 0 && !_isAccountActive) {
+      // Cas: Crédit = 0 ET compte désactivé => rediriger vers paiement
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+              'Votre compte n\'est pas activé et vous n\'avez plus de crédits. Veuillez effectuer un paiement.'),
+        ),
+      );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => PaymentPage()),
+      );
+      return;
+    } else if (_remainingPrints > 0 && !_isAccountActive) {
+      // Cas: Crédit disponible ET compte désactivé => générer HTML
+      // (on décrémente le crédit plus bas)
+    } else if (_isAccountActive) {
+      // Cas: Compte activé (peu importe les crédits) => générer HTML
+      // (on ne touche pas aux crédits)
     }
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Erreur: ${e.toString()}')),
-    );
-    // Restaurer le crédit en cas d'erreur
-    if (!_isAccountActive) {
-      await _restorePrintCredit(user.uid);
-    }
-  } finally {
-    // Fermer le dialogue et mettre à jour l'état
-    if (mounted) {
-      Navigator.of(context).pop(); // Fermer le dialogue
+
+    setState(() {
+      _isGeneratingReport = true;
+    });
+
+    try {
+      // Afficher le dialogue de chargement
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 20),
+                Text("Génération du rapport en cours...",
+                    style: TextStyle(fontSize: 16)),
+                SizedBox(height: 10),
+                Text("Veuillez patienter...",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.grey)),
+              ],
+            ),
+          );
+        },
+      );
+
+      // Décrémenter le crédit seulement si compte inactif ET crédit > 0
+      if (!_isAccountActive && _remainingPrints > 0) {
+        await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(user.uid)
+            .update({'remainingPrints': FieldValue.increment(-1)});
+
+        setState(() {
+          _remainingPrints--;
+        });
+      }
+
+      // Préparer les données pour le HTML
+      var data = {
+        'profName': _profName,
+        'matiereName': await _getMatiereName(),
+        'className': await _getClassName(),
+        'schoolName': _schoolName,
+        'baremes': await _getBaremes(),
+        'students': await _getStudents(),
+        'sumCriteriaMaxPerBareme': sumCriteriaMaxPerBareme,
+        'totalStudents': totalStudents,
+        'selectedClass': widget.selectedClass,
+        'selectedBaremeId': selectedBaremeId,
+        'currentUser': currentUser?.uid,
+        'baremeName': baremeName,
+        'sousBaremeName': sousBaremeName,
+        'selectedSousBaremeId': selectedSousBaremeId,
+      };
+
+      print('Données envoyées à Flask pour HTML: ${json.encode(data)}');
+      await _sendHTMLDataToFlask(data);
+    } catch (e) {
+      print('Erreur lors de la génération du rapport: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de la génération du rapport: $e')),
+      );
+    } finally {
       setState(() {
         _isGeneratingReport = false;
       });
+      Navigator.of(context).pop(); // Fermer le dialogue de chargement
     }
   }
-}
 
-Future<void> _restorePrintCredit(String userId) async {
-  try {
-    await FirebaseFirestore.instance
-        .collection('Users')
-        .doc(userId)
-        .update({'remainingPrints': FieldValue.increment(1)});
-    
-    if (mounted) {
-      setState(() {
-        _remainingPrints = _remainingPrints + 1;
-      });
-    }
-  } catch (e) {
-    print('Erreur lors de la restauration du crédit: $e');
-  }
-}
-Future<void> _sendHTMLDataToFlask(Map<String, dynamic> data) async {
-  try {
-    final url = Uri.parse('https://imprission.onrender.com/generate-html-report');
-    print('Envoi des données HTML à: $url');
-    
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: json.encode(data),
-    ).timeout(const Duration(seconds: 60)); // Augmentez le timeout si nécessaire
+  Future<void> _sendHTMLDataToFlask(Map<String, dynamic> data) async {
+    try {
+      final url =
+          Uri.parse('https://imprission.onrender.com/generate-html-report');
+      print('Envoi des données HTML à: $url');
 
-    if (response.statusCode == 200) {
-      // Ouvrir le HTML dans un nouvel onglet/nouvelle fenêtre
-      final blob = html.Blob([response.bodyBytes], 'text/html');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      html.window.open(url, '_blank');
-      html.Url.revokeObjectUrl(url);
-      
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: json.encode(data),
+          )
+          .timeout(const Duration(
+              seconds: 60)); // Augmentez le timeout si nécessaire
+
+      if (response.statusCode == 200) {
+        // Ouvrir le HTML dans un nouvel onglet/nouvelle fenêtre
+        final blob = html.Blob([response.bodyBytes], 'text/html');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        html.window.open(url, '_blank');
+        html.Url.revokeObjectUrl(url);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Rapport généré avec succès')),
+        );
+      } else {
+        print('Erreur HTTP: ${response.statusCode}');
+        print('Réponse: ${response.body}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text(
+                  'Erreur lors de la génération du rapport HTML: ${response.statusCode}')),
+        );
+      }
+    } on TimeoutException {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Rapport généré avec succès')),
+        SnackBar(
+            content: Text(
+                'Timeout - Le serveur a mis trop de temps à répondre. Veuillez réessayer.')),
       );
-    } else {
-      print('Erreur HTTP: ${response.statusCode}');
-      print('Réponse: ${response.body}');
+    } on SocketException {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors de la génération du rapport HTML: ${response.statusCode}')),
+        SnackBar(
+            content: Text(
+                'Erreur de connexion - Vérifiez votre connexion internet')),
+      );
+    } catch (e) {
+      print('Erreur inattendue: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur technique: ${e.toString()}')),
       );
     }
-  } on TimeoutException {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Timeout - Le serveur a mis trop de temps à répondre. Veuillez réessayer.')),
-    );
-  } on SocketException {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Erreur de connexion - Vérifiez votre connexion internet')),
-    );
-  } catch (e) {
-    print('Erreur inattendue: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Erreur technique: ${e.toString()}')),
-    );
   }
-}
 ///////////////////////////////////////////////////
-  
-  
+
   Widget _buildPrintCreditWidget() {
     return Tooltip(
       message: 'Crédit d\'impression restant',
@@ -1039,35 +1036,38 @@ Future<void> _sendHTMLDataToFlask(Map<String, dynamic> data) async {
   }
 
 ////////////////////////////////////////////////////////
-Widget _buildPrintButton() {
-  return PopupMenuButton<String>(
-    icon: Container(
-      padding: EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: _isGeneratingReport ? Colors.grey : Colors.white,
+  Widget _buildPrintButton() {
+    return PopupMenuButton<String>(
+      icon: Container(
+        padding: EdgeInsets.all(2),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: _isGeneratingReport ? Colors.grey : Colors.white,
+        ),
+        child: Icon(
+          Icons.print,
+          color: _isGeneratingReport
+              ? Colors.grey
+              : const Color.fromRGBO(7, 82, 96, 1),
+        ),
       ),
-      child: Icon(
-        Icons.print,
-        color: _isGeneratingReport 
-            ? Colors.grey 
-            : const Color.fromRGBO(7, 82, 96, 1),
-      ),
-    ),
-    onSelected: _isGeneratingReport ? null : (value) {
-      if (value == 'html') {
-        _generateHTMLReport();
-      }
-    },
-    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-      PopupMenuItem<String>(
-        value: 'html',
-        child: Text('طباعة الجدول'),
-        enabled: !_isGeneratingReport,
-      ),
-    ],
-  );
-}
+      onSelected: _isGeneratingReport
+          ? null
+          : (value) {
+              if (value == 'html') {
+                _generateHTMLReport();
+              }
+            },
+      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+        PopupMenuItem<String>(
+          value: 'html',
+          child: Text('طباعة الجدول'),
+          enabled: !_isGeneratingReport,
+        ),
+      ],
+    );
+  }
+
 ///////////////////////////////////////
   @override
   Widget build(BuildContext context) {

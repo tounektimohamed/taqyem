@@ -68,11 +68,7 @@ void dispose() {
   _feedbackTimer?.cancel(); // Utilisez l'opérateur ?. pour éviter les erreurs
   super.dispose();
 }
-
 void _setupRandomFeedback() {
-  // Annule tout timer existant
-  _feedbackTimer?.cancel();
-
   // Génère un délai aléatoire entre 2 et 8 heures (en millisecondes)
   final random = Random();
   final delayHours = 2 + random.nextInt(6); // Entre 2 et 7 heures
@@ -89,7 +85,7 @@ void _setupRandomFeedback() {
 void _showRandomFeedback() {
   // Vérifie l'heure actuelle (entre 9h et 20h)
   final now = DateTime.now();
- // if (now.hour >= 12 && now.hour <= 12) {
+  if (now.hour >= 9 && now.hour <= 7) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showDialog(
         context: context,
@@ -117,12 +113,11 @@ void _showRandomFeedback() {
         ),
       );
     });
-  // } else {
-  //   // Si c'est en dehors des heures normales, reprogramme pour le lendemain
-  //   _setupRandomFeedback();
-  // }
+  } else {
+    // Si c'est en dehors des heures normales, reprogramme pour le lendemain
+    _setupRandomFeedback();
+  }
 }
-
 
   Future<void> _loadUserData() async {
     if (currentUser != null) {
