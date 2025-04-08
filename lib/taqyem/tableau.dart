@@ -1,3 +1,4 @@
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -1450,260 +1451,258 @@ class _StudentsTableState extends State<StudentsTable> {
     );
   }
 
-  Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
-      List<Map<String, dynamic>> baremesValues) {
-    // Regrouper les barèmes par leurs 4 premiers caractères
-    Map<String, List<Map<String, dynamic>>> groupedBaremes =
-        groupBaremes(baremesValues);
+ Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
+    List<Map<String, dynamic>> baremesValues) {
+  // Regrouper les barèmes par leurs 4 premiers caractères
+  Map<String, List<Map<String, dynamic>>> groupedBaremes =
+      groupBaremes(baremesValues);
 
-    return SingleChildScrollView(
+  return Card(
+    elevation: 4,
+    margin: EdgeInsets.all(8),
+    child: SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columnSpacing: 20,
-        horizontalMargin: 12,
-        columns: [
-          const DataColumn(
-            label: SizedBox(
-              width: 150,
-              child: Text('الاسم واللقب',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold, color: Colors.blue)),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.vertical,
+        child: DataTable(
+          columnSpacing: 20,
+          horizontalMargin: 12,
+          columns: [
+            const DataColumn(
+              label: SizedBox(
+                width: 150,
+                child: Text('الاسم واللقب',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold, color: Colors.blue)),
+              ),
             ),
-          ),
-          for (var entry in groupedBaremes.entries)
-            for (final bareme in entry.value)
-              for (final subEntry in [
-                {'id': bareme['id'], 'value': bareme['value']},
-                ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-              ])
-                DataColumn(
-                  label: Container(
-                    width: 100,
-                    color: _headerColors.putIfAbsent(
-                        entry.key,
-                        () =>
-                            _getRandomColor()), // Couleur aléatoire pour l'en-tête
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                            entry
-                                .key, // En-tête du groupe (4 premiers caractères)
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors
-                                    .white)), // Texte en blanc pour contraste
-                        Text(subEntry['value'], // Nom du barème ou sous-barème
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors
-                                    .white)), // Texte en blanc pour contraste
-                      ],
-                    ),
-                  ),
-                ),
-        ],
-        rows: [
-          ...studentsDocs.map((studentDoc) {
-            final studentId = studentDoc.id;
-            final studentName = studentDoc['name'] ?? 'غير معروف';
-
-            return DataRow(
-              cells: [
-                DataCell(
-                  SizedBox(
-                    width: 150,
-                    child: Text(studentName,
-                        textDirection: TextDirection.rtl,
-                        style: TextStyle(color: Colors.grey.shade800)),
-                  ),
-                ),
-                for (var entry in groupedBaremes.entries)
-                  for (final bareme in entry.value)
-                    for (final subEntry in [
-                      {'id': bareme['id'], 'type': 'bareme'},
-                      ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-                          .map((s) => {'id': s['id'], 'type': 'sousBareme'})
-                    ])
-                      DataCell(
-                        SizedBox(
-                          width: 100,
-                          child: FutureBuilder<String>(
-                            future:
-                                _getSelectedValue(studentId, subEntry['id']),
-                            builder: (context, snapshot) {
-                              if (snapshot.connectionState ==
-                                  ConnectionState.waiting) {
-                                return const CircularProgressIndicator();
-                              }
-                              return Text(
-                                snapshot.data ?? _dropdownValues[0],
-                                style: TextStyle(
-                                    color: Colors
-                                        .black), // Texte en noir pour contraste
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-              ],
-            );
-          }).toList(),
-          // Ligne des statistiques
-          DataRow(
-            cells: [
-              const DataCell(Text('عدد التلاميذ المحققين',
-                  style: TextStyle(fontWeight: FontWeight.bold))),
-              for (final bareme in baremesValues)
-                for (final entry in [
-                  {'id': bareme['id']},
+            for (var entry in groupedBaremes.entries)
+              for (final bareme in entry.value)
+                for (final subEntry in [
+                  {'id': bareme['id'], 'value': bareme['value']},
                   ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
                 ])
-                  DataCell(Text(
-                    widget.sumCriteriaMaxPerBareme[entry['id']]?.toString() ??
-                        '0',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  )),
-            ],
-          ),
-          // Ligne des pourcentages
-          DataRow(
-            cells: [
-              const DataCell(Text('النسبة المئوية',
-                  style: TextStyle(fontWeight: FontWeight.bold))),
-              for (var entry in groupedBaremes.entries)
-                for (final bareme in entry.value)
-                  for (final subEntry in [
+                  DataColumn(
+                    label: Container(
+                      width: 100,
+                      color: _headerColors.putIfAbsent(
+                          entry.key,
+                          () =>
+                              _getRandomColor()), // Couleur aléatoire pour l'en-tête
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                              entry
+                                  .key, // En-tête du groupe (4 premiers caractères)
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors
+                                      .white)), // Texte en blanc pour contraste
+                          Text(subEntry['value'], // Nom du barème ou sous-barème
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors
+                                      .white)), // Texte en blanc pour contraste
+                        ],
+                      ),
+                    ),
+                  ),
+          ],
+          rows: [
+            ...studentsDocs.map((studentDoc) {
+              final studentId = studentDoc.id;
+              final studentName = studentDoc['name'] ?? 'غير معروف';
+
+              return DataRow(
+                cells: [
+                  DataCell(
+                    SizedBox(
+                      width: 150,
+                      child: Text(studentName,
+                          textDirection: TextDirection.rtl,
+                          style: TextStyle(color: Colors.grey.shade800)),
+                    ),
+                  ),
+                  for (var entry in groupedBaremes.entries)
+                    for (final bareme in entry.value)
+                      for (final subEntry in [
+                        {'id': bareme['id'], 'type': 'bareme'},
+                        ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+                            .map((s) => {'id': s['id'], 'type': 'sousBareme'})
+                      ])
+                        DataCell(
+                          SizedBox(
+                            width: 100,
+                            child: FutureBuilder<String>(
+                              future:
+                                  _getSelectedValue(studentId, subEntry['id']),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return const CircularProgressIndicator();
+                                }
+                                return Text(
+                                  snapshot.data ?? _dropdownValues[0],
+                                  style: TextStyle(
+                                      color: Colors
+                                          .black), // Texte en noir pour contraste
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                ],
+              );
+            }).toList(),
+            // Ligne des statistiques
+            DataRow(
+              cells: [
+                const DataCell(Text('عدد التلاميذ المحققين',
+                    style: TextStyle(fontWeight: FontWeight.bold))),
+                for (final bareme in baremesValues)
+                  for (final entry in [
                     {'id': bareme['id']},
                     ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
                   ])
                     DataCell(Text(
-                      widget.totalStudents == 0
-                          ? 'لا توجد درجات'
-                          : '${((widget.sumCriteriaMaxPerBareme[subEntry['id']] ?? 0) / widget.totalStudents * 100).toStringAsFixed(2)}٪',
-                      style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black), // Texte en noir pour contraste
+                      widget.sumCriteriaMaxPerBareme[entry['id']]?.toString() ??
+                          '0',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     )),
-            ],
-          ),
-          // Ligne des boutons "تصنيف"
-          // Première DataRow pour le bouton "تصنيف" (Classer)
-          DataRow(
-            cells: [
-              DataCell(Container()), // Cellule vide pour la colonne des noms
-              for (var entry in groupedBaremes.entries)
-                for (final bareme in entry.value)
-                  for (final subEntry in [
-                    {
-                      'id': bareme['id'],
-                      'type': 'bareme',
-                      'name': bareme['value']
-                    }, // Ajouter le nom du barème
-                    ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
-                        (s) => {
-                              'id': s['id'],
-                              'type': 'sousBareme',
-                              'name': s['value']
-                            }) // Ajouter le nom du sous-barème
-                  ])
-                    DataCell(
-                      Container(
-                        width: 100,
-                        height: 50, // Hauteur réduite pour un seul bouton
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: ElevatedButton(
-                          onPressed: () {
-                            print(
-                                'Bareme Name: ${bareme['value']}'); // Afficher le nom du barème
-                            print(
-                                'Sous-Bareme Name: ${subEntry['type'] == 'sousBareme' ? subEntry['name'] : 'N/A'}'); // Afficher le nom du sous-barème
-                            _classifyStudentsByBarem(
-                              bareme['id']!,
-                              sousBaremeId: subEntry['type'] == 'sousBareme'
-                                  ? subEntry['id']
-                                  : null,
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            padding: EdgeInsets.symmetric(
-                                vertical: 8, horizontal: 12),
+              ],
+            ),
+            // Ligne des pourcentages
+            DataRow(
+              cells: [
+                const DataCell(Text('النسبة المئوية',
+                    style: TextStyle(fontWeight: FontWeight.bold))),
+                for (var entry in groupedBaremes.entries)
+                  for (final bareme in entry.value)
+                    for (final subEntry in [
+                      {'id': bareme['id']},
+                      ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+                    ])
+                      DataCell(Text(
+                        widget.totalStudents == 0
+                            ? 'لا توجد درجات'
+                            : '${((widget.sumCriteriaMaxPerBareme[subEntry['id']] ?? 0) / widget.totalStudents * 100).toStringAsFixed(2)}٪',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black), // Texte en noir pour contraste
+                      )),
+              ],
+            ),
+            // Ligne des boutons "تصنيف"
+            DataRow(
+              cells: [
+                DataCell(Container()), // Cellule vide pour la colonne des noms
+                for (var entry in groupedBaremes.entries)
+                  for (final bareme in entry.value)
+                    for (final subEntry in [
+                      {
+                        'id': bareme['id'],
+                        'type': 'bareme',
+                        'name': bareme['value']
+                      },
+                      ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
+                          (s) => {
+                                'id': s['id'],
+                                'type': 'sousBareme',
+                                'name': s['value']
+                              })
+                    ])
+                      DataCell(
+                        Container(
+                          width: 100,
+                          height: 50,
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(4),
                           ),
-                          child: Text(
-                            'تصنيف',
-                            style:
-                                TextStyle(fontSize: 12, color: Colors.yellow),
-                          ),
-                        ),
-                      ),
-                    ),
-            ],
-          ),
-
-// Deuxième DataRow pour le bouton "تصنيف آخر" (Autre classement)
-          DataRow(
-            cells: [
-              DataCell(Container()), // Cellule vide pour la colonne des noms
-              for (var entry in groupedBaremes.entries)
-                for (final bareme in entry.value)
-                  for (final subEntry in [
-                    {
-                      'id': bareme['id'],
-                      'type': 'bareme',
-                      'name': bareme['value']
-                    }, // Ajouter le nom du barème
-                    ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
-                        (s) => {
-                              'id': s['id'],
-                              'type': 'sousBareme',
-                              'name': s['value']
-                            }) // Ajouter le nom du sous-barème
-                  ])
-                    DataCell(
-                      Container(
-                        width: 100,
-                        height: 50, // Hauteur réduite pour un seul bouton
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: ElevatedButton(
-                          onPressed: () {
-                            print(
-                                'Bareme Name: ${bareme['value']}'); // Afficher le nom du barème
-                            print(
-                                'Sous-Bareme Name: ${subEntry['type'] == 'sousBareme' ? subEntry['name'] : 'N/A'}'); // Afficher le nom du sous-barème
-                            widget.navigateToClassificationPage(
-                              bareme['id']!,
-                              sousBaremeId: subEntry['type'] == 'sousBareme'
-                                  ? subEntry['id']
-                                  : null,
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            padding: EdgeInsets.symmetric(
-                                vertical: 8, horizontal: 12),
-                          ),
-                          child: Text(
-                            'خطة العلاج',
-                            style: TextStyle(fontSize: 12, color: Colors.white),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              _classifyStudentsByBarem(
+                                bareme['id']!,
+                                sousBaremeId: subEntry['type'] == 'sousBareme'
+                                    ? subEntry['id']
+                                    : null,
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              padding: EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 12),
+                            ),
+                            child: Text(
+                              'تصنيف',
+                              style:
+                                  TextStyle(fontSize: 12, color: Colors.yellow),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-            ],
-          ),
-        ],
+              ],
+            ),
+            // Ligne des boutons "خطة العلاج"
+            DataRow(
+              cells: [
+                DataCell(Container()),
+                for (var entry in groupedBaremes.entries)
+                  for (final bareme in entry.value)
+                    for (final subEntry in [
+                      {
+                        'id': bareme['id'],
+                        'type': 'bareme',
+                        'name': bareme['value']
+                      },
+                      ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
+                          (s) => {
+                                'id': s['id'],
+                                'type': 'sousBareme',
+                                'name': s['value']
+                              })
+                    ])
+                      DataCell(
+                        Container(
+                          width: 100,
+                          height: 50,
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              widget.navigateToClassificationPage(
+                                bareme['id']!,
+                                sousBaremeId: subEntry['type'] == 'sousBareme'
+                                    ? subEntry['id']
+                                    : null,
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              padding: EdgeInsets.symmetric(
+                                  vertical: 8, horizontal: 12),
+                            ),
+                            child: Text(
+                              'خطة العلاج',
+                              style:
+                                  TextStyle(fontSize: 12, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ),
+              ],
+            ),
+          ],
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Future<List<Map<String, dynamic>>> _getBaremesValues(
       List<QueryDocumentSnapshot> selectedBaremes) async {
