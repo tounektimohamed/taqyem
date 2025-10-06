@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -35,81 +34,171 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   String? baremeName;
   String? sousBaremeName;
   String? selectedSousBaremeId;
-  int _remainingPrints = 5; // Crédit initial de 5 impressions
+  int _remainingPrints = 5;
   Map<String, int> sumCriteriaMaxPerBareme = {};
   int totalStudents = 0;
   Duration _remainingTime = Duration.zero;
   bool _isAccountActive = false;
   bool _isGeneratingReport = false;
+  bool _isMounted = false;
+  Timer? _accountStatusTimer;
+  StreamSubscription? _userSubscription;
+
   @override
   void initState() {
     super.initState();
+    _isMounted = true;
     _loadUserData();
     fetchMarks();
     _startTimer();
     _setupUserListener();
   }
 
+  @override
+  void dispose() {
+    _isMounted = false;
+    _accountStatusTimer?.cancel();
+    _userSubscription?.cancel();
+    super.dispose();
+  }
+
+  // CORRECTION : Méthode sécurisée pour lire les champs Firestore
+  dynamic _getFieldSafe(
+      DocumentSnapshot doc, String field, dynamic defaultValue) {
+    try {
+      final data = doc.data() as Map<String, dynamic>?;
+      if (data == null || !data.containsKey(field)) {
+        return defaultValue;
+      }
+      return data[field] ?? defaultValue;
+    } catch (e) {
+      print('Erreur lecture champ $field: $e');
+      return defaultValue;
+    }
+  }
+
   void _setupUserListener() {
     if (currentUser == null) return;
 
-    FirebaseFirestore.instance
-        .collection('Users')
+    _userSubscription = FirebaseFirestore.instance
+        .collection(
+            'Users') // CORRECTION : Utiliser 'Users' comme dans votre code original
         .doc(currentUser!.uid)
         .snapshots()
         .listen((snapshot) {
-      if (snapshot.exists) {
+      if (_isMounted && snapshot.exists) {
         setState(() {
-          _remainingPrints = snapshot['remainingPrints'] ?? 5;
+          // CORRECTION : Utiliser la méthode sécurisée pour tous les champs
+          _remainingPrints = _getFieldSafe(snapshot, 'remainingPrints', 5);
+          _isAccountActive = _getFieldSafe(snapshot, 'isActive', false);
+          _profName = _getFieldSafe(snapshot, 'profName', '');
+          _schoolName = _getFieldSafe(snapshot, 'schoolName', '');
+
+          // Mettre à jour le temps restant seulement si le champ existe
+          final expirationDate =
+              _getFieldSafe(snapshot, 'accountExpiration', null);
+          if (expirationDate != null && expirationDate is Timestamp) {
+            _remainingTime = expirationDate.toDate().difference(DateTime.now());
+          }
         });
       }
     });
   }
-// Ajoutez cette méthode pour vérifier le crédit d'impression
 
   Future<void> _checkPrintCredit() async {
     if (currentUser == null) return;
 
-    final userDoc = await FirebaseFirestore.instance
-        .collection('Users')
-        .doc(currentUser!.uid)
-        .get();
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser!.uid)
+          .get();
 
-    if (userDoc.exists) {
-      setState(() {
-        _remainingPrints = userDoc['remainingPrints'] ?? 5;
-      });
+      if (userDoc.exists && _isMounted) {
+        setState(() {
+          _remainingPrints = _getFieldSafe(userDoc, 'remainingPrints', 5);
+          _isAccountActive = _getFieldSafe(userDoc, 'isActive', false);
+        });
+      }
+    } catch (e) {
+      print('Erreur lors de la vérification du crédit: $e');
     }
   }
 
   void _startTimer() {
-    // Vérifier l'état du compte toutes les minutes
-    const oneMinute = Duration(minutes: 1);
-    Timer.periodic(oneMinute, (timer) {
-      _checkAccountStatus();
+    _accountStatusTimer?.cancel();
+    _accountStatusTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      if (_isMounted) {
+        _checkAccountStatus();
+      } else {
+        timer.cancel();
+      }
     });
-    // Vérifier immédiatement
     _checkAccountStatus();
   }
 
   Future<void> _checkAccountStatus() async {
-    if (currentUser == null) return;
+    if (currentUser == null || !_isMounted) return;
 
-    final userDoc = await FirebaseFirestore.instance
-        .collection('Users')
-        .doc(currentUser!.uid)
-        .get();
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser!.uid)
+          .get();
 
-    if (userDoc.exists) {
-      final isActive = userDoc['isActive'] ?? false;
-      final expirationDate = userDoc['accountExpiration']?.toDate();
+      if (_isMounted && userDoc.exists) {
+        // CORRECTION : Utiliser la méthode sécurisée
+        final isActive = _getFieldSafe(userDoc, 'isActive', false);
+        final expirationDate =
+            _getFieldSafe(userDoc, 'accountExpiration', null);
 
-      setState(() {
-        _isAccountActive = isActive;
-        if (expirationDate != null) {
-          _remainingTime = expirationDate.difference(DateTime.now());
-        }
-      });
+        setState(() {
+          _isAccountActive = isActive;
+          if (expirationDate != null && expirationDate is Timestamp) {
+            _remainingTime = expirationDate.toDate().difference(DateTime.now());
+          }
+        });
+      }
+    } catch (e) {
+      print('Erreur lors de la vérification du statut du compte: $e');
+    }
+  }
+
+  // CORRECTION DU SYSTÈME DE CRÉDIT - Version sécurisée
+  Future<bool> _checkAndUpdatePrintCredit() async {
+    if (currentUser == null) return false;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser!.uid)
+          .get();
+
+      if (!userDoc.exists) return false;
+
+      final bool isActive = _getFieldSafe(userDoc, 'isActive', false);
+      final int remainingPrints = _getFieldSafe(userDoc, 'remainingPrints', 5);
+
+      print('Statut compte - Actif: $isActive, Credits: $remainingPrints');
+
+      // Si le compte est actif, pas de déduction de crédit
+      if (isActive) {
+        print('Compte actif - Pas de déduction de crédit');
+        return true;
+      }
+
+      // Si le compte n'est pas actif, vérifier qu'il reste des crédits
+      if (remainingPrints > 0) {
+        print('Crédits suffisants - Restant: $remainingPrints');
+        return true;
+      }
+
+      // Plus de crédits et compte inactif
+      print('Plus de crédits disponibles');
+      return false;
+    } catch (e) {
+      print('Erreur lors de la vérification du crédit: $e');
+      return false;
     }
   }
 
@@ -118,13 +207,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     final List<Map<String, dynamic>> result = [];
     final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
-    print('User ID: $userId');
-    print('Selected Class: ${widget.selectedClass}');
-    print('Selected Matiere: ${widget.selectedMatiere}');
-
     for (final baremeDoc in selectedBaremes) {
       final baremeId = baremeDoc['baremeId'];
-      print('Processing baremeId: $baremeId');
 
       final baremeSnapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -135,8 +219,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .doc(baremeId)
           .get();
 
-      final isBaremeSelected = baremeSnapshot['selected'] ?? false;
-      print('Bareme selected: $isBaremeSelected');
+      final isBaremeSelected = _getFieldSafe(baremeSnapshot, 'selected', false);
 
       final sousBaremesSnapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -149,15 +232,12 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .get();
 
       final selectedSousBaremes = sousBaremesSnapshot.docs
-          .where((doc) => doc['selected'] == true)
+          .where((doc) => _getFieldSafe(doc, 'selected', false) == true)
           .toList();
 
-      print('Number of selected sousBaremes: ${selectedSousBaremes.length}');
-
       if (isBaremeSelected) {
-        final baremeName = baremeSnapshot['baremeName'] ?? 'غير معروف';
-        print('Adding bareme: $baremeId - $baremeName');
-
+        final baremeName =
+            _getFieldSafe(baremeSnapshot, 'baremeName', 'غير معروف');
         result.add({
           'id': baremeId,
           'value': baremeName,
@@ -165,29 +245,24 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         });
       } else if (selectedSousBaremes.isNotEmpty) {
         for (final sousBareme in selectedSousBaremes) {
-          final sousBaremeName = sousBareme['sousBaremeName'] ?? 'غير معروف';
-          print(
-              'Adding sousBareme: ${sousBareme.id} - $sousBaremeName (Parent: $baremeId)');
-
+          final sousBaremeName =
+              _getFieldSafe(sousBareme, 'sousBaremeName', 'غير معروف');
           result.add({
             'id': sousBareme.id,
             'value': sousBaremeName,
-            'parentBaremeId': baremeId, // Track parent bareme ID
+            'parentBaremeId': baremeId,
           });
         }
       }
     }
-    print('Final result: $result');
     return result;
   }
 
   void _navigateToClassificationPage(String baremeId,
       {String? sousBaremeId}) async {
     try {
-      // Récupérer les noms de la classe et de la matière
       var classAndMatiereNames = await _getClassAndMatiereNames();
 
-      // Récupérer les barèmes et sous-barèmes
       var selectedBaremes = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
@@ -196,26 +271,18 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .collection(widget.selectedMatiere)
           .get();
 
-      // Récupérer les valeurs des barèmes et sous-barèmes
       List<Map<String, dynamic>> baremesValues =
           await _getBaremesValues(selectedBaremes.docs);
 
-      // Trouver le barème correspondant
       var selectedBareme = baremesValues.firstWhere(
         (bareme) => bareme['id'] == baremeId,
         orElse: () => {'id': baremeId, 'value': 'غير معروف'},
       );
 
-      // Récupérer le nom du barème
       String baremeName = selectedBareme['value'] ?? 'غير معروف';
 
-      // Afficher le nom du barème dans la console
-      print('Barème Name: $baremeName');
-
-      // Récupérer le nom du sous-barème si sousBaremeId est fourni
       String? sousBaremeName;
       if (sousBaremeId != null) {
-        // Trouver le sous-barème correspondant
         var selectedSousBareme = baremesValues.firstWhere(
           (bareme) =>
               bareme['id'] == sousBaremeId &&
@@ -223,106 +290,265 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           orElse: () => {'id': sousBaremeId, 'value': 'غير معروف'},
         );
 
-        // Récupérer le nom du sous-barème
         sousBaremeName = selectedSousBareme['value'] ?? 'غير معروف';
-
-        // Afficher le nom du sous-barème dans la console
-        print('Sous-Barème Name: $sousBaremeName');
       }
 
-      // Naviguer vers la page de classification
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => ClassificationPage(
             selectedClass: widget.selectedClass,
             selectedBaremeId: baremeId,
-            selectedSousBaremeId: sousBaremeId, // Passez ce paramètre
+            selectedSousBaremeId: sousBaremeId,
             currentUser: currentUser!,
             profName: _profName,
             schoolName: _schoolName,
             className: classAndMatiereNames['className'] ?? 'غير معروف',
             matiereName: classAndMatiereNames['matiereName'] ?? 'غير معروف',
             baremeName: baremeName,
-            sousBaremeName: sousBaremeName, // Passez ce paramètre
+            sousBaremeName: sousBaremeName,
           ),
         ),
       );
     } catch (e) {
       print('Erreur lors de la navigation vers la page de classification : $e');
+      _showErrorSnackbar('Erreur lors de la navigation');
     }
   }
 
-////////////////////////////////////
+  Future<void> _deductPrintCredit() async {
+    if (currentUser == null) return;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser!.uid)
+          .get();
+
+      if (!userDoc.exists) return;
+
+      final bool isActive = _getFieldSafe(userDoc, 'isActive', false);
+      final int remainingPrints = _getFieldSafe(userDoc, 'remainingPrints', 5);
+
+      // Ne déduire que si le compte est inactif et qu'il reste des crédits
+      if (!isActive && remainingPrints > 0) {
+        await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(currentUser!.uid)
+            .update({'remainingPrints': FieldValue.increment(-1)});
+
+        setState(() {
+          _remainingPrints = remainingPrints - 1;
+        });
+
+        print('✅ Crédit déduit - Nouveau solde: ${remainingPrints - 1}');
+      }
+    } catch (e) {
+      print('Erreur lors de la déduction du crédit: $e');
+    }
+  }
 
   Future<void> _generatePDF() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Utilisateur non connecté.')),
-      );
+    if (!await _checkAndUpdatePrintCredit()) {
+      _showCreditErrorDialog();
       return;
     }
 
-    // Vérifier si on a encore des crédits ou si le compte est actif
-    if (_remainingPrints <= 0 && !_isAccountActive) {
-      // Cas: Compte inactif ET crédits épuisés
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Votre compte n\'est pas activé et vous n\'avez plus de crédits. Veuillez effectuer un paiement.'),
-        ),
-      );
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => PaymentPage()),
-      );
-      return;
-    }
-
-    // Cas où on peut générer le PDF:
-    // - Soit compte actif (peu importe les crédits)
-    // - Soit compte inactif mais crédits > 0
-
-    // Décrémenter le crédit seulement si compte inactif
-    if (!_isAccountActive && _remainingPrints > 0) {
-      await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(user.uid)
-          .update({'remainingPrints': FieldValue.increment(-1)});
-
-      setState(() {
-        _remainingPrints--;
-      });
-    }
-
-    // Préparer les données pour le PDF
-    var data = {
-      'profName': _profName,
-      'matiereName': await _getMatiereName(),
-      'className': await _getClassName(),
-      'schoolName': _schoolName,
-      'baremes': await _getBaremes(),
-      'students': await _getStudents(),
-      'sumCriteriaMaxPerBareme': sumCriteriaMaxPerBareme,
-      'totalStudents': totalStudents,
-      'selectedClass': widget.selectedClass,
-      'selectedBaremeId': selectedBaremeId,
-      'currentUser': currentUser?.uid,
-      'baremeName': baremeName,
-      'sousBaremeName': sousBaremeName,
-      'selectedSousBaremeId': selectedSousBaremeId,
-    };
-
-    print('Données envoyées à Flask: ${json.encode(data)}');
-    await _sendDataToFlask(data);
+    await _generateReport('pdf');
   }
 
-  Future<void> _sendDataToFlask(Map<String, dynamic> data) async {
+  Future<void> _generateHTMLReport() async {
+    if (!await _checkAndUpdatePrintCredit()) {
+      _showCreditErrorDialog();
+      return;
+    }
+
+    await _generateReport('html');
+  }
+
+  void _showCreditErrorDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.credit_card_off, color: Colors.orange),
+            SizedBox(width: 10),
+            Text('Crédit Épuisé'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Vous n\'avez plus de crédits d\'impression disponibles.',
+              style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'Veuillez activer votre compte pour continuer à générer des rapports.',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+            SizedBox(height: 10),
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info, size: 16, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Crédits restants: $_remainingPrints/5',
+                      style: TextStyle(fontSize: 14, color: Colors.orange[800]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Plus tard'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => PaymentPage()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+            ),
+            child: Text('Activer le compte'),
+          ),
+        ],
+      ),
+    );
+  }
+
+// MODIFICATION de _generateReport pour déduire après succès
+  Future<void> _generateReport(String type) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showErrorSnackbar('Utilisateur non connecté.');
+      return;
+    }
+
+    setState(() {
+      _isGeneratingReport = true;
+    });
+
+    bool success = false;
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return _buildLoadingDialog();
+        },
+      );
+
+      var data = {
+        'profName': _profName,
+        'matiereName': await _getMatiereName(),
+        'className': await _getClassName(),
+        'schoolName': _schoolName,
+        'baremes': await _getBaremes(),
+        'students': await _getStudents(),
+        'sumCriteriaMaxPerBareme': sumCriteriaMaxPerBareme,
+        'totalStudents': totalStudents,
+        'selectedClass': widget.selectedClass,
+        'selectedBaremeId': selectedBaremeId,
+        'currentUser': currentUser?.uid,
+        'baremeName': baremeName,
+        'sousBaremeName': sousBaremeName,
+        'selectedSousBaremeId': selectedSousBaremeId,
+      };
+
+      if (type == 'pdf') {
+        success = await _sendDataToFlask(data);
+      } else {
+        success = await _sendHTMLDataToFlask(data);
+      }
+
+      // DÉDUCTION UNIQUEMENT SI RÉUSSITE
+      if (success) {
+        await _deductPrintCredit();
+      }
+    } catch (e) {
+      _showErrorSnackbar('Erreur lors de la génération du rapport: $e');
+    } finally {
+      setState(() {
+        _isGeneratingReport = false;
+      });
+      Navigator.of(context).pop();
+    }
+  }
+
+  Widget _buildLoadingDialog() {
+    return AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                strokeWidth: 3,
+              ),
+              Icon(Icons.print, color: Colors.blue, size: 20),
+            ],
+          ),
+          SizedBox(height: 20),
+          Text(
+            "Génération du rapport en cours...",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          SizedBox(height: 10),
+          Text(
+            "Veuillez patienter...",
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
+          SizedBox(height: 10),
+          if (!_isAccountActive)
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.info, size: 16, color: Colors.orange),
+                  SizedBox(width: 5),
+                  Text(
+                    'Crédit utilisé: ${_remainingPrints - 1}/5',
+                    style: TextStyle(fontSize: 12, color: Colors.orange[800]),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool> _sendDataToFlask(Map<String, dynamic> data) async {
     try {
       final url = Uri.parse('https://imprission.onrender.com/generate_pdf');
-      print('Envoi des données à: $url');
-
       final response = await http
           .post(
             url,
@@ -342,57 +568,132 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           ..setAttribute('download', 'tableau_resultats.pdf')
           ..click();
         html.Url.revokeObjectUrl(url);
+
+        _showSuccessSnackbar('PDF généré avec succès');
+        return true; // SUCCÈS
       } else {
-        print('Erreur HTTP: ${response.statusCode}');
-        print('Réponse: ${response.body}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors de la génération du PDF')),
-        );
+        _showErrorSnackbar('Erreur lors de la génération du PDF');
+        return false; // ÉCHEC
       }
     } on TimeoutException {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content:
-                Text('Timeout - Le serveur a mis trop de temps à répondre')),
-      );
+      _showErrorSnackbar('Timeout - Le serveur a mis trop de temps à répondre');
+      return false;
     } on SocketException {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Erreur de connexion - Vérifiez votre internet')),
-      );
+      _showErrorSnackbar('Erreur de connexion - Vérifiez votre internet');
+      return false;
     } catch (e) {
-      print('Erreur inattendue: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur technique: ${e.toString()}')),
-      );
+      _showErrorSnackbar('Erreur technique: ${e.toString()}');
+      return false;
     }
   }
-  // Méthode pour récupérer le nom de la matière
+
+  Future<bool> _sendHTMLDataToFlask(Map<String, dynamic> data) async {
+    try {
+      final url =
+          Uri.parse('https://imprission.onrender.com/generate-html-report');
+
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: json.encode(data),
+          )
+          .timeout(const Duration(seconds: 60));
+
+      if (response.statusCode == 200) {
+        final blob = html.Blob([response.bodyBytes], 'text/html');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        html.window.open(url, '_blank');
+        html.Url.revokeObjectUrl(url);
+
+        _showSuccessSnackbar('Rapport généré avec succès');
+        return true; // SUCCÈS
+      } else {
+        _showErrorSnackbar(
+            'Erreur lors de la génération du rapport HTML: ${response.statusCode}');
+        return false; // ÉCHEC
+      }
+    } on TimeoutException {
+      _showErrorSnackbar(
+          'Timeout - Le serveur a mis trop de temps à répondre. Veuillez réessayer.');
+      return false;
+    } on SocketException {
+      _showErrorSnackbar(
+          'Erreur de connexion - Vérifiez votre connexion internet');
+      return false;
+    } catch (e) {
+      _showErrorSnackbar('Erreur technique: ${e.toString()}');
+      return false;
+    }
+  }
+
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  void _showSuccessSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
 
   Future<String> _getMatiereName() async {
-    var matiereDoc = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(widget.selectedClass)
-        .collection('matieres')
-        .doc(widget.selectedMatiere)
-        .get();
+    try {
+      var matiereDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .collection('matieres')
+          .doc(widget.selectedMatiere)
+          .get();
 
-    return matiereDoc['name'] ?? 'غير معروف';
+      return _getFieldSafe(matiereDoc, 'name', 'غير معروف');
+    } catch (e) {
+      return 'غير معروف';
+    }
   }
 
   Future<String> _getClassName() async {
-    var classDoc = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(widget.selectedClass)
-        .get();
+    try {
+      var classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .get();
 
-    return classDoc['name'] ?? 'غير معروف';
+      return _getFieldSafe(classDoc, 'name', 'غير معروف');
+    } catch (e) {
+      return 'غير معروف';
+    }
   }
 
-  // Méthode pour récupérer les barèmes
   Future<List<dynamic>> _getBaremes() async {
     try {
-      // Récupérer les barèmes depuis Firestore
       final baremesSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
@@ -403,9 +704,9 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
       final List<dynamic> baremes = [];
       for (final baremeDoc in baremesSnapshot.docs) {
-        final baremeId = baremeDoc['baremeId'];
-        final baremeName = baremeDoc['baremeName'] ?? 'غير معروف';
-        final isBaremeSelected = baremeDoc['selected'] ?? false;
+        final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
+        final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
+        final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
         if (isBaremeSelected) {
           baremes.add({
@@ -415,7 +716,6 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           });
         }
 
-        // Récupérer les sous-barèmes pour ce barème
         final sousBaremesSnapshot = await FirebaseFirestore.instance
             .collection('users')
             .doc(currentUser!.uid)
@@ -428,8 +728,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
         for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
           final sousBaremeId = sousBaremeDoc.id;
-          final sousBaremeName = sousBaremeDoc['sousBaremeName'] ?? 'غير معروف';
-          final isSousBaremeSelected = sousBaremeDoc['selected'] ?? false;
+          final sousBaremeName =
+              _getFieldSafe(sousBaremeDoc, 'sousBaremeName', 'غير معروف');
+          final isSousBaremeSelected =
+              _getFieldSafe(sousBaremeDoc, 'selected', false);
 
           if (isSousBaremeSelected) {
             baremes.add({
@@ -444,12 +746,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
       return baremes;
     } catch (e) {
-      print('Erreur lors de la récupération des barèmes: $e');
       return [];
     }
   }
 
-  // Méthode pour récupérer la liste des élèves
   Future<List<dynamic>> _getStudents() async {
     try {
       final studentsSnapshot = await FirebaseFirestore.instance
@@ -460,15 +760,11 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .collection('students')
           .get();
 
-      print('Nombre d\'élèves récupérés: ${studentsSnapshot.docs.length}');
-
       final List<dynamic> students = [];
       for (final studentDoc in studentsSnapshot.docs) {
         final studentId = studentDoc.id;
-        final studentName = studentDoc['name'] ?? 'Élève inconnu';
-        print('Élève: $studentName (ID: $studentId)');
+        final studentName = _getFieldSafe(studentDoc, 'name', 'Élève inconnu');
 
-        // Récupérer les notes pour les barèmes et sous-barèmes
         final baremesSnapshot = await FirebaseFirestore.instance
             .collection('users')
             .doc(currentUser!.uid)
@@ -479,29 +775,19 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             .collection('baremes')
             .get();
 
-        print(
-            'Nombre de barèmes pour l\'élève $studentName: ${baremesSnapshot.docs.length}');
-
         final Map<String, String> baremes = {};
         for (final baremeDoc in baremesSnapshot.docs) {
           final baremeId = baremeDoc.id;
-          final marks = baremeDoc.data()?['Marks'] ??
-              '( - - - )'; // Valeur par défaut si Marks est manquant
-          print('Barème: $baremeId, Marks: $marks');
+          final marks = _getFieldSafe(baremeDoc, 'Marks', '( - - - )');
           baremes[baremeId] = marks;
 
-          // Récupérer les notes pour les sous-barèmes
           final sousBaremesSnapshot =
               await baremeDoc.reference.collection('sous_baremes').get();
 
-          print(
-              'Nombre de sous-barèmes pour le barème $baremeId: ${sousBaremesSnapshot.docs.length}');
-
           for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
             final sousBaremeId = sousBaremeDoc.id;
-            final sousMarks = sousBaremeDoc.data()?['Marks'] ??
-                '( - - - )'; // Valeur par défaut si Marks est manquant
-            print('Sous-Barème: $sousBaremeId, Marks: $sousMarks');
+            final sousMarks =
+                _getFieldSafe(sousBaremeDoc, 'Marks', '( - - - )');
             baremes['$baremeId-$sousBaremeId'] = sousMarks;
           }
         }
@@ -515,34 +801,39 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
       return students;
     } catch (e) {
-      print('Erreur lors de la récupération des élèves: $e');
       return [];
     }
   }
 
-/////////////////////////////////////////////////////////////////////
-  // Charger les données depuis Firestore
   void _loadUserData() async {
-    if (currentUser != null) {
-      var userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser!.uid)
-          .get();
+    if (currentUser != null && _isMounted) {
+      try {
+        var userDoc = await FirebaseFirestore.instance
+            .collection(
+                'Users') // CORRECTION : Utiliser 'Users' comme dans votre code original
+            .doc(currentUser!.uid)
+            .get();
 
-      if (userDoc.exists) {
-        setState(() {
-          _profName = userDoc['profName'] ?? '';
-          _schoolName = userDoc['schoolName'] ?? '';
-          _isDialogCompleted = _profName.isNotEmpty && _schoolName.isNotEmpty;
-         // _remainingPrints = userDoc['remainingPrints'] ??
-         //     5; // Toujours prendre la valeur Firestore
-        });
-      }
+        if (_isMounted && userDoc.exists) {
+          setState(() {
+            // CORRECTION : Utiliser la méthode sécurisée pour tous les champs
+            _profName = _getFieldSafe(userDoc, 'profName', '');
+            _schoolName = _getFieldSafe(userDoc, 'schoolName', '');
+            _remainingPrints = _getFieldSafe(userDoc, 'remainingPrints', 5);
+            _isAccountActive = _getFieldSafe(userDoc, 'isActive', false);
+            _isDialogCompleted = _profName.isNotEmpty && _schoolName.isNotEmpty;
+          });
+        }
 
-      if (!_isDialogCompleted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showInputDialog();
-        });
+        if (_isMounted && !_isDialogCompleted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_isMounted) {
+              _showInputDialog();
+            }
+          });
+        }
+      } catch (e) {
+        print('Erreur lors du chargement des données utilisateur: $e');
       }
     }
   }
@@ -557,7 +848,14 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('تعديل المعلومات', textDirection: TextDirection.rtl),
+          title: Row(
+            children: [
+              Icon(Icons.edit, color: Colors.blue),
+              SizedBox(width: 8),
+              Text('تعديل المعلومات',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -566,6 +864,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                 decoration: InputDecoration(
                   labelText: 'اسم الأستاذ',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person),
                 ),
               ),
               SizedBox(height: 16),
@@ -574,23 +873,21 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                 decoration: InputDecoration(
                   labelText: 'اسم المدرسة',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.school),
                 ),
               ),
             ],
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('إلغاء', textDirection: TextDirection.rtl),
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('إلغاء'),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () async {
                 if (currentUser != null) {
-                  // Enregistrer les données dans Firestore
                   await FirebaseFirestore.instance
-                      .collection('users')
+                      .collection('Users') // CORRECTION : Utiliser 'Users'
                       .doc(currentUser!.uid)
                       .set(
                     {
@@ -604,10 +901,12 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                     _profName = profController.text;
                     _schoolName = schoolController.text;
                   });
+
+                  _showSuccessSnackbar('Informations mises à jour');
                 }
                 Navigator.of(context).pop();
               },
-              child: Text('حفظ', textDirection: TextDirection.rtl),
+              child: Text('حفظ'),
             ),
           ],
         );
@@ -615,24 +914,35 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     );
   }
 
-  // Afficher la boîte de dialogue pour saisir les informations
   void _showInputDialog() {
     TextEditingController profController = TextEditingController();
     TextEditingController schoolController = TextEditingController();
 
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('معلومات جديدة', textDirection: TextDirection.rtl),
+          title: Row(
+            children: [
+              Icon(Icons.person_add, color: Colors.blue),
+              SizedBox(width: 8),
+              Text('معلومات جديدة',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Text('Veuillez compléter vos informations pour continuer',
+                  style: TextStyle(color: Colors.grey[600])),
+              SizedBox(height: 16),
               TextField(
                 controller: profController,
                 decoration: InputDecoration(
                   labelText: 'اسم الأستاذ',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person),
                 ),
               ),
               SizedBox(height: 16),
@@ -641,29 +951,29 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                 decoration: InputDecoration(
                   labelText: 'اسم المدرسة',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.school),
                 ),
               ),
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('إلغاء', textDirection: TextDirection.rtl),
-            ),
-            TextButton(
+            ElevatedButton(
               onPressed: () async {
+                if (profController.text.isEmpty ||
+                    schoolController.text.isEmpty) {
+                  _showErrorSnackbar('Veuillez remplir tous les champs');
+                  return;
+                }
+
                 if (currentUser != null) {
                   await FirebaseFirestore.instance
-                      .collection('Users')
+                      .collection('Users') // CORRECTION : Utiliser 'Users'
                       .doc(currentUser!.uid)
                       .set(
                     {
                       'profName': profController.text,
                       'schoolName': schoolController.text,
-                      'remainingPrints':
-                          _remainingPrints, // Conserver la valeur existante
+                      'remainingPrints': _remainingPrints,
                     },
                     SetOptions(merge: true),
                   );
@@ -673,10 +983,12 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                     _schoolName = schoolController.text;
                     _isDialogCompleted = true;
                   });
+
+                  _showSuccessSnackbar('Informations enregistrées');
                 }
                 Navigator.of(context).pop();
               },
-              child: Text('حفظ', textDirection: TextDirection.rtl),
+              child: Text('حفظ'),
             ),
           ],
         );
@@ -684,15 +996,13 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     );
   }
 
-  // Récupérer les marques depuis Firestore
   Future<void> fetchMarks() async {
+    if (!_isMounted) return;
+
     try {
       User? currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        throw Exception("Aucun utilisateur connecté");
-      }
+      if (currentUser == null) return;
 
-      // Récupérer tous les élèves de la classe
       var studentsSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
@@ -701,11 +1011,12 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .collection('students')
           .get();
 
-      setState(() {
-        totalStudents = studentsSnapshot.docs.length;
-      });
+      if (_isMounted) {
+        setState(() {
+          totalStudents = studentsSnapshot.docs.length;
+        });
+      }
 
-      // Récupérer les barèmes et sous-barèmes sélectionnés
       var selectedBaremes = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
@@ -714,28 +1025,24 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .collection(widget.selectedMatiere)
           .get();
 
-      // Initialiser les compteurs pour chaque barème et sous-barème
       for (var baremeDoc in selectedBaremes.docs) {
-        var baremeId = baremeDoc['baremeId'];
+        var baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
         sumCriteriaMaxPerBareme[baremeId] = 0;
 
-        // Récupérer les sous-barèmes pour ce barème
         var sousBaremesSnapshot =
             await baremeDoc.reference.collection('sous_baremes').get();
         for (var sousBaremeDoc in sousBaremesSnapshot.docs) {
-          var sousBaremeId = sousBaremeDoc['sousBaremeId'];
+          var sousBaremeId = _getFieldSafe(sousBaremeDoc, 'sousBaremeId', '');
           sumCriteriaMaxPerBareme['$baremeId-$sousBaremeId'] = 0;
         }
       }
 
-      // Parcourir chaque élève
       for (var studentDoc in studentsSnapshot.docs) {
         var studentId = studentDoc.id;
 
         for (var baremeDoc in selectedBaremes.docs) {
-          var baremeId = baremeDoc['baremeId'];
+          var baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
 
-          // Récupérer la valeur du barème pour l'élève
           var baremeSnapshot = await FirebaseFirestore.instance
               .collection('users')
               .doc(currentUser.uid)
@@ -747,222 +1054,72 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               .doc(baremeId)
               .get();
 
-          if (baremeSnapshot.exists &&
-              baremeSnapshot.data()?.containsKey('Marks') == true) {
-            var value = baremeSnapshot['Marks'];
+          if (baremeSnapshot.exists) {
+            var value = _getFieldSafe(baremeSnapshot, 'Marks', '');
             if (value == '( + + + )' || value == '( + + - )') {
               sumCriteriaMaxPerBareme[baremeId] =
                   (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
             }
           } else {
-            // Vérifier dans les sous-barèmes
             var sousBaremesSnapshot =
                 await baremeSnapshot.reference.collection('sous_baremes').get();
             for (var sousBaremeDoc in sousBaremesSnapshot.docs) {
-              if (sousBaremeDoc.data().containsKey('Marks')) {
-                var value = sousBaremeDoc['Marks'];
-                if (value == '( + + + )' || value == '( + + - )') {
-                  sumCriteriaMaxPerBareme[sousBaremeDoc.id] =
-                      (sumCriteriaMaxPerBareme[sousBaremeDoc.id] ?? 0) + 1;
-                }
+              var value = _getFieldSafe(sousBaremeDoc, 'Marks', '');
+              if (value == '( + + + )' || value == '( + + - )') {
+                sumCriteriaMaxPerBareme[sousBaremeDoc.id] =
+                    (sumCriteriaMaxPerBareme[sousBaremeDoc.id] ?? 0) + 1;
               }
             }
           }
         }
       }
 
-      setState(() {});
+      if (_isMounted) {
+        setState(() {});
+      }
     } catch (e) {
       print('Erreur lors de la récupération des marques : $e');
     }
   }
 
-///////////  Raport html ////////
-  Future<void> _generateHTMLReport() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Utilisateur non connecté.')),
-      );
-      return;
-    }
-
-    // Logique de crédit/statut du compte
-    if (_remainingPrints <= 0 && !_isAccountActive) {
-      // Cas: Crédit = 0 ET compte désactivé => rediriger vers paiement
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Votre compte n\'est pas activé et vous n\'avez plus de crédits. Veuillez effectuer un paiement.'),
-        ),
-      );
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => PaymentPage()),
-      );
-      return;
-    } else if (_remainingPrints > 0 && !_isAccountActive) {
-      // Cas: Crédit disponible ET compte désactivé => générer HTML
-      // (on décrémente le crédit plus bas)
-    } else if (_isAccountActive) {
-      // Cas: Compte activé (peu importe les crédits) => générer HTML
-      // (on ne touche pas aux crédits)
-    }
-
-    setState(() {
-      _isGeneratingReport = true;
-    });
-
-    try {
-      // Afficher le dialogue de chargement
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 20),
-                Text("Génération du rapport en cours...",
-                    style: TextStyle(fontSize: 16)),
-                SizedBox(height: 10),
-                Text("Veuillez patienter...",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: Colors.grey)),
-              ],
-            ),
-          );
-        },
-      );
-
-      // Décrémenter le crédit seulement si compte inactif ET crédit > 0
-      if (!_isAccountActive && _remainingPrints > 0) {
-        await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(user.uid)
-            .update({'remainingPrints': FieldValue.increment(-1)});
-
-        setState(() {
-          _remainingPrints--;
-        });
-      }
-
-      // Préparer les données pour le HTML
-      var data = {
-        'profName': _profName,
-        'matiereName': await _getMatiereName(),
-        'className': await _getClassName(),
-        'schoolName': _schoolName,
-        'baremes': await _getBaremes(),
-        'students': await _getStudents(),
-        'sumCriteriaMaxPerBareme': sumCriteriaMaxPerBareme,
-        'totalStudents': totalStudents,
-        'selectedClass': widget.selectedClass,
-        'selectedBaremeId': selectedBaremeId,
-        'currentUser': currentUser?.uid,
-        'baremeName': baremeName,
-        'sousBaremeName': sousBaremeName,
-        'selectedSousBaremeId': selectedSousBaremeId,
-      };
-
-      print('Données envoyées à Flask pour HTML: ${json.encode(data)}');
-      await _sendHTMLDataToFlask(data);
-    } catch (e) {
-      print('Erreur lors de la génération du rapport: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors de la génération du rapport: $e')),
-      );
-    } finally {
-      setState(() {
-        _isGeneratingReport = false;
-      });
-      Navigator.of(context).pop(); // Fermer le dialogue de chargement
-    }
-  }
-
-  Future<void> _sendHTMLDataToFlask(Map<String, dynamic> data) async {
-    try {
-      final url =
-          Uri.parse('https://imprission.onrender.com/generate-html-report');
-      print('Envoi des données HTML à: $url');
-
-      final response = await http
-          .post(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: json.encode(data),
-          )
-          .timeout(const Duration(
-              seconds: 60)); // Augmentez le timeout si nécessaire
-
-      if (response.statusCode == 200) {
-        // Ouvrir le HTML dans un nouvel onglet/nouvelle fenêtre
-        final blob = html.Blob([response.bodyBytes], 'text/html');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        html.window.open(url, '_blank');
-        html.Url.revokeObjectUrl(url);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Rapport généré avec succès')),
-        );
-      } else {
-        print('Erreur HTTP: ${response.statusCode}');
-        print('Réponse: ${response.body}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text(
-                  'Erreur lors de la génération du rapport HTML: ${response.statusCode}')),
-        );
-      }
-    } on TimeoutException {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                'Timeout - Le serveur a mis trop de temps à répondre. Veuillez réessayer.')),
-      );
-    } on SocketException {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text(
-                'Erreur de connexion - Vérifiez votre connexion internet')),
-      );
-    } catch (e) {
-      print('Erreur inattendue: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur technique: ${e.toString()}')),
-      );
-    }
-  }
-///////////////////////////////////////////////////
-
+  // WIDGETS AMÉLIORÉS POUR L'UI/UX
   Widget _buildPrintCreditWidget() {
+    Color backgroundColor;
+    if (_remainingPrints == 0) {
+      backgroundColor = Colors.red;
+    } else if (_remainingPrints <= 2) {
+      backgroundColor = Colors.orange;
+    } else {
+      backgroundColor = Colors.blue;
+    }
+
     return Tooltip(
       message: 'Crédit d\'impression restant',
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 4),
-        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color:
-              _remainingPrints > 0 ? Colors.blue.shade700 : Colors.red.shade700,
-          borderRadius: BorderRadius.circular(15),
-          border: Border.all(color: Colors.white.withOpacity(0.5), width: 1),
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.print, size: 18, color: Colors.white),
+            Icon(Icons.print, size: 16, color: Colors.white),
             SizedBox(width: 6),
             Text(
               '$_remainingPrints/5',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 14,
+                fontSize: 12,
               ),
             ),
           ],
@@ -972,20 +1129,39 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   }
 
   Widget _buildAccountTimeRemaining() {
+    if (_remainingTime.isNegative || !_isAccountActive) return SizedBox();
+
+    Color timeColor = _remainingTime.inDays <= 7 ? Colors.orange : Colors.teal;
+
     return Tooltip(
       message: 'Temps restant avant expiration',
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.teal.shade700,
-          borderRadius: BorderRadius.circular(15),
+          color: timeColor,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
-        child: Text(
-          '${_remainingTime.inDays}j ${_remainingTime.inHours % 24}h',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.access_time, size: 14, color: Colors.white),
+            SizedBox(width: 6),
+            Text(
+              '${_remainingTime.inDays}j ${_remainingTime.inHours % 24}h',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -995,17 +1171,24 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     return Tooltip(
       message: _isAccountActive ? 'Compte actif' : 'Compte inactif',
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: _isAccountActive ? Colors.green.shade700 : Colors.red.shade700,
-          borderRadius: BorderRadius.circular(15),
+          color: _isAccountActive ? Colors.green : Colors.red,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.circle,
-              size: 14,
+              size: 12,
               color: Colors.white,
             ),
             SizedBox(width: 6),
@@ -1013,7 +1196,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               _isAccountActive ? 'Actif' : 'Inactif',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 14,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
@@ -1025,31 +1209,31 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   Widget _buildProfileButton() {
     return IconButton(
       icon: Container(
-        padding: EdgeInsets.all(2),
+        padding: EdgeInsets.all(8),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.2),
           border: Border.all(color: Colors.white, width: 1),
         ),
-        child: Icon(Icons.person, color: Colors.white),
+        child: Icon(Icons.person, color: Colors.white, size: 20),
       ),
       onPressed: _showEditDialog,
     );
   }
 
-////////////////////////////////////////////////////////
   Widget _buildPrintButton() {
     return PopupMenuButton<String>(
       icon: Container(
-        padding: EdgeInsets.all(2),
+        padding: EdgeInsets.all(8),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: _isGeneratingReport ? Colors.grey : Colors.white,
+          color: Colors.white.withOpacity(0.2),
+          border: Border.all(color: Colors.white, width: 1),
         ),
         child: Icon(
           Icons.print,
-          color: _isGeneratingReport
-              ? Colors.grey
-              : const Color.fromRGBO(7, 82, 96, 1),
+          color: Colors.white,
+          size: 20,
         ),
       ),
       onSelected: _isGeneratingReport
@@ -1057,27 +1241,96 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           : (value) {
               if (value == 'html') {
                 _generateHTMLReport();
+              } else if (value == 'pdf') {
+                _generatePDF();
               }
             },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
         PopupMenuItem<String>(
           value: 'html',
-          child: Text('طباعة الجدول'),
-          enabled: !_isGeneratingReport,
+          child: Row(
+            children: [
+              Icon(Icons.description, color: Colors.blue),
+              SizedBox(width: 8),
+              Text('طباعة الجدول (HTML)'),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'pdf',
+          child: Row(
+            children: [
+              Icon(Icons.picture_as_pdf, color: Colors.red),
+              SizedBox(width: 8),
+              Text('طباعة الجدول (PDF)'),
+            ],
+          ),
         ),
       ],
     );
   }
 
-///////////////////////////////////////
+  Widget _buildUpgradeButton() {
+    if (_isAccountActive) return SizedBox();
+
+    return Tooltip(
+      message: 'Activer votre compte',
+      child: IconButton(
+        icon: Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.orange.withOpacity(0.9),
+            border: Border.all(color: Colors.white, width: 1),
+          ),
+          child: Icon(Icons.upgrade, color: Colors.white, size: 20),
+        ),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => PaymentPage()),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (currentUser == null) {
-      return Center(child: Text('Utilisateur non connecté.'));
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: Colors.red),
+              SizedBox(height: 16),
+              Text('Utilisateur non connecté.', style: TextStyle(fontSize: 18)),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('Retour'),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     if (!_isDialogCompleted) {
-      return Center(child: CircularProgressIndicator());
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Chargement de vos informations...',
+                  style: TextStyle(fontSize: 16)),
+            ],
+          ),
+        ),
+      );
     }
 
     return MaterialApp(
@@ -1094,7 +1347,6 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       home: Scaffold(
         appBar: AppBar(
           title: Text('الجدول الجامع للنتائج',
-              textDirection: TextDirection.rtl,
               style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -1103,117 +1355,88 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           elevation: 4,
           iconTheme: IconThemeData(color: Colors.white),
           actions: [
-            // Widget de crédit d'impression amélioré
             _buildPrintCreditWidget(),
-
-            // Indicateur de temps restant
-            if (_isAccountActive && _remainingTime.inDays >= 0)
-              _buildAccountTimeRemaining(),
-
-            // Indicateur d'état du compte
+            if (_isAccountActive) _buildAccountTimeRemaining(),
             _buildAccountStatusIndicator(),
-
-            // Bouton profil
+            _buildUpgradeButton(),
             _buildProfileButton(),
-
-            // Bouton impression
             _buildPrintButton(),
           ],
         ),
         body: Directionality(
           textDirection: TextDirection.rtl,
-          child: ListView(
+          child: Column(
             children: [
-              // En-tête professionnel
+              // Header amélioré
               Container(
-                padding: EdgeInsets.all(10),
+                padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  border: Border.all(color: Colors.blue),
-                ),
-                child: Row(
-                  children: [
-                    // Professeur, matière et classe à gauche (alignés verticalement)
-                    FutureBuilder<Map<String, String>>(
-                      future: _getClassAndMatiereNames(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return CircularProgressIndicator();
-                        }
-                        if (snapshot.hasError) {
-                          return Text('خطأ في تحميل البيانات',
-                              textDirection: TextDirection.rtl);
-                        }
-                        if (!snapshot.hasData) {
-                          return Text('لا توجد بيانات',
-                              textDirection: TextDirection.rtl);
-                        }
-
-                        var classAndMatiereNames = snapshot.data!;
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'الأستاذ: $_profName',
-                              style: TextStyle(fontSize: 10),
-                            ),
-                            SizedBox(height: 5),
-                            Text(
-                              'المادة: ${classAndMatiereNames['matiereName']}',
-                              style: TextStyle(fontSize: 10),
-                            ),
-                            SizedBox(height: 5),
-                            Text(
-                              'القسم: ${classAndMatiereNames['className']}',
-                              style: TextStyle(fontSize: 10),
-                            ),
-                          ],
-                        );
-                      },
-                    ),
-                    Spacer(),
-                    // Logo et nom de l'école à droite
-                    Column(
-                      children: [
-                        SizedBox(height: 5),
-                        Text(
-                          'الجدول الجامع للنتائج',
-                          style: TextStyle(fontSize: 10),
-                        ),
-                      ],
-                    ),
-                    Spacer(),
-                    Column(
-                      children: [
-                        Image.asset(
-                          'lib/assets/icons/me/ministere.png',
-                          height: 70,
-                        ),
-                        SizedBox(height: 5),
-                        Text(
-                          'مدرسة: $_schoolName',
-                          style: TextStyle(fontSize: 10),
-                        ),
-                      ],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
                     ),
                   ],
                 ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildHeaderInfo(),
+                    ),
+                    _buildHeaderLogo(),
+                  ],
+                ),
               ),
-              SizedBox(
-                height: MediaQuery.of(context).size.height * 0.7,
+
+              // Contenu principal
+              Expanded(
                 child: _buildMainContent(),
               ),
-              // Pied de page
+
+              // Footer amélioré
               Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.blue[50],
-                  border: Border.all(color: Colors.blue),
+                  border: Border(
+                    top: BorderSide(color: Colors.blue, width: 1),
+                  ),
                 ),
-                child: Text(
-                  'تاريخ الإصدار: ${DateTime.now().toString().substring(0, 10)}',
-                  style: TextStyle(fontSize: 14),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'تاريخ الإصدار: ${DateTime.now().toString().substring(0, 10)}',
+                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                    ),
+                    if (!_isAccountActive)
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[100],
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.info,
+                                size: 16, color: Colors.orange[800]),
+                            SizedBox(width: 4),
+                            Text(
+                              'Compte limité - $_remainingPrints/5 impressions',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.orange[800],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],
@@ -1223,13 +1446,107 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     );
   }
 
+  Widget _buildHeaderInfo() {
+    return FutureBuilder<Map<String, String>>(
+      future: _getClassAndMatiereNames(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(),
+              ),
+              SizedBox(width: 8),
+              Text('Chargement...'),
+            ],
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData) {
+          return Text('خطأ في تحميل البيانات',
+              style: TextStyle(color: Colors.red));
+        }
+
+        var classAndMatiereNames = snapshot.data!;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildInfoRow('الأستاذ:', _profName),
+            SizedBox(height: 4),
+            _buildInfoRow('المادة:', classAndMatiereNames['matiereName']!),
+            SizedBox(height: 4),
+            _buildInfoRow('القسم:', classAndMatiereNames['className']!),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[700],
+          ),
+        ),
+        SizedBox(width: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[900],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderLogo() {
+    return Column(
+      children: [
+        Image.asset(
+          'lib/assets/icons/me/ministere.png',
+          height: 70,
+          errorBuilder: (context, error, stackTrace) {
+            print("Erreur chargement image: $error");
+            return Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                color: Colors.grey[100],
+              ),
+              child: Icon(Icons.school, size: 40, color: Colors.grey[400]),
+            );
+          },
+        ),
+        SizedBox(height: 8),
+        Text(
+          'مدرسة: $_schoolName',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey[700],
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
   Future<Map<String, String>> _getClassAndMatiereNames() async {
     try {
       var classDoc = await FirebaseFirestore.instance
           .collection('classes')
           .doc(widget.selectedClass)
           .get();
-      var className = classDoc['name'] ?? 'غير معروف';
+      var className = _getFieldSafe(classDoc, 'name', 'غير معروف');
 
       var matiereDoc = await FirebaseFirestore.instance
           .collection('classes')
@@ -1237,20 +1554,16 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .collection('matieres')
           .doc(widget.selectedMatiere)
           .get();
-      var matiereName = matiereDoc['name'] ?? 'غير معروف';
-      var matiereId = matiereDoc.id;
+      var matiereName = _getFieldSafe(matiereDoc, 'name', 'غير معروف');
 
       return {
         'className': className,
         'matiereName': matiereName,
-        'matiereId': matiereId,
       };
     } catch (e) {
-      print('Erreur lors de la récupération des noms: $e');
       return {
         'className': 'غير معروف',
         'matiereName': 'غير معروف',
-        'matiereId': 'غير معروف',
       };
     }
   }
@@ -1264,23 +1577,56 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .snapshots(),
       builder: (context, userClassesSnapshot) {
         if (userClassesSnapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Chargement des classes...'),
+              ],
+            ),
+          );
         }
+
         if (userClassesSnapshot.hasError) {
           return Center(
-              child: Text('خطأ: ${userClassesSnapshot.error}',
-                  textDirection: TextDirection.rtl));
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 48, color: Colors.red),
+                SizedBox(height: 16),
+                Text('Erreur de chargement',
+                    style: TextStyle(fontSize: 16, color: Colors.red)),
+                SizedBox(height: 8),
+                Text('${userClassesSnapshot.error}'),
+              ],
+            ),
+          );
         }
+
         if (!userClassesSnapshot.hasData ||
             userClassesSnapshot.data!.docs.isEmpty) {
           return Center(
-              child: Text('لم يتم العثور على أي قسم.',
-                  textDirection: TextDirection.rtl));
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.class_, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text('لم يتم العثور على أي قسم.',
+                    style: TextStyle(fontSize: 16)),
+                SizedBox(height: 8),
+                Text('Veuillez ajouter des classes d\'abord.',
+                    style: TextStyle(fontSize: 14, color: Colors.grey)),
+              ],
+            ),
+          );
         }
 
+        // Recherche de la classe correspondante
         for (var classDoc in userClassesSnapshot.data!.docs) {
           var classData = classDoc.data() as Map<String, dynamic>;
-          var classIdFromFirestore = classData['class_id'] ?? '';
+          var classIdFromFirestore = _getFieldSafe(classDoc, 'class_id', '');
 
           if (widget.selectedClass == classIdFromFirestore) {
             return StudentsTable(
@@ -1296,8 +1642,19 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         }
 
         return Center(
-            child: Text('لم يتم العثور على أي قسم مطابق.',
-                textDirection: TextDirection.rtl));
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.search_off, size: 64, color: Colors.orange),
+              SizedBox(height: 16),
+              Text('لم يتم العثور على أي قسم مطابق.',
+                  style: TextStyle(fontSize: 16)),
+              SizedBox(height: 8),
+              Text('La classe sélectionnée n\'existe pas.',
+                  style: TextStyle(fontSize: 14, color: Colors.grey)),
+            ],
+          ),
+        );
       },
     );
   }
@@ -1310,8 +1667,7 @@ class StudentsTable extends StatefulWidget {
   final User currentUser;
   final Map<String, int> sumCriteriaMaxPerBareme;
   final int totalStudents;
-  final Function(String, {String? sousBaremeId})
-      navigateToClassificationPage; // Modifier ici
+  final Function(String, {String? sousBaremeId}) navigateToClassificationPage;
 
   const StudentsTable({
     Key? key,
@@ -1321,7 +1677,7 @@ class StudentsTable extends StatefulWidget {
     required this.currentUser,
     required this.sumCriteriaMaxPerBareme,
     required this.totalStudents,
-    required this.navigateToClassificationPage, // Modifier ici
+    required this.navigateToClassificationPage,
   }) : super(key: key);
 
   @override
@@ -1336,24 +1692,60 @@ class _StudentsTableState extends State<StudentsTable> {
     '( + + + )'
   ];
   final Map<String, Map<String, String>> _selectedValues = {};
-
-  // Map pour stocker les couleurs aléatoires des en-têtes
   final Map<String, Color> _headerColors = {};
 
-  // Fonction pour générer une couleur aléatoire
+  // États pour gérer le loading des boutons
+  final Map<String, bool> _classificationLoadingStates = {};
+  final Map<String, bool> _treatmentPlanLoadingStates = {};
+
+  // Variables pour le cache des données
+  List<QueryDocumentSnapshot>? _cachedStudents;
+  List<QueryDocumentSnapshot>? _cachedSelections;
+  bool _isMounted = false;
+
+  // Couleurs modernes pour l'UI
+  final Color _primaryColor = const Color(0xFF2E7D32);
+  final Color _secondaryColor = const Color(0xFF4CAF50);
+  final Color _accentColor = const Color(0xFF8BC34A);
+  final Color _backgroundColor = const Color(0xFFF5F5F5);
+  final Color _cardColor = Colors.white;
+  final Color _textColor = Color(0xFF333333);
+  final Color _borderColor = const Color(0xFFE0E0E0);
+
   Color _getRandomColor() {
-    return Color((Random().nextDouble() * 0xFFFFFF).toInt() << 0)
-        .withOpacity(1);
+    final List<Color> predefinedColors = [
+      Color(0xFF2196F3),
+      Color(0xFFFF9800),
+      Color(0xFF9C27B0),
+      Color(0xFF009688),
+      Color(0xFF795548),
+      Color(0xFF607D8B),
+    ];
+    return predefinedColors[Random().nextInt(predefinedColors.length)];
   }
 
-  // Fonction pour regrouper les barèmes par leurs 4 premiers caractères
+  // Fonction pour trier les barèmes par ordre alphabétique arabe
+  List<Map<String, dynamic>> _sortBaremesAlphabetically(
+      List<Map<String, dynamic>> baremesValues) {
+    baremesValues.sort((a, b) {
+      String nameA = a['value'] ?? '';
+      String nameB = b['value'] ?? '';
+      return nameA.compareTo(nameB);
+    });
+    return baremesValues;
+  }
+
+  // Fonction modifiée pour grouper les barèmes triés
   Map<String, List<Map<String, dynamic>>> groupBaremes(
       List<Map<String, dynamic>> baremesValues) {
+    // Trier d'abord les barèmes par ordre alphabétique
+    List<Map<String, dynamic>> sortedBaremes =
+        _sortBaremesAlphabetically(baremesValues);
+
     Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
 
-    for (var bareme in baremesValues) {
-      String key =
-          bareme['value'].substring(0, 4); // Prendre les 4 premiers caractères
+    for (var bareme in sortedBaremes) {
+      String key = bareme['value'].substring(0, 4);
       if (!groupedBaremes.containsKey(key)) {
         groupedBaremes[key] = [];
       }
@@ -1363,360 +1755,921 @@ class _StudentsTableState extends State<StudentsTable> {
     return groupedBaremes;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('users')
-                .doc(widget.currentUser.uid)
-                .collection('user_classes')
-                .doc(widget.classDocId)
-                .collection('students')
-                .snapshots(),
-            builder: (context, studentsSnapshot) {
-              if (studentsSnapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (studentsSnapshot.hasError) {
-                return Center(
-                    child: Text('خطأ: ${studentsSnapshot.error}',
-                        textDirection: TextDirection.rtl));
-              }
-              if (!studentsSnapshot.hasData ||
-                  studentsSnapshot.data!.docs.isEmpty) {
-                return const Center(
-                    child: Text('لم يتم العثور على أي طالب.',
-                        textDirection: TextDirection.rtl));
-              }
-
-              return _buildSelectionsTable(studentsSnapshot.data!.docs);
-            },
-          ),
-        ),
-      ],
-    );
+  // Fonction pour déterminer si c'est un barème principal ou sous-barème
+  String _getBaremeDisplayName(
+      Map<String, dynamic> bareme, Map<String, dynamic> subEntry) {
+    // Si c'est le barème principal (même ID)
+    if (bareme['id'] == subEntry['id']) {
+      return bareme['value']; // Nom du barème principal
+    } else {
+      // C'est un sous-barème - retourner seulement le nom du sous-barème
+      return subEntry['value'];
+    }
   }
 
-  Widget _buildSelectionsTable(List<QueryDocumentSnapshot> studentsDocs) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
+  // Générer une clé unique pour chaque bouton
+  String _getButtonKey(
+      String baremeId, String? sousBaremeId, bool isClassification) {
+    return '${baremeId}_${sousBaremeId ?? 'main'}_${isClassification ? 'classification' : 'treatment'}';
+  }
+
+  // Fonction pour démarrer le loading d'un bouton
+  void _startLoading(String buttonKey, bool isClassification) {
+    if (_isMounted) {
+      setState(() {
+        if (isClassification) {
+          _classificationLoadingStates[buttonKey] = true;
+        } else {
+          _treatmentPlanLoadingStates[buttonKey] = true;
+        }
+      });
+    }
+  }
+
+  // Fonction pour arrêter le loading d'un bouton
+  void _stopLoading(String buttonKey, bool isClassification) {
+    if (_isMounted) {
+      setState(() {
+        if (isClassification) {
+          _classificationLoadingStates[buttonKey] = false;
+        } else {
+          _treatmentPlanLoadingStates[buttonKey] = false;
+        }
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _isMounted = true;
+    _loadStudentsOnce();
+    _loadSelectionsOnce();
+  }
+
+  @override
+  void dispose() {
+    _isMounted = false;
+    super.dispose();
+  }
+
+  // Méthode pour charger les étudiants une fois
+  Future<void> _loadStudentsOnce() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('user_classes')
+          .doc(widget.classDocId)
+          .collection('students')
+          .get();
+
+      if (_isMounted) {
+        setState(() {
+          _cachedStudents = snapshot.docs;
+        });
+      }
+    } catch (e) {
+      print('Erreur chargement étudiants: $e');
+    }
+  }
+
+  // Méthode pour charger les sélections une fois
+  Future<void> _loadSelectionsOnce() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.currentUser.uid)
           .collection('selections')
           .doc(widget.selectedClass)
           .collection(widget.selectedMatiere)
-          .snapshots(),
-      builder: (context, selectionsSnapshot) {
-        if (selectionsSnapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (selectionsSnapshot.hasError) {
-          return Center(
-              child: Text('خطأ: ${selectionsSnapshot.error}',
-                  textDirection: TextDirection.rtl));
-        }
-        if (!selectionsSnapshot.hasData ||
-            selectionsSnapshot.data!.docs.isEmpty) {
-          return const Center(
-              child: Text('لم يتم العثور على أي معيار.',
-                  textDirection: TextDirection.rtl));
+          .get();
+
+      if (_isMounted) {
+        setState(() {
+          _cachedSelections = snapshot.docs;
+        });
+      }
+    } catch (e) {
+      print('Erreur chargement sélections: $e');
+    }
+  }
+
+  // Méthode pour rafraîchir les données manuellement
+  Future<void> _refreshData() async {
+    await _loadStudentsOnce();
+    await _loadSelectionsOnce();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [_backgroundColor, Colors.white],
+        ),
+      ),
+      child: Column(
+        children: [
+          _buildHeader(),
+          SizedBox(height: 16),
+          Expanded(
+            child: _buildContentWithCachedData(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Nouvelle méthode pour utiliser les données en cache
+  Widget _buildContentWithCachedData() {
+    if (_cachedStudents == null) {
+      return _buildLoadingIndicator();
+    }
+
+    if (_cachedStudents!.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return _buildSelectionsTable(_cachedStudents!);
+  }
+
+  Future<Map<String, String>> _getClassAndMatiereNames() async {
+    try {
+      // Récupérer le nom de la classe
+      var classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .get();
+      var className = classDoc['name'] ?? 'غير معروف';
+
+      // Récupérer le nom de la matière
+      var matiereDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .collection('matieres')
+          .doc(widget.selectedMatiere)
+          .get();
+      var matiereName = matiereDoc['name'] ?? 'غير معروف';
+
+      return {
+        'className': className,
+        'matiereName': matiereName,
+      };
+    } catch (e) {
+      print('Erreur lors de la récupération des noms: $e');
+      return {
+        'className': 'غير معروف',
+        'matiereName': 'غير معروف',
+      };
+    }
+  }
+
+  Widget _buildHeader() {
+    return FutureBuilder<Map<String, String>>(
+      future: _getClassAndMatiereNames(),
+      builder: (context, snapshot) {
+        String className = 'غير معروف';
+        String matiereName = 'غير معروف';
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          className = 'جاري التحميل...';
+          matiereName = 'جاري التحميل...';
+        } else if (snapshot.hasData) {
+          className = snapshot.data!['className'] ?? 'غير معروف';
+          matiereName = snapshot.data!['matiereName'] ?? 'غير معروف';
         }
 
-        return FutureBuilder<List<Map<String, dynamic>>>(
-          future: _getBaremesValues(selectionsSnapshot.data!.docs),
-          builder: (context, baremesValuesSnapshot) {
-            if (baremesValuesSnapshot.connectionState ==
-                ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (baremesValuesSnapshot.hasError) {
-              return Center(
-                  child: Text('خطأ: ${baremesValuesSnapshot.error}',
-                      textDirection: TextDirection.rtl));
-            }
-            if (!baremesValuesSnapshot.hasData ||
-                baremesValuesSnapshot.data!.isEmpty) {
-              return const Center(
-                  child: Text('لم يتم العثور على أي معيار.',
-                      textDirection: TextDirection.rtl));
-            }
-
-            return _buildDataTable(studentsDocs, baremesValuesSnapshot.data!);
-          },
+        return Card(
+          elevation: 3,
+          margin: EdgeInsets.all(16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_primaryColor, _secondaryColor],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.refresh, color: Colors.white),
+                  onPressed: _refreshData,
+                  tooltip: 'Rafraîchir les données',
+                ),
+                SizedBox(width: 12),
+                Icon(Icons.school, color: Colors.white, size: 32),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'جدول التقييم',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '$className - $matiereName',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${widget.totalStudents} طالب',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
   }
 
- Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
-    List<Map<String, dynamic>> baremesValues) {
-  // Regrouper les barèmes par leurs 4 premiers caractères
-  Map<String, List<Map<String, dynamic>>> groupedBaremes =
-      groupBaremes(baremesValues);
-
-  return Card(
-    elevation: 4,
-    margin: EdgeInsets.all(8),
-    child: SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.vertical,
-        child: DataTable(
-          columnSpacing: 20,
-          horizontalMargin: 12,
-          columns: [
-            const DataColumn(
-              label: SizedBox(
-                width: 150,
-                child: Text('الاسم واللقب',
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.blue)),
-              ),
+  Widget _buildLoadingIndicator() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+          ),
+          SizedBox(height: 16),
+          Text(
+            'جاري تحميل البيانات...',
+            style: TextStyle(
+              color: _textColor,
+              fontSize: 16,
             ),
-            for (var entry in groupedBaremes.entries)
-              for (final bareme in entry.value)
-                for (final subEntry in [
-                  {'id': bareme['id'], 'value': bareme['value']},
-                  ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-                ])
-                  DataColumn(
-                    label: Container(
-                      width: 100,
-                      color: _headerColors.putIfAbsent(
-                          entry.key,
-                          () =>
-                              _getRandomColor()), // Couleur aléatoire pour l'en-tête
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                              entry
-                                  .key, // En-tête du groupe (4 premiers caractères)
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors
-                                      .white)), // Texte en blanc pour contraste
-                          Text(subEntry['value'], // Nom du barème ou sous-barème
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors
-                                      .white)), // Texte en blanc pour contraste
-                        ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorWidget(String error) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, color: Colors.red, size: 64),
+          SizedBox(height: 16),
+          Text(
+            error,
+            textDirection: TextDirection.rtl,
+            style: TextStyle(color: Colors.red, fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.people_outline, color: Colors.grey, size: 64),
+          SizedBox(height: 16),
+          Text(
+            'لم يتم العثور على أي طالب.',
+            textDirection: TextDirection.rtl,
+            style: TextStyle(color: Colors.grey, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectionsTable(List<QueryDocumentSnapshot> studentsDocs) {
+    if (_cachedSelections == null) {
+      return _buildLoadingIndicator();
+    }
+
+    if (_cachedSelections!.isEmpty) {
+      return _buildEmptyStateForCriteria();
+    }
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _getBaremesValues(_cachedSelections!),
+      builder: (context, baremesValuesSnapshot) {
+        if (baremesValuesSnapshot.connectionState == ConnectionState.waiting) {
+          return _buildLoadingIndicator();
+        }
+        if (baremesValuesSnapshot.hasError) {
+          return _buildErrorWidget('خطأ: ${baremesValuesSnapshot.error}');
+        }
+        if (!baremesValuesSnapshot.hasData ||
+            baremesValuesSnapshot.data!.isEmpty) {
+          return _buildEmptyStateForCriteria();
+        }
+
+        return _buildDataTable(studentsDocs, baremesValuesSnapshot.data!);
+      },
+    );
+  }
+
+  Widget _buildEmptyStateForCriteria() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.assessment_outlined, color: Colors.grey, size: 64),
+          SizedBox(height: 16),
+          Text(
+            'لم يتم العثور على أي معيار.',
+            textDirection: TextDirection.rtl,
+            style: TextStyle(color: Colors.grey, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
+      List<Map<String, dynamic>> baremesValues) {
+    Map<String, List<Map<String, dynamic>>> groupedBaremes =
+        groupBaremes(baremesValues);
+
+    return Card(
+      elevation: 4,
+      margin: EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _cardColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: DataTable(
+              columnSpacing: 16,
+              horizontalMargin: 16,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              dataRowColor: MaterialStateProperty.resolveWith<Color>(
+                (Set<MaterialState> states) {
+                  if (states.contains(MaterialState.selected)) {
+                    return _accentColor.withOpacity(0.2);
+                  }
+                  return Colors.transparent;
+                },
+              ),
+              columns: [
+                DataColumn(
+                  label: Container(
+                    width: 160,
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: _primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'الاسم واللقب',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: _primaryColor,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ),
-          ],
-          rows: [
-            ...studentsDocs.map((studentDoc) {
-              final studentId = studentDoc.id;
-              final studentName = studentDoc['name'] ?? 'غير معروف';
-
-              return DataRow(
-                cells: [
-                  DataCell(
-                    SizedBox(
-                      width: 150,
-                      child: Text(studentName,
-                          textDirection: TextDirection.rtl,
-                          style: TextStyle(color: Colors.grey.shade800)),
-                    ),
-                  ),
-                  for (var entry in groupedBaremes.entries)
-                    for (final bareme in entry.value)
-                      for (final subEntry in [
-                        {'id': bareme['id'], 'type': 'bareme'},
-                        ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-                            .map((s) => {'id': s['id'], 'type': 'sousBareme'})
-                      ])
-                        DataCell(
-                          SizedBox(
-                            width: 100,
-                            child: FutureBuilder<String>(
-                              future:
-                                  _getSelectedValue(studentId, subEntry['id']),
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState ==
-                                    ConnectionState.waiting) {
-                                  return const CircularProgressIndicator();
-                                }
-                                return Text(
-                                  snapshot.data ?? _dropdownValues[0],
-                                  style: TextStyle(
-                                      color: Colors
-                                          .black), // Texte en noir pour contraste
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                ],
-              );
-            }).toList(),
-            // Ligne des statistiques
-            DataRow(
-              cells: [
-                const DataCell(Text('عدد التلاميذ المحققين',
-                    style: TextStyle(fontWeight: FontWeight.bold))),
-                for (final bareme in baremesValues)
-                  for (final entry in [
-                    {'id': bareme['id']},
-                    ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-                  ])
-                    DataCell(Text(
-                      widget.sumCriteriaMaxPerBareme[entry['id']]?.toString() ??
-                          '0',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    )),
-              ],
-            ),
-            // Ligne des pourcentages
-            DataRow(
-              cells: [
-                const DataCell(Text('النسبة المئوية',
-                    style: TextStyle(fontWeight: FontWeight.bold))),
+                ),
                 for (var entry in groupedBaremes.entries)
                   for (final bareme in entry.value)
                     for (final subEntry in [
-                      {'id': bareme['id']},
+                      {'id': bareme['id'], 'value': bareme['value']},
                       ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
                     ])
-                      DataCell(Text(
-                        widget.totalStudents == 0
-                            ? 'لا توجد درجات'
-                            : '${((widget.sumCriteriaMaxPerBareme[subEntry['id']] ?? 0) / widget.totalStudents * 100).toStringAsFixed(2)}٪',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black), // Texte en noir pour contraste
-                      )),
-              ],
-            ),
-            // Ligne des boutons "تصنيف"
-            DataRow(
-              cells: [
-                DataCell(Container()), // Cellule vide pour la colonne des noms
-                for (var entry in groupedBaremes.entries)
-                  for (final bareme in entry.value)
-                    for (final subEntry in [
-                      {
-                        'id': bareme['id'],
-                        'type': 'bareme',
-                        'name': bareme['value']
-                      },
-                      ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
-                          (s) => {
-                                'id': s['id'],
-                                'type': 'sousBareme',
-                                'name': s['value']
-                              })
-                    ])
-                      DataCell(
-                        Container(
-                          width: 100,
-                          height: 50,
-                          padding: EdgeInsets.all(8),
+                      DataColumn(
+                        label: Container(
+                          width: 110,
+                          padding: EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(4),
+                            gradient: LinearGradient(
+                              colors: [
+                                _headerColors.putIfAbsent(
+                                    entry.key, () => _getRandomColor()),
+                                _headerColors[entry.key]!.withOpacity(0.8),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
                           ),
-                          child: ElevatedButton(
-                            onPressed: () {
-                              _classifyStudentsByBarem(
-                                bareme['id']!,
-                                sousBaremeId: subEntry['type'] == 'sousBareme'
-                                    ? subEntry['id']
-                                    : null,
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              padding: EdgeInsets.symmetric(
-                                  vertical: 8, horizontal: 12),
-                            ),
-                            child: Text(
-                              'تصنيف',
-                              style:
-                                  TextStyle(fontSize: 12, color: Colors.yellow),
-                            ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Text(
+                                _getBaremeDisplayName(bareme, subEntry),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
                           ),
                         ),
                       ),
               ],
-            ),
-            // Ligne des boutons "خطة العلاج"
-            DataRow(
-              cells: [
-                DataCell(Container()),
-                for (var entry in groupedBaremes.entries)
-                  for (final bareme in entry.value)
-                    for (final subEntry in [
-                      {
-                        'id': bareme['id'],
-                        'type': 'bareme',
-                        'name': bareme['value']
+              rows: [
+                ...studentsDocs.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final studentDoc = entry.value;
+                  final studentId = studentDoc.id;
+                  final studentName = studentDoc['name'] ?? 'غير معروف';
+
+                  return DataRow(
+                    color: MaterialStateProperty.resolveWith<Color>(
+                      (Set<MaterialState> states) {
+                        return index.isEven
+                            ? _backgroundColor.withOpacity(0.3)
+                            : Colors.transparent;
                       },
-                      ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
-                          (s) => {
-                                'id': s['id'],
-                                'type': 'sousBareme',
-                                'name': s['value']
-                              })
-                    ])
+                    ),
+                    cells: [
                       DataCell(
                         Container(
-                          width: 100,
-                          height: 50,
-                          padding: EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: ElevatedButton(
-                            onPressed: () {
-                              widget.navigateToClassificationPage(
-                                bareme['id']!,
-                                sousBaremeId: subEntry['type'] == 'sousBareme'
-                                    ? subEntry['id']
-                                    : null,
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              padding: EdgeInsets.symmetric(
-                                  vertical: 8, horizontal: 12),
-                            ),
-                            child: Text(
-                              'خطة العلاج',
-                              style:
-                                  TextStyle(fontSize: 12, color: Colors.white),
-                            ),
+                          width: 160,
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: _accentColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  studentName,
+                                  textDirection: TextDirection.rtl,
+                                  style: TextStyle(
+                                    color: _textColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
+                      for (var entry in groupedBaremes.entries)
+                        for (final bareme in entry.value)
+                          for (final subEntry in [
+                            {'id': bareme['id'], 'type': 'bareme'},
+                            ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+                                .map((s) =>
+                                    {'id': s['id'], 'type': 'sousBareme'})
+                          ])
+                            DataCell(
+                              Container(
+                                width: 110,
+                                padding: EdgeInsets.symmetric(vertical: 8),
+                                child: FutureBuilder<String>(
+                                  future: _getSelectedValue(
+                                      studentId, subEntry['id']),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.connectionState ==
+                                        ConnectionState.waiting) {
+                                      return SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  _primaryColor),
+                                        ),
+                                      );
+                                    }
+                                    final value =
+                                        snapshot.data ?? _dropdownValues[0];
+                                    return Container(
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: _getValueColor(value)
+                                            .withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: _getValueColor(value)
+                                              .withOpacity(0.3),
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          value,
+                                          style: TextStyle(
+                                            color: _getValueColor(value),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                    ],
+                  );
+                }).toList(),
+                DataRow(
+                  cells: [
+                    const DataCell(Text('عدد التلاميذ المحققين',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+                    for (final bareme in baremesValues)
+                      for (final entry in [
+                        {'id': bareme['id']},
+                        ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+                      ])
+                        DataCell(Text(
+                          widget.sumCriteriaMaxPerBareme[entry['id']]
+                                  ?.toString() ??
+                              '0',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        )),
+                  ],
+                ),
+                // Ligne des pourcentages
+                DataRow(
+                  cells: [
+                    const DataCell(Text('النسبة المئوية',
+                        style: TextStyle(fontWeight: FontWeight.bold))),
+                    for (var entry in groupedBaremes.entries)
+                      for (final bareme in entry.value)
+                        for (final subEntry in [
+                          {'id': bareme['id']},
+                          ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+                        ])
+                          DataCell(Text(
+                            widget.totalStudents == 0
+                                ? 'لا توجد درجات'
+                                : '${((widget.sumCriteriaMaxPerBareme[subEntry['id']] ?? 0) / widget.totalStudents * 100).toStringAsFixed(2)}٪',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors
+                                    .black), // Texte en noir pour contraste
+                          )),
+                  ],
+                ),
+                // Ligne des boutons "تصنيف"
+                DataRow(
+                  cells: [
+                    DataCell(
+                        Container()), // Cellule vide pour la colonne des noms
+                    for (var entry in groupedBaremes.entries)
+                      for (final bareme in entry.value)
+                        for (final subEntry in [
+                          {
+                            'id': bareme['id'],
+                            'type': 'bareme',
+                            'name': bareme['value']
+                          },
+                          ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+                              .map((s) => {
+                                    'id': s['id'],
+                                    'type': 'sousBareme',
+                                    'name': s['value']
+                                  })
+                        ])
+                          DataCell(
+                            Container(
+                              width: 100,
+                              height: 50,
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  _classifyStudentsByBarem(
+                                    bareme['id']!,
+                                    sousBaremeId:
+                                        subEntry['type'] == 'sousBareme'
+                                            ? subEntry['id']
+                                            : null,
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 8, horizontal: 12),
+                                ),
+                                child: Text(
+                                  'تصنيف',
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.yellow),
+                                ),
+                              ),
+                            ),
+                          ),
+                  ],
+                ),
+                // Ligne des boutons "خطة العلاج"
+                DataRow(
+                  cells: [
+                    DataCell(Container()),
+                    for (var entry in groupedBaremes.entries)
+                      for (final bareme in entry.value)
+                        for (final subEntry in [
+                          {
+                            'id': bareme['id'],
+                            'type': 'bareme',
+                            'name': bareme['value']
+                          },
+                          ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+                              .map((s) => {
+                                    'id': s['id'],
+                                    'type': 'sousBareme',
+                                    'name': s['value']
+                                  })
+                        ])
+                          DataCell(
+                            Container(
+                              width: 100,
+                              height: 50,
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  widget.navigateToClassificationPage(
+                                    bareme['id']!,
+                                    sousBaremeId:
+                                        subEntry['type'] == 'sousBareme'
+                                            ? subEntry['id']
+                                            : null,
+                                  );
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 8, horizontal: 12),
+                                ),
+                                child: Text(
+                                  'خطة العلاج',
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.white),
+                                ),
+                              ),
+                            ),
+                          ),
+                  ],
+                ),
               ],
             ),
-          ],
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
+
+  Color _getValueColor(String value) {
+    switch (value) {
+      case '( + + + )':
+        return Colors.green;
+      case '( + + - )':
+        return Colors.orange;
+      case '( + - - )':
+        return Colors.orangeAccent;
+      case '( - - - )':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  DataRow _buildStatsRow(
+      String title, Map<String, List<Map<String, dynamic>>> groupedBaremes,
+      {required bool isPercentage}) {
+    return DataRow(
+      color: MaterialStateProperty.all(_primaryColor.withOpacity(0.05)),
+      cells: [
+        DataCell(
+          Container(
+            width: 160,
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: _primaryColor,
+              ),
+            ),
+          ),
+        ),
+        for (var entry in groupedBaremes.entries)
+          for (final bareme in entry.value)
+            for (final subEntry in [
+              {'id': bareme['id']},
+              ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+            ])
+              DataCell(
+                Container(
+                  width: 110,
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isPercentage
+                          ? _secondaryColor.withOpacity(0.1)
+                          : _accentColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Center(
+                      child: Text(
+                        isPercentage
+                            ? widget.totalStudents == 0
+                                ? 'لا توجد درجات'
+                                : '${((widget.sumCriteriaMaxPerBareme[subEntry['id']] ?? 0) / widget.totalStudents * 100).toStringAsFixed(2)}٪'
+                            : widget.sumCriteriaMaxPerBareme[subEntry['id']]
+                                    ?.toString() ??
+                                '0',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isPercentage ? _secondaryColor : _accentColor,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+      ],
+    );
+  }
+
+  DataRow _buildButtonRow(String buttonText, Color backgroundColor,
+      Color textColor, Map<String, List<Map<String, dynamic>>> groupedBaremes,
+      {required bool isClassification}) {
+    return DataRow(
+      cells: [
+        DataCell(Container()),
+        for (var entry in groupedBaremes.entries)
+          for (final bareme in entry.value)
+            for (final subEntry in [
+              {'id': bareme['id'], 'type': 'bareme', 'name': bareme['value']},
+              ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map((s) =>
+                  {'id': s['id'], 'type': 'sousBareme', 'name': s['value']})
+            ])
+              DataCell(
+                Container(
+                  width: 110,
+                  height: 48,
+                  padding: EdgeInsets.all(4),
+                  child: _buildLoadingButton(
+                    bareme: bareme,
+                    subEntry: subEntry,
+                    buttonText: buttonText,
+                    backgroundColor: backgroundColor,
+                    textColor: textColor,
+                    isClassification: isClassification,
+                  ),
+                ),
+              ),
+      ],
+    );
+  }
+
+  Widget _buildLoadingButton({
+    required Map<String, dynamic> bareme,
+    required Map<String, dynamic> subEntry,
+    required String buttonText,
+    required Color backgroundColor,
+    required Color textColor,
+    required bool isClassification,
+  }) {
+    final String buttonKey = _getButtonKey(
+      bareme['id']!,
+      subEntry['type'] == 'sousBareme' ? subEntry['id'] : null,
+      isClassification,
+    );
+
+    final bool isLoading = isClassification
+        ? _classificationLoadingStates[buttonKey] ?? false
+        : _treatmentPlanLoadingStates[buttonKey] ?? false;
+
+    return ElevatedButton(
+      onPressed: isLoading
+          ? null
+          : () async {
+              _startLoading(buttonKey, isClassification);
+              try {
+                if (isClassification) {
+                  await _classifyStudentsByBarem(
+                    bareme['id']!,
+                    sousBaremeId: subEntry['type'] == 'sousBareme'
+                        ? subEntry['id']
+                        : null,
+                  );
+                } else {
+                  await widget.navigateToClassificationPage(
+                    bareme['id']!,
+                    sousBaremeId: subEntry['type'] == 'sousBareme'
+                        ? subEntry['id']
+                        : null,
+                  );
+                }
+              } catch (e) {
+                print('Erreur: $e');
+                if (_isMounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('حدث خطأ: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              } finally {
+                _stopLoading(buttonKey, isClassification);
+              }
+            },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isLoading ? Colors.grey : backgroundColor,
+        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        elevation: 2,
+      ),
+      child: isLoading
+          ? SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(textColor),
+              ),
+            )
+          : Text(
+              buttonText,
+              style: TextStyle(
+                fontSize: 11,
+                color: textColor,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+    );
+  }
 
   Future<List<Map<String, dynamic>>> _getBaremesValues(
       List<QueryDocumentSnapshot> selectedBaremes) async {
     final List<Map<String, dynamic>> result = [];
     final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
-    print('User ID: $userId');
-    print('Selected Class: ${widget.selectedClass}');
-    print('Selected Matiere: ${widget.selectedMatiere}');
-
     for (final baremeDoc in selectedBaremes) {
       final baremeId = baremeDoc['baremeId'];
-      print('Processing baremeId: $baremeId');
-
       final baremeSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
@@ -1727,8 +2680,6 @@ class _StudentsTableState extends State<StudentsTable> {
           .get();
 
       final isBaremeSelected = baremeSnapshot['selected'] ?? false;
-      print('Bareme selected: $isBaremeSelected');
-
       final sousBaremesSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
@@ -1743,12 +2694,8 @@ class _StudentsTableState extends State<StudentsTable> {
           .where((doc) => doc['selected'] == true)
           .toList();
 
-      print('Number of selected sousBaremes: ${selectedSousBaremes.length}');
-
       if (isBaremeSelected) {
         final baremeName = baremeSnapshot['baremeName'] ?? 'غير معروف';
-        print('Adding bareme: $baremeId - $baremeName');
-
         result.add({
           'id': baremeId,
           'value': baremeName,
@@ -1757,98 +2704,19 @@ class _StudentsTableState extends State<StudentsTable> {
       } else if (selectedSousBaremes.isNotEmpty) {
         for (final sousBareme in selectedSousBaremes) {
           final sousBaremeName = sousBareme['sousBaremeName'] ?? 'غير معروف';
-          print(
-              'Adding sousBareme: ${sousBareme.id} - $sousBaremeName (Parent: $baremeId)');
-
           result.add({
             'id': sousBareme.id,
             'value': sousBaremeName,
-            'parentBaremeId': baremeId, // Track parent bareme ID
+            'parentBaremeId': baremeId,
           });
         }
       }
     }
-    print('Final result: $result');
     return result;
   }
 
-  // Future<void> _saveAllChanges() async {
-  //   final batch = FirebaseFirestore.instance.batch();
-
-  //   for (final studentId in _selectedValues.keys) {
-  //     final studentBaremes = _selectedValues[studentId]!;
-  //     for (final baremeKey in studentBaremes.keys) {
-  //       final value = studentBaremes[baremeKey]!;
-
-  //       // Vérifier si la clé est pour un barème ou un sous-barème
-  //       final isSousBareme = baremeKey.contains('-');
-  //       final baremeId = isSousBareme ? baremeKey.split('-')[0] : baremeKey;
-  //       final sousBaremeId = isSousBareme ? baremeKey.split('-')[1] : null;
-
-  //       // Référence à la collection baremes
-  //       var baremesCollectionRef = FirebaseFirestore.instance
-  //           .collection('users')
-  //           .doc(widget.currentUser.uid)
-  //           .collection('user_classes')
-  //           .doc(widget.classDocId)
-  //           .collection('students')
-  //           .doc(studentId)
-  //           .collection('baremes');
-
-  //       // Référence au document du barème principal
-  //       var baremeRef = baremesCollectionRef.doc(baremeId);
-
-  //       // Si c'est un sous-barème, modifier dans les deux emplacements
-  //       if (isSousBareme) {
-  //         // 1. Modifier dans le sous-barème directement dans la collection baremes
-  //         var sousBaremeDirectRef = baremesCollectionRef.doc(baremeKey);
-  //         if (value != null) {
-  //           batch.set(
-  //               sousBaremeDirectRef, {'Marks': value}, SetOptions(merge: true));
-  //         } else {
-  //           batch.update(sousBaremeDirectRef, {'Marks': FieldValue.delete()});
-  //         }
-
-  //         // 2. Modifier dans la collection sous_baremes du barème principal
-  //         var sousBaremeNestedRef =
-  //             baremeRef.collection('sous_baremes').doc(sousBaremeId);
-  //         if (value != null) {
-  //           batch.set(
-  //               sousBaremeNestedRef, {'Marks': value}, SetOptions(merge: true));
-  //         } else {
-  //           batch.update(sousBaremeNestedRef, {'Marks': FieldValue.delete()});
-  //         }
-
-  //         // 3. Mettre à jour haveSoubarem dans le barème principal
-  //         batch.set(baremeRef, {'haveSoubarem': true}, SetOptions(merge: true));
-  //       } else {
-  //         // Si c'est un barème principal, modifier uniquement dans le barème principal
-  //         if (value != null) {
-  //           batch.set(baremeRef, {'Marks': value}, SetOptions(merge: true));
-  //         } else {
-  //           batch.update(baremeRef, {'Marks': FieldValue.delete()});
-  //         }
-  //       }
-  //     }
-  //   }
-
-  //   // Appliquer toutes les modifications en une seule transaction
-  //   await batch.commit();
-  //   ScaffoldMessenger.of(context).showSnackBar(
-  //     const SnackBar(content: Text('تم حفظ التغييرات بنجاح')),
-  //   );
-
-  //   await batch.commit();
-  //   ScaffoldMessenger.of(context).showSnackBar(
-  //     const SnackBar(content: Text('تم حفظ التغييرات بنجاح')),
-  //   );
-  // }
   Future<String> _getSelectedValue(String studentId, String baremeKey) async {
     try {
-      debugPrint(
-          'Début de _getSelectedValue pour l\'étudiant $studentId et le barème $baremeKey');
-
-      // Référence au barème principal
       var docRef = FirebaseFirestore.instance
           .collection('users')
           .doc(widget.currentUser.uid)
@@ -1859,49 +2727,31 @@ class _StudentsTableState extends State<StudentsTable> {
           .collection('baremes')
           .doc(baremeKey);
 
-      // Vérifier si le barème existe
       final parentDoc = await docRef.get();
       if (!parentDoc.exists) {
-        debugPrint('Le document pour le barème $baremeKey n\'existe pas');
-        return _dropdownValues[0]; // Valeur par défaut
+        return _dropdownValues[0];
       }
 
-      // Vérifier si le barème principal a des sous-barèmes
       final haveSoubarem = parentDoc.data()?['haveSoubarem'] ?? false;
-      debugPrint(
-          'Le barème $baremeKey a-t-il des sous-barèmes ? $haveSoubarem');
-
-      // Si le barème a des sous-barèmes, chercher dans la collection "sous_baremes"
       if (haveSoubarem) {
         final sousBaremesSnapshot =
             await docRef.collection('sous_baremes').get();
         if (sousBaremesSnapshot.docs.isNotEmpty) {
-          // Prendre le premier sous-barème (ou celui que vous voulez)
           final sousBaremeDocRef = sousBaremesSnapshot.docs.first;
           final sousBaremeData = sousBaremeDocRef.data();
-          debugPrint(
-              'Sous-barème trouvé avec la valeur: ${sousBaremeData?['Marks']}');
           return sousBaremeData?['Marks']?.toString() ?? _dropdownValues[0];
-        } else {
-          debugPrint('Aucun sous-barème trouvé');
         }
       }
 
-      // Retourner la valeur principale si pas de sous-barème ou sous-barème non trouvé
-      final marks =
-          parentDoc.data()?['Marks']?.toString() ?? _dropdownValues[0];
-      debugPrint('Valeur principale récupérée: $marks');
-      return marks;
+      return parentDoc.data()?['Marks']?.toString() ?? _dropdownValues[0];
     } catch (e) {
-      debugPrint("Erreur: $e");
-      return _dropdownValues[0]; // Valeur par défaut en cas d'erreur
+      return _dropdownValues[0];
     }
   }
 
-  // Fonction pour classer les élèves en groupes selon un barème spécifique
-  void _classifyStudentsByBarem(String baremeId, {String? sousBaremeId}) async {
+  Future<void> _classifyStudentsByBarem(String baremeId,
+      {String? sousBaremeId}) async {
     try {
-      // Récupérer tous les élèves de la classe
       var studentsSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.currentUser.uid)
@@ -1910,19 +2760,16 @@ class _StudentsTableState extends State<StudentsTable> {
           .collection('students')
           .get();
 
-      // Initialiser les groupes
       Map<String, List<String>> studentGroups = {
         'مجموعة العلاج': [],
         'مجموعة الدعم': [],
         'مجموعة التميز': [],
       };
 
-      // Parcourir chaque élève
       for (var studentDoc in studentsSnapshot.docs) {
         var studentId = studentDoc.id;
         var studentName = studentDoc['name'] ?? 'اسم غير معروف';
 
-        // Récupérer la valeur du barème ou sous-barème pour l'élève
         var baremeRef = FirebaseFirestore.instance
             .collection('users')
             .doc(widget.currentUser.uid)
@@ -1939,8 +2786,6 @@ class _StudentsTableState extends State<StudentsTable> {
 
         if (snapshot.exists) {
           var value = snapshot['Marks'];
-
-          // Classer l'élève dans un groupe
           if (value == '( + + + )') {
             studentGroups['مجموعة التميز']!.add(studentName);
           } else if (value == '( + + - )') {
@@ -1951,68 +2796,232 @@ class _StudentsTableState extends State<StudentsTable> {
         }
       }
 
-      // Afficher les groupes dans une boîte de dialogue
-      _showClassificationDialog(studentGroups);
+      if (_isMounted) {
+        _showClassificationDialog(studentGroups);
+      }
     } catch (e) {
       print('Erreur lors de la classification des élèves: $e');
+      rethrow;
     }
   }
 
-  // Afficher les groupes dans une boîte de dialogue
   void _showClassificationDialog(Map<String, List<String>> studentGroups) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('تصنيف التلاميذ', textDirection: TextDirection.rtl),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildGroupList(
-                    'مجموعة العلاج',
-                    const Color.fromARGB(255, 236, 19, 3),
-                    studentGroups['مجموعة العلاج']!),
-                _buildGroupList('مجموعة الدعم', Colors.orange,
-                    studentGroups['مجموعة الدعم']!),
-                _buildGroupList(
-                    'مجموعة التميز',
-                    const Color.fromARGB(255, 11, 240, 19),
-                    studentGroups['مجموعة التميز']!),
-              ],
+        final screenWidth = MediaQuery.of(context).size.width;
+        final screenHeight = MediaQuery.of(context).size.height;
+        final isPortrait =
+            MediaQuery.of(context).orientation == Orientation.portrait;
+
+        final dialogWidth = screenWidth * (isPortrait ? 0.9 : 0.7);
+        final dialogMaxHeight = screenHeight * 0.8;
+        final titleFontSize = screenWidth * 0.045;
+        final groupTitleFontSize = screenWidth * 0.035;
+        final studentFontSize = screenWidth * 0.03;
+
+        return Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: dialogWidth,
+              maxHeight: dialogMaxHeight,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: _primaryColor,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'تصنيف التلاميذ',
+                        style: TextStyle(
+                          fontSize: titleFontSize.clamp(18, 24),
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ...['مجموعة التميز', 'مجموعة الدعم', 'مجموعة العلاج']
+                              .map((groupName) {
+                            return _buildResponsiveGroupCard(
+                              groupName,
+                              studentGroups[groupName]!,
+                              groupTitleFontSize: groupTitleFontSize,
+                              studentFontSize: studentFontSize,
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border:
+                          Border(top: BorderSide(color: Colors.grey.shade300)),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(16),
+                        bottomRight: Radius.circular(16),
+                      ),
+                    ),
+                    child: Center(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primaryColor,
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          minimumSize: Size(screenWidth * 0.3, 50),
+                        ),
+                        child: Text(
+                          'إغلاق',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: titleFontSize.clamp(16, 20),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('إغلاق', textDirection: TextDirection.rtl),
-            ),
-          ],
         );
       },
     );
   }
 
-  // Afficher un groupe d'élèves dans une carte
-  Widget _buildGroupList(String groupName, Color color, List<String> students) {
+  Widget _buildResponsiveGroupCard(
+    String groupName,
+    List<String> students, {
+    required double groupTitleFontSize,
+    required double studentFontSize,
+  }) {
+    Color cardColor;
+    Color textColor;
+
+    switch (groupName) {
+      case 'مجموعة التميز':
+        cardColor = Colors.green.withOpacity(0.1);
+        textColor = Colors.green;
+        break;
+      case 'مجموعة الدعم':
+        cardColor = Colors.orange.withOpacity(0.1);
+        textColor = Colors.orange;
+        break;
+      case 'مجموعة العلاج':
+        cardColor = Colors.red.withOpacity(0.1);
+        textColor = Colors.red;
+        break;
+      default:
+        cardColor = Colors.grey.withOpacity(0.1);
+        textColor = Colors.grey;
+    }
+
     return Card(
-      color: color.withOpacity(1),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              groupName,
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 8),
-            ...students.map((studentName) {
-              return Text(studentName);
-            }).toList(),
-          ],
+      margin: EdgeInsets.symmetric(vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          childrenPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          title: Row(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: textColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  groupName,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                    fontSize: groupTitleFontSize.clamp(14, 18),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              SizedBox(width: 8),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: textColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  students.length.toString(),
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: groupTitleFontSize.clamp(12, 16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          children: students.map((student) {
+            return ListTile(
+              contentPadding: EdgeInsets.symmetric(horizontal: 16),
+              leading: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: textColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.person,
+                    color: textColor.withOpacity(0.7), size: 16),
+              ),
+              title: Text(
+                student,
+                style: TextStyle(
+                  color: _textColor,
+                  fontSize: studentFontSize.clamp(12, 16),
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          }).toList(),
         ),
       ),
     );

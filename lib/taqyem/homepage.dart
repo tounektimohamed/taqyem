@@ -51,97 +51,7 @@ class _HomePage2State extends State<HomePage2> {
     });
   }
 
-  Future setAlarms() async {
-    print('Running set alarms...');
-    docIds = [];
-    dates = [];
-    times = [];
-
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUser!.email)
-          .collection('Medications')
-          .get();
-
-      for (final document in snapshot.docs) {
-        print('Medications Doc ID: ${document.reference.id}');
-
-        final snapshotDates = await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(currentUser!.email)
-            .collection('Medications')
-            .doc(document.reference.id)
-            .collection('Logs')
-            .get();
-
-        for (final document1 in snapshotDates.docs) {
-          print('DateTime: ${document1.reference.id}');
-          List<String> dateTimeStr = document1.reference.id.split(' ');
-          dates.add(dateTimeStr[0]);
-          Map<String, dynamic> medData = document.data();
-          List<String> date = dateTimeStr[0].split('-');
-
-          // final snapshotTime = await FirebaseFirestore.instance
-          //     .collection('Users')
-          //     .doc(currentUser!.email)
-          //     .collection('Medications')
-          //     .doc(document.reference.id)
-          //     .collection('Logs')
-          //     .doc(document1.reference.id)
-          //     .collection('Times')
-          //     .get();
-
-          int year = int.parse(date[0]);
-          int month = int.parse(date[1]);
-          int day = int.parse(date[2]);
-
-          List<String> time = dateTimeStr[1].toString().split(':');
-
-          int hours = int.parse(time[0]);
-          int mins = int.parse(time[1]);
-
-          DateTime dateTime = DateTime(
-            year,
-            month,
-            day,
-            hours,
-            mins,
-            0,
-            0,
-          );
-          Duration difference = dateTime.difference(DateTime.now());
-          print('Difference: $difference');
-          // int id = DateTime.now().millisecondsSinceEpoch % 100000;
-          int id = dateTime.hashCode;
-          print('Alaram ID: $id');
-          if (!difference.isNegative) {
-            final alarmSettings = AlarmSettings(
-              id: id,
-              dateTime: dateTime,
-              assetAudioPath: 'assets/audio/marimba.mp3',
-              //volume: true,
-              vibrate: false,
-              notificationTitle: 'Medication Reminder',
-              notificationBody:
-                  'Take ${medData['medcount']} ${medData['category']}(s) of ${medData['medname']}',
-              // enableNotificationOnKill: false,
-              //stopOnNotificationOpen: false,
-            );
-            Alarm.set(alarmSettings: alarmSettings);
-            print('Alarm setted!');
-          }
-        }
-      }
-    } on FirebaseException catch (e) {
-      print('ERROR: ${e.code}');
-    }
-
-    print('Date array: $dates');
-    print('Times array: $times');
-    // print(alarms);
-  }
-
+  
   Future getDocIDs() async {
     docIds = [];
     dateIds = [];
@@ -184,7 +94,6 @@ class _HomePage2State extends State<HomePage2> {
   @override
   initState() {
     super.initState();
-    setAlarms();
     // loadAlarms();
     // subscription ??= Alarm.ringStream.stream.listen(
     //   (alarmSettings) => navigateToRingScreen(alarmSettings),

@@ -1,25 +1,11 @@
 import 'dart:async';
 import 'dart:math';
-
-import 'package:Taqyem/landing/views/ManageCarouselItemsPage.dart';
-import 'package:Taqyem/screens2/admin/AccessLogsPage.dart';
-import 'package:Taqyem/screens2/news/add_news_screen.dart';
-import 'package:Taqyem/screens2/news/gerenews.dart';
-import 'package:Taqyem/screens2/users/User%20Management.dart';
 import 'package:Taqyem/taqyem/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
-import 'package:Taqyem/taqyem/AdminProposalsPage.dart';
-import 'package:Taqyem/taqyem/EditPage.dart';
-import 'package:Taqyem/taqyem/feedback_management_page.dart';
 import 'package:Taqyem/taqyem/feedback_system.dart';
 import 'package:Taqyem/taqyem/payment/PaymentPage.dart';
-import 'package:Taqyem/taqyem/payment/adminpyment.dart';
-import 'package:Taqyem/taqyem/payment/demande.dart';
-import 'package:Taqyem/taqyem/ereur_solution.dart';
-import 'package:Taqyem/taqyem/listedeselection.dart';
 import 'package:Taqyem/taqyem/pdf/ManagePDFPage.dart';
 import 'package:Taqyem/taqyem/selectionPage.dart';
-import 'package:Taqyem/taqyem/touttableaux.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -53,7 +39,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   String userName = "Utilisateur";
   bool _isDrawerOpen = false;
   int _currentCarouselIndex = 0;
-   Timer? _feedbackTimer; // Utilisez un Timer nullable
+  Timer? _feedbackTimer; // Utilisez un Timer nullable
   bool _feedbackShown = false;
 
   @override
@@ -63,61 +49,62 @@ class _AdminDashboardState extends State<AdminDashboard> {
     _setupRandomFeedback();
   }
 
-@override
-void dispose() {
-  _feedbackTimer?.cancel(); // Utilisez l'opérateur ?. pour éviter les erreurs
-  super.dispose();
-}
-void _setupRandomFeedback() {
-  // Génère un délai aléatoire entre 2 et 8 heures (en millisecondes)
-  final random = Random();
-  final delayHours = 2 + random.nextInt(6); // Entre 2 et 7 heures
-  final delayMillis = delayHours * 60 * 60 * 1000;
-
-  _feedbackTimer = Timer(Duration(milliseconds: delayMillis), () {
-    if (!_feedbackShown && mounted) {
-      _showRandomFeedback();
-      _feedbackShown = true;
-    }
-  });
-}
-
-void _showRandomFeedback() {
-  // Vérifie l'heure actuelle (entre 9h et 20h)
-  final now = DateTime.now();
-  if (now.hour >= 9 && now.hour <= 7) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          title: const Text('شاركنا رأيك'),
-          content: const Text('كيف تجد تجربتك مع التطبيق حتى الآن؟'),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                FeedbackSystem.showFeedbackDialog(context);
-              },
-              child: const Text('إعطاء رأي'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _setupRandomFeedback(); // Reprogramme pour plus tard
-                _feedbackShown = false;
-              },
-              child: const Text('لاحقاً'),
-            ),
-          ],
-        ),
-      );
-    });
-  } else {
-    // Si c'est en dehors des heures normales, reprogramme pour le lendemain
-    _setupRandomFeedback();
+  @override
+  void dispose() {
+    _feedbackTimer?.cancel(); // Utilisez l'opérateur ?. pour éviter les erreurs
+    super.dispose();
   }
-}
+
+  void _setupRandomFeedback() {
+    // Génère un délai aléatoire entre 2 et 8 heures (en millisecondes)
+    final random = Random();
+    final delayHours = 2 + random.nextInt(6); // Entre 2 et 7 heures
+    final delayMillis = delayHours * 60 * 60 * 1000;
+
+    _feedbackTimer = Timer(Duration(milliseconds: delayMillis), () {
+      if (!_feedbackShown && mounted) {
+        _showRandomFeedback();
+        _feedbackShown = true;
+      }
+    });
+  }
+
+  void _showRandomFeedback() {
+    // Vérifie l'heure actuelle (entre 9h et 20h)
+    final now = DateTime.now();
+    if (now.hour >= 9 && now.hour <= 7) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text('شاركنا رأيك'),
+            content: const Text('كيف تجد تجربتك مع التطبيق حتى الآن؟'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  FeedbackSystem.showFeedbackDialog(context);
+                },
+                child: const Text('إعطاء رأي'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _setupRandomFeedback(); // Reprogramme pour plus tard
+                  _feedbackShown = false;
+                },
+                child: const Text('لاحقاً'),
+              ),
+            ],
+          ),
+        );
+      });
+    } else {
+      // Si c'est en dehors des heures normales, reprogramme pour le lendemain
+      _setupRandomFeedback();
+    }
+  }
 
   Future<void> _loadUserData() async {
     if (currentUser != null) {
@@ -623,7 +610,6 @@ void _showRandomFeedback() {
                 );
               },
             ),
-            
           ],
         ),
       ),
@@ -697,7 +683,7 @@ class SimpleCarousel extends StatefulWidget {
 
 class _SimpleCarouselState extends State<SimpleCarousel> {
   int _currentIndex = 0;
-  final CarouselController _controller = CarouselController();
+  final CarouselSliderController _controller = CarouselSliderController();
 
   @override
   Widget build(BuildContext context) {
@@ -1263,7 +1249,6 @@ Widget _buildQuickAccessSection(BuildContext context) {
                       MaterialPageRoute(builder: (_) => PaymentPage())),
                   showBadge: true,
                 ),
-                
               ],
             );
           },

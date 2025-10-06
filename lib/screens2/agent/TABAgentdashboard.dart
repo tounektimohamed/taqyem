@@ -34,8 +34,7 @@ class _DashboardState extends State<Agentdashboard> {
 
   void loadAlarms() {
     setState(() {
-      alarms = Alarm.getAlarms();
-      alarms.sort((a, b) => a.dateTime.isBefore(b.dateTime) ? 0 : 1);
+      
     });
   }
 

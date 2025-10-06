@@ -1,10 +1,10 @@
+import 'package:Taqyem/l10n/app_localizations.dart';
 import 'package:alarm/alarm.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:Taqyem/auth/main_page.dart';
 import 'package:Taqyem/components/language_constants.dart';
 import 'package:feedback/feedback.dart'; // Ajout de l'import
@@ -27,7 +27,7 @@ void main() async {
     print('Error initializing Firebase: $e');
   }
 
-  await Alarm.init(showDebugLogs: true);
+  await Alarm.init();
   runApp(
     BetterFeedback( // Enveloppez votre application ici
       child: const MyApp(),
