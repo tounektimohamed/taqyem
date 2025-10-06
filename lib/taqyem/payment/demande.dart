@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'dart:html' as html;
 
-
 class DemandManagementPage extends StatefulWidget {
   @override
   _DemandManagementPageState createState() => _DemandManagementPageState();
@@ -17,6 +16,7 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
   String? _selectedMessageType;
   DateTime? _activationEndDate;
   String _filterStatus = 'all';
+  bool _isLoading = false;
 
   final Map<String, String> predefinedMessages = {
     'approved': 'تم تفعيل الحساب بنجاح',
@@ -30,155 +30,57 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
     super.dispose();
   }
 
+  // Méthode pour obtenir le stream correct en fonction du filtre
+  Stream<QuerySnapshot> _getDemandsStream() {
+    if (_filterStatus == 'all') {
+      return _firestore.collectionGroup('payments').snapshots();
+    } else {
+      return _firestore.collectionGroup('payments')
+          .where('status', isEqualTo: _filterStatus)
+          .snapshots();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text('إدارة طلبات الدفع', style: TextStyle(fontFamily: 'Tajawal')),
+        title: Text('إدارة طلبات الدفع', 
+          style: TextStyle(
+            fontFamily: 'Tajawal',
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
         centerTitle: true,
         elevation: 0,
+        backgroundColor: Colors.blue.shade700,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: () => setState(() {}),
+            tooltip: 'تحديث',
+          ),
+        ],
       ),
       body: Container(
-        padding: EdgeInsets.all(8),
+        padding: EdgeInsets.all(16),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header avec statistiques
+            _buildStatsHeader(),
+            SizedBox(height: 16),
+            
+            // Filtres
             _buildStatusFilter(),
+            SizedBox(height: 16),
+            
+            // Liste des demandes
             Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _filterStatus == 'all'
-                    ? _firestore.collectionGroup('payments').snapshots()
-                    : _firestore.collectionGroup('payments')
-                        .where('status', isEqualTo: _filterStatus).snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          Theme.of(context).primaryColor,
-                        ),
-                      ),
-                    );
-                  }
-
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.error_outline, color: Colors.red, size: 48),
-                          SizedBox(height: 16),
-                          Text(
-                            'خطأ في التحميل',
-                            style: TextStyle(fontSize: 18, color: Colors.red),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'الرجاء المحاولة لاحقًا',
-                            style: TextStyle(fontSize: 14),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.info_outline, color: Colors.blue, size: 48),
-                          SizedBox(height: 16),
-                          Text(
-                            'لا توجد طلبات',
-                            style: TextStyle(fontSize: 18),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  final demands = snapshot.data!.docs;
-
-                  return ListView.separated(
-                    itemCount: demands.length,
-                    separatorBuilder: (context, index) => Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final demand = demands[index];
-                      final data = demand.data() as Map<String, dynamic>;
-                      final status = data['status'] ?? 'pending';
-                      final userId = demand.reference.parent.parent!.id;
-                      final photoUrl = data['photoUrl'];
-                      final adminMessage = data['adminMessage'] ?? '';
-                      final forfaitType = data['forfait'];
-                      final paymentMethod = data['paymentMethod'] ?? 'manual';
-
-                      return Card(
-                        elevation: 2,
-                        margin: EdgeInsets.symmetric(vertical: 4),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(8),
-                          onTap: () => _showDemandDetails(context, data, status),
-                          child: Padding(
-                            padding: EdgeInsets.all(12),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildUserAvatar(photoUrl, paymentMethod),
-                                SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '${data['nom']} ${data['prenom']}',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          fontFamily: 'Tajawal',
-                                        ),
-                                      ),
-                                      SizedBox(height: 4),
-                                      _buildInfoRow(
-                                          Icons.credit_card, 'الباقة: $forfaitType'),
-                                      SizedBox(height: 4),
-                                      _buildInfoRow(
-                                          Icons.payment, 'الطريقة: ${paymentMethod == 'online' ? 'إلكتروني' : 'يدوي'}'),
-                                      SizedBox(height: 4),
-                                      _buildStatusRow(status),
-                                      if (adminMessage.isNotEmpty) ...[
-                                        SizedBox(height: 4),
-                                        _buildAdminMessage(adminMessage, status),
-                                      ],
-                                      if (status == 'approved' &&
-                                          data['activationEnd'] != null) ...[
-                                        SizedBox(height: 4),
-                                        _buildActivationDate(
-                                            data['activationEnd'].toDate()),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                                _buildActionButtons(
-                                  context,
-                                  demand.reference,
-                                  userId,
-                                  forfaitType,
-                                  status,
-                                  paymentMethod,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
+              child: _buildDemandsList(),
             ),
           ],
         ),
@@ -186,357 +88,708 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
     );
   }
 
-  Widget _buildStatusFilter() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            SizedBox(width: 8),
-            FilterChip(
-              label: Text('الكل', style: TextStyle(fontFamily: 'Tajawal')),
-              selected: _filterStatus == 'all',
-              onSelected: (selected) {
-                setState(() {
-                  _filterStatus = 'all';
-                });
-              },
-            ),
-            SizedBox(width: 8),
-            FilterChip(
-              label: Text('قيد الانتظار', style: TextStyle(fontFamily: 'Tajawal')),
-              selected: _filterStatus == 'pending',
-              onSelected: (selected) {
-                setState(() {
-                  _filterStatus = 'pending';
-                });
-              },
-            ),
-            SizedBox(width: 8),
-            FilterChip(
-              label: Text('مقبولة', style: TextStyle(fontFamily: 'Tajawal')),
-              selected: _filterStatus == 'approved',
-              onSelected: (selected) {
-                setState(() {
-                  _filterStatus = 'approved';
-                });
-              },
-            ),
-            SizedBox(width: 8),
-            FilterChip(
-              label: Text('مرفوضة', style: TextStyle(fontFamily: 'Tajawal')),
-              selected: _filterStatus == 'rejected',
-              onSelected: (selected) {
-                setState(() {
-                  _filterStatus = 'rejected';
-                });
-              },
-            ),
-          ],
-        ),
-      ),
+  Widget _buildStatsHeader() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore.collectionGroup('payments').snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return _buildStatsCard(0, 0, 0);
+        }
+        
+        final demands = snapshot.data!.docs;
+        final pending = demands.where((d) {
+          final data = d.data() as Map<String, dynamic>;
+          return data['status'] == 'pending';
+        }).length;
+        
+        final approved = demands.where((d) {
+          final data = d.data() as Map<String, dynamic>;
+          return data['status'] == 'approved';
+        }).length;
+        
+        final rejected = demands.where((d) {
+          final data = d.data() as Map<String, dynamic>;
+          return data['status'] == 'rejected';
+        }).length;
+
+        return _buildStatsCard(pending, approved, rejected);
+      },
     );
   }
-// Ajouter cette méthode dans la classe _DemandManagementPageState
-Widget _buildPaymentVerificationButton(DocumentReference demandRef) {
-  return FutureBuilder<DocumentSnapshot>(
-    future: demandRef.get(),
-    builder: (context, snapshot) {
-      if (!snapshot.hasData) return SizedBox.shrink();
-      
-      final data = snapshot.data!.data() as Map<String, dynamic>;
-      final paymentMethod = data['paymentMethod'] ?? 'manual';
-      final status = data['status'] ?? 'pending';
 
-      if (paymentMethod == 'online' && status == 'pending') {
-        return Padding(
-          padding: const EdgeInsets.only(top: 8.0),
-          child: ElevatedButton.icon(
-            icon: Icon(Icons.verified, size: 20),
-            label: Text('تحقق من الدفع الإلكتروني', 
-                style: TextStyle(fontSize: 14, fontFamily: 'Tajawal')),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepPurple,
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () {
-              html.window.open(
-                'https://dashboard.konnect.network/admin/dashboard?filter[status]=success',
-                '_blank'
-              );
-            },
+  Widget _buildStatsCard(int pending, int approved, int rejected) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.blue.shade50, Colors.white],
           ),
-        );
-      }
-      return SizedBox.shrink();
-    },
-  );
-}
-  Widget _buildUserAvatar(String? photoUrl, String paymentMethod) {
-    return GestureDetector(
-      onTap: photoUrl != null && paymentMethod != 'online'
-          ? () => _showPhotoDialog(context, photoUrl)
-          : null,
-      child: CircleAvatar(
-        radius: 24,
-        backgroundImage: photoUrl != null && paymentMethod != 'online'
-            ? NetworkImage(photoUrl)
-            : null,
-        backgroundColor: photoUrl == null || paymentMethod == 'online'
-            ? Colors.grey[200]
-            : null,
-        child: paymentMethod == 'online'
-            ? Icon(Icons.credit_card, color: Colors.green)
-            : photoUrl == null
-                ? Icon(Icons.person, color: Colors.grey[600])
-                : null,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildStatItem(Icons.pending_actions, 'قيد الانتظار', pending, Colors.orange),
+            _buildStatItem(Icons.check_circle, 'مقبولة', approved, Colors.green),
+            _buildStatItem(Icons.cancel, 'مرفوضة', rejected, Colors.red),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.grey[600]),
-        SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(fontSize: 14, color: Colors.grey[700], fontFamily: 'Tajawal'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatusRow(String status) {
-    return Row(
+  Widget _buildStatItem(IconData icon, String label, int count, Color color) {
+    return Column(
       children: [
         Container(
-          width: 8,
-          height: 8,
+          padding: EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: _getStatusColor(status),
+            color: color.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
+          child: Icon(icon, color: color, size: 24),
         ),
-        SizedBox(width: 6),
+        SizedBox(height: 8),
         Text(
-          'الحالة: ${_getStatusText(status)}',
+          count.toString(),
           style: TextStyle(
-            fontSize: 14,
-            color: _getStatusColor(status),
-            fontWeight: FontWeight.w500,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
             fontFamily: 'Tajawal',
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStatusFilter() {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'تصفية الطلبات',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Tajawal',
+                color: Colors.grey.shade700,
+              ),
+            ),
+            SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFilterChip('الكل', 'all', Icons.all_inclusive),
+                  SizedBox(width: 8),
+                  _buildFilterChip('قيد الانتظار', 'pending', Icons.pending),
+                  SizedBox(width: 8),
+                  _buildFilterChip('مقبولة', 'approved', Icons.check_circle),
+                  SizedBox(width: 8),
+                  _buildFilterChip('مرفوضة', 'rejected', Icons.cancel),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value, IconData icon) {
+    final isSelected = _filterStatus == value;
+    return FilterChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: isSelected ? Colors.white : null),
+          SizedBox(width: 4),
+          Text(label, style: TextStyle(fontFamily: 'Tajawal')),
+        ],
+      ),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() {
+          _filterStatus = value;
+        });
+      },
+      backgroundColor: Colors.grey.shade100,
+      selectedColor: Colors.blue.shade600,
+      checkmarkColor: Colors.white,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : Colors.grey.shade700,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+    );
+  }
+
+  Widget _buildDemandsList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _getDemandsStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'جاري تحميل الطلبات...',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey.shade600,
+                    fontFamily: 'Tajawal',
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          print('Error loading demands: ${snapshot.error}');
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, color: Colors.red, size: 64),
+                SizedBox(height: 16),
+                Text(
+                  'حدث خطأ في التحميل',
+                  style: TextStyle(fontSize: 18, color: Colors.red, fontFamily: 'Tajawal'),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'الرجاء المحاولة مرة أخرى',
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                ),
+                SizedBox(height: 16),
+                ElevatedButton.icon(
+                  icon: Icon(Icons.refresh),
+                  label: Text('إعادة المحاولة'),
+                  onPressed: () => setState(() {}),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.inbox_outlined, color: Colors.blue.shade300, size: 80),
+                SizedBox(height: 16),
+                Text(
+                  _filterStatus == 'all' 
+                    ? 'لا توجد طلبات حالياً'
+                    : 'لا توجد طلبات في هذه الفئة',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey.shade600,
+                    fontFamily: 'Tajawal',
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  _filterStatus == 'all'
+                    ? 'سيظهر هنا الطلبات الجديدة عند توفرها'
+                    : 'جرب تغيير الفلتر لعرض المزيد من الطلبات',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                if (_filterStatus != 'all') ...[
+                  SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _filterStatus = 'all';
+                      });
+                    },
+                    child: Text('عرض جميع الطلبات'),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }
+
+        final demands = snapshot.data!.docs;
+
+        return ListView.separated(
+          itemCount: demands.length,
+          separatorBuilder: (context, index) => SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final demand = demands[index];
+            final data = demand.data() as Map<String, dynamic>;
+            return _buildDemandCard(demand, data);
+          },
+        );
+      },
+    );
+  }
+
+  
+  Widget _buildDemandCard(QueryDocumentSnapshot demand, Map<String, dynamic> data) {
+    final status = data['status'] ?? 'pending';
+    final userId = demand.reference.parent.parent!.id;
+    final photoUrl = data['photoUrl'];
+    final adminMessage = data['adminMessage'] ?? '';
+    final forfaitType = data['forfait'];
+    final paymentMethod = data['paymentMethod'] ?? 'manual';
+    final createdAt = data['createdAt'] != null 
+        ? (data['createdAt'] as Timestamp).toDate() 
+        : DateTime.now();
+
+    return Card(
+      elevation: 2,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _showDemandDetails(context, data, status),
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildUserAvatar(photoUrl, paymentMethod, status),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                '${data['nom']} ${data['prenom']}',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Tajawal',
+                                ),
+                              ),
+                            ),
+                            _buildStatusBadge(status),
+                          ],
+                        ),
+                        SizedBox(height: 8),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: [
+                            _buildInfoChip(
+                              Icons.credit_card, 
+                              'الباقة: $forfaitType',
+                              Colors.blue.shade100,
+                            ),
+                            _buildInfoChip(
+                              Icons.payment, 
+                              paymentMethod == 'online' ? 'إلكتروني' : 'يدوي',
+                              paymentMethod == 'online' ? Colors.green.shade100 : Colors.orange.shade100,
+                            ),
+                            _buildInfoChip(
+                              Icons.calendar_today,
+                              _formatDate(createdAt),
+                              Colors.grey.shade100,
+                            ),
+                          ],
+                        ),
+                        if (adminMessage.isNotEmpty) ...[
+                          SizedBox(height: 8),
+                          _buildAdminMessage(adminMessage, status),
+                        ],
+                        if (status == 'approved' && data['activationEnd'] != null) ...[
+                          SizedBox(height: 8),
+                          _buildActivationDate(data['activationEnd'].toDate()),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+              _buildActionButtons(
+                demand.reference,
+                userId,
+                forfaitType,
+                status,
+                paymentMethod,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserAvatar(String? photoUrl, String paymentMethod, String status) {
+    return Stack(
+      children: [
+        GestureDetector(
+          onTap: photoUrl != null && paymentMethod != 'online'
+              ? () => _showPhotoDialog(context, photoUrl)
+              : null,
+          child: CircleAvatar(
+            radius: 24,
+            backgroundImage: photoUrl != null && paymentMethod != 'online'
+                ? NetworkImage(photoUrl)
+                : null,
+            backgroundColor: _getStatusColor(status).withOpacity(0.1),
+            child: paymentMethod == 'online'
+                ? Icon(Icons.credit_card, color: Colors.green)
+                : photoUrl == null
+                    ? Icon(Icons.person, color: _getStatusColor(status))
+                    : null,
+          ),
+        ),
+        if (paymentMethod == 'online')
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: Container(
+              padding: EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.green,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              child: Icon(Icons.check, size: 12, color: Colors.white),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: _getStatusColor(status).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _getStatusColor(status).withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: _getStatusColor(status),
+              shape: BoxShape.circle,
+            ),
+          ),
+          SizedBox(width: 6),
+          Text(
+            _getStatusText(status),
+            style: TextStyle(
+              fontSize: 12,
+              color: _getStatusColor(status),
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Tajawal',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoChip(IconData icon, String text, Color color) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Colors.grey.shade700),
+          SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade700,
+              fontFamily: 'Tajawal',
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildAdminMessage(String message, String status) {
     return Container(
-      padding: EdgeInsets.all(8),
+      width: double.infinity,
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: _getMessageBackgroundColor(status),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: _getStatusColor(status).withOpacity(0.2)),
       ),
-      child: Text(
-        message,
-        style: TextStyle(
-          fontSize: 13,
-          color: _getMessageColor(status),
-          fontStyle: FontStyle.italic,
-          fontFamily: 'Tajawal',
-        ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.message, size: 16, color: _getStatusColor(status)),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 13,
+                color: _getMessageColor(status),
+                fontFamily: 'Tajawal',
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildActivationDate(DateTime date) {
-    return Row(
-      children: [
-        Icon(Icons.calendar_today, size: 14, color: Colors.blue),
-        SizedBox(width: 4),
-        Text(
-          'صالحة حتى: ${_formatDate(date)}',
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.blue,
-            fontWeight: FontWeight.w500,
-            fontFamily: 'Tajawal',
+    final isExpired = date.isBefore(DateTime.now());
+    return Container(
+      padding: EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: isExpired ? Colors.red.shade50 : Colors.green.shade50,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: isExpired ? Colors.red.shade200 : Colors.green.shade200,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isExpired ? Icons.warning : Icons.check_circle,
+            size: 14,
+            color: isExpired ? Colors.red : Colors.green,
           ),
+          SizedBox(width: 6),
+          Text(
+            '${isExpired ? 'منتهية' : 'صالحة حتى'}: ${_formatDate(date)}',
+            style: TextStyle(
+              fontSize: 12,
+              color: isExpired ? Colors.red : Colors.green,
+              fontWeight: FontWeight.w500,
+              fontFamily: 'Tajawal',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(
+    DocumentReference demandRef,
+    String userId,
+    String forfaitType,
+    String status,
+    String paymentMethod,
+  ) {
+    return Column(
+      children: [
+        if (status == 'pending') 
+          _buildPaymentVerificationButton(demandRef, paymentMethod),
+        SizedBox(height: 8),
+        Row(
+          children: [
+            if (status == 'pending') ...[
+              Expanded(
+                child: _buildActionButton(
+                  'رفض',
+                  Icons.cancel,
+                  Colors.red.shade600,
+                  () => _showMessageDialog(context, demandRef, 'rejected', userId),
+                ),
+              ),
+              SizedBox(width: 8),
+              if (paymentMethod == 'online') ...[
+                Expanded(
+                  child: _buildActionButton(
+                    'معالجة إلكتروني',
+                    Icons.credit_card,
+                    Colors.green,
+                    () => _processOnlinePayment(demandRef, userId, forfaitType),
+                  ),
+                ),
+                SizedBox(width: 8),
+              ],
+              Expanded(
+                child: _buildActionButton(
+                  paymentMethod == 'online' ? 'تفعيل يدوي' : 'تفعيل',
+                  Icons.check_circle,
+                  Colors.green,
+                  () => _showActivationDialog(context, demandRef, userId, forfaitType),
+                ),
+              ),
+            ] else if (status == 'approved') ...[
+              Expanded(
+                child: _buildActionButton(
+                  'تعطيل',
+                  Icons.toggle_on,
+                  Colors.orange,
+                  () => _deactivateAccount(demandRef, userId),
+                ),
+              ),
+            ] else if (status == 'rejected') ...[
+              Expanded(
+                child: _buildActionButton(
+                  'إعادة التفعيل',
+                  Icons.toggle_off,
+                  Colors.blue,
+                  () => _reactivateAccount(demandRef, userId),
+                ),
+              ),
+            ],
+          ],
         ),
       ],
     );
   }
 
-  Future<void> _deactivateAccount(
-      DocumentReference demandRef, String userId) async {
-    try {
-      await demandRef.update({
-        'status': 'rejected',
-        'adminMessage': 'تم تعطيل الحساب من قبل المسؤول',
-      });
-
-      await _firestore.collection('Users').doc(userId).update({
-        'isActive': false,
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('تم تعطيل الحساب بنجاح'),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('خطأ: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-      );
-    }
-  }
-
-  Future<void> _reactivateAccount(
-      DocumentReference demandRef, String userId) async {
-    try {
-      await demandRef.update({
-        'status': 'approved',
-        'adminMessage': 'تم إعادة تفعيل الحساب من قبل المسؤول',
-      });
-
-      await _firestore.collection('Users').doc(userId).update({
-        'isActive': true,
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('تم إعادة تفعيل الحساب بنجاح'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('خطأ: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-      );
-    }
-  }
-Widget _buildActionButtons(
-  BuildContext context,
-  DocumentReference demandRef,
-  String userId,
-  String forfaitType,
-  String status,
-  String paymentMethod,
-) {
-  return Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (status == 'pending') ...[
-            if (paymentMethod == 'online')
-              IconButton(
-                icon: Icon(Icons.credit_card, color: Colors.green),
-                tooltip: 'معالجة الدفع الإلكتروني',
-                onPressed: () => _processOnlinePayment(demandRef, userId, forfaitType),
-              ),
-            IconButton(
-              icon: Icon(Icons.check_circle, color: Colors.green),
-              tooltip: 'تأكيد الدفع اليدوي',
-              onPressed: () => _showActivationDialog(
-                context,
-                demandRef,
-                userId,
-                forfaitType,
-              ),
-            ),
-            IconButton(
-              icon: Icon(Icons.cancel, color: Colors.red),
-              tooltip: 'رفض الطلب',
-              onPressed: () => _showMessageDialog(
-                context,
-                demandRef,
-                'rejected',
-                userId,
-              ),
-            ),
-          ] else if (status == 'approved') ...[
-            IconButton(
-              icon: Icon(Icons.toggle_on, color: Colors.green),
-              tooltip: 'تعطيل الحساب',
-              onPressed: () => _deactivateAccount(demandRef, userId),
-            ),
-          ] else if (status == 'rejected') ...[
-            IconButton(
-              icon: Icon(Icons.toggle_off, color: Colors.red),
-              tooltip: 'إعادة التفعيل',
-              onPressed: () => _reactivateAccount(demandRef, userId),
-            ),
-          ],
-        ],
+  Widget _buildActionButton(String text, IconData icon, Color color, VoidCallback onPressed) {
+    return ElevatedButton.icon(
+      icon: Icon(icon, size: 18),
+      label: Text(
+        text,
+        style: TextStyle(fontSize: 12, fontFamily: 'Tajawal'),
       ),
-      _buildPaymentVerificationButton(demandRef),
-    ],
-  );
-}
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+      onPressed: onPressed,
+    );
+  }
 
-  void _showDemandDetails(
-      BuildContext context, Map<String, dynamic> data, String status) {
+  Widget _buildPaymentVerificationButton(DocumentReference demandRef, String paymentMethod) {
+    if (paymentMethod != 'online') return SizedBox.shrink();
+
+    return Container(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        icon: Icon(Icons.verified_user, size: 16),
+        label: Text(
+          'التحقق من الدفع الإلكتروني',
+          style: TextStyle(fontSize: 12, fontFamily: 'Tajawal'),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.deepPurple,
+          side: BorderSide(color: Colors.deepPurple),
+          padding: EdgeInsets.symmetric(vertical: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        onPressed: () {
+          html.window.open(
+            'https://dashboard.konnect.network/admin/dashboard?filter[status]=success',
+            '_blank'
+          );
+        },
+      ),
+    );
+  }
+
+  void _showDemandDetails(BuildContext context, Map<String, dynamic> data, String status) {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('تفاصيل الطلب', style: TextStyle(fontFamily: 'Tajawal')),
-          content: SingleChildScrollView(
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: EdgeInsets.all(20),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildDetailItem('الاسم العائلي', data['nom']),
-                _buildDetailItem('الاسم الشخصي', data['prenom']),
-                _buildDetailItem('الباقة', data['forfait']),
-                _buildDetailItem('طريقة الدفع', 
-                    data['paymentMethod'] == 'online' ? 'إلكتروني' : 'يدوي'),
-                _buildDetailItem('الحالة', _getStatusText(status)),
-                if (data['adminMessage'] != null)
-                  _buildDetailItem('رسالة المسؤول', data['adminMessage']),
-                if (status == 'approved' && data['activationEnd'] != null)
-                  _buildDetailItem('صالحة حتى',
-                      _formatDate(data['activationEnd'].toDate())),
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue, size: 24),
+                    SizedBox(width: 8),
+                    Text(
+                      'تفاصيل الطلب',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Tajawal',
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildDetailItem('الاسم العائلي', data['nom']),
+                        _buildDetailItem('الاسم الشخصي', data['prenom']),
+                        _buildDetailItem('الباقة', data['forfait']),
+                        _buildDetailItem('طريقة الدفع', 
+                            data['paymentMethod'] == 'online' ? 'إلكتروني' : 'يدوي'),
+                        _buildDetailItem('الحالة', _getStatusText(status)),
+                        if (data['adminMessage'] != null)
+                          _buildDetailItem('رسالة المسؤول', data['adminMessage']),
+                        if (status == 'approved' && data['activationEnd'] != null)
+                          _buildDetailItem('صالحة حتى',
+                              _formatDate(data['activationEnd'].toDate())),
+                        if (data['createdAt'] != null)
+                          _buildDetailItem('تاريخ الطلب',
+                              _formatDate((data['createdAt'] as Timestamp).toDate())),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('إغلاق', style: TextStyle(fontFamily: 'Tajawal')),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('إغلاق', style: TextStyle(fontFamily: 'Tajawal')),
-            ),
-          ],
         );
       },
     );
@@ -544,7 +797,7 @@ Widget _buildActionButtons(
 
   Widget _buildDetailItem(String label, String value) {
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -556,6 +809,7 @@ Widget _buildActionButtons(
               fontFamily: 'Tajawal',
             ),
           ),
+          SizedBox(height: 4),
           Text(
             value,
             style: TextStyle(fontSize: 16, fontFamily: 'Tajawal'),
@@ -566,10 +820,6 @@ Widget _buildActionButtons(
     );
   }
 
-  String _formatDate(DateTime date) {
-    return DateFormat('dd/MM/yyyy').format(date);
-  }
-
   void _showActivationDialog(
     BuildContext context,
     DocumentReference demandRef,
@@ -578,22 +828,48 @@ Widget _buildActionButtons(
   ) {
     int monthsToAdd = forfaitType == 'ثلاثية' ? 3 : 12;
     _activationEndDate = DateTime.now().add(Duration(days: monthsToAdd * 30));
+    _messageController.text = predefinedMessages['approved']!;
 
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('تفعيل الحساب', 
-              style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
-          content: SingleChildScrollView(
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: EdgeInsets.all(20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildDialogInfoRow('نوع الباقة:', forfaitType),
-                _buildDialogInfoRow('المدة:', '$monthsToAdd أشهر'),
-                _buildDialogInfoRow(
-                    'تاريخ الانتهاء:', _formatDate(_activationEndDate!)),
+                Row(
+                  children: [
+                    Icon(Icons.check_circle_outline, color: Colors.green, size: 24),
+                    SizedBox(width: 8),
+                    Text(
+                      'تفعيل الحساب',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Tajawal',
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildDialogInfoRow('نوع الباقة:', forfaitType),
+                      _buildDialogInfoRow('المدة:', '$monthsToAdd أشهر'),
+                      _buildDialogInfoRow('تاريخ الانتهاء:', _formatDate(_activationEndDate!)),
+                    ],
+                  ),
+                ),
                 SizedBox(height: 20),
                 Text(
                   'رسالة (اختيارية)',
@@ -609,34 +885,39 @@ Widget _buildActionButtons(
                   ),
                   maxLines: 3,
                 ),
+                SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text('إلغاء', 
+                          style: TextStyle(color: Colors.grey[600], fontFamily: 'Tajawal')),
+                    ),
+                    SizedBox(width: 8),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () async {
+                        await _activateAccount(
+                          demandRef,
+                          userId,
+                          _messageController.text,
+                          _activationEndDate!,
+                        );
+                        Navigator.pop(context);
+                      },
+                      child: Text('تأكيد التفعيل', style: TextStyle(fontFamily: 'Tajawal')),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('إلغاء', 
-                  style: TextStyle(color: Colors.grey[600], fontFamily: 'Tajawal')),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              onPressed: () async {
-                await _activateAccount(
-                  demandRef,
-                  userId,
-                  _messageController.text,
-                  _activationEndDate!,
-                );
-                Navigator.pop(context);
-              },
-              child: Text('تأكيد', style: TextStyle(fontFamily: 'Tajawal')),
-            ),
-          ],
         );
       },
     );
@@ -667,6 +948,10 @@ Widget _buildActionButtons(
     String message,
     DateTime endDate,
   ) async {
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
       await demandRef.update({
         'status': 'approved',
@@ -702,11 +987,19 @@ Widget _buildActionButtons(
           ),
         ),
       );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   Future<void> _processOnlinePayment(
       DocumentReference demandRef, String userId, String forfaitType) async {
+    setState(() {
+      _isLoading = true;
+    });
+
     int monthsToAdd = forfaitType == 'ثلاثية' ? 3 : 12;
     DateTime activationEndDate = DateTime.now().add(Duration(days: monthsToAdd * 30));
 
@@ -728,6 +1021,7 @@ Widget _buildActionButtons(
         SnackBar(
           content: Text('تم تفعيل الحساب حتى ${_formatDate(activationEndDate)}'),
           backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     } catch (e) {
@@ -735,56 +1029,91 @@ Widget _buildActionButtons(
         SnackBar(
           content: Text('خطأ في معالجة الدفع الإلكتروني: ${e.toString()}'),
           backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
         ),
       );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'approved':
-        return Colors.green;
-      case 'rejected':
-        return Colors.red;
-      case 'pending':
-        return Colors.orange;
-      default:
-        return Colors.grey;
+  Future<void> _deactivateAccount(
+      DocumentReference demandRef, String userId) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await demandRef.update({
+        'status': 'rejected',
+        'adminMessage': 'تم تعطيل الحساب من قبل المسؤول',
+        'processedAt': FieldValue.serverTimestamp(),
+      });
+
+      await _firestore.collection('Users').doc(userId).update({
+        'isActive': false,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تم تعطيل الحساب بنجاح'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('خطأ: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
-  Color _getMessageBackgroundColor(String status) {
-    switch (status) {
-      case 'approved':
-        return Colors.green[50]!;
-      case 'rejected':
-        return Colors.red[50]!;
-      default:
-        return Colors.grey[100]!;
-    }
-  }
+  Future<void> _reactivateAccount(
+      DocumentReference demandRef, String userId) async {
+    setState(() {
+      _isLoading = true;
+    });
 
-  String _getStatusText(String status) {
-    switch (status) {
-      case 'approved':
-        return 'مقبول';
-      case 'rejected':
-        return 'مرفوض';
-      case 'pending':
-        return 'قيد الانتظار';
-      default:
-        return status;
-    }
-  }
+    try {
+      await demandRef.update({
+        'status': 'approved',
+        'adminMessage': 'تم إعادة تفعيل الحساب من قبل المسؤول',
+        'processedAt': FieldValue.serverTimestamp(),
+      });
 
-  Color _getMessageColor(String status) {
-    switch (status) {
-      case 'approved':
-        return Colors.green[800]!;
-      case 'rejected':
-        return Colors.red[800]!;
-      default:
-        return Colors.grey[800]!;
+      await _firestore.collection('Users').doc(userId).update({
+        'isActive': true,
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تم إعادة تفعيل الحساب بنجاح'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('خطأ: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -878,13 +1207,29 @@ Widget _buildActionButtons(
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
-            return AlertDialog(
-              title: Text('إرسال رسالة',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Tajawal')),
-              content: SingleChildScrollView(
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: Padding(
+                padding: EdgeInsets.all(20),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        Icon(Icons.message, color: Colors.blue, size: 24),
+                        SizedBox(width: 8),
+                        Text(
+                          'إرسال رسالة',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Tajawal',
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       value: _selectedMessageType,
                       items: predefinedMessages.entries.map((entry) {
@@ -921,34 +1266,39 @@ Widget _buildActionButtons(
                       ),
                       maxLines: 3,
                     ),
+                    SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text('إلغاء',
+                              style: TextStyle(color: Colors.grey[600], fontFamily: 'Tajawal')),
+                        ),
+                        SizedBox(width: 8),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () async {
+                            await _updateDemandStatus(
+                              demandRef,
+                              _selectedMessageType!,
+                              userId,
+                              _messageController.text,
+                            );
+                            Navigator.pop(context);
+                          },
+                          child: Text('إرسال', style: TextStyle(fontFamily: 'Tajawal')),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text('إلغاء',
-                      style: TextStyle(color: Colors.grey[600], fontFamily: 'Tajawal')),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).primaryColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  onPressed: () async {
-                    await _updateDemandStatus(
-                      demandRef,
-                      _selectedMessageType!,
-                      userId,
-                      _messageController.text,
-                    );
-                    Navigator.pop(context);
-                  },
-                  child: Text('إرسال', style: TextStyle(fontFamily: 'Tajawal')),
-                ),
-              ],
             );
           },
         );
@@ -962,6 +1312,10 @@ Widget _buildActionButtons(
     String userId,
     String message,
   ) async {
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
       await demandRef.update({
         'status': status,
@@ -979,9 +1333,6 @@ Widget _buildActionButtons(
           content: Text('تم تحديث الطلب بنجاح!'),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
         ),
       );
     } catch (e) {
@@ -990,11 +1341,50 @@ Widget _buildActionButtons(
           content: Text('خطأ: ${e.toString()}'),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
         ),
       );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    return DateFormat('dd/MM/yyyy - HH:mm').format(date);
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'approved': return Colors.green;
+      case 'rejected': return Colors.red;
+      case 'pending': return Colors.orange;
+      default: return Colors.grey;
+    }
+  }
+
+  Color _getMessageBackgroundColor(String status) {
+    switch (status) {
+      case 'approved': return Colors.green.shade50;
+      case 'rejected': return Colors.red.shade50;
+      default: return Colors.grey.shade100;
+    }
+  }
+
+  String _getStatusText(String status) {
+    switch (status) {
+      case 'approved': return 'مقبول';
+      case 'rejected': return 'مرفوض';
+      case 'pending': return 'قيد الانتظار';
+      default: return status;
+    }
+  }
+
+  Color _getMessageColor(String status) {
+    switch (status) {
+      case 'approved': return Colors.green.shade800;
+      case 'rejected': return Colors.red.shade800;
+      default: return Colors.grey.shade800;
     }
   }
 }

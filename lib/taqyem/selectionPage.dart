@@ -22,12 +22,13 @@ class BaremesPage extends StatefulWidget {
 class _BaremesPageState extends State<BaremesPage> {
   Map<String, bool> _selectedBaremes = {};
   Map<String, Map<String, bool>> _selectedSousBaremes = {};
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     _loadExistingSelections();
-    _showUtilityDialog(); // Afficher le dialogue d'utilité
+    _showUtilityDialog();
   }
 
   Future<void> _showUtilityDialog() async {
@@ -37,39 +38,90 @@ class _BaremesPageState extends State<BaremesPage> {
     String today = "${now.year}-${now.month}-${now.day}";
 
     if (lastShownDate != today) {
-      // Afficher le dialogue seulement s'il n'a pas été affiché aujourd'hui
       showDialog(
         context: context,
         builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('معلومات عن الواجهة',
-                style:
-                    TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-            content: Text(
-              'هذه الواجهة تتيح لك اختيار المعايير والمؤشرات للقسم والمادة المحددة. '
-              'يمكنك تحديد المعايير والمؤشرات وحفظها للرجوع إليها لاحقًا.',
-              style: TextStyle(fontSize: 16),
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('موافق', style: TextStyle(color: Colors.blue)),
+            elevation: 10,
+            child: Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.blue.shade50, Colors.white],
+                ),
+                borderRadius: BorderRadius.circular(20),
               ),
-            ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 48,
+                    color: Colors.blue.shade700,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'معلومات عن الواجهة',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade800,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'هذه الواجهة تتيح لك اختيار المعايير والمؤشرات للقسم والمادة المحددة. '
+                    'يمكنك تحديد المعايير والمؤشرات وحفظها للرجوع إليها لاحقًا.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      height: 1.5,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  Container(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 3,
+                      ),
+                      child: Text(
+                        'موافق',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           );
         },
       );
 
-      // Enregistrer la date d'aujourd'hui comme dernière date d'affichage
       await prefs.setString('lastShownUtilityDate', today);
     }
   }
 
   void _toggleBaremeSelection(String baremeId) {
     setState(() {
-      // Si le barème est sélectionné, désélectionner tous ses sous-barèmes
       if (_selectedBaremes[baremeId] ?? false) {
         _selectedBaremes[baremeId] = false;
         if (_selectedSousBaremes.containsKey(baremeId)) {
@@ -85,14 +137,12 @@ class _BaremesPageState extends State<BaremesPage> {
 
   Future<void> _loadExistingSelections() async {
     try {
-      // Obtenir l'ID de l'utilisateur actuellement connecté
       String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
       if (userId.isEmpty) {
         throw Exception('Utilisateur non connecté');
       }
 
-      // Référence à la collection de sélections de l'utilisateur
       var selectionsRef = FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
@@ -116,9 +166,14 @@ class _BaremesPageState extends State<BaremesPage> {
         }
       }
 
-      setState(() {});
+      setState(() {
+        _isLoading = false;
+      });
     } catch (e) {
       print('Erreur lors du chargement des sélections existantes: $e');
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -130,11 +185,9 @@ class _BaremesPageState extends State<BaremesPage> {
       _selectedSousBaremes[baremeId]![sousBaremeId] =
           !(_selectedSousBaremes[baremeId]![sousBaremeId] ?? false);
 
-      // Si un sous-barème est sélectionné, désélectionner le barème parent
       if (_selectedSousBaremes[baremeId]![sousBaremeId] ?? false) {
         _selectedBaremes[baremeId] = false;
       } else {
-        // Si tous les sous-barèmes sont désélectionnés, permettre la sélection du barème parent
         bool allSousBaremesUnselected = _selectedSousBaremes[baremeId]!
             .values
             .every((isSelected) => !isSelected);
@@ -149,179 +202,328 @@ class _BaremesPageState extends State<BaremesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('المعايير و المؤشرات'),
+        title: Text(
+          'المعايير و المؤشرات',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        backgroundColor: Colors.blue.shade700,
+        elevation: 4,
         actions: [
-          // Premier bouton avec l'icône "save"
-          TextButton.icon(
-            onPressed: _saveSelections,
-            label: Text(
-              'حفظ',
-              style: TextStyle(
-                  color: const Color.fromARGB(255, 34, 34, 34), fontSize: 16),
-            ),
-            icon: Icon(
-              Icons.save,
-              color: Color.fromARGB(255, 23, 192, 23),
+          Container(
+            margin: EdgeInsets.only(right: 8),
+            child: ElevatedButton.icon(
+              onPressed: _saveSelections,
+              icon: Icon(Icons.save, size: 20),
+              label: Text(
+                'حفظ',
+                style: TextStyle(fontSize: 14),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade600,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                elevation: 3,
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
             ),
           ),
-
-          // Deuxième bouton avec l'icône "table_chart"
-          ElevatedButton.icon(
-            icon: Icon(Icons.table_chart, size: 20),
-            label: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
+          Container(
+            margin: EdgeInsets.only(right: 16),
+            child: ElevatedButton.icon(
+              icon: Icon(Icons.table_chart, size: 20),
+              label: Text(
                 'عرض الجدول',
-                style: TextStyle(fontSize: 14), // Taille de la police ajustée
+                style: TextStyle(fontSize: 14),
               ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue.shade700,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade600,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                elevation: 3,
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
-              elevation: 3,
-              padding: EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 8), // Padding ajusté
-            ),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => DynamicTablePage(
-                  selectedClass: widget.selectedClass,
-                  selectedMatiere: widget.selectedMatiere,
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => DynamicTablePage(
+                    selectedClass: widget.selectedClass,
+                    selectedMatiere: widget.selectedMatiere,
+                  ),
                 ),
               ),
             ),
           ),
         ],
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('classes')
-            .doc(widget.selectedClass)
-            .collection('matieres')
-            .doc(widget.selectedMatiere)
-            .collection('baremes')
-            .snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator(color: Colors.blue));
-          }
-          if (snapshot.hasError) {
-            return Center(
-                child: Text('خطأ: ${snapshot.error}',
-                    style: TextStyle(color: Colors.red)));
-          }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(
-                child: Text('لم يتم العثور على أي برنامج.',
-                    style: TextStyle(color: Colors.grey)));
-          }
-
-          return ListView.builder(
-            itemCount: snapshot.data!.docs.length,
-            itemBuilder: (context, index) {
-              var bareme = snapshot.data!.docs[index];
-              var baremeId = bareme.id;
-              var baremeValue = bareme['value'];
-
-              return Card(
-                margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                child: ExpansionTile(
-                  title: Row(
-                    children: [
-                      Checkbox(
-                        value: _selectedBaremes[baremeId] ?? false,
-                        onChanged: (_selectedSousBaremes[baremeId]
-                                    ?.values
-                                    .any((isSelected) => isSelected) ??
-                                false)
-                            ? null
-                            : (bool? value) {
-                                _toggleBaremeSelection(baremeId);
-                              },
-                        activeColor: Colors.blue,
-                      ),
-                      Text('المعيار: $baremeValue',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
-                    ],
+      body: _isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
+                    strokeWidth: 3,
                   ),
-                  children: [
-                    FutureBuilder<QuerySnapshot>(
-                      future: bareme.reference.collection('sousBaremes').get(),
-                      builder: (context, sousSnapshot) {
-                        if (sousSnapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return Center(
-                              child: CircularProgressIndicator(
-                                  color: Colors.blue));
-                        }
-                        if (sousSnapshot.hasError) {
-                          return Center(
-                              child: Text('خطأ: ${sousSnapshot.error}',
-                                  style: TextStyle(color: Colors.red)));
-                        }
-                        if (!sousSnapshot.hasData ||
-                            sousSnapshot.data!.docs.isEmpty) {
-                          return Center(
-                              child: Text('لم يتم العثور على أي مؤشر.',
-                                  style: TextStyle(color: Colors.grey)));
-                        }
-
-                        return ListView.builder(
-                          shrinkWrap: true,
-                          physics: NeverScrollableScrollPhysics(),
-                          itemCount: sousSnapshot.data!.docs.length,
-                          itemBuilder: (context, sousIndex) {
-                            var sousBareme = sousSnapshot.data!.docs[sousIndex];
-                            var sousBaremeId = sousBareme.id;
-                            var sousBaremeName = sousBareme['name'];
-
-                            return ListTile(
-                              title: Row(
-                                children: [
-                                  Checkbox(
-                                    value: _selectedSousBaremes[baremeId]
-                                            ?[sousBaremeId] ??
-                                        false,
-                                    onChanged: (bool? value) {
-                                      _toggleSousBaremeSelection(
-                                          baremeId, sousBaremeId);
-                                    },
-                                    activeColor: Colors.blue,
-                                  ),
-                                  Text('المؤشر: $sousBaremeName',
-                                      style: TextStyle(fontSize: 14)),
-                                ],
-                              ),
-                            );
-                          },
-                        );
-                      },
+                  SizedBox(height: 16),
+                  Text(
+                    'جاري تحميل المعايير...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey.shade600,
                     ),
-                  ],
-                ),
-              );
-            },
-          );
-        },
-      ),
+                  ),
+                ],
+              ),
+            )
+          : StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('classes')
+                  .doc(widget.selectedClass)
+                  .collection('matieres')
+                  .doc(widget.selectedMatiere)
+                  .collection('baremes')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
+                    ),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: Colors.red.shade400,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'خطأ في تحميل البيانات',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.red.shade700,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          '${snapshot.error}',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.inbox_outlined,
+                          size: 64,
+                          color: Colors.grey.shade400,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'لم يتم العثور على أي معايير',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: EdgeInsets.all(16),
+                  itemCount: snapshot.data!.docs.length,
+                  itemBuilder: (context, index) {
+                    var bareme = snapshot.data!.docs[index];
+                    var baremeId = bareme.id;
+                    var baremeValue = bareme['value'];
+
+                    return Container(
+                      margin: EdgeInsets.only(bottom: 12),
+                      child: Card(
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: ExpansionTile(
+                          leading: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.assessment_outlined,
+                              color: Colors.blue.shade700,
+                              size: 20,
+                            ),
+                          ),
+                          title: Row(
+                            children: [
+                              Transform.scale(
+                                scale: 1.2,
+                                child: Checkbox(
+                                  value: _selectedBaremes[baremeId] ?? false,
+                                  onChanged: (_selectedSousBaremes[baremeId]
+                                              ?.values
+                                              .any((isSelected) => isSelected) ??
+                                          false)
+                                      ? null
+                                      : (bool? value) {
+                                          _toggleBaremeSelection(baremeId);
+                                        },
+                                  activeColor: Colors.blue.shade700,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  baremeValue,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.grey.shade800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          children: [
+                            FutureBuilder<QuerySnapshot>(
+                              future: bareme.reference.collection('sousBaremes').get(),
+                              builder: (context, sousSnapshot) {
+                                if (sousSnapshot.connectionState ==
+                                    ConnectionState.waiting) {
+                                  return Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(16),
+                                      child: CircularProgressIndicator(
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                            Colors.blue.shade700),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                if (sousSnapshot.hasError) {
+                                  return Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(16),
+                                      child: Text(
+                                        'خطأ في تحميل المؤشرات',
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                if (!sousSnapshot.hasData ||
+                                    sousSnapshot.data!.docs.isEmpty) {
+                                  return Center(
+                                    child: Padding(
+                                      padding: EdgeInsets.all(16),
+                                      child: Text(
+                                        'لا توجد مؤشرات',
+                                        style: TextStyle(color: Colors.grey),
+                                      ),
+                                    ),
+                                  );
+                                }
+
+                                return ListView.builder(
+                                  shrinkWrap: true,
+                                  physics: NeverScrollableScrollPhysics(),
+                                  itemCount: sousSnapshot.data!.docs.length,
+                                  itemBuilder: (context, sousIndex) {
+                                    var sousBareme = sousSnapshot.data!.docs[sousIndex];
+                                    var sousBaremeId = sousBareme.id;
+                                    var sousBaremeName = sousBareme['name'];
+
+                                    return Container(
+                                      margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      child: Card(
+                                        elevation: 1,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        color: Colors.grey.shade50,
+                                        child: ListTile(
+                                          leading: Transform.scale(
+                                            scale: 1.2,
+                                            child: Checkbox(
+                                              value: _selectedSousBaremes[baremeId]
+                                                      ?[sousBaremeId] ??
+                                                  false,
+                                              onChanged: (bool? value) {
+                                                _toggleSousBaremeSelection(
+                                                    baremeId, sousBaremeId);
+                                              },
+                                              activeColor: Colors.green.shade600,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                            ),
+                                          ),
+                                          title: Text(
+                                            sousBaremeName,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey.shade700,
+                                            ),
+                                          ),
+                                          trailing: Icon(
+                                            Icons.arrow_forward_ios_rounded,
+                                            size: 16,
+                                            color: Colors.grey.shade400,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
     );
   }
 
   Future<void> _saveSelections() async {
     try {
-      // Obtenir l'ID de l'utilisateur actuellement connecté
       String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
       if (userId.isEmpty) {
         throw Exception('Utilisateur non connecté');
       }
 
-      // Référence à la collection de sélections de l'utilisateur
       CollectionReference selectionsRef = FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
@@ -329,7 +531,6 @@ class _BaremesPageState extends State<BaremesPage> {
           .doc(widget.selectedClass)
           .collection(widget.selectedMatiere);
 
-      // Suppression des anciennes sélections
       var oldSelections = await selectionsRef.get();
       for (var doc in oldSelections.docs) {
         var sousBaremesRef = doc.reference.collection('sousBaremes');
@@ -340,7 +541,6 @@ class _BaremesPageState extends State<BaremesPage> {
         await doc.reference.delete();
       }
 
-      // Sauvegarde des barèmes sélectionnés
       _selectedBaremes.forEach((baremeId, isSelected) async {
         if (isSelected) {
           String baremeName = await _getBaremeName(baremeId);
@@ -355,7 +555,6 @@ class _BaremesPageState extends State<BaremesPage> {
         }
       });
 
-      // Sauvegarde des sous-barèmes sélectionnés (même sans parent)
       _selectedSousBaremes.forEach((baremeId, sousBaremesMap) async {
         sousBaremesMap.forEach((sousBaremeId, isSelected) async {
           if (isSelected) {
@@ -398,21 +597,40 @@ class _BaremesPageState extends State<BaremesPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Sélections enregistrées avec succès!'),
-          backgroundColor: Colors.green,
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 8),
+              Text('تم حفظ الاختيارات بنجاح!'),
+            ],
+          ),
+          backgroundColor: Colors.green.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur lors de l\'enregistrement: $e'),
-          backgroundColor: Colors.red,
+          content: Row(
+            children: [
+              Icon(Icons.error_outline, color: Colors.white),
+              SizedBox(width: 8),
+              Text('خطأ في الحفظ: $e'),
+            ],
+          ),
+          backgroundColor: Colors.red.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
   }
 
-  // Helper function to fetch the name of the bareme
   Future<String> _getBaremeName(String baremeId) async {
     try {
       var baremeDoc = await FirebaseFirestore.instance
@@ -423,15 +641,13 @@ class _BaremesPageState extends State<BaremesPage> {
           .collection('baremes')
           .doc(baremeId)
           .get();
-      return baremeDoc[
-          'value']; // Assuming 'value' contains the name of the bareme
+      return baremeDoc['value'];
     } catch (e) {
       print('Erreur lors de la récupération du nom du barème: $e');
-      return ''; // Return an empty string if an error occurs
+      return '';
     }
   }
 
-  // Helper function to fetch the name of the sous-bareme
   Future<String> _getSousBaremeName(
       String baremeId, String sousBaremeId) async {
     try {
@@ -445,11 +661,10 @@ class _BaremesPageState extends State<BaremesPage> {
           .collection('sousBaremes')
           .doc(sousBaremeId)
           .get();
-      return sousBaremeDoc[
-          'name']; // Assuming 'name' contains the name of the sous-bareme
+      return sousBaremeDoc['name'];
     } catch (e) {
       print('Erreur lors de la récupération du nom du sous-barème: $e');
-      return ''; // Return an empty string if an error occurs
+      return '';
     }
   }
 }
@@ -469,26 +684,34 @@ class _SelectionPageState extends State<SelectionPage> {
   List<Map<String, String>> classes = [];
   List<Map<String, String>> matieres = [];
   List<Map<String, dynamic>> lastAccessList = [];
+  bool _isLoading = true;
 
   final List<Color> groupColors = [
-    Colors.blue,
-    Colors.green,
-    Colors.orange,
-    Colors.purple,
-    Colors.red,
-    Colors.teal,
-    Colors.indigo,
-    Colors.amber,
-    Colors.deepPurple,
-    Colors.lightGreen,
+    Colors.blue.shade700,
+    Colors.green.shade700,
+    Colors.orange.shade700,
+    Colors.purple.shade700,
+    Colors.red.shade700,
+    Colors.teal.shade700,
+    Colors.indigo.shade700,
+    Colors.amber.shade700,
+    Colors.deepPurple.shade700,
+    Colors.lightGreen.shade700,
   ];
 
   @override
   void initState() {
     super.initState();
-    fetchClasses();
-    _loadLastAccessList();
-    _showIntroDialog();
+    _initializeData();
+  }
+
+  Future<void> _initializeData() async {
+    await fetchClasses();
+    await _loadLastAccessList();
+    await _showIntroDialog();
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   Future<void> fetchClasses() async {
@@ -535,20 +758,15 @@ class _SelectionPageState extends State<SelectionPage> {
       'timestamp': DateTime.now().millisecondsSinceEpoch,
     };
 
-    // Vérifier si l'accès existe déjà
     final existingIndex = lastAccessList.indexWhere((access) =>
         access['classId'] == selectedClassId &&
         access['matiereId'] == selectedMatiereId);
 
     setState(() {
       if (existingIndex != -1) {
-        // Mettre à jour l'accès existant
         lastAccessList[existingIndex] = newAccess;
       } else {
-        // Ajouter le nouvel accès
         lastAccessList.insert(0, newAccess);
-
-        // Garder seulement les 5 derniers accès
         if (lastAccessList.length > 5) {
           lastAccessList = lastAccessList.sublist(0, 5);
         }
@@ -583,22 +801,76 @@ class _SelectionPageState extends State<SelectionPage> {
       showDialog(
         context: context,
         builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('مرحبًا!',
-                style:
-                    TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-            content: Text(
-              'سيتم حفظ آخر 5 اختيارات للوصول السريع تلقائياً.',
-              style: TextStyle(fontSize: 16),
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text('موافق', style: TextStyle(color: Colors.blue)),
+            elevation: 10,
+            child: Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.blue.shade50, Colors.white],
+                ),
+                borderRadius: BorderRadius.circular(20),
               ),
-            ],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.waving_hand_rounded,
+                    size: 48,
+                    color: Colors.blue.shade700,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'مرحبًا بك!',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade800,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'سيتم حفظ آخر 5 اختيارات للوصول السريع تلقائياً.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      height: 1.5,
+                      color: Colors.grey.shade700,
+                    ),
+                  ),
+                  SizedBox(height: 24),
+                  Container(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 3,
+                      ),
+                      child: Text(
+                        'ابدأ الآن',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           );
         },
       );
@@ -610,308 +882,432 @@ class _SelectionPageState extends State<SelectionPage> {
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
-    double padding = screenWidth > 600 ? 32.0 : 16.0;
-    double fontSize = screenWidth > 600 ? 18.0 : 14.0;
-
-    double buttonPadding = screenWidth > 600 ? 32.0 : 12.0;
+    double padding = screenWidth > 600 ? 32.0 : 20.0;
+    double fontSize = screenWidth > 600 ? 18.0 : 16.0;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('اختر قسما ومادة', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.blue,
+        title: Text(
+          'اختر قسما ومادة',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        backgroundColor: Colors.blue.shade700,
         elevation: 4,
+        centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: EdgeInsets.all(padding),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Affichage des derniers accès
-              if (lastAccessList.isNotEmpty) ...[
-                Text('آخر الاختيارات',
-                    style: TextStyle(
-                        fontSize: fontSize, fontWeight: FontWeight.bold)),
-                SizedBox(height: 10),
-                // Dans la partie où vous affichez les derniers accès
-                ...lastAccessList.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final access = entry.value;
-                  return Card(
-                    margin: EdgeInsets.only(bottom: 8),
-                    child: ListTile(
-                      leading: Icon(Icons.history,
-                          color: groupColors[index % groupColors.length]),
-                      title: Text(
-                          '${access['className']} - ${access['matiereName']}'),
-                      onTap: () {
-                        setState(() {
-                          selectedClassId = access['classId'];
-                          selectedClassName = access['className'];
-                          selectedMatiereId = access['matiereId'];
-                          selectedMatiereName = access['matiereName'];
-                        });
-
-                        // Rafraîchir la liste des matières pour la classe sélectionnée
-                        fetchMatieres(access['classId']).then((_) {});
-                      },
-                    ),
-                  );
-                }).toList(),
-                Divider(thickness: 2),
-                SizedBox(height: 20),
-              ],
-
-              // Dropdown pour les classes (existant)
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  child: DropdownButton<String>(
-                    value: selectedClassName,
-                    hint:
-                        Text('اختر قسما', style: TextStyle(color: Colors.grey)),
-                    items: classes.asMap().entries.map((entry) {
-                      int index = entry.key;
-                      Map<String, String> classe = entry.value;
-                      Color color =
-                          groupColors[(index ~/ 5) % groupColors.length];
-                      return DropdownMenuItem<String>(
-                        value: classe['name'],
-                        child: Container(
-                          padding:
-                              EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: color.withOpacity(0.3)),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.school, color: color),
-                              SizedBox(width: 10),
-                              Text(
-                                classe['name']!,
-                                style: TextStyle(
-                                  color: color,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        selectedClassName = newValue;
-                        selectedClassId = classes.firstWhere(
-                          (classe) => classe['name'] == newValue,
-                          orElse: () => {'id': '', 'name': ''},
-                        )['id'];
-                        selectedMatiereId = null;
-                        selectedMatiereName = null;
-                        matieres.clear();
-                      });
-                      if (selectedClassId != null &&
-                          selectedClassId!.isNotEmpty) {
-                        fetchMatieres(selectedClassId!);
-                      }
-                    },
-                    isExpanded: true,
-                    underline: SizedBox(),
-                    icon: Icon(Icons.arrow_drop_down, color: Colors.blue),
-                    dropdownColor: Colors.white,
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-
-              // Dropdown pour les matières (existant)
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  child: DropdownButton<String>(
-                    value: selectedMatiereName,
-                    hint:
-                        Text('اختر مادة', style: TextStyle(color: Colors.grey)),
-                    items: matieres.map((Map<String, String> matiere) {
-                      return DropdownMenuItem<String>(
-                        value: matiere['name'],
-                        child: Text(matiere['name']!,
-                            style: TextStyle(color: Colors.black)),
-                      );
-                    }).toList(),
-                    onChanged: (String? newValue) {
-                      setState(() {
-                        selectedMatiereName = newValue;
-                        selectedMatiereId = matieres.firstWhere(
-                          (matiere) => matiere['name'] == newValue,
-                          orElse: () => {'id': '', 'name': ''},
-                        )['id'];
-                      });
-                    },
-                    isExpanded: true,
-                    underline: SizedBox(),
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-
-              // Boutons d'action (existants)
-              // Dans votre méthode build, remplacez seulement le Row par ce Wrap
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: screenWidth > 600
-                    ? 20.0
-                    : 10.0, // Espacement horizontal adaptatif
-                runSpacing: 10.0, // Espacement vertical constant
+      body: _isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Bouton "عرض المعايير" - Identique à l'original
-                  ElevatedButton(
-                    onPressed: () async {
-                      if (selectedClassId != null &&
-                          selectedMatiereId != null) {
-                        await _saveLastAccess();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => SelectedBaremesPage(
-                              selectedClass: selectedClassId!,
-                              selectedMatiere: selectedMatiereId!,
-                            ),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'الرجاء اختيار قسم و مادة',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            backgroundColor: Colors.red,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
-                    },
-                    child: Text('عرض المعايير'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: screenWidth > 600
-                            ? 32.0
-                            : 16.0, // Padding adaptatif
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
+                    strokeWidth: 3,
                   ),
-
-                  // Bouton "برمجة المعايير" - Identique à l'original
-                  ElevatedButton(
-                    onPressed: () async {
-                      if (selectedClassId != null &&
-                          selectedMatiereId != null) {
-                        await _saveLastAccess();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BaremesPage(
-                              selectedClass: selectedClassId!,
-                              selectedMatiere: selectedMatiereId!,
-                            ),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('الرجاء اختيار قسم و مادة',
-                                style: TextStyle(color: Colors.white)),
-                            backgroundColor: Colors.red,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    child: Text('برمجة المعايير',
-                        style: TextStyle(color: Colors.white)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: screenWidth > 600
-                            ? 32.0
-                            : 16.0, // Padding adaptatif
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      elevation: 4,
-                    ),
-                  ),
-
-                  // Bouton "عرض الجدول" - Identique à l'original
-                  ElevatedButton(
-                    onPressed: () async {
-                      if (selectedClassId != null &&
-                          selectedMatiereId != null) {
-                        await _saveLastAccess();
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => DynamicTablePage(
-                              selectedClass: selectedClassId!,
-                              selectedMatiere: selectedMatiereId!,
-                            ),
-                          ),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'الرجاء اختيار قسم و مادة',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            backgroundColor: Colors.red,
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
-                    },
-                    child: Text('عرض الجدول'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: screenWidth > 600
-                            ? 32.0
-                            : 16.0, // Padding adaptatif
-                        vertical: 16,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                  SizedBox(height: 16),
+                  Text(
+                    'جاري التحميل...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey.shade600,
                     ),
                   ),
                 ],
               ),
-            ],
+            )
+          : SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(padding),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (lastAccessList.isNotEmpty) ...[
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        margin: EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Colors.blue.shade50, Colors.grey.shade50],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.blue.shade100),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.history_rounded,
+                                  color: Colors.blue.shade700,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'آخر الاختيارات',
+                                  style: TextStyle(
+                                    fontSize: fontSize,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            ...lastAccessList.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final access = entry.value;
+                              return Container(
+                                margin: EdgeInsets.only(bottom: 8),
+                                child: Material(
+                                  borderRadius: BorderRadius.circular(12),
+                                  elevation: 2,
+                                  child: ListTile(
+                                    leading: Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: groupColors[index % groupColors.length].withOpacity(0.1),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.school_rounded,
+                                        color: groupColors[index % groupColors.length],
+                                      ),
+                                    ),
+                                    title: Text(
+                                      '${access['className']}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      '${access['matiereName']}',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                    trailing: Icon(
+                                      Icons.arrow_forward_ios_rounded,
+                                      size: 16,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                    onTap: () {
+                                      setState(() {
+                                        selectedClassId = access['classId'];
+                                        selectedClassName = access['className'];
+                                        selectedMatiereId = access['matiereId'];
+                                        selectedMatiereName = access['matiereName'];
+                                      });
+                                      fetchMatieres(access['classId']).then((_) {});
+                                    },
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ],
+                        ),
+                      ),
+                      Divider(
+                        thickness: 1,
+                        color: Colors.grey.shade300,
+                        height: 20,
+                      ),
+                      SizedBox(height: 10),
+                    ],
+
+                    // Dropdown pour les classes
+                    Container(
+                      margin: EdgeInsets.only(bottom: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 8, right: 4),
+                            child: Text(
+                              'اختر القسم',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ),
+                          Card(
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                              child: DropdownButton<String>(
+                                value: selectedClassName,
+                                hint: Text(
+                                  'اختر قسما',
+                                  style: TextStyle(color: Colors.grey.shade500),
+                                ),
+                                items: classes.asMap().entries.map((entry) {
+                                  int index = entry.key;
+                                  Map<String, String> classe = entry.value;
+                                  Color color = groupColors[(index ~/ 5) % groupColors.length];
+                                  return DropdownMenuItem<String>(
+                                    value: classe['name'],
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                                      decoration: BoxDecoration(
+                                        color: color.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: color.withOpacity(0.3)),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.school_rounded, color: color),
+                                          SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              classe['name']!,
+                                              style: TextStyle(
+                                                color: color,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    selectedClassName = newValue;
+                                    selectedClassId = classes.firstWhere(
+                                      (classe) => classe['name'] == newValue,
+                                      orElse: () => {'id': '', 'name': ''},
+                                    )['id'];
+                                    selectedMatiereId = null;
+                                    selectedMatiereName = null;
+                                    matieres.clear();
+                                  });
+                                  if (selectedClassId != null && selectedClassId!.isNotEmpty) {
+                                    fetchMatieres(selectedClassId!);
+                                  }
+                                },
+                                isExpanded: true,
+                                underline: SizedBox(),
+                                icon: Icon(Icons.arrow_drop_down_rounded, color: Colors.blue.shade700),
+                                dropdownColor: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Dropdown pour les matières
+                    Container(
+                      margin: EdgeInsets.only(bottom: 30),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(bottom: 8, right: 4),
+                            child: Text(
+                              'اختر المادة',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ),
+                          Card(
+                            elevation: 4,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+                              child: DropdownButton<String>(
+                                value: selectedMatiereName,
+                                hint: Text(
+                                  'اختر مادة',
+                                  style: TextStyle(color: Colors.grey.shade500),
+                                ),
+                                items: matieres.map((Map<String, String> matiere) {
+                                  return DropdownMenuItem<String>(
+                                    value: matiere['name'],
+                                    child: Padding(
+                                      padding: EdgeInsets.symmetric(vertical: 12),
+                                      child: Text(
+                                        matiere['name']!,
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          color: Colors.grey.shade800,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (String? newValue) {
+                                  setState(() {
+                                    selectedMatiereName = newValue;
+                                    selectedMatiereId = matieres.firstWhere(
+                                      (matiere) => matiere['name'] == newValue,
+                                      orElse: () => {'id': '', 'name': ''},
+                                    )['id'];
+                                  });
+                                },
+                                isExpanded: true,
+                                underline: SizedBox(),
+                                icon: Icon(Icons.arrow_drop_down_rounded, color: Colors.blue.shade700),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Boutons d'action
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: screenWidth > 600 ? 20.0 : 12.0,
+                      runSpacing: 12.0,
+                      children: [
+                        _buildActionButton(
+                          'عرض المعايير',
+                          Icons.list_alt_rounded,
+                          Colors.blue.shade700,
+                          () async {
+                            if (selectedClassId != null && selectedMatiereId != null) {
+                              await _saveLastAccess();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => SelectedBaremesPage(
+                                    selectedClass: selectedClassId!,
+                                    selectedMatiere: selectedMatiereId!,
+                                  ),
+                                ),
+                              );
+                            } else {
+                              _showErrorSnackbar('الرجاء اختيار قسم و مادة');
+                            }
+                          },
+                        ),
+                        _buildActionButton(
+                          'برمجة المعايير',
+                          Icons.tune_rounded,
+                          Colors.green.shade700,
+                          () async {
+                            if (selectedClassId != null && selectedMatiereId != null) {
+                              await _saveLastAccess();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => BaremesPage(
+                                    selectedClass: selectedClassId!,
+                                    selectedMatiere: selectedMatiereId!,
+                                  ),
+                                ),
+                              );
+                            } else {
+                              _showErrorSnackbar('الرجاء اختيار قسم و مادة');
+                            }
+                          },
+                        ),
+                        _buildActionButton(
+                          'عرض الجدول',
+                          Icons.table_chart_rounded,
+                          Colors.orange.shade700,
+                          () async {
+                            if (selectedClassId != null && selectedMatiereId != null) {
+                              await _saveLastAccess();
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => DynamicTablePage(
+                                    selectedClass: selectedClassId!,
+                                    selectedMatiere: selectedMatiereId!,
+                                  ),
+                                ),
+                              );
+                            } else {
+                              _showErrorSnackbar('الرجاء اختيار قسم و مادة');
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+    );
+  }
+
+  Widget _buildActionButton(String text, IconData icon, Color color, VoidCallback onPressed) {
+    return Container(
+      width: 160,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
+          elevation: 4,
+          shadowColor: color.withOpacity(0.3),
         ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 20),
+            SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: Colors.red.shade600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        duration: Duration(seconds: 3),
       ),
     );
   }
@@ -940,6 +1336,11 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
   void initState() {
     super.initState();
     _showUtilityDialog();
+    Future.delayed(Duration(milliseconds: 500), () {
+      setState(() {
+        _isLoading = false;
+      });
+    });
   }
 
   Future<void> _showUtilityDialog() async {
@@ -952,46 +1353,70 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
       await showDialog(
         context: context,
         builder: (BuildContext context) {
-          return AlertDialog(
+          return Dialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
             ),
-            title: Text('معلومات عن الواجهة',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: Colors.blue.shade700,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18)),
-            content: SingleChildScrollView(
+            elevation: 10,
+            child: Container(
+              padding: EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Colors.blue.shade50, Colors.white],
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildInfoItem(Icons.list,
-                      'هذه الواجهة تعرض المعايير والمؤشرات المحددة'),
-                  SizedBox(height: 8),
-                  _buildInfoItem(Icons.table_chart,
-                      'اضغط على زر الجدول لعرض البيانات بشكل جدولي'),
-                  SizedBox(height: 8),
-                  _buildInfoItem(Icons.help_outline,
-                      'يمكنك الرجوع لتعديل الاختيارات في أي وقت'),
+                  Icon(
+                    Icons.visibility_rounded,
+                    size: 48,
+                    color: Colors.blue.shade700,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'معلومات عن الواجهة',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade800,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  _buildInfoItem(Icons.list_alt_rounded, 'هذه الواجهة تعرض المعايير والمؤشرات المحددة'),
+                  SizedBox(height: 12),
+                  _buildInfoItem(Icons.table_chart_rounded, 'اضغط على زر الجدول لعرض البيانات بشكل جدولي'),
+                  SizedBox(height: 12),
+                  _buildInfoItem(Icons.settings_rounded, 'يمكنك الرجوع لتعديل الاختيارات في أي وقت'),
+                  SizedBox(height: 24),
+                  Container(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 3,
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(
+                        'فهمت',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-            actions: [
-              Center(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade700,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  ),
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text('فهمت', style: TextStyle(color: Colors.white)),
-                ),
-              ),
-            ],
           );
         },
       );
@@ -1004,8 +1429,13 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, size: 20, color: Colors.blue.shade700),
-        SizedBox(width: 8),
-        Expanded(child: Text(text, style: TextStyle(fontSize: 15))),
+        SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(fontSize: 15, height: 1.4),
+          ),
+        ),
       ],
     );
   }
@@ -1017,59 +1447,70 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
     if (userId.isEmpty) {
       return Scaffold(
         appBar: AppBar(
-          title: Text('المعايير المحددة',
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          title: Text(
+            'المعايير المحددة',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           centerTitle: true,
+          backgroundColor: Colors.blue.shade700,
         ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.warning_amber_rounded, size: 48, color: Colors.orange),
-              SizedBox(height: 16),
-              Text('يجب تسجيل الدخول لعرض المعايير المحددة',
-                  style: TextStyle(fontSize: 16)),
-              SizedBox(height: 24),
+              Icon(Icons.warning_amber_rounded, size: 64, color: Colors.orange.shade600),
+              SizedBox(height: 20),
+              Text(
+                'يجب تسجيل الدخول لعرض المعايير المحددة',
+                style: TextStyle(fontSize: 18, color: Colors.grey.shade700),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 30),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue.shade700,
-                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 onPressed: () => Navigator.of(context).pop(),
-                child: Text('العودة', style: TextStyle(color: Colors.white)),
+                child: Text(
+                  'العودة',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
               ),
             ],
           ),
         ),
       );
     }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('المعايير المحددة',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          'المعايير المحددة',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
+        backgroundColor: Colors.blue.shade700,
         actions: [
-          // AppBar button with better text fitting
-          Padding(
-            padding: EdgeInsets.only(right: 16.0),
+          Container(
+            margin: EdgeInsets.only(right: 16),
             child: ElevatedButton.icon(
-              icon: Icon(Icons.table_chart, size: 20),
-              label: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  'عرض الجدول',
-                  style: TextStyle(fontSize: 14), // Adjusted font size
-                ),
+              icon: Icon(Icons.table_chart_rounded, size: 20),
+              label: Text(
+                'عرض الجدول',
+                style: TextStyle(fontSize: 14),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue.shade700,
+                backgroundColor: Colors.orange.shade600,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
                 elevation: 3,
-                padding: EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 8), // Adjusted padding
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               ),
               onPressed: () => Navigator.push(
                 context,
@@ -1084,34 +1525,50 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
           ),
         ],
       ),
-      body: _buildContent(userId),
-      // Improved Floating Action Button with full text visibility
+      body: _isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
+                    strokeWidth: 3,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'جاري تحميل المعايير...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : _buildContent(userId),
       floatingActionButton: Container(
         height: 56,
-        width: 220, // Increased width to accommodate text
+        width: 200,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Colors.blue.withOpacity(0.3),
+              color: Colors.orange.withOpacity(0.3),
               blurRadius: 10,
               spreadRadius: 2,
             ),
           ],
         ),
         child: FloatingActionButton.extended(
-          icon: Icon(Icons.table_chart, size: 24),
-          label: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              'عرض الجدول الجامع للنتائج',
-              style: TextStyle(
-                fontSize: 14, // Slightly reduced font size
-                fontWeight: FontWeight.bold,
-              ),
+          icon: Icon(Icons.table_chart_rounded, size: 24),
+          label: Text(
+            'عرض الجدول الجامع',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
             ),
           ),
-          backgroundColor: Colors.blue.shade700,
+          backgroundColor: Colors.orange.shade600,
           foregroundColor: Colors.white,
           elevation: 6,
           onPressed: () => Navigator.push(
@@ -1140,7 +1597,11 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator(color: Colors.blue));
+          return Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
+            ),
+          );
         }
 
         if (snapshot.hasError) {
@@ -1148,10 +1609,18 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, size: 48, color: Colors.red),
+                Icon(Icons.error_outline_rounded, size: 64, color: Colors.red.shade400),
                 SizedBox(height: 16),
-                Text('حدث خطأ في تحميل البيانات',
-                    style: TextStyle(fontSize: 16, color: Colors.red)),
+                Text(
+                  'حدث خطأ في تحميل البيانات',
+                  style: TextStyle(fontSize: 18, color: Colors.red.shade700, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '${snapshot.error}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
               ],
             ),
           );
@@ -1162,19 +1631,26 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.info_outline, size: 48, color: Colors.blue),
+                Icon(Icons.inbox_outlined, size: 64, color: Colors.grey.shade400),
                 SizedBox(height: 16),
-                Text('لم يتم تحديد أي معايير بعد',
-                    style: TextStyle(fontSize: 16)),
+                Text(
+                  'لم يتم تحديد أي معايير بعد',
+                  style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+                ),
                 SizedBox(height: 24),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade700,
-                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   onPressed: () => Navigator.of(context).pop(),
-                  child: Text('تحديد المعايير',
-                      style: TextStyle(color: Colors.white)),
+                  child: Text(
+                    'تحديد المعايير',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
                 ),
               ],
             ),
@@ -1182,7 +1658,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
         }
 
         return ListView.builder(
-          padding: EdgeInsets.symmetric(vertical: 8),
+          padding: EdgeInsets.all(16),
           itemCount: snapshot.data!.docs.length,
           itemBuilder: (context, index) {
             var doc = snapshot.data!.docs[index];
@@ -1192,8 +1668,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
             return Column(
               children: [
                 if (isBaremeSelected) _buildBaremeCard(baremeName, true),
-                _buildSousBaremesList(
-                    doc.reference, baremeName, isBaremeSelected),
+                _buildSousBaremesList(doc.reference, baremeName, isBaremeSelected),
               ],
             );
           },
@@ -1203,20 +1678,52 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
   }
 
   Widget _buildBaremeCard(String baremeName, bool isSelected) {
-    return Card(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: ListTile(
-        leading: Icon(Icons.star, color: Colors.amber),
-        title: Text(baremeName,
+    return Container(
+      margin: EdgeInsets.only(bottom: 8),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: ListTile(
+          leading: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.star_rounded,
+              color: Colors.amber.shade600,
+              size: 24,
+            ),
+          ),
+          title: Text(
+            baremeName,
             style: TextStyle(
-                fontWeight: FontWeight.bold, color: Colors.blue.shade700)),
-        subtitle:
-            Text('معيار رئيسي', style: TextStyle(color: Colors.grey.shade600)),
-        trailing: Icon(Icons.check_circle, color: Colors.green),
+              fontWeight: FontWeight.bold,
+              color: Colors.blue.shade800,
+              fontSize: 16,
+            ),
+          ),
+          subtitle: Text(
+            'معيار رئيسي',
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
+          trailing: Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.check_circle_rounded,
+              color: Colors.green.shade600,
+              size: 20,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1227,14 +1734,23 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
       stream: docRef.collection('sousBaremes').snapshots(),
       builder: (context, sousSnapshot) {
         if (sousSnapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator(color: Colors.blue));
+          return Center(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
+              ),
+            ),
+          );
         }
 
         if (sousSnapshot.hasError) {
           return Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text('خطأ في تحميل المؤشرات',
-                style: TextStyle(color: Colors.red)),
+            child: Text(
+              'خطأ في تحميل المؤشرات',
+              style: TextStyle(color: Colors.red),
+            ),
           );
         }
 
@@ -1244,22 +1760,47 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
         return Column(
           children: sousBaremes.map((sousDoc) {
             String sousBaremeName = sousDoc['sousBaremeName'] ?? '';
-            return Card(
-              margin: EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-              elevation: 1,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: ListTile(
-                leading: Icon(Icons.arrow_forward_ios, size: 16),
-                title: Text(sousBaremeName, style: TextStyle(fontSize: 14)),
-                subtitle: Text(
-                  isBaremeSelected ? 'تابع لـ $baremeName' : 'مؤشر',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
+            return Container(
+              margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                trailing: Icon(Icons.check_circle_outline,
-                    color: Colors.green.shade400),
-                contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                color: Colors.grey.shade50,
+                child: ListTile(
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 14,
+                      color: Colors.green.shade600,
+                    ),
+                  ),
+                  title: Text(
+                    sousBaremeName,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade800,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  subtitle: Text(
+                    isBaremeSelected ? 'تابع لـ $baremeName' : 'مؤشر',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                  trailing: Icon(
+                    Icons.check_circle_outline_rounded,
+                    color: Colors.green.shade400,
+                    size: 20,
+                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                ),
               ),
             );
           }).toList(),

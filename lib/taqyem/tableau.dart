@@ -1684,6 +1684,7 @@ class StudentsTable extends StatefulWidget {
   _StudentsTableState createState() => _StudentsTableState();
 }
 
+
 class _StudentsTableState extends State<StudentsTable> {
   final List<String> _dropdownValues = [
     '( - - - )',
@@ -1725,8 +1726,7 @@ class _StudentsTableState extends State<StudentsTable> {
   }
 
   // Fonction pour trier les barèmes par ordre alphabétique arabe
-  List<Map<String, dynamic>> _sortBaremesAlphabetically(
-      List<Map<String, dynamic>> baremesValues) {
+  List<Map<String, dynamic>> _sortBaremesAlphabetically(List<Map<String, dynamic>> baremesValues) {
     baremesValues.sort((a, b) {
       String nameA = a['value'] ?? '';
       String nameB = b['value'] ?? '';
@@ -1736,12 +1736,10 @@ class _StudentsTableState extends State<StudentsTable> {
   }
 
   // Fonction modifiée pour grouper les barèmes triés
-  Map<String, List<Map<String, dynamic>>> groupBaremes(
-      List<Map<String, dynamic>> baremesValues) {
+  Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> baremesValues) {
     // Trier d'abord les barèmes par ordre alphabétique
-    List<Map<String, dynamic>> sortedBaremes =
-        _sortBaremesAlphabetically(baremesValues);
-
+    List<Map<String, dynamic>> sortedBaremes = _sortBaremesAlphabetically(baremesValues);
+    
     Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
 
     for (var bareme in sortedBaremes) {
@@ -1756,8 +1754,7 @@ class _StudentsTableState extends State<StudentsTable> {
   }
 
   // Fonction pour déterminer si c'est un barème principal ou sous-barème
-  String _getBaremeDisplayName(
-      Map<String, dynamic> bareme, Map<String, dynamic> subEntry) {
+  String _getBaremeDisplayName(Map<String, dynamic> bareme, Map<String, dynamic> subEntry) {
     // Si c'est le barème principal (même ID)
     if (bareme['id'] == subEntry['id']) {
       return bareme['value']; // Nom du barème principal
@@ -1768,8 +1765,7 @@ class _StudentsTableState extends State<StudentsTable> {
   }
 
   // Générer une clé unique pour chaque bouton
-  String _getButtonKey(
-      String baremeId, String? sousBaremeId, bool isClassification) {
+  String _getButtonKey(String baremeId, String? sousBaremeId, bool isClassification) {
     return '${baremeId}_${sousBaremeId ?? 'main'}_${isClassification ? 'classification' : 'treatment'}';
   }
 
@@ -1823,7 +1819,7 @@ class _StudentsTableState extends State<StudentsTable> {
           .doc(widget.classDocId)
           .collection('students')
           .get();
-
+      
       if (_isMounted) {
         setState(() {
           _cachedStudents = snapshot.docs;
@@ -1844,7 +1840,7 @@ class _StudentsTableState extends State<StudentsTable> {
           .doc(widget.selectedClass)
           .collection(widget.selectedMatiere)
           .get();
-
+      
       if (_isMounted) {
         setState(() {
           _cachedSelections = snapshot.docs;
@@ -1896,120 +1892,117 @@ class _StudentsTableState extends State<StudentsTable> {
     return _buildSelectionsTable(_cachedStudents!);
   }
 
-  Future<Map<String, String>> _getClassAndMatiereNames() async {
-    try {
-      // Récupérer le nom de la classe
-      var classDoc = await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(widget.selectedClass)
-          .get();
-      var className = classDoc['name'] ?? 'غير معروف';
+ Widget _buildHeader() {
+  return FutureBuilder<Map<String, String>>(
+    future: _getClassAndMatiereNames(),
+    builder: (context, snapshot) {
+      String className = 'غير معروف';
+      String matiereName = 'غير معروف';
+      
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        className = 'جاري التحميل...';
+        matiereName = 'جاري التحميل...';
+      } else if (snapshot.hasData) {
+        className = snapshot.data!['className'] ?? 'غير معروف';
+        matiereName = snapshot.data!['matiereName'] ?? 'غير معروف';
+      }
 
-      // Récupérer le nom de la matière
-      var matiereDoc = await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(widget.selectedClass)
-          .collection('matieres')
-          .doc(widget.selectedMatiere)
-          .get();
-      var matiereName = matiereDoc['name'] ?? 'غير معروف';
-
-      return {
-        'className': className,
-        'matiereName': matiereName,
-      };
-    } catch (e) {
-      print('Erreur lors de la récupération des noms: $e');
-      return {
-        'className': 'غير معروف',
-        'matiereName': 'غير معروف',
-      };
-    }
-  }
-
-  Widget _buildHeader() {
-    return FutureBuilder<Map<String, String>>(
-      future: _getClassAndMatiereNames(),
-      builder: (context, snapshot) {
-        String className = 'غير معروف';
-        String matiereName = 'غير معروف';
-
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          className = 'جاري التحميل...';
-          matiereName = 'جاري التحميل...';
-        } else if (snapshot.hasData) {
-          className = snapshot.data!['className'] ?? 'غير معروف';
-          matiereName = snapshot.data!['matiereName'] ?? 'غير معروف';
-        }
-
-        return Card(
-          elevation: 3,
-          margin: EdgeInsets.all(16),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [_primaryColor, _secondaryColor],
-              ),
-              borderRadius: BorderRadius.circular(12),
+      return Card(
+        elevation: 3,
+        margin: EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_primaryColor, _secondaryColor],
             ),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.refresh, color: Colors.white),
-                  onPressed: _refreshData,
-                  tooltip: 'Rafraîchir les données',
-                ),
-                SizedBox(width: 12),
-                Icon(Icons.school, color: Colors.white, size: 32),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'جدول التقييم',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        '$className - $matiereName',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${widget.totalStudents} طالب',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            borderRadius: BorderRadius.circular(12),
           ),
-        );
-      },
-    );
-  }
+          child: Row(
+            children: [
+              IconButton(
+                icon: Icon(Icons.refresh, color: Colors.white),
+                onPressed: _refreshData,
+                tooltip: 'Rafraîchir les données',
+              ),
+              SizedBox(width: 12),
+              Icon(Icons.school, color: Colors.white, size: 32),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'جدول التقييم',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '$className - $matiereName',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${widget.totalStudents} طالب',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+Future<Map<String, String>> _getClassAndMatiereNames() async {
+  try {
+    // Récupérer le nom de la classe
+    var classDoc = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(widget.selectedClass)
+        .get();
+    var className = classDoc['name'] ?? 'غير معروف';
 
+    // Récupérer le nom de la matière
+    var matiereDoc = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(widget.selectedClass)
+        .collection('matieres')
+        .doc(widget.selectedMatiere)
+        .get();
+    var matiereName = matiereDoc['name'] ?? 'غير معروف';
+
+    return {
+      'className': className,
+      'matiereName': matiereName,
+    };
+  } catch (e) {
+    print('Erreur lors de la récupération des noms: $e');
+    return {
+      'className': 'غير معروف',
+      'matiereName': 'غير معروف',
+    };
+  }
+}
   Widget _buildLoadingIndicator() {
     return Center(
       child: Column(
@@ -2084,8 +2077,7 @@ class _StudentsTableState extends State<StudentsTable> {
         if (baremesValuesSnapshot.hasError) {
           return _buildErrorWidget('خطأ: ${baremesValuesSnapshot.error}');
         }
-        if (!baremesValuesSnapshot.hasData ||
-            baremesValuesSnapshot.data!.isEmpty) {
+        if (!baremesValuesSnapshot.hasData || baremesValuesSnapshot.data!.isEmpty) {
           return _buildEmptyStateForCriteria();
         }
 
@@ -2113,8 +2105,7 @@ class _StudentsTableState extends State<StudentsTable> {
 
   Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
       List<Map<String, dynamic>> baremesValues) {
-    Map<String, List<Map<String, dynamic>>> groupedBaremes =
-        groupBaremes(baremesValues);
+    Map<String, List<Map<String, dynamic>>> groupedBaremes = groupBaremes(baremesValues);
 
     return Card(
       elevation: 4,
@@ -2264,42 +2255,33 @@ class _StudentsTableState extends State<StudentsTable> {
                           for (final subEntry in [
                             {'id': bareme['id'], 'type': 'bareme'},
                             ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-                                .map((s) =>
-                                    {'id': s['id'], 'type': 'sousBareme'})
+                                .map((s) => {'id': s['id'], 'type': 'sousBareme'})
                           ])
                             DataCell(
                               Container(
                                 width: 110,
                                 padding: EdgeInsets.symmetric(vertical: 8),
                                 child: FutureBuilder<String>(
-                                  future: _getSelectedValue(
-                                      studentId, subEntry['id']),
+                                  future: _getSelectedValue(studentId, subEntry['id']),
                                   builder: (context, snapshot) {
-                                    if (snapshot.connectionState ==
-                                        ConnectionState.waiting) {
+                                    if (snapshot.connectionState == ConnectionState.waiting) {
                                       return SizedBox(
                                         width: 20,
                                         height: 20,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
-                                          valueColor:
-                                              AlwaysStoppedAnimation<Color>(
-                                                  _primaryColor),
+                                          valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
                                         ),
                                       );
                                     }
-                                    final value =
-                                        snapshot.data ?? _dropdownValues[0];
+                                    final value = snapshot.data ?? _dropdownValues[0];
                                     return Container(
-                                      padding: EdgeInsets.symmetric(
-                                          horizontal: 8, vertical: 6),
+                                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                                       decoration: BoxDecoration(
-                                        color: _getValueColor(value)
-                                            .withOpacity(0.1),
+                                        color: _getValueColor(value).withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(6),
                                         border: Border.all(
-                                          color: _getValueColor(value)
-                                              .withOpacity(0.3),
+                                          color: _getValueColor(value).withOpacity(0.3),
                                         ),
                                       ),
                                       child: Center(
@@ -2320,152 +2302,14 @@ class _StudentsTableState extends State<StudentsTable> {
                     ],
                   );
                 }).toList(),
-                DataRow(
-                  cells: [
-                    const DataCell(Text('عدد التلاميذ المحققين',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                    for (final bareme in baremesValues)
-                      for (final entry in [
-                        {'id': bareme['id']},
-                        ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-                      ])
-                        DataCell(Text(
-                          widget.sumCriteriaMaxPerBareme[entry['id']]
-                                  ?.toString() ??
-                              '0',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        )),
-                  ],
-                ),
+                // Ligne des statistiques
+                _buildStatsRow('عدد التلاميذ المحققين', groupedBaremes, isPercentage: false),
                 // Ligne des pourcentages
-                DataRow(
-                  cells: [
-                    const DataCell(Text('النسبة المئوية',
-                        style: TextStyle(fontWeight: FontWeight.bold))),
-                    for (var entry in groupedBaremes.entries)
-                      for (final bareme in entry.value)
-                        for (final subEntry in [
-                          {'id': bareme['id']},
-                          ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-                        ])
-                          DataCell(Text(
-                            widget.totalStudents == 0
-                                ? 'لا توجد درجات'
-                                : '${((widget.sumCriteriaMaxPerBareme[subEntry['id']] ?? 0) / widget.totalStudents * 100).toStringAsFixed(2)}٪',
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors
-                                    .black), // Texte en noir pour contraste
-                          )),
-                  ],
-                ),
+                _buildStatsRow('النسبة المئوية', groupedBaremes, isPercentage: true),
                 // Ligne des boutons "تصنيف"
-                DataRow(
-                  cells: [
-                    DataCell(
-                        Container()), // Cellule vide pour la colonne des noms
-                    for (var entry in groupedBaremes.entries)
-                      for (final bareme in entry.value)
-                        for (final subEntry in [
-                          {
-                            'id': bareme['id'],
-                            'type': 'bareme',
-                            'name': bareme['value']
-                          },
-                          ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-                              .map((s) => {
-                                    'id': s['id'],
-                                    'type': 'sousBareme',
-                                    'name': s['value']
-                                  })
-                        ])
-                          DataCell(
-                            Container(
-                              width: 100,
-                              height: 50,
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  _classifyStudentsByBarem(
-                                    bareme['id']!,
-                                    sousBaremeId:
-                                        subEntry['type'] == 'sousBareme'
-                                            ? subEntry['id']
-                                            : null,
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  padding: EdgeInsets.symmetric(
-                                      vertical: 8, horizontal: 12),
-                                ),
-                                child: Text(
-                                  'تصنيف',
-                                  style: TextStyle(
-                                      fontSize: 12, color: Colors.yellow),
-                                ),
-                              ),
-                            ),
-                          ),
-                  ],
-                ),
+                _buildButtonRow('تصنيف', Colors.green, Colors.yellow, groupedBaremes, isClassification: true),
                 // Ligne des boutons "خطة العلاج"
-                DataRow(
-                  cells: [
-                    DataCell(Container()),
-                    for (var entry in groupedBaremes.entries)
-                      for (final bareme in entry.value)
-                        for (final subEntry in [
-                          {
-                            'id': bareme['id'],
-                            'type': 'bareme',
-                            'name': bareme['value']
-                          },
-                          ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-                              .map((s) => {
-                                    'id': s['id'],
-                                    'type': 'sousBareme',
-                                    'name': s['value']
-                                  })
-                        ])
-                          DataCell(
-                            Container(
-                              width: 100,
-                              height: 50,
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey.shade300),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  widget.navigateToClassificationPage(
-                                    bareme['id']!,
-                                    sousBaremeId:
-                                        subEntry['type'] == 'sousBareme'
-                                            ? subEntry['id']
-                                            : null,
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  padding: EdgeInsets.symmetric(
-                                      vertical: 8, horizontal: 12),
-                                ),
-                                child: Text(
-                                  'خطة العلاج',
-                                  style: TextStyle(
-                                      fontSize: 12, color: Colors.white),
-                                ),
-                              ),
-                            ),
-                          ),
-                  ],
-                ),
+                _buildButtonRow('خطة العلاج', Colors.blue, Colors.white, groupedBaremes, isClassification: false),
               ],
             ),
           ),
@@ -2489,8 +2333,7 @@ class _StudentsTableState extends State<StudentsTable> {
     }
   }
 
-  DataRow _buildStatsRow(
-      String title, Map<String, List<Map<String, dynamic>>> groupedBaremes,
+  DataRow _buildStatsRow(String title, Map<String, List<Map<String, dynamic>>> groupedBaremes, 
       {required bool isPercentage}) {
     return DataRow(
       color: MaterialStateProperty.all(_primaryColor.withOpacity(0.05)),
@@ -2521,9 +2364,7 @@ class _StudentsTableState extends State<StudentsTable> {
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                     decoration: BoxDecoration(
-                      color: isPercentage
-                          ? _secondaryColor.withOpacity(0.1)
-                          : _accentColor.withOpacity(0.1),
+                      color: isPercentage ? _secondaryColor.withOpacity(0.1) : _accentColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Center(
@@ -2532,9 +2373,7 @@ class _StudentsTableState extends State<StudentsTable> {
                             ? widget.totalStudents == 0
                                 ? 'لا توجد درجات'
                                 : '${((widget.sumCriteriaMaxPerBareme[subEntry['id']] ?? 0) / widget.totalStudents * 100).toStringAsFixed(2)}٪'
-                            : widget.sumCriteriaMaxPerBareme[subEntry['id']]
-                                    ?.toString() ??
-                                '0',
+                            : widget.sumCriteriaMaxPerBareme[subEntry['id']]?.toString() ?? '0',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: isPercentage ? _secondaryColor : _accentColor,
@@ -2549,18 +2388,25 @@ class _StudentsTableState extends State<StudentsTable> {
     );
   }
 
-  DataRow _buildButtonRow(String buttonText, Color backgroundColor,
-      Color textColor, Map<String, List<Map<String, dynamic>>> groupedBaremes,
-      {required bool isClassification}) {
+  DataRow _buildButtonRow(String buttonText, Color backgroundColor, Color textColor,
+      Map<String, List<Map<String, dynamic>>> groupedBaremes, {required bool isClassification}) {
     return DataRow(
       cells: [
         DataCell(Container()),
         for (var entry in groupedBaremes.entries)
           for (final bareme in entry.value)
             for (final subEntry in [
-              {'id': bareme['id'], 'type': 'bareme', 'name': bareme['value']},
-              ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map((s) =>
-                  {'id': s['id'], 'type': 'sousBareme', 'name': s['value']})
+              {
+                'id': bareme['id'],
+                'type': 'bareme',
+                'name': bareme['value']
+              },
+              ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
+                  (s) => {
+                        'id': s['id'],
+                        'type': 'sousBareme',
+                        'name': s['value']
+                      })
             ])
               DataCell(
                 Container(
@@ -2734,8 +2580,7 @@ class _StudentsTableState extends State<StudentsTable> {
 
       final haveSoubarem = parentDoc.data()?['haveSoubarem'] ?? false;
       if (haveSoubarem) {
-        final sousBaremesSnapshot =
-            await docRef.collection('sous_baremes').get();
+        final sousBaremesSnapshot = await docRef.collection('sous_baremes').get();
         if (sousBaremesSnapshot.docs.isNotEmpty) {
           final sousBaremeDocRef = sousBaremesSnapshot.docs.first;
           final sousBaremeData = sousBaremeDocRef.data();
@@ -2749,8 +2594,7 @@ class _StudentsTableState extends State<StudentsTable> {
     }
   }
 
-  Future<void> _classifyStudentsByBarem(String baremeId,
-      {String? sousBaremeId}) async {
+  Future<void> _classifyStudentsByBarem(String baremeId, {String? sousBaremeId}) async {
     try {
       var studentsSnapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -2811,9 +2655,8 @@ class _StudentsTableState extends State<StudentsTable> {
       builder: (BuildContext context) {
         final screenWidth = MediaQuery.of(context).size.width;
         final screenHeight = MediaQuery.of(context).size.height;
-        final isPortrait =
-            MediaQuery.of(context).orientation == Orientation.portrait;
-
+        final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
+        
         final dialogWidth = screenWidth * (isPortrait ? 0.9 : 0.7);
         final dialogMaxHeight = screenHeight * 0.8;
         final titleFontSize = screenWidth * 0.045;
@@ -2821,8 +2664,7 @@ class _StudentsTableState extends State<StudentsTable> {
         final studentFontSize = screenWidth * 0.03;
 
         return Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: ConstrainedBox(
             constraints: BoxConstraints(
               maxWidth: dialogWidth,
@@ -2858,16 +2700,16 @@ class _StudentsTableState extends State<StudentsTable> {
                       ),
                     ),
                   ),
+                  
                   Expanded(
                     child: SingleChildScrollView(
                       padding: EdgeInsets.all(16),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          ...['مجموعة التميز', 'مجموعة الدعم', 'مجموعة العلاج']
-                              .map((groupName) {
+                          ...['مجموعة التميز', 'مجموعة الدعم', 'مجموعة العلاج'].map((groupName) {
                             return _buildResponsiveGroupCard(
-                              groupName,
+                              groupName, 
                               studentGroups[groupName]!,
                               groupTitleFontSize: groupTitleFontSize,
                               studentFontSize: studentFontSize,
@@ -2877,11 +2719,11 @@ class _StudentsTableState extends State<StudentsTable> {
                       ),
                     ),
                   ),
+                  
                   Container(
                     padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      border:
-                          Border(top: BorderSide(color: Colors.grey.shade300)),
+                      border: Border(top: BorderSide(color: Colors.grey.shade300)),
                       color: Colors.white,
                       borderRadius: BorderRadius.only(
                         bottomLeft: Radius.circular(16),
@@ -2893,8 +2735,7 @@ class _StudentsTableState extends State<StudentsTable> {
                         onPressed: () => Navigator.of(context).pop(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primaryColor,
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 32, vertical: 12),
+                          padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -2921,14 +2762,14 @@ class _StudentsTableState extends State<StudentsTable> {
   }
 
   Widget _buildResponsiveGroupCard(
-    String groupName,
+    String groupName, 
     List<String> students, {
     required double groupTitleFontSize,
     required double studentFontSize,
   }) {
     Color cardColor;
     Color textColor;
-
+    
     switch (groupName) {
       case 'مجموعة التميز':
         cardColor = Colors.green.withOpacity(0.1);
@@ -3009,8 +2850,7 @@ class _StudentsTableState extends State<StudentsTable> {
                   color: textColor.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.person,
-                    color: textColor.withOpacity(0.7), size: 16),
+                child: Icon(Icons.person, color: textColor.withOpacity(0.7), size: 16),
               ),
               title: Text(
                 student,
@@ -3027,7 +2867,6 @@ class _StudentsTableState extends State<StudentsTable> {
     );
   }
 }
-
 class StudentDropdown extends StatefulWidget {
   final String studentId;
   final String baremeId;

@@ -1,13 +1,16 @@
-2025/04/05-08:56:58.747 64e7 Reusing MANIFEST /tmp/flutter_tools.OJXRDI/flutter_tools_chrome_device.AMSWGJ/Default/shared_proto_db/MANIFEST-000001
-2025/04/05-08:56:58.747 64e7 Recovering log #19
-2025/04/05-08:56:58.749 64e7 Reusing old log /tmp/flutter_tools.OJXRDI/flutter_tools_chrome_device.AMSWGJ/Default/shared_proto_db/000019.log 
-2025/04/05-08:56:58.749 64e7 Delete type=0 #7
-2025/04/05-08:56:58.750 64e7 Delete type=0 #10
-2025/04/05-08:56:58.750 64e7 Delete type=2 #17
-2025/04/05-08:56:58.750 64e7 Delete type=0 #16
-2025/04/05-08:56:58.750 64e7 Delete type=2 #11
-2025/04/05-08:56:58.750 64e7 Delete type=2 #14
-2025/04/05-08:56:58.750 64e7 Delete type=0 #4
-2025/04/05-08:56:58.750 64e7 Delete type=0 #13
-2025/04/05-08:56:58.750 64e7 Delete type=0 #3
-2025/04/05-08:56:58.750 64e7 Delete type=2 #8
+2025/10/06-21:37:02.342 40ad8 Reusing MANIFEST /tmp/flutter_tools.EBHXNT/flutter_tools_chrome_device.AADEZJ/Default/shared_proto_db/MANIFEST-000001
+2025/10/06-21:37:02.344 40ad8 Recovering log #19
+2025/10/06-21:37:02.348 40ad8 Reusing old log /tmp/flutter_tools.EBHXNT/flutter_tools_chrome_device.AADEZJ/Default/shared_proto_db/000019.log 
+2025/10/06-21:37:02.349 40ad8 Delete type=0 #7
+2025/10/06-21:37:02.349 40ad8 Delete type=0 #10
+2025/10/06-21:37:02.349 40ad8 Delete type=2 #17
+2025/10/06-21:37:02.349 40ad8 Delete type=0 #16
+2025/10/06-21:37:02.349 40ad8 Delete type=2 #11
+2025/10/06-21:37:02.349 40ad8 Delete type=2 #14
+2025/10/06-21:37:02.349 40ad8 Delete type=0 #4
+2025/10/06-21:37:02.349 40ad8 Delete type=0 #13
+2025/10/06-21:37:02.349 40ad8 Delete type=0 #3
+2025/10/06-21:37:02.350 40ad8 Delete type=2 #8
+2025/10/06-21:37:18.136 40ada Level-0 table #24: started
+2025/10/06-21:37:18.164 40ada Level-0 table #24: 126887 bytes OK
+2025/10/06-21:37:18.172 40ada Delete type=0 #19

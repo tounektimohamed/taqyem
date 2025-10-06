@@ -14,8 +14,6 @@ import 'package:open_file/open_file.dart';
 import 'dart:typed_data';
 import 'dart:html' as html;
 
-import 'package:url_launcher/url_launcher.dart'; // Pour Flutter Web seulement
-
 class ClassificationPage extends StatefulWidget {
   final String selectedClass;
   final String selectedBaremeId;
@@ -48,85 +46,40 @@ class ClassificationPage extends StatefulWidget {
 class _ClassificationPageState extends State<ClassificationPage> {
   List<dynamic> jsonData = [];
   bool _isGeneratingReport = false;
+  bool _isLoading = true;
+  int _selectedTabIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    //  printVariables();
     loadJsonData();
   }
-
-  // void printVariables() {
-  //   print("Classe sélectionnée: ${widget.selectedClass}");
-  //   print("ID du barème sélectionné: ${widget.selectedBaremeId}");
-  //   print("Utilisateur actuel: ${widget.currentUser}");
-  //   print("Nom du professeur: ${widget.profName}");
-  //   print("Nom de l'école: ${widget.schoolName}");
-  //   print("Nom de la classe: ${widget.className}");
-  //   print("Nom de la matière: ${widget.matiereName}");
-  //   print("Nom du barème: ${widget.baremeName ?? 'Non défini'}");
-  //   print("ID du sous-barème sélectionné: ${widget.selectedBaremeId}");
-  //   print("Nom du sous-barème: ${widget.baremeName ?? 'Non défini'}");
-  // }
 
   Future<void> loadJsonData() async {
     try {
       String jsonString = await rootBundle.loadString('assets/data.json');
       setState(() {
         jsonData = json.decode(jsonString);
+        _isLoading = false;
       });
     } catch (e) {
       print("Erreur lors du chargement du fichier JSON: $e");
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
- Future<void> _saveUserProposal(
-    String solution, String probleme, String groupName) async {
-  final userId = FirebaseAuth.instance.currentUser!.uid;
-  final proposalRef = FirebaseFirestore.instance
-      .collection('users_proposals')
-      .doc(userId)
-      .collection('user_proposals')
-      .doc();
+  Future<void> _saveUserProposal(
+      String solution, String probleme, String groupName) async {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+    final proposalRef = FirebaseFirestore.instance
+        .collection('users_proposals')
+        .doc(userId)
+        .collection('user_proposals')
+        .doc();
 
-  final globalProposalRef = FirebaseFirestore.instance
-      .collection('users_proposals')
-      .doc('global_proposals')
-      .collection('approved_proposals')
-      .doc(proposalRef.id);
-
-  final batch = FirebaseFirestore.instance.batch();
-
-  // Ajout à la collection utilisateur
-  batch.set(proposalRef, {
-    'solution': solution,
-    'probleme': probleme,
-    'groupName': groupName,
-    'status': 'pending',
-    'createdAt': FieldValue.serverTimestamp(),
-    'userId': userId,
-    'userName': FirebaseAuth.instance.currentUser!.displayName ?? 'Anonymous',
-    'className': widget.className,
-    'matiereName': widget.matiereName,
-    'baremeName': widget.baremeName,
-    'sousBaremeName': widget.sousBaremeName ?? '',
-    'isUserProposal': true, // Marquer comme proposition utilisateur
-  });
-
-  // Ajout à la collection globale (en attente)
-  batch.set(globalProposalRef, {
-    'originalRef': proposalRef.path,
-    'status': 'pending',
-    'createdAt': FieldValue.serverTimestamp(),
-    'isGlobalProposal': false, // Ce n'est pas une proposition globale
-  });
-
-  await batch.commit();
-}
-
-  Future<void> _approveProposal(String proposalPath) async {
-    final proposalRef = FirebaseFirestore.instance.doc(proposalPath);
-    final globalRef = FirebaseFirestore.instance
+    final globalProposalRef = FirebaseFirestore.instance
         .collection('users_proposals')
         .doc('global_proposals')
         .collection('approved_proposals')
@@ -134,402 +87,578 @@ class _ClassificationPageState extends State<ClassificationPage> {
 
     final batch = FirebaseFirestore.instance.batch();
 
-    // 1. Mettre à jour le statut dans la collection utilisateur
-    batch.update(proposalRef, {
-      'status': 'approved',
-      'approvedAt': FieldValue.serverTimestamp(),
-      'approvedBy': FirebaseAuth.instance.currentUser!.uid,
+    batch.set(proposalRef, {
+      'solution': solution,
+      'probleme': probleme,
+      'groupName': groupName,
+      'status': 'pending',
+      'createdAt': FieldValue.serverTimestamp(),
+      'userId': userId,
+      'userName': FirebaseAuth.instance.currentUser!.displayName ?? 'Anonymous',
+      'className': widget.className,
+      'matiereName': widget.matiereName,
+      'baremeName': widget.baremeName,
+      'sousBaremeName': widget.sousBaremeName ?? '',
+      'isUserProposal': true,
     });
 
-    // 2. Mettre à jour le statut dans la collection globale
-    batch.update(globalRef, {
-      'status': 'approved',
-      'approvedAt': FieldValue.serverTimestamp(),
+    batch.set(globalProposalRef, {
+      'originalRef': proposalRef.path,
+      'status': 'pending',
+      'createdAt': FieldValue.serverTimestamp(),
+      'isGlobalProposal': false,
     });
 
     await batch.commit();
   }
 
-
   void showSolutionAndProbleme(String groupName) async {
-  // Charger les propositions de l'utilisateur
-  final userProposals = await _getUserProposal();
-  
-  var result = jsonData.firstWhere(
-    (item) {
-      String jsonClasse = item['classe'].trim().toLowerCase();
-      String jsonMatiere = item['matiere'].trim().toLowerCase();
-      String jsonBareme = item['bareme'].trim().toLowerCase();
+    final userProposals = await _getUserProposal();
+    
+    var result = jsonData.firstWhere(
+      (item) {
+        String jsonClasse = item['classe'].trim().toLowerCase();
+        String jsonMatiere = item['matiere'].trim().toLowerCase();
+        String jsonBareme = item['bareme'].trim().toLowerCase();
 
-      String selectedClasse = widget.className.trim().toLowerCase();
-      String selectedMatiere = widget.matiereName.trim().toLowerCase();
-      String selectedBareme =
-          (widget.sousBaremeName ?? widget.baremeName).trim().toLowerCase();
+        String selectedClasse = widget.className.trim().toLowerCase();
+        String selectedMatiere = widget.matiereName.trim().toLowerCase();
+        String selectedBareme =
+            (widget.sousBaremeName ?? widget.baremeName).trim().toLowerCase();
 
-      return jsonClasse == selectedClasse &&
-          jsonMatiere == selectedMatiere &&
-          jsonBareme == selectedBareme;
-    },
-    orElse: () => null,
-  );
+        return jsonClasse == selectedClasse &&
+            jsonMatiere == selectedMatiere &&
+            jsonBareme == selectedBareme;
+      },
+      orElse: () => null,
+    );
 
-  TextEditingController solutionController = TextEditingController();
-  TextEditingController problemeController = TextEditingController();
+    TextEditingController solutionController = TextEditingController();
+    TextEditingController problemeController = TextEditingController();
 
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: Text('خطة العلاج وأصل الخطأ لـ $groupName'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Solutions par défaut
-              Text('الحل:', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text(result != null ? result['solution'] : 'لا يوجد حل متاح'),
-              SizedBox(height: 16),
-              Text('المشكلة:', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text(result != null ? result['probleme'] : 'لا يوجد مشكلة محددة'),
-              
-              SizedBox(height: 24),
-              
-              // Propositions de l'utilisateur
-              if (userProposals.isNotEmpty) ...[
-                Text('مقترحاتك:', style: TextStyle(fontWeight: FontWeight.bold)),
-                SizedBox(height: 8),
-                ...userProposals.map((proposal) => Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16.0),
+          ),
+          elevation: 8,
+          child: Container(
+            padding: EdgeInsets.all(20.0),
+            width: MediaQuery.of(context).size.width * 0.9,
+            height: MediaQuery.of(context).size.height * 0.8,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: EdgeInsets.only(bottom: 16.0),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.assignment, color: Colors.blue.shade700),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'خطة العلاج وأصل الخطأ لـ $groupName',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: 20),
+
+                Expanded(
+                  child: SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (proposal['solution']?.isNotEmpty == true) ...[
-                          Text('الحل المقترح: ${proposal['solution']}'),
-                          SizedBox(height: 4),
-                        ],
-                        if (proposal['probleme']?.isNotEmpty == true) ...[
-                          Text('أصل المشكلة المقترح: ${proposal['probleme']}'),
-                          SizedBox(height: 4),
-                        ],
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            if (proposal['isUserProposal'] == true) // Seulement pour les propositions utilisateur
-                              IconButton(
-                                icon: Icon(Icons.delete, color: Colors.red),
-                                onPressed: () {
-                                  _deleteUserProposal(proposal['id']);
-                                  Navigator.of(context).pop();
-                                },
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.orange.shade300),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.lightbulb_outline, color: Colors.orange.shade700, size: 18),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'الحل:',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.orange.shade700,
+                                    ),
+                                  ),
+                                ],
                               ),
+                              SizedBox(height: 8),
+                              Text(
+                                result != null ? result['solution'] : 'لا يوجد حل متاح',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        SizedBox(height: 20),
+
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.red.shade300),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.warning_amber_outlined, color: Colors.red.shade700, size: 18),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'المشكلة:',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.red.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                result != null ? result['probleme'] : 'لا يوجد مشكلة محددة',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        SizedBox(height: 24),
+                        
+                        if (userProposals.isNotEmpty) ...[
+                          Row(
+                            children: [
+                              Icon(Icons.history, color: Colors.blue.shade700, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'مقترحاتك:',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors.blue.shade800,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 12),
+                          ...userProposals.map((proposal) => Card(
+                            elevation: 2,
+                            margin: EdgeInsets.only(bottom: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  if (proposal['solution']?.isNotEmpty == true) ...[
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(Icons.check_circle_outline,
+                                            color: Colors.green.shade600, size: 16),
+                                        SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'الحل المقترح: ${proposal['solution']}',
+                                            style: TextStyle(fontSize: 14),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 6),
+                                  ],
+                                  if (proposal['probleme']?.isNotEmpty == true) ...[
+                                    Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(Icons.analytics_outlined,
+                                            color: Colors.blue.shade600, size: 16),
+                                        SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            'أصل المشكلة المقترح: ${proposal['probleme']}',
+                                            style: TextStyle(fontSize: 14),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 6),
+                                  ],
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
+                                      if (proposal['isUserProposal'] == true)
+                                        IconButton(
+                                          icon: Icon(Icons.delete_outline,
+                                                    color: Colors.red.shade600, size: 20),
+                                          onPressed: () {
+                                            _deleteUserProposal(proposal['id']);
+                                            Navigator.of(context).pop();
+                                          },
+                                          tooltip: 'حذف المقترح',
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )).toList(),
+                          SizedBox(height: 16),
+                        ],
+                        
+                        Row(
+                          children: [
+                            Icon(Icons.add_circle_outline, color: Colors.blue.shade700, size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'أضف مقترحات جديدة:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors.blue.shade800,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'الحل المقترح',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            TextField(
+                              controller: solutionController,
+                              decoration: InputDecoration(
+                                hintText: 'أدخل اقتراحك للحل...',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: Colors.grey.shade400),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: Colors.blue.shade600),
+                                ),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                prefixIcon: Icon(Icons.lightbulb, color: Colors.grey.shade600),
+                              ),
+                              maxLines: 3,
+                              textInputAction: TextInputAction.next,
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'أصل المشكلة المقترح',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            TextField(
+                              controller: problemeController,
+                              decoration: InputDecoration(
+                                hintText: 'أدخل اقتراحك لأصل المشكلة...',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: Colors.grey.shade400),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: Colors.blue.shade600),
+                                ),
+                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                prefixIcon: Icon(Icons.psychology, color: Colors.grey.shade600),
+                              ),
+                              maxLines: 3,
+                              textInputAction: TextInputAction.next,
+                            ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                )).toList(),
-                SizedBox(height: 16),
+                ),
+
+                SizedBox(height: 20),
+
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text('إغلاق', style: TextStyle(fontSize: 16)),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (solutionController.text.isNotEmpty ||
+                              problemeController.text.isNotEmpty) {
+                            await _saveUserProposal(
+                              solutionController.text,
+                              problemeController.text,
+                              groupName,
+                            );
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('تم حفظ المقترحات بنجاح'),
+                                backgroundColor: Colors.green,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            Navigator.of(context).pop();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('يرجى إدخال حل أو مشكلة على الأقل'),
+                                backgroundColor: Colors.orange,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade700,
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text(
+                          'حفظ المقترحات الجديدة',
+                          style: TextStyle(fontSize: 16, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
-              
-              // Formulaire pour ajouter de nouvelles propositions
-              Text('أضف مقترحات جديدة:',
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              SizedBox(height: 8),
-              TextField(
-                controller: solutionController,
-                decoration: InputDecoration(
-                  labelText: 'الحل المقترح',
-                  border: OutlineInputBorder(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> generateAndOpenTreatmentPlan() async {
+    setState(() {
+      _isGeneratingReport = true;
+    });
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
                 ),
-                maxLines: 3,
-              ),
-              SizedBox(height: 16),
-              TextField(
-                controller: problemeController,
-                decoration: InputDecoration(
-                  labelText: 'أصل المشكلة المقترح',
-                  border: OutlineInputBorder(),
+                SizedBox(height: 20),
+                Text(
+                  "جاري إنشاء التقرير...",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
-                maxLines: 3,
-              ),
-            ],
+                SizedBox(height: 10),
+                Text(
+                  "يرجى الانتظار، هذه العملية قد تستغرق بضع لحظات",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text('إغلاق'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (solutionController.text.isNotEmpty ||
-                  problemeController.text.isNotEmpty) {
-                await _saveUserProposal(
-                  solutionController.text,
-                  problemeController.text,
-                  groupName,
-                );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('تم حفظ المقترحات بنجاح')),
-                );
-                Navigator.of(context).pop();
-              }
-            },
-            child: Text('حفظ المقترحات الجديدة'),
-          ),
-        ],
-      );
-    },
-  );
-}
-  Future<void> _generateAndSavePDF() async {
+        );
+      },
+    );
+
     try {
       final groupedStudents = await _getGroupedStudentsData();
 
-      // Récupérer les données de solutions depuis jsonData (une seule fois)
-      Map<String, dynamic> solutionsData = {};
-
-      var result = jsonData.firstWhere(
-        (item) {
-          String jsonClasse = item['classe'].trim().toLowerCase();
-          String jsonMatiere = item['matiere'].trim().toLowerCase();
-          String jsonBareme = item['bareme'].trim().toLowerCase();
-
-          String selectedClasse = widget.className.trim().toLowerCase();
-          String selectedMatiere = widget.matiereName.trim().toLowerCase();
-          String selectedBareme =
-              (widget.sousBaremeName ?? widget.baremeName).trim().toLowerCase();
-
-          return jsonClasse == selectedClasse &&
-              jsonMatiere == selectedMatiere &&
-              jsonBareme == selectedBareme;
-        },
-        orElse: () => null,
-      );
-
-      if (result != null) {
-        solutionsData = {
-          'solution': result['solution'],
-          'probleme': result['probleme'],
-        };
+      if (groupedStudents.isEmpty) {
+        throw Exception('Aucun étudiant trouvé dans la classe');
       }
 
-      const serverUrl = 'https://print-maker.onrender.com/generate-pdf';
+      final unifiedSolutions = await _getUnifiedSolutions();
 
-      final response = await http.post(
-        Uri.parse(serverUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'groupedStudents': groupedStudents,
-          'className': widget.className,
-          'matiereName': widget.matiereName,
-          'baremeName': widget.baremeName,
-          'sousBaremeName': widget.sousBaremeName,
-          'profName': widget.profName,
-          'schoolName': widget.schoolName,
-          'solutionsData': solutionsData, // Données uniques
-        }),
-      );
+      final reportData = {
+        'schoolName': widget.schoolName,
+        'profName': widget.profName,
+        'className': widget.className,
+        'matiereName': widget.matiereName,
+        'baremeName': widget.baremeName,
+        'sousBaremeName': widget.sousBaremeName ?? '',
+        'groups': {
+          'treatment': groupedStudents['مجموعة العلاج']
+                  ?.map((s) => s['name'])
+                  .whereType<String>()
+                  .toList() ??
+              [],
+          'support': groupedStudents['مجموعة الدعم']
+                  ?.map((s) => s['name'])
+                  .whereType<String>()
+                  .toList() ??
+              [],
+          'excellence': groupedStudents['مجموعة التميز']
+                  ?.map((s) => s['name'])
+                  .whereType<String>()
+                  .toList() ??
+              [],
+        },
+        'solutions': {
+          'default': {
+            'solution': unifiedSolutions['defaultSolution'] ?? '',
+            'probleme': unifiedSolutions['defaultProbleme'] ?? '',
+          },
+          'userProposals': [
+            ...(unifiedSolutions['userSolutions']
+                    ?.map((s) => {'solution': s})
+                    .toList() ??
+                []),
+            ...(unifiedSolutions['userProblems']
+                    ?.map((p) => {'probleme': p})
+                    .toList() ??
+                []),
+          ],
+          'globalProposals': [
+            ...(unifiedSolutions['globalSolutions']
+                    ?.map((s) => {'solution': s})
+                    .toList() ??
+                []),
+            ...(unifiedSolutions['globalProblems']
+                    ?.map((p) => {'probleme': p})
+                    .toList() ??
+                []),
+          ],
+        },
+      };
+
+      const serverUrl = 'https://print-maker.onrender.com/generate-treatment-plan';
+      final response = await http
+          .post(
+            Uri.parse(serverUrl),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(reportData),
+          )
+          .timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
-        // Pour Flutter Web
-        final bytes = response.bodyBytes;
-        final blob = html.Blob([bytes], 'application/pdf');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: url)
-          ..setAttribute('download', 'classification.pdf')
-          ..click();
+        if (kIsWeb) {
+          final blob = html.Blob([response.bodyBytes], 'text/html');
+          final url = html.Url.createObjectUrlFromBlob(blob);
+          html.window.open(url, '_blank');
+          html.Url.revokeObjectUrl(url);
+        } else {
+          final tempDir = await getTemporaryDirectory();
+          final file = File('${tempDir.path}/treatment_plan.html');
+          await file.writeAsBytes(response.bodyBytes);
+          OpenFile.open(file.path);
+        }
 
-        html.Url.revokeObjectUrl(url);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('تم إنشاء التقرير بنجاح'),
+            backgroundColor: Colors.green,
+          ),
+        );
       } else {
-        throw Exception('Erreur serveur: ${response.statusCode}');
+        throw Exception(
+            'Erreur serveur: ${response.statusCode}\n${response.body}');
       }
     } catch (e) {
+      debugPrint('[TreatmentPlan] ERREUR: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur: ${e.toString()}')),
-      );
-    }
-  }
-
-  // Future<void> saveAndOpenPDF(Uint8List bytes) async {
-  //   final directory = await getApplicationDocumentsDirectory();
-  //   final file = File('${directory.path}/classification.pdf');
-  //   await file.writeAsBytes(bytes);
-  //   OpenFile.open(file.path);
-  // }
-
-  Future<Map<String, dynamic>> _getGroupedStudentsData() async {
-    var students = await _getClassifiedStudents(
-        widget.selectedClass, widget.selectedBaremeId);
-    Map<String, List<Map<String, String>>> groupedStudents = {};
-
-    for (var student in students) {
-      String group = student['group'] ?? '';
-      if (!groupedStudents.containsKey(group)) {
-        groupedStudents[group] = [];
-      }
-      groupedStudents[group]!.add(student);
-    }
-
-    return groupedStudents;
-  }
-
-  Future<void> _saveAndLaunchPDF(Uint8List bytes, String fileName) async {
-    final directory = await getExternalStorageDirectory();
-    final file = File('${directory?.path}/$fileName');
-    await file.writeAsBytes(bytes, flush: true);
-    OpenFile.open(file.path);
-  }
-///////////////////////////////////////////
-
-// Ajoutez cette nouvelle méthode à la fin de la classe _ClassificationPageState
- Future<void> generateAndOpenTreatmentPlan() async {
-  // Début du chargement
-  setState(() {
-    _isGeneratingReport = true;
-  });
-
-  // Afficher le dialogue de chargement
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 20),
-            Text("Génération du rapport en cours...",
-                style: TextStyle(fontSize: 16)),
-            SizedBox(height: 10),
-            Text("Veuillez patienter, cette opération peut prendre quelques instants.",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey)),
-          ],
+        SnackBar(
+          content: Text('خطأ في الإنشاء: ${e.toString()}'),
+          backgroundColor: Colors.red,
         ),
       );
-    },
-  );
-
-  try {
-    debugPrint('[TreatmentPlan] Début de la génération du plan de traitement');
-
-    // 1. Récupération des étudiants groupés
-    final groupedStudents = await _getGroupedStudentsData();
-
-    if (groupedStudents.isEmpty) {
-      throw Exception('Aucun étudiant trouvé dans la classe');
+    } finally {
+      setState(() {
+        _isGeneratingReport = false;
+      });
+      Navigator.of(context).pop();
     }
+  }
 
-    // 2. Récupération des solutions unifiées
-    final unifiedSolutions = await _getUnifiedSolutions();
-
-    // 3. Préparation des données pour Flask
-    final reportData = {
-      'schoolName': widget.schoolName,
-      'profName': widget.profName,
-      'className': widget.className,
-      'matiereName': widget.matiereName,
-      'baremeName': widget.baremeName,
-      'sousBaremeName': widget.sousBaremeName ?? '',
-      'groups': {
-        'treatment': groupedStudents['مجموعة العلاج']
-                ?.map((s) => s['name'])
-                .whereType<String>()
-                .toList() ??
-            [],
-        'support': groupedStudents['مجموعة الدعم']
-                ?.map((s) => s['name'])
-                .whereType<String>()
-                .toList() ??
-            [],
-        'excellence': groupedStudents['مجموعة التميز']
-                ?.map((s) => s['name'])
-                .whereType<String>()
-                .toList() ??
-            [],
-      },
-      'solutions': {
-        'default': {
-          'solution': unifiedSolutions['defaultSolution'] ?? '',
-          'probleme': unifiedSolutions['defaultProbleme'] ?? '',
-        },
-        'userProposals': [
-          ...(unifiedSolutions['userSolutions']
-                  ?.map((s) => {'solution': s})
-                  .toList() ??
-              []),
-          ...(unifiedSolutions['userProblems']
-                  ?.map((p) => {'probleme': p})
-                  .toList() ??
-              []),
-        ],
-        'globalProposals': [
-          ...(unifiedSolutions['globalSolutions']
-                  ?.map((s) => {'solution': s})
-                  .toList() ??
-              []),
-          ...(unifiedSolutions['globalProblems']
-                  ?.map((p) => {'probleme': p})
-                  .toList() ??
-              []),
-        ],
-      },
-    };
-
-    debugPrint('[TreatmentPlan] Données envoyées: ${jsonEncode(reportData)}');
-
-    // 4. Envoi au serveur Flask
-    const serverUrl = 'https://print-maker.onrender.com/generate-treatment-plan';
-    final response = await http
-        .post(
-          Uri.parse(serverUrl),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(reportData),
-        )
-        .timeout(const Duration(seconds: 30));
-
-    if (response.statusCode == 200) {
-      if (kIsWeb) {
-        final blob = html.Blob([response.bodyBytes], 'text/html');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        html.window.open(url, '_blank');
-        html.Url.revokeObjectUrl(url);
-      } else {
-        final tempDir = await getTemporaryDirectory();
-        final file = File('${tempDir.path}/treatment_plan.html');
-        await file.writeAsBytes(response.bodyBytes);
-        OpenFile.open(file.path);
-      }
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Rapport généré avec succès')),
-      );
-    } else {
-      throw Exception(
-          'Erreur serveur: ${response.statusCode}\n${response.body}');
-    }
-  } catch (e) {
-    debugPrint('[TreatmentPlan] ERREUR: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-          content: Text('Erreur lors de la génération: ${e.toString()}')),
-    );
-  } finally {
-    // Fin du chargement
-    setState(() {
-      _isGeneratingReport = false;
-    });
-    Navigator.of(context).pop(); // Fermer le dialogue de chargement
+// Ajoutez cette méthode helper pour obtenir des noms courts
+String _getShortGroupName(String fullName) {
+  switch (fullName) {
+    case 'مجموعة العلاج':
+      return 'العلاج';
+    case 'مجموعة الدعم':
+      return 'الدعم';
+    case 'مجموعة التميز':
+      return 'التميز';
+    default:
+      return fullName;
   }
 }
   Future<Map<String, dynamic>> _getUnifiedSolutions() async {
-    // 1. Solutions par défaut depuis JSON
     final defaultSol = _getSolutionsData();
 
-    // 2. Toutes les propositions utilisateur (sans filtre d'approbation)
     final userQuery = FirebaseFirestore.instance
         .collection('users_proposals')
         .doc(FirebaseAuth.instance.currentUser!.uid)
@@ -544,7 +673,6 @@ class _ClassificationPageState extends State<ClassificationPage> {
 
     final userProposals = await userQuery.get();
 
-    // 3. Propositions globales (seulement approuvées)
     final globalQuery = FirebaseFirestore.instance
         .collection('users_proposals')
         .doc('global_proposals')
@@ -560,13 +688,11 @@ class _ClassificationPageState extends State<ClassificationPage> {
 
     final globalProposals = await globalQuery.get();
 
-    // Préparation des listes
     final userSolutions = <String>[];
     final userProblems = <String>[];
     final globalSolutions = <String>[];
     final globalProblems = <String>[];
 
-    // Ajout des propositions utilisateur (toutes)
     for (final doc in userProposals.docs) {
       final data = doc.data() as Map<String, dynamic>;
       if (data['solution'] != null && data['solution'].toString().isNotEmpty) {
@@ -577,7 +703,6 @@ class _ClassificationPageState extends State<ClassificationPage> {
       }
     }
 
-    // Ajout des propositions globales (approuvées)
     for (final doc in globalProposals.docs) {
       final data = doc.data() as Map<String, dynamic>;
       if (data['solution'] != null && data['solution'].toString().isNotEmpty) {
@@ -600,80 +725,6 @@ class _ClassificationPageState extends State<ClassificationPage> {
     };
   }
 
-  Future<List<Map<String, dynamic>>> _getUserProposals() async {
-    final userId = FirebaseAuth.instance.currentUser!.uid;
-
-    try {
-      // 1. Récupérer les propositions par défaut du JSON
-      final defaultSolutions = _getSolutionsData();
-
-      // 2. Récupérer les propositions personnelles approuvées
-      final userApproved = await FirebaseFirestore.instance
-          .collection('users_proposals')
-          .doc(userId)
-          .collection('user_proposals')
-          .where('status', isEqualTo: 'approved')
-          .get();
-
-      // 3. Récupérer les propositions globales approuvées
-      final globalApproved = await FirebaseFirestore.instance
-          .collection('users_proposals')
-          .doc('global_proposals')
-          .collection('approved_proposals')
-          .where('status', isEqualTo: 'approved')
-          .get();
-
-      // Préparer la liste finale
-      final allProposals = <Map<String, dynamic>>[];
-
-      // Ajouter les solutions par défaut en premier
-      allProposals.add({
-        'type': 'default',
-        'solution': defaultSolutions['solution'],
-        'probleme': defaultSolutions['probleme'],
-        'className': widget.className,
-        'matiereName': widget.matiereName,
-        'baremeName': widget.baremeName,
-        'sousBaremeName': widget.sousBaremeName ?? '',
-        'groupName': 'all'
-      });
-
-      // Ajouter les propositions personnelles
-      for (final doc in userApproved.docs) {
-        final data = doc.data();
-        allProposals.add({
-          'type': 'user',
-          ...data,
-          'className': widget.className,
-          'matiereName': widget.matiereName,
-          'baremeName': widget.baremeName,
-          'sousBaremeName': widget.sousBaremeName ?? '',
-          'id': doc.id,
-        });
-      }
-
-      // Ajouter les propositions globales
-      for (final doc in globalApproved.docs) {
-        final data = doc.data();
-        allProposals.add({
-          'type': 'global',
-          ...data,
-          'className': widget.className,
-          'matiereName': widget.matiereName,
-          'baremeName': widget.baremeName,
-          'sousBaremeName': widget.sousBaremeName ?? '',
-          'id': doc.id,
-        });
-      }
-
-      return allProposals;
-    } catch (e) {
-      print('Error getting proposals: $e');
-      return [];
-    }
-  }
-
-// Méthode pour récupérer les données de solution
   Map<String, dynamic> _getSolutionsData() {
     var result = jsonData.firstWhere(
       (item) =>
@@ -691,197 +742,477 @@ class _ClassificationPageState extends State<ClassificationPage> {
         : {'solution': '', 'probleme': ''};
   }
 
-  /////////////////////////////////////////////////////
+  Future<Map<String, dynamic>> _getGroupedStudentsData() async {
+    var students = await _getClassifiedStudents(
+        widget.selectedClass, widget.selectedBaremeId);
+    Map<String, List<Map<String, String>>> groupedStudents = {};
+
+    for (var student in students) {
+      String group = student['group'] ?? '';
+      if (!groupedStudents.containsKey(group)) {
+        groupedStudents[group] = [];
+      }
+      groupedStudents[group]!.add(student);
+    }
+
+    return groupedStudents;
+  }
+
+  Widget _buildGroupTab(String groupName, Color color, IconData icon, List<Map<String, String>> students) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            color.withOpacity(0.1),
+            Colors.white,
+          ],
+        ),
+      ),
+      child: Column(
+        children: [
+          // Header avec le bouton عمل
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.2),
+              border: Border(
+                bottom: BorderSide(color: color.withOpacity(0.3)),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, color: color, size: 24),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '$groupName (${students.length} طالب)',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    showSolutionAndProbleme(groupName);
+                  },
+                  icon: Icon(Icons.work_outline, size: 20),
+                  label: Text('عمل'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: color,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Liste des étudiants avec défilement
+          Expanded(
+            child: students.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(icon, size: 64, color: color.withOpacity(0.3)),
+                        SizedBox(height: 16),
+                        Text(
+                          'لا توجد طلاب في هذه المجموعة',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: EdgeInsets.all(16),
+                    itemCount: students.length,
+                    itemBuilder: (context, index) {
+                      final student = students[index];
+                      return Card(
+                        elevation: 2,
+                        margin: EdgeInsets.only(bottom: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: color.withOpacity(0.2),
+                            child: Icon(
+                              Icons.person,
+                              color: color,
+                            ),
+                          ),
+                          title: Text(
+                            student['name'] ?? 'غير معروف',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (student['treatmentPlan']?.isNotEmpty == true)
+                                Text(
+                                  'خطة العلاج: ${student['treatmentPlan']}',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              if (student['errorOrigin']?.isNotEmpty == true)
+                                Text(
+                                  'أصل الخطأ: ${student['errorOrigin']}',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                            ],
+                          ),
+                          trailing: Icon(Icons.school, color: color),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('خطة العلاج وأصل الخطأ'),
-          centerTitle: true,
-          actions: [
-            IconButton(
-            icon: Icon(Icons.print),
-            onPressed: _isGeneratingReport ? null : generateAndOpenTreatmentPlan,
-            tooltip: 'طباعة التقرير',
+          title: Text(
+            'خطة العلاج وأصل الخطأ',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+            ),
           ),
+          centerTitle: true,
+          backgroundColor: Colors.blue.shade700,
+          foregroundColor: Colors.white,
+          elevation: 2,
+          actions: [
+            Container(
+              margin: EdgeInsets.only(left: 8),
+              child: IconButton(
+                icon: _isGeneratingReport
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Icon(Icons.print_outlined),
+                onPressed: _isGeneratingReport ? null : generateAndOpenTreatmentPlan,
+                tooltip: 'طباعة التقرير',
+              ),
+            ),
           ],
         ),
-        
-        body: Column(
-          children: [
-            PageHeader(
-              profName: widget.profName,
-              schoolName: widget.schoolName,
-              className: widget.className,
-              matiereName: widget.matiereName,
-            ),
-            Container(
-              padding: EdgeInsets.symmetric(vertical: 8.0),
-              alignment: Alignment.center,
-              child: Column(
-                children: [
-                  Text(
-                    'خطة العلاج وأصل الخطأ',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.normal),
-                  ),
-                  Text(
-                    'في مادة ${widget.matiereName} في معيار ${widget.sousBaremeName ?? widget.baremeName}',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  // Ajout de la notification fixe
-                  Container(
-                    margin: EdgeInsets.only(top: 10),
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue[50],
-                      borderRadius: BorderRadius.circular(8),
-                      //   border: Border.all(color: Colors.blue[100]),
+
+        body: _isLoading
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    SizedBox(height: 16),
+                    Text(
+                      'جاري تحميل البيانات...',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : Column(
+                children: [
+                  // En-tête
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topRight,
+                        end: Alignment.bottomLeft,
+                        colors: [
+                          Colors.blue.shade50,
+                          Colors.white,
+                        ],
+                      ),
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey.shade300),
+                      ),
+                    ),
+                    child: Column(
                       children: [
-                        Icon(Icons.info_outline,
-                            color: Colors.blue[700], size: 20),
-                        SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            'يمكنك إضافة مقترحاتك الشخصية للحلول وأصل المشكلة بالضغط على زر "عمل"',
-                            style: TextStyle(
-                              color: Colors.blue[800],
-                              fontSize: 14,
-                            ),
-                            textAlign: TextAlign.center,
+                        PageHeader(
+                          profName: widget.profName,
+                          schoolName: widget.schoolName,
+                          className: widget.className,
+                          matiereName: widget.matiereName,
+                        ),
+                        Container(
+                          padding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 20),
+                          child: Column(
+                            children: [
+                              Text(
+                                'خطة العلاج وأصل الخطأ',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade800,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                'في مادة ${widget.matiereName} في معيار ${widget.sousBaremeName ?? widget.baremeName}',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey.shade700,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 12),
+                              Container(
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.blue.shade100),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.info_outline_rounded,
+                                        color: Colors.blue.shade700, size: 24),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'يمكنك إضافة مقترحاتك الشخصية للحلول وأصل المشكلة بالضغط على زر "عمل"',
+                                        style: TextStyle(
+                                          color: Colors.blue.shade800,
+                                          fontSize: 14,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
+                    ),
+                  ),
+
+                  // Contenu principal avec onglets
+                  Expanded(
+                    child: FutureBuilder<List<Map<String, String>>>(
+                      future: _getClassifiedStudents(
+                          widget.selectedClass, widget.selectedBaremeId),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.blue.shade700),
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  'جاري تحميل قائمة الطلاب...',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.error_outline,
+                                    color: Colors.red, size: 48),
+                                SizedBox(height: 16),
+                                Text(
+                                  'حدث خطأ في تحميل البيانات',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.group_off,
+                                    color: Colors.grey, size: 48),
+                                SizedBox(height: 16),
+                                Text(
+                                  'لا توجد بيانات للعرض',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        var students = snapshot.data!;
+                        Map<String, List<Map<String, String>>> groupedStudents = {};
+
+                        for (var student in students) {
+                          String group = student['group'] ?? '';
+                          if (!groupedStudents.containsKey(group)) {
+                            groupedStudents[group] = [];
+                          }
+                          groupedStudents[group]!.add(student);
+                        }
+
+                        // Définir les groupes dans l'ordre souhaité
+                        final groups = [
+                          {
+                            'name': 'مجموعة العلاج',
+                            'color': Colors.red,
+                            'icon': Icons.medical_services_outlined,
+                            'students': groupedStudents['مجموعة العلاج'] ?? [],
+                          },
+                          {
+                            'name': 'مجموعة الدعم',
+                            'color': Colors.orange,
+                            'icon': Icons.support_outlined,
+                            'students': groupedStudents['مجموعة الدعم'] ?? [],
+                          },
+                          {
+                            'name': 'مجموعة التميز',
+                            'color': Colors.green,
+                            'icon': Icons.emoji_events_outlined,
+                            'students': groupedStudents['مجموعة التميز'] ?? [],
+                          },
+                        ];
+
+                        return DefaultTabController(
+                          length: groups.length,
+                          child: Column(
+                            children: [
+                              // Barre d'onglets
+                              Container(
+                                color: Colors.white,
+                                child: // Dans la méthode build, remplacez la partie TabBar par ceci :
+
+// Barre d'onglets
+Container(
+  color: Colors.white,
+  child: TabBar(
+    isScrollable: true, // Ajout de cette ligne pour permettre le défilement horizontal
+    labelColor: Colors.blue.shade800,
+    unselectedLabelColor: Colors.grey.shade600,
+    indicatorColor: Colors.blue.shade700,
+    indicatorWeight: 3,
+    labelStyle: TextStyle(
+      fontWeight: FontWeight.bold,
+      fontSize: 14,
+    ),
+    unselectedLabelStyle: TextStyle(
+      fontWeight: FontWeight.normal,
+    ),
+    tabs: groups.map((group) {
+      return Tab(
+        child: Container(
+          constraints: BoxConstraints(minWidth: 120), // Largeur minimale pour chaque onglet
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min, // Utiliser min pour éviter le débordement
+            children: [
+              Icon(
+                group['icon'] as IconData,
+                size: 18, // Réduire légèrement la taille de l'icône
+              ),
+              SizedBox(width: 6),
+              Flexible( // Utiliser Flexible pour le texte
+                child: Text(
+                  _getShortGroupName(group['name'] as String), // Nom court
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12, // Réduire la taille de police
+                  ),
+                ),
+              ),
+              SizedBox(width: 4),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: (group['color'] as Color).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${(group['students'] as List).length}',
+                  style: TextStyle(
+                    fontSize: 10, // Réduire la taille de police du compteur
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }).toList(),
+  ),
+),
+
+                              ),
+                              
+                              // Contenu des onglets
+                              Expanded(
+                                child: TabBarView(
+                                  children: groups.map((group) {
+                                    return _buildGroupTab(
+                                      group['name'] as String,
+                                      group['color'] as Color,
+                                      group['icon'] as IconData,
+                                      group['students'] as List<Map<String, String>>,
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
               ),
-            ),
-            _buildLegend(),
-            Expanded(
-              child: FutureBuilder<List<Map<String, String>>>(
-                future: _getClassifiedStudents(
-                    widget.selectedClass, widget.selectedBaremeId),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return Center(child: Text('خطأ: ${snapshot.error}'));
-                  }
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return Center(child: Text('لا توجد بيانات'));
-                  }
-
-                  var students = snapshot.data!;
-                  Map<String, List<Map<String, String>>> groupedStudents = {};
-
-                  for (var student in students) {
-                    String group = student['group'] ?? '';
-                    if (!groupedStudents.containsKey(group)) {
-                      groupedStudents[group] = [];
-                    }
-                    groupedStudents[group]!.add(student);
-                  }
-
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columns: [
-                        DataColumn(
-                          label: Container(
-                            alignment: Alignment.centerRight,
-                            child: Text('اسم التلميذ'),
-                          ),
-                        ),
-                        DataColumn(
-                          label: Container(
-                            alignment: Alignment.centerRight,
-                            child: Text('العمل'),
-                          ),
-                        ),
-                      ],
-                      rows: groupedStudents.entries.map((groupEntry) {
-                        String groupName = groupEntry.key;
-                        List<Map<String, String>> groupStudents =
-                            groupEntry.value;
-
-                        return DataRow(
-                          color: MaterialStateProperty.resolveWith<Color>(
-                              (Set<MaterialState> states) {
-                            Color rowColor;
-                            switch (groupName) {
-                              case 'مجموعة العلاج':
-                                rowColor = Colors.red.withOpacity(0.7);
-                                break;
-                              case 'مجموعة الدعم':
-                                rowColor = Colors.orange.withOpacity(0.7);
-                                break;
-                              case 'مجموعة التميز':
-                                rowColor = Colors.green.withOpacity(0.7);
-                                break;
-                              default:
-                                rowColor = Colors.transparent;
-                            }
-                            return rowColor;
-                          }),
-                          cells: [
-                            DataCell(
-                              Text(groupStudents
-                                  .map((student) =>
-                                      student['name'] ?? 'غير معروف')
-                                  .join(", ")),
-                            ),
-                            DataCell(
-                              ElevatedButton(
-                                onPressed: () {
-                                  showSolutionAndProbleme(groupName);
-                                },
-                                child: Text('عمل لـ $groupName'),
-                              ),
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
       ),
-    );
-  }
-
-  Widget _buildLegend() {
-    return Container(
-      padding: EdgeInsets.all(8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _buildLegendItem('مجموعة العلاج', Colors.red.withOpacity(0.7)),
-          SizedBox(width: 16),
-          _buildLegendItem('مجموعة الدعم', Colors.orange.withOpacity(0.7)),
-          SizedBox(width: 16),
-          _buildLegendItem('مجموعة التميز', Colors.green.withOpacity(0.7)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLegendItem(String text, Color color) {
-    return Row(
-      children: [
-        Container(width: 16, height: 16, color: color),
-        SizedBox(width: 8),
-        Text(text, textDirection: TextDirection.rtl),
-      ],
     );
   }
 
@@ -940,65 +1271,70 @@ class _ClassificationPageState extends State<ClassificationPage> {
     await Future.wait(futures);
     return students;
   }
- 
- Future<List<Map<String, dynamic>>> _getUserProposal() async {
-  final userId = FirebaseAuth.instance.currentUser!.uid;
-  
-  try {
-    final query = FirebaseFirestore.instance
-        .collection('users_proposals')
-        .doc(userId)
-        .collection('user_proposals')
-        .where('className', isEqualTo: widget.className)
-        .where('matiereName', isEqualTo: widget.matiereName)
-        .where('baremeName', isEqualTo: widget.baremeName);
 
-    if (widget.sousBaremeName != null) {
-      query.where('sousBaremeName', isEqualTo: widget.sousBaremeName);
+  Future<List<Map<String, dynamic>>> _getUserProposal() async {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+
+    try {
+      final query = FirebaseFirestore.instance
+          .collection('users_proposals')
+          .doc(userId)
+          .collection('user_proposals')
+          .where('className', isEqualTo: widget.className)
+          .where('matiereName', isEqualTo: widget.matiereName)
+          .where('baremeName', isEqualTo: widget.baremeName);
+
+      if (widget.sousBaremeName != null) {
+        query.where('sousBaremeName', isEqualTo: widget.sousBaremeName);
+      }
+
+      final snapshot = await query.get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          ...data,
+          'isUserProposal': true,
+        };
+      }).toList();
+    } catch (e) {
+      print('Error getting user proposals: $e');
+      return [];
     }
-
-    final snapshot = await query.get();
-    
-    return snapshot.docs.map((doc) {
-      final data = doc.data();
-      return {
-        'id': doc.id,
-        ...data,
-        'isUserProposal': true, // Marquer comme proposition utilisateur
-      };
-    }).toList();
-  } catch (e) {
-    print('Error getting user proposals: $e');
-    return [];
   }
-}
 
-Future<void> _deleteUserProposal(String proposalId) async {
-  final userId = FirebaseAuth.instance.currentUser!.uid;
-  
-  try {
-    await FirebaseFirestore.instance
-        .collection('users_proposals')
-        .doc(userId)
-        .collection('user_proposals')
-        .doc(proposalId)
-        .delete();
-    
-    // Supprimez également la référence dans les propositions globales si elle existe
-    await FirebaseFirestore.instance
-        .collection('users_proposals')
-        .doc('global_proposals')
-        .collection('approved_proposals')
-        .doc(proposalId)
-        .delete();
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('تم حذف المقترح بنجاح')),
-    );
-  } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('خطأ في حذف المقترح: $e')),
-    );
+  Future<void> _deleteUserProposal(String proposalId) async {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users_proposals')
+          .doc(userId)
+          .collection('user_proposals')
+          .doc(proposalId)
+          .delete();
+
+      await FirebaseFirestore.instance
+          .collection('users_proposals')
+          .doc('global_proposals')
+          .collection('approved_proposals')
+          .doc(proposalId)
+          .delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تم حذف المقترح بنجاح'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('خطأ في حذف المقترح: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
-}
 }
