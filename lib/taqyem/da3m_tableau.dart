@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'dart:typed_data';
 import 'dart:html' as html;
+
 // Classe utilitaire pour la traduction et la détection de langue
 class DataTranslator {
   static final Map<String, String> _classTranslations = {
@@ -96,152 +97,70 @@ class DataTranslator {
     "مع 5.3": "C5.3"
   };
 
-  // Liste des matières considérées comme étrangères (doivent être en français)
-  // Version robuste avec différentes variantes
-  static final List<String> _foreignMatieres = [
-    // Variantes françaises
-    "Expression orale et récitation",
-    "expression orale et récitation",
-    "Expression Orale et Récitation",
-    "Lecture",
-    "lecture", 
-    "Production écrite",
-    "production écrite",
-    "Production Écrite",
-    "écriture",
-    "Ecriture",
-    "ecriture",
-    "Dictée",
-    "dictée",
-    "dictee",
-    "Langue",
-    "langue",
-    "لغة انقليزية",
-    
-    // Variantes pour correspondance flexible
-    "expression",
-    "oral",
-    "récitation", 
-    "production",
-    "écrit",
-    "écriture",
-  ];
-
-  // Détection robuste qui ignore la casse et les accents
+  // Version ultra-simple et robuste de détection
   static bool isForeignMatiere(String matiereName) {
-    if (matiereName.isEmpty) {
-      print('❌ Matière vide - considérée comme non française');
-      return false;
-    }
+    if (matiereName.isEmpty) return false;
     
-    // Normaliser le texte
-    String normalized = _normalizeText(matiereName);
+    // Liste simple et large des matières étrangères
+    final foreignKeywords = [
+      'expression', 'oral', 'récitation', 'lecture', 'production', 
+      'écrit', 'écriture', 'dictée', 'langue', 'anglais', 'français',
+      'لغة انقليزية'
+    ];
     
-    // Vérifier la correspondance exacte d'abord
-    bool isExactMatch = _foreignMatieres.any((matiere) => 
-        _normalizeText(matiere) == normalized);
+    String normalized = matiereName.toLowerCase().trim();
     
-    // Vérifier aussi la correspondance partielle
-    bool isPartialMatch = _foreignMatieres.any((matiere) => 
-        normalized.contains(_normalizeText(matiere)) || 
-        _normalizeText(matiere).contains(normalized));
+    // Vérifier si la matière contient un mot-clé étranger
+    bool isForeign = foreignKeywords.any((keyword) => 
+        normalized.contains(keyword));
     
-    bool isForeign = isExactMatch || isPartialMatch;
-    
-    // Logs détaillés pour le débogage
-    print('');
-    print('🔍 === DÉTECTION LANGUE DÉTAILLÉE ===');
-    print('📝 Matière originale: "$matiereName"');
-    print('🔄 Matière normalisée: "$normalized"');
-    print('✅ Correspondance exacte: $isExactMatch');
-    print('🔍 Correspondance partielle: $isPartialMatch');
-    print('🎯 Résultat final: $isForeign');
-    print('📋 Liste matières étrangères:');
-    _foreignMatieres.forEach((matiere) {
-      print('   - "$matiere" -> "${_normalizeText(matiere)}"');
-    });
-    print('=== FIN DÉTECTION ===');
-    print('');
+    print('🔍 Détection: "$matiereName" -> $isForeign');
     
     return isForeign;
   }
 
-  // Méthode de normalisation robuste
+  // Méthode de normalisation
   static String _normalizeText(String text) {
     if (text.isEmpty) return '';
-    
-    return text
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'[éèêë]'), 'e')
-        .replaceAll(RegExp(r'[àâä]'), 'a')
-        .replaceAll(RegExp(r'[îï]'), 'i')
-        .replaceAll(RegExp(r'[ôö]'), 'o')
-        .replaceAll(RegExp(r'[ùûü]'), 'u')
-        .replaceAll(RegExp(r'[ç]'), 'c')
-        .replaceAll(RegExp(r'\s+'), ' ') // remplacer les espaces multiples
-        .replaceAll(RegExp(r'[^\w\s]'), ''); // supprimer la ponctuation
+    return text.trim().toLowerCase();
   }
 
   // Traduire le nom d'une classe
   static String translateClass(String arabicName) {
-    String translated = _classTranslations[arabicName] ?? arabicName;
-    print('🏫 Traduction classe: "$arabicName" -> "$translated"');
-    return translated;
+    return _classTranslations[arabicName] ?? arabicName;
   }
 
   // Traduire le nom d'une matière
   static String translateMatiere(String arabicName) {
-    String translated = _matiereTranslations[arabicName] ?? arabicName;
-    print('📚 Traduction matière: "$arabicName" -> "$translated"');
-    return translated;
+    return _matiereTranslations[arabicName] ?? arabicName;
   }
 
   // Traduire un critère/barème
   static String translateBareme(String arabicName) {
-    String translated = _baremeTranslations[arabicName] ?? arabicName;
-    print('📊 Traduction barème: "$arabicName" -> "$translated"');
-    return translated;
+    return _baremeTranslations[arabicName] ?? arabicName;
   }
 
   // Traduire un sous-critère
   static String translateSousBareme(String arabicName) {
-    String translated = _baremeTranslations[arabicName] ?? arabicName;
-    print('📈 Traduction sous-barème: "$arabicName" -> "$translated"');
-    return translated;
+    return _baremeTranslations[arabicName] ?? arabicName;
   }
 
   // Obtenir le nom original arabe à partir de la traduction française
   static String getArabicClassFromFrench(String frenchName) {
-    String arabic = _classTranslations.entries
+    return _classTranslations.entries
         .firstWhere((entry) => entry.value == frenchName, 
                    orElse: () => MapEntry(frenchName, frenchName))
         .key;
-    print('🔄 Classe français->arabe: "$frenchName" -> "$arabic"');
-    return arabic;
   }
 
   static String getArabicMatiereFromFrench(String frenchName) {
-    String arabic = _matiereTranslations.entries
+    return _matiereTranslations.entries
         .firstWhere((entry) => entry.value == frenchName,
                    orElse: () => MapEntry(frenchName, frenchName))
         .key;
-    print('🔄 Matière français->arabe: "$frenchName" -> "$arabic"');
-    return arabic;
-  }
-
-  // Méthode utilitaire pour debug
-  static void debugMatiere(String matiereName) {
-    print('');
-    print('🐛 === DEBUG MATIERE ===');
-    print('Matière: "$matiereName"');
-    print('Longueur: ${matiereName.length}');
-    print('Code units: ${matiereName.codeUnits}');
-    print('Est française: ${isForeignMatiere(matiereName)}');
-    print('=== FIN DEBUG ===');
-    print('');
   }
 }
+
 class ClassificationPage extends StatefulWidget {
   final String selectedClass;
   final String selectedBaremeId;
@@ -286,19 +205,67 @@ class _ClassificationPageState extends State<ClassificationPage> {
   }
 
   void _detectLanguage() {
+    bool isFrench = DataTranslator.isForeignMatiere(widget.matiereName);
+    
     print('=== DÉTECTION LANGUE ClassificationPage ===');
-    print('Matière: ${widget.matiereName}');
-    print('Est française: ${DataTranslator.isForeignMatiere(widget.matiereName)}');
+    print('Matière: "${widget.matiereName}"');
+    print('Est française: $isFrench');
     print('=== FIN DÉTECTION ===');
     
     setState(() {
-      _isFrenchInterface = DataTranslator.isForeignMatiere(widget.matiereName);
+      _isFrenchInterface = isFrench;
     });
   }
 
-  // Méthode de traduction
+  // Méthode de traduction - CORRIGÉE
   String _getTranslatedText(String arabicText, String frenchText) {
     return _isFrenchInterface ? frenchText : arabicText;
+  }
+
+  // Méthode pour obtenir les noms de groupes selon la langue
+  String _getGroupName(String arabicName) {
+    if (!_isFrenchInterface) return arabicName;
+    
+    switch (arabicName) {
+      case 'مجموعة العلاج':
+        return 'Groupe de traitement';
+      case 'مجموعة الدعم':
+        return 'Groupe de soutien';
+      case 'مجموعة التميز':
+        return 'Groupe d\'excellence';
+      default:
+        return arabicName;
+    }
+  }
+
+  // Méthode pour obtenir les noms courts des groupes
+  String _getShortGroupName(String fullName) {
+    if (!_isFrenchInterface) {
+      switch (fullName) {
+        case 'مجموعة العلاج':
+          return 'العلاج';
+        case 'مجموعة الدعم':
+          return 'الدعم';
+        case 'مجموعة التميز':
+          return 'التميز';
+        default:
+          return fullName;
+      }
+    } else {
+      switch (fullName) {
+        case 'مجموعة العلاج':
+        case 'Groupe de traitement':
+          return 'Traitement';
+        case 'مجموعة الدعم':
+        case 'Groupe de soutien':
+          return 'Soutien';
+        case 'مجموعة التميز':
+        case 'Groupe d\'excellence':
+          return 'Excellence';
+        default:
+          return fullName;
+      }
+    }
   }
 
   Future<void> loadJsonData() async {
@@ -898,52 +865,6 @@ class _ClassificationPageState extends State<ClassificationPage> {
     }
   }
 
-  // Méthode pour obtenir les noms de groupes selon la langue
-  String _getGroupName(String arabicName) {
-    if (!_isFrenchInterface) return arabicName;
-    
-    switch (arabicName) {
-      case 'مجموعة العلاج':
-        return 'Groupe de traitement';
-      case 'مجموعة الدعم':
-        return 'Groupe de soutien';
-      case 'مجموعة التميز':
-        return 'Groupe d\'excellence';
-      default:
-        return arabicName;
-    }
-  }
-
-  // Méthode pour obtenir les noms courts des groupes
-  String _getShortGroupName(String fullName) {
-    if (!_isFrenchInterface) {
-      switch (fullName) {
-        case 'مجموعة العلاج':
-          return 'العلاج';
-        case 'مجموعة الدعم':
-          return 'الدعم';
-        case 'مجموعة التميز':
-          return 'التميز';
-        default:
-          return fullName;
-      }
-    } else {
-      switch (fullName) {
-        case 'مجموعة العلاج':
-        case 'Groupe de traitement':
-          return 'Traitement';
-        case 'مجموعة الدعم':
-        case 'Groupe de soutien':
-          return 'Soutien';
-        case 'مجموعة التميز':
-        case 'Groupe d\'excellence':
-          return 'Excellence';
-        default:
-          return fullName;
-      }
-    }
-  }
-
   Future<Map<String, dynamic>> _getUnifiedSolutions() async {
     final defaultSol = _getSolutionsData();
 
@@ -1061,7 +982,6 @@ class _ClassificationPageState extends State<ClassificationPage> {
       ),
       child: Column(
         children: [
-          // Header avec le bouton عمل
           Container(
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -1103,7 +1023,6 @@ class _ClassificationPageState extends State<ClassificationPage> {
             ),
           ),
           
-          // Liste des étudiants avec défilement
           Expanded(
             child: students.isEmpty
                 ? Center(
@@ -1173,7 +1092,8 @@ class _ClassificationPageState extends State<ClassificationPage> {
       ),
     );
   }
-@override
+
+  @override
   Widget build(BuildContext context) {
     return Directionality(
       textDirection: _isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
@@ -1249,7 +1169,6 @@ class _ClassificationPageState extends State<ClassificationPage> {
                     ),
                     child: Column(
                       children: [
-                        // REMPLACER PageHeader par un en-tête personnalisé traduit
                         _buildTranslatedHeader(),
                         Container(
                           padding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 20),
@@ -1499,7 +1418,8 @@ class _ClassificationPageState extends State<ClassificationPage> {
       ),
     );
   }
- Widget _buildTranslatedHeader() {
+
+  Widget _buildTranslatedHeader() {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
