@@ -12,6 +12,140 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 
+// Classe utilitaire pour la traduction et la détection de langue
+// Classe utilitaire pour la traduction et la détection de langue
+class DataTranslator {
+  static final Map<String, String> _classTranslations = {
+    "السنة الأولى ابتدائي": "1ère année primaire",
+    "السنة الأولى ابتدائي أ": "1ère année primaire A",
+    "السنة الأولى ابتدائي ب": "1ère année primaire B", 
+    "السنة الأولى ابتدائي ج": "1ère année primaire C",
+    "السنة الأولى ابتدائي د": "1ère année primaire D",
+    "السنة الثانية ابتدائي": "2ème année primaire",
+    "السنة الثانية ابتدائي أ": "2ème année primaire A",
+    "السنة الثانية ابتدائي ب": "2ème année primaire B",
+    "السنة الثانية ابتدائي ج": "2ème année primaire C",
+    "السنة الثانية ابتدائي د": "2ème année primaire D",
+    "السنة الثالثة ابتدائي": "3ème année primaire",
+    "السنة الثالثة ابتدائي أ": "3ème année primaire A",
+    "السنة الثالثة ابتدائي ب": "3ème année primaire B",
+    "السنة الثالثة ابتدائي ج": "3ème année primaire C",
+    "السنة الثالثة ابتدائي د": "3ème année primaire D",
+    "السنة الرابعة ابتدائي": "4ème année primaire",
+    "السنة الرابعة ابتدائي أ": "4ème année primaire A",
+    "السنة الرابعة ابتدائي ب": "4ème année primaire B",
+    "السنة الرابعة ابتدائي ج": "4ème année primaire C",
+    "السنة الرابعة ابتدائي د": "4ème année primaire D",
+    "السنة الخامسة ابتدائي": "5ème année primaire",
+    "السنة الخامسة ابتدائي أ": "5ème année primaire A",
+    "السنة الخامسة ابتدائي ب": "5ème année primaire B",
+    "السنة الخامسة ابتدائي ج": "5ème année primaire C",
+    "السنة الخامسة ابتدائي د": "5ème année primaire D",
+    "السنة السادسة ابتدائي": "6ème année primaire",
+    "السنة السادسة ابتدائي أ": "6ème année primaire A",
+    "السنة السادسة ابتدائي ب": "6ème année primaire B",
+    "السنة السادسة ابتدائي ج": "6ème année primaire C",
+    "السنة السادسة ابتدائي د": "6ème année primaire D"
+  };
+
+  static final Map<String, String> _matiereTranslations = {
+    "التواصل الشفوي": "Communication orale",
+    "قراءة": "Lecture",
+    "انتاج كتابي": "Production écrite",
+    "رياضيات": "Mathématiques",
+    "ايقاظ علمي": "Éveil scientifique",
+    "تربية اسلامية": "Éducation islamique",
+    "تربية تكنولوجية": "Éducation technologique",
+    "تربية موسيقية": "Éducation musicale",
+    "تربية تشكيلية": "Éducation artistique", 
+    "تربية بدنية": "Éducation physique",
+    "قواعد لغة": "Grammaire",
+    "Expression orale et récitation": "Expression orale et récitation",
+    "Lecture": "Lecture",
+    "Production écrite": "Production écrite",
+    "écriture": "Écriture",
+    "dictée": "Dictée",
+    "langue": "Langue",
+    "لغة انقليزية": "Anglais",
+    "التاريخ": "Histoire",
+    "الجغرافيا": "Géographie",
+    "التربية المدنية": "Éducation civique"
+  };
+
+  static final Map<String, String> _baremeTranslations = {
+    "مع 1": "C1",
+    "مع 2": "C2", 
+    "مع 3": "C3",
+    "مع 4": "C4",
+    "مع 5": "C5",
+    "مع 1.1": "C1.1",
+    "مع 1.2": "C1.2",
+    "مع 1.3": "C1.3",
+    "مع 2.1": "C2.1",
+    "مع 2.2": "C2.2", 
+    "مع 2.3": "C2.3",
+    "مع 3.1": "C3.1",
+    "مع 3.2": "C3.2",
+    "مع 3.3": "C3.3",
+    "مع 4.1": "C4.1",
+    "مع 4.2": "C4.2",
+    "مع 4.3": "C4.3",
+    "مع 5.1": "C5.1",
+    "مع 5.2": "C5.2",
+    "مع 5.3": "C5.3"
+  };
+
+  // Liste des matières considérées comme étrangères (doivent être en français)
+  static final List<String> _foreignMatieres = [
+    "Expression orale et récitation",
+    "Lecture",
+    "Production écrite",
+    "écriture",
+    "dictée",
+    "langue",
+    "لغة انقليزية"
+  ];
+
+  // Détecter si une matière est étrangère
+  static bool isForeignMatiere(String matiereName) {
+    return _foreignMatieres.contains(matiereName);
+  }
+
+  // Traduire le nom d'une classe (uniquement pour l'affichage)
+  static String translateClass(String arabicName) {
+    return _classTranslations[arabicName] ?? arabicName;
+  }
+
+  // Traduire le nom d'une matière (uniquement pour l'affichage)
+  static String translateMatiere(String arabicName) {
+    return _matiereTranslations[arabicName] ?? arabicName;
+  }
+
+  // Traduire un critère/barème (uniquement pour l'affichage)
+  static String translateBareme(String arabicName) {
+    return _baremeTranslations[arabicName] ?? arabicName;
+  }
+
+  // Traduire un sous-critère (uniquement pour l'affichage)
+  static String translateSousBareme(String arabicName) {
+    return _baremeTranslations[arabicName] ?? arabicName;
+  }
+
+  // Obtenir le nom original arabe à partir de la traduction française (pour la recherche)
+  static String getArabicClassFromFrench(String frenchName) {
+    return _classTranslations.entries
+        .firstWhere((entry) => entry.value == frenchName, 
+                   orElse: () => MapEntry(frenchName, frenchName))
+        .key;
+  }
+
+  static String getArabicMatiereFromFrench(String frenchName) {
+    return _matiereTranslations.entries
+        .firstWhere((entry) => entry.value == frenchName,
+                   orElse: () => MapEntry(frenchName, frenchName))
+        .key;
+  }
+}
 class DynamicTablePage extends StatefulWidget {
   final String selectedClass;
   final String selectedMatiere;
@@ -43,6 +177,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   bool _isMounted = false;
   Timer? _accountStatusTimer;
   StreamSubscription? _userSubscription;
+  bool _isFrenchInterface = false;
+  String _matiereName = '';
 
   @override
   void initState() {
@@ -52,7 +188,28 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     fetchMarks();
     _startTimer();
     _setupUserListener();
+    _detectLanguage();
   }
+ void _detectLanguage() async {
+    try {
+      var matiereDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .collection('matieres')
+          .doc(widget.selectedMatiere)
+          .get();
+      
+      String matiereName = matiereDoc['name'] ?? '';
+      setState(() {
+        _matiereName = matiereName;
+        _isFrenchInterface = DataTranslator.isForeignMatiere(matiereName);
+        print('Détection langue - Matière: $matiereName, Français: $_isFrenchInterface');
+      });
+    } catch (e) {
+      print('Erreur détection langue: $e');
+    }
+  }
+
 
   @override
   void dispose() {
@@ -81,20 +238,17 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     if (currentUser == null) return;
 
     _userSubscription = FirebaseFirestore.instance
-        .collection(
-            'Users') // CORRECTION : Utiliser 'Users' comme dans votre code original
+        .collection('Users')
         .doc(currentUser!.uid)
         .snapshots()
         .listen((snapshot) {
       if (_isMounted && snapshot.exists) {
         setState(() {
-          // CORRECTION : Utiliser la méthode sécurisée pour tous les champs
           _remainingPrints = _getFieldSafe(snapshot, 'remainingPrints', 5);
           _isAccountActive = _getFieldSafe(snapshot, 'isActive', false);
           _profName = _getFieldSafe(snapshot, 'profName', '');
           _schoolName = _getFieldSafe(snapshot, 'schoolName', '');
 
-          // Mettre à jour le temps restant seulement si le champ existe
           final expirationDate =
               _getFieldSafe(snapshot, 'accountExpiration', null);
           if (expirationDate != null && expirationDate is Timestamp) {
@@ -147,7 +301,6 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .get();
 
       if (_isMounted && userDoc.exists) {
-        // CORRECTION : Utiliser la méthode sécurisée
         final isActive = _getFieldSafe(userDoc, 'isActive', false);
         final expirationDate =
             _getFieldSafe(userDoc, 'accountExpiration', null);
@@ -164,7 +317,6 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
-  // CORRECTION DU SYSTÈME DE CRÉDIT - Version sécurisée
   Future<bool> _checkAndUpdatePrintCredit() async {
     if (currentUser == null) return false;
 
@@ -181,19 +333,16 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
       print('Statut compte - Actif: $isActive, Credits: $remainingPrints');
 
-      // Si le compte est actif, pas de déduction de crédit
       if (isActive) {
         print('Compte actif - Pas de déduction de crédit');
         return true;
       }
 
-      // Si le compte n'est pas actif, vérifier qu'il reste des crédits
       if (remainingPrints > 0) {
         print('Crédits suffisants - Restant: $remainingPrints');
         return true;
       }
 
-      // Plus de crédits et compte inactif
       print('Plus de crédits disponibles');
       return false;
     } catch (e) {
@@ -202,152 +351,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
-  Future<List<Map<String, dynamic>>> _getBaremesValues(
-      List<QueryDocumentSnapshot> selectedBaremes) async {
-    final List<Map<String, dynamic>> result = [];
-    final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
-
-    for (final baremeDoc in selectedBaremes) {
-      final baremeId = baremeDoc['baremeId'];
-
-      final baremeSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('selections')
-          .doc(widget.selectedClass)
-          .collection(widget.selectedMatiere)
-          .doc(baremeId)
-          .get();
-
-      final isBaremeSelected = _getFieldSafe(baremeSnapshot, 'selected', false);
-
-      final sousBaremesSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('selections')
-          .doc(widget.selectedClass)
-          .collection(widget.selectedMatiere)
-          .doc(baremeId)
-          .collection('sousBaremes')
-          .get();
-
-      final selectedSousBaremes = sousBaremesSnapshot.docs
-          .where((doc) => _getFieldSafe(doc, 'selected', false) == true)
-          .toList();
-
-      if (isBaremeSelected) {
-        final baremeName =
-            _getFieldSafe(baremeSnapshot, 'baremeName', 'غير معروف');
-        result.add({
-          'id': baremeId,
-          'value': baremeName,
-          'sousBaremes': [],
-        });
-      } else if (selectedSousBaremes.isNotEmpty) {
-        for (final sousBareme in selectedSousBaremes) {
-          final sousBaremeName =
-              _getFieldSafe(sousBareme, 'sousBaremeName', 'غير معروف');
-          result.add({
-            'id': sousBareme.id,
-            'value': sousBaremeName,
-            'parentBaremeId': baremeId,
-          });
-        }
-      }
-    }
-    return result;
+  // MODIFICATION : Traduction des textes selon la langue
+   String _getTranslatedText(String arabicText, String frenchText) {
+    return _isFrenchInterface ? frenchText : arabicText;
   }
-
-  void _navigateToClassificationPage(String baremeId,
-      {String? sousBaremeId}) async {
-    try {
-      var classAndMatiereNames = await _getClassAndMatiereNames();
-
-      var selectedBaremes = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser!.uid)
-          .collection('selections')
-          .doc(widget.selectedClass)
-          .collection(widget.selectedMatiere)
-          .get();
-
-      List<Map<String, dynamic>> baremesValues =
-          await _getBaremesValues(selectedBaremes.docs);
-
-      var selectedBareme = baremesValues.firstWhere(
-        (bareme) => bareme['id'] == baremeId,
-        orElse: () => {'id': baremeId, 'value': 'غير معروف'},
-      );
-
-      String baremeName = selectedBareme['value'] ?? 'غير معروف';
-
-      String? sousBaremeName;
-      if (sousBaremeId != null) {
-        var selectedSousBareme = baremesValues.firstWhere(
-          (bareme) =>
-              bareme['id'] == sousBaremeId &&
-              bareme['parentBaremeId'] == baremeId,
-          orElse: () => {'id': sousBaremeId, 'value': 'غير معروف'},
-        );
-
-        sousBaremeName = selectedSousBareme['value'] ?? 'غير معروف';
-      }
-
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ClassificationPage(
-            selectedClass: widget.selectedClass,
-            selectedBaremeId: baremeId,
-            selectedSousBaremeId: sousBaremeId,
-            currentUser: currentUser!,
-            profName: _profName,
-            schoolName: _schoolName,
-            className: classAndMatiereNames['className'] ?? 'غير معروف',
-            matiereName: classAndMatiereNames['matiereName'] ?? 'غير معروف',
-            baremeName: baremeName,
-            sousBaremeName: sousBaremeName,
-          ),
-        ),
-      );
-    } catch (e) {
-      print('Erreur lors de la navigation vers la page de classification : $e');
-      _showErrorSnackbar('Erreur lors de la navigation');
-    }
-  }
-
-  Future<void> _deductPrintCredit() async {
-    if (currentUser == null) return;
-
-    try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUser!.uid)
-          .get();
-
-      if (!userDoc.exists) return;
-
-      final bool isActive = _getFieldSafe(userDoc, 'isActive', false);
-      final int remainingPrints = _getFieldSafe(userDoc, 'remainingPrints', 5);
-
-      // Ne déduire que si le compte est inactif et qu'il reste des crédits
-      if (!isActive && remainingPrints > 0) {
-        await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(currentUser!.uid)
-            .update({'remainingPrints': FieldValue.increment(-1)});
-
-        setState(() {
-          _remainingPrints = remainingPrints - 1;
-        });
-
-        print('✅ Crédit déduit - Nouveau solde: ${remainingPrints - 1}');
-      }
-    } catch (e) {
-      print('Erreur lors de la déduction du crédit: $e');
-    }
-  }
-
   Future<void> _generatePDF() async {
     if (!await _checkAndUpdatePrintCredit()) {
       _showCreditErrorDialog();
@@ -374,7 +381,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           children: [
             Icon(Icons.credit_card_off, color: Colors.orange),
             SizedBox(width: 10),
-            Text('Crédit Épuisé'),
+            Text(_getTranslatedText('انتهت الرصيد', 'Crédit Épuisé')),
           ],
         ),
         content: Column(
@@ -382,12 +389,18 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Vous n\'avez plus de crédits d\'impression disponibles.',
+              _getTranslatedText(
+                'لم يعد لديك رصيد طباعة متاح.',
+                'Vous n\'avez plus de crédits d\'impression disponibles.'
+              ),
               style: TextStyle(fontSize: 16),
             ),
             SizedBox(height: 10),
             Text(
-              'Veuillez activer votre compte pour continuer à générer des rapports.',
+              _getTranslatedText(
+                'يرجى تفعيل حسابك للمواصلة في إنشاء التقارير.',
+                'Veuillez activer votre compte pour continuer à générer des rapports.'
+              ),
               style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
             SizedBox(height: 10),
@@ -403,7 +416,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Crédits restants: $_remainingPrints/5',
+                      _getTranslatedText(
+                        'الرصيد المتبقي: $_remainingPrints/5',
+                        'Crédits restants: $_remainingPrints/5'
+                      ),
                       style: TextStyle(fontSize: 14, color: Colors.orange[800]),
                     ),
                   ),
@@ -415,7 +431,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Plus tard'),
+            child: Text(_getTranslatedText('لاحقاً', 'Plus tard')),
           ),
           ElevatedButton(
             onPressed: () {
@@ -428,18 +444,17 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
             ),
-            child: Text('Activer le compte'),
+            child: Text(_getTranslatedText('تفعيل الحساب', 'Activer le compte')),
           ),
         ],
       ),
     );
   }
 
-// MODIFICATION de _generateReport pour déduire après succès
   Future<void> _generateReport(String type) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      _showErrorSnackbar('Utilisateur non connecté.');
+      _showErrorSnackbar(_getTranslatedText('المستخدم غير مسجل الدخول.', 'Utilisateur non connecté.'));
       return;
     }
 
@@ -486,7 +501,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         await _deductPrintCredit();
       }
     } catch (e) {
-      _showErrorSnackbar('Erreur lors de la génération du rapport: $e');
+      _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء التقرير:', 'Erreur lors de la génération du rapport:') + ' $e');
     } finally {
       setState(() {
         _isGeneratingReport = false;
@@ -512,12 +527,12 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           ),
           SizedBox(height: 20),
           Text(
-            "Génération du rapport en cours...",
+            _getTranslatedText("جاري إنشاء التقرير...", "Génération du rapport en cours..."),
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           SizedBox(height: 10),
           Text(
-            "Veuillez patienter...",
+            _getTranslatedText("يرجى الانتظار...", "Veuillez patienter..."),
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: Colors.grey[600]),
           ),
@@ -535,7 +550,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                   Icon(Icons.info, size: 16, color: Colors.orange),
                   SizedBox(width: 5),
                   Text(
-                    'Crédit utilisé: ${_remainingPrints - 1}/5',
+                    _getTranslatedText(
+                      'الرصيد المستخدم: ${_remainingPrints - 1}/5',
+                      'Crédit utilisé: ${_remainingPrints - 1}/5'
+                    ),
                     style: TextStyle(fontSize: 12, color: Colors.orange[800]),
                   ),
                 ],
@@ -545,48 +563,64 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       ),
     );
   }
-
-  Future<bool> _sendDataToFlask(Map<String, dynamic> data) async {
-    try {
-      final url = Uri.parse('https://imprission.onrender.com/generate_pdf');
-      final response = await http
-          .post(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: json.encode(data),
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final bytes = response.bodyBytes;
-        final blob = html.Blob([bytes], 'application/pdf');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: url)
-          ..setAttribute('download', 'tableau_resultats.pdf')
-          ..click();
-        html.Url.revokeObjectUrl(url);
-
-        _showSuccessSnackbar('PDF généré avec succès');
-        return true; // SUCCÈS
-      } else {
-        _showErrorSnackbar('Erreur lors de la génération du PDF');
-        return false; // ÉCHEC
+Future<bool> _sendDataToFlask(Map<String, dynamic> data) async {
+  try {
+    // IMPORTANT: S'assurer que les données envoyées au serveur sont en arabe
+    // Créer une copie des données avec les valeurs originales arabes
+    Map<String, dynamic> dataForServer = Map.from(data);
+    
+    // Remplacer les valeurs affichées par les valeurs originales arabes
+    if (data['baremes'] != null) {
+      List<dynamic> originalBaremes = [];
+      for (var bareme in data['baremes']) {
+        Map<String, dynamic> originalBareme = Map.from(bareme);
+        // Utiliser la valeur originale arabe pour le serveur
+        if (bareme['originalValue'] != null) {
+          originalBareme['value'] = bareme['originalValue'];
+        }
+        originalBaremes.add(originalBareme);
       }
-    } on TimeoutException {
-      _showErrorSnackbar('Timeout - Le serveur a mis trop de temps à répondre');
-      return false;
-    } on SocketException {
-      _showErrorSnackbar('Erreur de connexion - Vérifiez votre internet');
-      return false;
-    } catch (e) {
-      _showErrorSnackbar('Erreur technique: ${e.toString()}');
+      dataForServer['baremes'] = originalBaremes;
+    }
+
+    final url = Uri.parse('https://imprission.onrender.com/generate_pdf');
+    final response = await http
+        .post(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: json.encode(dataForServer), // Envoyer les données arabes au serveur
+        )
+        .timeout(const Duration(seconds: 30));
+
+    if (response.statusCode == 200) {
+      final bytes = response.bodyBytes;
+      final blob = html.Blob([bytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', 'tableau_resultats.pdf')
+        ..click();
+      html.Url.revokeObjectUrl(url);
+
+      _showSuccessSnackbar(_getTranslatedText('تم إنشاء PDF بنجاح', 'PDF généré avec succès'));
+      return true;
+    } else {
+      _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء PDF', 'Erreur lors de la génération du PDF'));
       return false;
     }
+  } on TimeoutException {
+    _showErrorSnackbar(_getTranslatedText('انتهت المهلة - استغرق الخادم وقتًا طويلاً للرد', 'Timeout - Le serveur a mis trop de temps à répondre'));
+    return false;
+  } on SocketException {
+    _showErrorSnackbar(_getTranslatedText('خطأ في الاتصال - تحقق من اتصالك بالإنترنت', 'Erreur de connexion - Vérifiez votre internet'));
+    return false;
+  } catch (e) {
+    _showErrorSnackbar(_getTranslatedText('خطأ تقني:', 'Erreur technique:') + ' ${e.toString()}');
+    return false;
   }
-
+}
   Future<bool> _sendHTMLDataToFlask(Map<String, dynamic> data) async {
     try {
       final url =
@@ -609,23 +643,23 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         html.window.open(url, '_blank');
         html.Url.revokeObjectUrl(url);
 
-        _showSuccessSnackbar('Rapport généré avec succès');
+        _showSuccessSnackbar(_getTranslatedText('تم إنشاء التقرير بنجاح', 'Rapport généré avec succès'));
         return true; // SUCCÈS
       } else {
         _showErrorSnackbar(
-            'Erreur lors de la génération du rapport HTML: ${response.statusCode}');
+            _getTranslatedText('خطأ في إنشاء التقرير HTML:', 'Erreur lors de la génération du rapport HTML:') + ' ${response.statusCode}');
         return false; // ÉCHEC
       }
     } on TimeoutException {
       _showErrorSnackbar(
-          'Timeout - Le serveur a mis trop de temps à répondre. Veuillez réessayer.');
+          _getTranslatedText('انتهت المهلة - استغرق الخادم وقتًا طويلاً للرد. يرجى المحاولة مرة أخرى.', 'Timeout - Le serveur a mis trop de temps à répondre. Veuillez réessayer.'));
       return false;
     } on SocketException {
       _showErrorSnackbar(
-          'Erreur de connexion - Vérifiez votre connexion internet');
+          _getTranslatedText('خطأ في الاتصال - تحقق من اتصالك بالإنترنت', 'Erreur de connexion - Vérifiez votre connexion internet'));
       return false;
     } catch (e) {
-      _showErrorSnackbar('Erreur technique: ${e.toString()}');
+      _showErrorSnackbar(_getTranslatedText('خطأ تقني:', 'Erreur technique:') + ' ${e.toString()}');
       return false;
     }
   }
@@ -664,91 +698,146 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     );
   }
 
-  Future<String> _getMatiereName() async {
+  Future<void> _deductPrintCredit() async {
+    if (currentUser == null) return;
+
     try {
-      var matiereDoc = await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(widget.selectedClass)
-          .collection('matieres')
-          .doc(widget.selectedMatiere)
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser!.uid)
           .get();
 
-      return _getFieldSafe(matiereDoc, 'name', 'غير معروف');
+      if (!userDoc.exists) return;
+
+      final bool isActive = _getFieldSafe(userDoc, 'isActive', false);
+      final int remainingPrints = _getFieldSafe(userDoc, 'remainingPrints', 5);
+
+      // Ne déduire que si le compte est inactif et qu'il reste des crédits
+      if (!isActive && remainingPrints > 0) {
+        await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(currentUser!.uid)
+            .update({'remainingPrints': FieldValue.increment(-1)});
+
+        setState(() {
+          _remainingPrints = remainingPrints - 1;
+        });
+
+        print('✅ Crédit déduit - Nouveau solde: ${remainingPrints - 1}');
+      }
     } catch (e) {
-      return 'غير معروف';
+      print('Erreur lors de la déduction du crédit: $e');
     }
   }
 
-  Future<String> _getClassName() async {
-    try {
-      var classDoc = await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(widget.selectedClass)
-          .get();
+  // MODIFICATION : Traduction des noms pour l'interface
+ // MODIFICATION : Garder les noms arabes dans la BD, traduire uniquement pour l'affichage
+Future<String> _getMatiereName() async {
+  try {
+    var matiereDoc = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(widget.selectedClass)
+        .collection('matieres')
+        .doc(widget.selectedMatiere)
+        .get();
 
-      return _getFieldSafe(classDoc, 'name', 'غير معروف');
-    } catch (e) {
-      return 'غير معروف';
-    }
+    String arabicName = _getFieldSafe(matiereDoc, 'name', 'غير معروف');
+    // L'enregistrement en BD reste en arabe, on traduit uniquement pour l'affichage
+    return _isFrenchInterface 
+        ? DataTranslator.translateMatiere(arabicName)
+        : arabicName;
+  } catch (e) {
+    return _isFrenchInterface ? 'Inconnu' : 'غير معروف';
   }
+}
 
-  Future<List<dynamic>> _getBaremes() async {
-    try {
-      final baremesSnapshot = await FirebaseFirestore.instance
+Future<String> _getClassName() async {
+  try {
+    var classDoc = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(widget.selectedClass)
+        .get();
+
+    String arabicName = _getFieldSafe(classDoc, 'name', 'غير معروف');
+    // L'enregistrement en BD reste en arabe, on traduit uniquement pour l'affichage
+    return _isFrenchInterface 
+        ? DataTranslator.translateClass(arabicName)
+        : arabicName;
+  } catch (e) {
+    return _isFrenchInterface ? 'Inconnu' : 'غير معروف';
+  }
+}
+
+Future<List<dynamic>> _getBaremes() async {
+  try {
+    final baremesSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser!.uid)
+        .collection('selections')
+        .doc(widget.selectedClass)
+        .collection(widget.selectedMatiere)
+        .get();
+
+    final List<dynamic> baremes = [];
+    for (final baremeDoc in baremesSnapshot.docs) {
+      final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
+      final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
+      final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
+
+      // IMPORTANT: Garder le nom arabe dans la BD, traduire uniquement pour l'affichage
+      final displayedBaremeName = _isFrenchInterface
+          ? DataTranslator.translateBareme(baremeName)
+          : baremeName;
+
+      if (isBaremeSelected) {
+        baremes.add({
+          'id': baremeId,
+          'value': displayedBaremeName, // Affichage traduit
+          'originalValue': baremeName,  // Valeur originale arabe pour la BD
+          'type': 'bareme',
+        });
+      }
+
+      final sousBaremesSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
           .collection('selections')
           .doc(widget.selectedClass)
           .collection(widget.selectedMatiere)
+          .doc(baremeId)
+          .collection('sousBaremes')
           .get();
 
-      final List<dynamic> baremes = [];
-      for (final baremeDoc in baremesSnapshot.docs) {
-        final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
-        final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
-        final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
+      for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+        final sousBaremeId = sousBaremeDoc.id;
+        final sousBaremeName =
+            _getFieldSafe(sousBaremeDoc, 'sousBaremeName', 'غير معروف');
+        final isSousBaremeSelected =
+            _getFieldSafe(sousBaremeDoc, 'selected', false);
 
-        if (isBaremeSelected) {
+        // IMPORTANT: Garder le nom arabe dans la BD, traduire uniquement pour l'affichage
+        final displayedSousBaremeName = _isFrenchInterface
+            ? DataTranslator.translateSousBareme(sousBaremeName)
+            : sousBaremeName;
+
+        if (isSousBaremeSelected) {
           baremes.add({
-            'id': baremeId,
-            'value': baremeName,
-            'type': 'bareme',
+            'id': sousBaremeId,
+            'value': displayedSousBaremeName, // Affichage traduit
+            'originalValue': sousBaremeName,  // Valeur originale arabe pour la BD
+            'type': 'sousBareme',
+            'parentBaremeId': baremeId,
           });
         }
-
-        final sousBaremesSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser!.uid)
-            .collection('selections')
-            .doc(widget.selectedClass)
-            .collection(widget.selectedMatiere)
-            .doc(baremeId)
-            .collection('sousBaremes')
-            .get();
-
-        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-          final sousBaremeId = sousBaremeDoc.id;
-          final sousBaremeName =
-              _getFieldSafe(sousBaremeDoc, 'sousBaremeName', 'غير معروف');
-          final isSousBaremeSelected =
-              _getFieldSafe(sousBaremeDoc, 'selected', false);
-
-          if (isSousBaremeSelected) {
-            baremes.add({
-              'id': sousBaremeId,
-              'value': sousBaremeName,
-              'type': 'sousBareme',
-              'parentBaremeId': baremeId,
-            });
-          }
-        }
       }
-
-      return baremes;
-    } catch (e) {
-      return [];
     }
+
+    return baremes;
+  } catch (e) {
+    return [];
   }
+}
+
 
   Future<List<dynamic>> _getStudents() async {
     try {
@@ -763,7 +852,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       final List<dynamic> students = [];
       for (final studentDoc in studentsSnapshot.docs) {
         final studentId = studentDoc.id;
-        final studentName = _getFieldSafe(studentDoc, 'name', 'Élève inconnu');
+        final studentName = _getFieldSafe(studentDoc, 'name', _isFrenchInterface ? 'Élève inconnu' : 'طالب غير معروف');
 
         final baremesSnapshot = await FirebaseFirestore.instance
             .collection('users')
@@ -809,14 +898,12 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     if (currentUser != null && _isMounted) {
       try {
         var userDoc = await FirebaseFirestore.instance
-            .collection(
-                'Users') // CORRECTION : Utiliser 'Users' comme dans votre code original
+            .collection('Users')
             .doc(currentUser!.uid)
             .get();
 
         if (_isMounted && userDoc.exists) {
           setState(() {
-            // CORRECTION : Utiliser la méthode sécurisée pour tous les champs
             _profName = _getFieldSafe(userDoc, 'profName', '');
             _schoolName = _getFieldSafe(userDoc, 'schoolName', '');
             _remainingPrints = _getFieldSafe(userDoc, 'remainingPrints', 5);
@@ -838,6 +925,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
+  // MODIFICATION : Dialogues traduits
   void _showEditDialog() {
     TextEditingController profController =
         TextEditingController(text: _profName);
@@ -852,7 +940,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             children: [
               Icon(Icons.edit, color: Colors.blue),
               SizedBox(width: 8),
-              Text('تعديل المعلومات',
+              Text(_getTranslatedText('تعديل المعلومات', 'Modifier les informations'),
                   style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
@@ -862,7 +950,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               TextField(
                 controller: profController,
                 decoration: InputDecoration(
-                  labelText: 'اسم الأستاذ',
+                  labelText: _getTranslatedText('اسم الأستاذ', 'Nom du professeur'),
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.person),
                 ),
@@ -871,7 +959,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               TextField(
                 controller: schoolController,
                 decoration: InputDecoration(
-                  labelText: 'اسم المدرسة',
+                  labelText: _getTranslatedText('اسم المدرسة', 'Nom de l\'école'),
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.school),
                 ),
@@ -881,13 +969,13 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: Text('إلغاء'),
+              child: Text(_getTranslatedText('إلغاء', 'Annuler')),
             ),
             ElevatedButton(
               onPressed: () async {
                 if (currentUser != null) {
                   await FirebaseFirestore.instance
-                      .collection('Users') // CORRECTION : Utiliser 'Users'
+                      .collection('Users')
                       .doc(currentUser!.uid)
                       .set(
                     {
@@ -902,11 +990,11 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                     _schoolName = schoolController.text;
                   });
 
-                  _showSuccessSnackbar('Informations mises à jour');
+                  _showSuccessSnackbar(_getTranslatedText('تم تحديث المعلومات', 'Informations mises à jour'));
                 }
                 Navigator.of(context).pop();
               },
-              child: Text('حفظ'),
+              child: Text(_getTranslatedText('حفظ', 'Enregistrer')),
             ),
           ],
         );
@@ -927,20 +1015,22 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             children: [
               Icon(Icons.person_add, color: Colors.blue),
               SizedBox(width: 8),
-              Text('معلومات جديدة',
+              Text(_getTranslatedText('معلومات جديدة', 'Nouvelles informations'),
                   style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Veuillez compléter vos informations pour continuer',
-                  style: TextStyle(color: Colors.grey[600])),
+              Text(_getTranslatedText(
+                'يرجى إكمال معلوماتك للمتابعة',
+                'Veuillez compléter vos informations pour continuer'
+              ), style: TextStyle(color: Colors.grey[600])),
               SizedBox(height: 16),
               TextField(
                 controller: profController,
                 decoration: InputDecoration(
-                  labelText: 'اسم الأستاذ',
+                  labelText: _getTranslatedText('اسم الأستاذ', 'Nom du professeur'),
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.person),
                 ),
@@ -949,7 +1039,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               TextField(
                 controller: schoolController,
                 decoration: InputDecoration(
-                  labelText: 'اسم المدرسة',
+                  labelText: _getTranslatedText('اسم المدرسة', 'Nom de l\'école'),
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.school),
                 ),
@@ -961,13 +1051,16 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               onPressed: () async {
                 if (profController.text.isEmpty ||
                     schoolController.text.isEmpty) {
-                  _showErrorSnackbar('Veuillez remplir tous les champs');
+                  _showErrorSnackbar(_getTranslatedText(
+                    'يرجى ملء جميع الحقول',
+                    'Veuillez remplir tous les champs'
+                  ));
                   return;
                 }
 
                 if (currentUser != null) {
                   await FirebaseFirestore.instance
-                      .collection('Users') // CORRECTION : Utiliser 'Users'
+                      .collection('Users')
                       .doc(currentUser!.uid)
                       .set(
                     {
@@ -984,11 +1077,11 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                     _isDialogCompleted = true;
                   });
 
-                  _showSuccessSnackbar('Informations enregistrées');
+                  _showSuccessSnackbar(_getTranslatedText('تم حفظ المعلومات', 'Informations enregistrées'));
                 }
                 Navigator.of(context).pop();
               },
-              child: Text('حفظ'),
+              child: Text(_getTranslatedText('حفظ', 'Enregistrer')),
             ),
           ],
         );
@@ -1082,7 +1175,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
-  // WIDGETS AMÉLIORÉS POUR L'UI/UX
+  // MODIFICATION : Widgets avec textes traduits
   Widget _buildPrintCreditWidget() {
     Color backgroundColor;
     if (_remainingPrints == 0) {
@@ -1094,7 +1187,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
 
     return Tooltip(
-      message: 'Crédit d\'impression restant',
+      message: _getTranslatedText('الرصيد المتبقي للطباعة', 'Crédit d\'impression restant'),
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 4),
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1134,7 +1227,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     Color timeColor = _remainingTime.inDays <= 7 ? Colors.orange : Colors.teal;
 
     return Tooltip(
-      message: 'Temps restant avant expiration',
+      message: _getTranslatedText('الوقت المتبقي قبل الانتهاء', 'Temps restant avant expiration'),
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
@@ -1169,7 +1262,9 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
   Widget _buildAccountStatusIndicator() {
     return Tooltip(
-      message: _isAccountActive ? 'Compte actif' : 'Compte inactif',
+      message: _isAccountActive 
+          ? _getTranslatedText('حساب نشط', 'Compte actif')
+          : _getTranslatedText('حساب غير نشط', 'Compte inactif'),
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
@@ -1193,7 +1288,9 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             ),
             SizedBox(width: 6),
             Text(
-              _isAccountActive ? 'Actif' : 'Inactif',
+              _isAccountActive 
+                  ? _getTranslatedText('نشط', 'Actif')
+                  : _getTranslatedText('غير نشط', 'Inactif'),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 12,
@@ -1252,7 +1349,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             children: [
               Icon(Icons.description, color: Colors.blue),
               SizedBox(width: 8),
-              Text('طباعة الجدول (HTML)'),
+              Text(_getTranslatedText('طباعة الجدول (HTML)', 'Imprimer le tableau (HTML)')),
             ],
           ),
         ),
@@ -1262,7 +1359,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             children: [
               Icon(Icons.picture_as_pdf, color: Colors.red),
               SizedBox(width: 8),
-              Text('طباعة الجدول (PDF)'),
+              Text(_getTranslatedText('طباعة الجدول (PDF)', 'Imprimer le tableau (PDF)')),
             ],
           ),
         ),
@@ -1274,7 +1371,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     if (_isAccountActive) return SizedBox();
 
     return Tooltip(
-      message: 'Activer votre compte',
+      message: _getTranslatedText('تفعيل حسابك', 'Activer votre compte'),
       child: IconButton(
         icon: Container(
           padding: EdgeInsets.all(8),
@@ -1305,11 +1402,12 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             children: [
               Icon(Icons.error_outline, size: 64, color: Colors.red),
               SizedBox(height: 16),
-              Text('Utilisateur non connecté.', style: TextStyle(fontSize: 18)),
+              Text(_getTranslatedText('المستخدم غير مسجل الدخول.', 'Utilisateur non connecté.'), 
+                  style: TextStyle(fontSize: 18)),
               SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text('Retour'),
+                child: Text(_getTranslatedText('العودة', 'Retour')),
               ),
             ],
           ),
@@ -1325,7 +1423,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
-              Text('Chargement de vos informations...',
+              Text(_getTranslatedText('جاري تحميل معلوماتك...', 'Chargement de vos informations...'),
                   style: TextStyle(fontSize: 16)),
             ],
           ),
@@ -1346,7 +1444,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       ),
       home: Scaffold(
         appBar: AppBar(
-          title: Text('الجدول الجامع للنتائج',
+          title: Text(_getTranslatedText('الجدول الجامع للنتائج', 'Tableau Global des Résultats'),
               style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -1364,7 +1462,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           ],
         ),
         body: Directionality(
-          textDirection: TextDirection.rtl,
+          textDirection: _isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
           child: Column(
             children: [
               // Header amélioré
@@ -1408,7 +1506,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'تاريخ الإصدار: ${DateTime.now().toString().substring(0, 10)}',
+                      _getTranslatedText(
+                        'تاريخ الإصدار: ${DateTime.now().toString().substring(0, 10)}',
+                        'Date d\'émission: ${DateTime.now().toString().substring(0, 10)}'
+                      ),
                       style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                     ),
                     if (!_isAccountActive)
@@ -1426,7 +1527,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                                 size: 16, color: Colors.orange[800]),
                             SizedBox(width: 4),
                             Text(
-                              'Compte limité - $_remainingPrints/5 impressions',
+                              _getTranslatedText(
+                                'حساب محدود - $_remainingPrints/5 طباعة',
+                                'Compte limité - $_remainingPrints/5 impressions'
+                              ),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.orange[800],
@@ -1450,34 +1554,28 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     return FutureBuilder<Map<String, String>>(
       future: _getClassAndMatiereNames(),
       builder: (context, snapshot) {
+        String className = _isFrenchInterface ? 'Inconnu' : 'غير معروف';
+        String matiereName = _isFrenchInterface ? 'Inconnu' : 'غير معروف';
+        
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Row(
-            children: [
-              SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(),
-              ),
-              SizedBox(width: 8),
-              Text('Chargement...'),
-            ],
-          );
+          className = _isFrenchInterface ? 'Chargement...' : 'جاري التحميل...';
+          matiereName = _isFrenchInterface ? 'Chargement...' : 'جاري التحميل...';
+        } else if (snapshot.hasData) {
+          className = snapshot.data!['className'] ?? (_isFrenchInterface ? 'Inconnu' : 'غير معروف');
+          matiereName = snapshot.data!['matiereName'] ?? (_isFrenchInterface ? 'Inconnu' : 'غير معروف');
         }
 
-        if (snapshot.hasError || !snapshot.hasData) {
-          return Text('خطأ في تحميل البيانات',
-              style: TextStyle(color: Colors.red));
-        }
-
-        var classAndMatiereNames = snapshot.data!;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInfoRow('الأستاذ:', _profName),
+            _buildInfoRow(
+              _getTranslatedText('الأستاذ:', 'Professeur:'), 
+              _profName.isEmpty ? (_isFrenchInterface ? 'Non renseigné' : 'غير محدد') : _profName
+            ),
             SizedBox(height: 4),
-            _buildInfoRow('المادة:', classAndMatiereNames['matiereName']!),
+            _buildInfoRow(_getTranslatedText('المادة:', 'Matière:'), matiereName),
             SizedBox(height: 4),
-            _buildInfoRow('القسم:', classAndMatiereNames['className']!),
+            _buildInfoRow(_getTranslatedText('القسم:', 'Classe:'), className),
           ],
         );
       },
@@ -1528,7 +1626,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         ),
         SizedBox(height: 8),
         Text(
-          'مدرسة: $_schoolName',
+          _getTranslatedText('مدرسة:', 'École:') + ' $_schoolName',
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.bold,
@@ -1542,19 +1640,27 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
   Future<Map<String, String>> _getClassAndMatiereNames() async {
     try {
+      // Récupérer le nom de la classe
       var classDoc = await FirebaseFirestore.instance
           .collection('classes')
           .doc(widget.selectedClass)
           .get();
-      var className = _getFieldSafe(classDoc, 'name', 'غير معروف');
+      var className = classDoc['name'] ?? 'غير معروف';
 
+      // Récupérer le nom de la matière
       var matiereDoc = await FirebaseFirestore.instance
           .collection('classes')
           .doc(widget.selectedClass)
           .collection('matieres')
           .doc(widget.selectedMatiere)
           .get();
-      var matiereName = _getFieldSafe(matiereDoc, 'name', 'غير معروف');
+      var matiereName = matiereDoc['name'] ?? 'غير معروف';
+
+      // Traduire si l'interface est en français
+      if (_isFrenchInterface) {
+        className = DataTranslator.translateClass(className);
+        matiereName = DataTranslator.translateMatiere(matiereName);
+      }
 
       return {
         'className': className,
@@ -1562,8 +1668,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       };
     } catch (e) {
       return {
-        'className': 'غير معروف',
-        'matiereName': 'غير معروف',
+        'className': _isFrenchInterface ? 'Inconnu' : 'غير معروف',
+        'matiereName': _isFrenchInterface ? 'Inconnu' : 'غير معروف',
       };
     }
   }
@@ -1583,7 +1689,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               children: [
                 CircularProgressIndicator(),
                 SizedBox(height: 16),
-                Text('Chargement des classes...'),
+                Text(_getTranslatedText('جاري تحميل الأقسام...', 'Chargement des classes...')),
               ],
             ),
           );
@@ -1596,7 +1702,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               children: [
                 Icon(Icons.error_outline, size: 48, color: Colors.red),
                 SizedBox(height: 16),
-                Text('Erreur de chargement',
+                Text(_getTranslatedText('خطأ في التحميل', 'Erreur de chargement'),
                     style: TextStyle(fontSize: 16, color: Colors.red)),
                 SizedBox(height: 8),
                 Text('${userClassesSnapshot.error}'),
@@ -1613,10 +1719,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               children: [
                 Icon(Icons.class_, size: 64, color: Colors.grey),
                 SizedBox(height: 16),
-                Text('لم يتم العثور على أي قسم.',
+                Text(_getTranslatedText('لم يتم العثور على أي قسم.', 'Aucune classe trouvée.'),
                     style: TextStyle(fontSize: 16)),
                 SizedBox(height: 8),
-                Text('Veuillez ajouter des classes d\'abord.',
+                Text(_getTranslatedText('يرجى إضافة أقسام أولاً.', 'Veuillez ajouter des classes d\'abord.'),
                     style: TextStyle(fontSize: 14, color: Colors.grey)),
               ],
             ),
@@ -1637,6 +1743,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               sumCriteriaMaxPerBareme: sumCriteriaMaxPerBareme,
               totalStudents: totalStudents,
               navigateToClassificationPage: _navigateToClassificationPage,
+              isFrenchInterface: _isFrenchInterface,
             );
           }
         }
@@ -1647,10 +1754,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             children: [
               Icon(Icons.search_off, size: 64, color: Colors.orange),
               SizedBox(height: 16),
-              Text('لم يتم العثور على أي قسم مطابق.',
+              Text(_getTranslatedText('لم يتم العثور على أي قسم مطابق.', 'Aucune classe correspondante trouvée.'),
                   style: TextStyle(fontSize: 16)),
               SizedBox(height: 8),
-              Text('La classe sélectionnée n\'existe pas.',
+              Text(_getTranslatedText('القسم المحدد غير موجود.', 'La classe sélectionnée n\'existe pas.'),
                   style: TextStyle(fontSize: 14, color: Colors.grey)),
             ],
           ),
@@ -1658,8 +1765,130 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       },
     );
   }
+
+  // MODIFICATION : Navigation avec détection de langue
+  void _navigateToClassificationPage(String baremeId, {String? sousBaremeId}) async {
+    try {
+      var classAndMatiereNames = await _getClassAndMatiereNames();
+
+      var selectedBaremes = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .get();
+
+      List<Map<String, dynamic>> baremesValues = await _getBaremesValues(selectedBaremes.docs);
+
+      var selectedBareme = baremesValues.firstWhere(
+        (bareme) => bareme['id'] == baremeId,
+        orElse: () => {'id': baremeId, 'value': _isFrenchInterface ? 'Inconnu' : 'غير معروف'},
+      );
+
+      String baremeName = selectedBareme['value'] ?? (_isFrenchInterface ? 'Inconnu' : 'غير معروف');
+
+      String? sousBaremeName;
+      if (sousBaremeId != null) {
+        var selectedSousBareme = baremesValues.firstWhere(
+          (bareme) =>
+              bareme['id'] == sousBaremeId &&
+              bareme['parentBaremeId'] == baremeId,
+          orElse: () => {'id': sousBaremeId, 'value': _isFrenchInterface ? 'Inconnu' : 'غير معروف'},
+        );
+
+        sousBaremeName = selectedSousBareme['value'] ?? (_isFrenchInterface ? 'Inconnu' : 'غير معروف');
+      }
+
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ClassificationPage(
+            selectedClass: widget.selectedClass,
+            selectedBaremeId: baremeId,
+            selectedSousBaremeId: sousBaremeId,
+            currentUser: currentUser!,
+            profName: _profName,
+            schoolName: _schoolName,
+            className: classAndMatiereNames['className'] ?? (_isFrenchInterface ? 'Inconnu' : 'غير معروف'),
+            matiereName: classAndMatiereNames['matiereName'] ?? (_isFrenchInterface ? 'Inconnu' : 'غير معروف'),
+            baremeName: baremeName,
+            sousBaremeName: sousBaremeName,
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Erreur lors de la navigation vers la page de classification : $e');
+      _showErrorSnackbar(_getTranslatedText('خطأ في التنقل', 'Erreur lors de la navigation'));
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _getBaremesValues(
+      List<QueryDocumentSnapshot> selectedBaremes) async {
+    final List<Map<String, dynamic>> result = [];
+    final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    for (final baremeDoc in selectedBaremes) {
+      final baremeId = baremeDoc['baremeId'];
+
+      final baremeSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .doc(baremeId)
+          .get();
+
+      final isBaremeSelected = _getFieldSafe(baremeSnapshot, 'selected', false);
+
+      final sousBaremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .doc(baremeId)
+          .collection('sousBaremes')
+          .get();
+
+      final selectedSousBaremes = sousBaremesSnapshot.docs
+          .where((doc) => _getFieldSafe(doc, 'selected', false) == true)
+          .toList();
+
+      if (isBaremeSelected) {
+        final baremeName =
+            _getFieldSafe(baremeSnapshot, 'baremeName', _isFrenchInterface ? 'Inconnu' : 'غير معروف');
+        // Traduire le nom du barème si l'interface est en français
+        final displayedBaremeName = _isFrenchInterface
+            ? DataTranslator.translateBareme(baremeName)
+            : baremeName;
+        result.add({
+          'id': baremeId,
+          'value': displayedBaremeName,
+          'sousBaremes': [],
+        });
+      } else if (selectedSousBaremes.isNotEmpty) {
+        for (final sousBareme in selectedSousBaremes) {
+          final sousBaremeName =
+              _getFieldSafe(sousBareme, 'sousBaremeName', _isFrenchInterface ? 'Inconnu' : 'غير معروف');
+          // Traduire le nom du sous-barème si l'interface est en français
+          final displayedSousBaremeName = _isFrenchInterface
+              ? DataTranslator.translateSousBareme(sousBaremeName)
+              : sousBaremeName;
+          result.add({
+            'id': sousBareme.id,
+            'value': displayedSousBaremeName,
+            'parentBaremeId': baremeId,
+          });
+        }
+      }
+    }
+    return result;
+  }
 }
 
+// MODIFICATION : Ajouter le paramètre isFrenchInterface à StudentsTable
 class StudentsTable extends StatefulWidget {
   final String classDocId;
   final String selectedClass;
@@ -1668,6 +1897,7 @@ class StudentsTable extends StatefulWidget {
   final Map<String, int> sumCriteriaMaxPerBareme;
   final int totalStudents;
   final Function(String, {String? sousBaremeId}) navigateToClassificationPage;
+  final bool isFrenchInterface; // Nouveau paramètre
 
   const StudentsTable({
     Key? key,
@@ -1678,12 +1908,12 @@ class StudentsTable extends StatefulWidget {
     required this.sumCriteriaMaxPerBareme,
     required this.totalStudents,
     required this.navigateToClassificationPage,
+    required this.isFrenchInterface, // Nouveau paramètre
   }) : super(key: key);
 
   @override
   _StudentsTableState createState() => _StudentsTableState();
 }
-
 
 class _StudentsTableState extends State<StudentsTable> {
   final List<String> _dropdownValues = [
@@ -1713,6 +1943,11 @@ class _StudentsTableState extends State<StudentsTable> {
   final Color _textColor = Color(0xFF333333);
   final Color _borderColor = const Color(0xFFE0E0E0);
 
+  // MODIFICATION : Méthode de traduction
+  String _getTranslatedText(String arabicText, String frenchText) {
+    return widget.isFrenchInterface ? frenchText : arabicText;
+  }
+
   Color _getRandomColor() {
     final List<Color> predefinedColors = [
       Color(0xFF2196F3),
@@ -1725,7 +1960,7 @@ class _StudentsTableState extends State<StudentsTable> {
     return predefinedColors[Random().nextInt(predefinedColors.length)];
   }
 
-  // Fonction pour trier les barèmes par ordre alphabétique arabe
+  // Fonction pour trier les barèmes par ordre alphabétique
   List<Map<String, dynamic>> _sortBaremesAlphabetically(List<Map<String, dynamic>> baremesValues) {
     baremesValues.sort((a, b) {
       String nameA = a['value'] ?? '';
@@ -1736,23 +1971,34 @@ class _StudentsTableState extends State<StudentsTable> {
   }
 
   // Fonction modifiée pour grouper les barèmes triés
-  Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> baremesValues) {
-    // Trier d'abord les barèmes par ordre alphabétique
-    List<Map<String, dynamic>> sortedBaremes = _sortBaremesAlphabetically(baremesValues);
-    
-    Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
+ // CORRECTION : Méthode groupBaremes sécurisée
+Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> baremesValues) {
+  // Trier d'abord les barèmes par ordre alphabétique
+  List<Map<String, dynamic>> sortedBaremes = _sortBaremesAlphabetically(baremesValues);
+  
+  Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
 
-    for (var bareme in sortedBaremes) {
-      String key = bareme['value'].substring(0, 4);
-      if (!groupedBaremes.containsKey(key)) {
-        groupedBaremes[key] = [];
-      }
-      groupedBaremes[key]!.add(bareme);
+  for (var bareme in sortedBaremes) {
+    String baremeValue = bareme['value'] ?? '';
+    
+    // CORRECTION : Vérifier la longueur avant d'utiliser substring
+    String key;
+    if (baremeValue.length >= 4) {
+      key = baremeValue.substring(0, 4);
+    } else if (baremeValue.isNotEmpty) {
+      key = baremeValue; // Utiliser la valeur complète si trop courte
+    } else {
+      key = 'autre'; // Valeur par défaut si vide
     }
 
-    return groupedBaremes;
+    if (!groupedBaremes.containsKey(key)) {
+      groupedBaremes[key] = [];
+    }
+    groupedBaremes[key]!.add(bareme);
   }
 
+  return groupedBaremes;
+}
   // Fonction pour déterminer si c'est un barème principal ou sous-barème
   String _getBaremeDisplayName(Map<String, dynamic> bareme, Map<String, dynamic> subEntry) {
     // Si c'est le barème principal (même ID)
@@ -1892,117 +2138,124 @@ class _StudentsTableState extends State<StudentsTable> {
     return _buildSelectionsTable(_cachedStudents!);
   }
 
- Widget _buildHeader() {
-  return FutureBuilder<Map<String, String>>(
-    future: _getClassAndMatiereNames(),
-    builder: (context, snapshot) {
-      String className = 'غير معروف';
-      String matiereName = 'غير معروف';
-      
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        className = 'جاري التحميل...';
-        matiereName = 'جاري التحميل...';
-      } else if (snapshot.hasData) {
-        className = snapshot.data!['className'] ?? 'غير معروف';
-        matiereName = snapshot.data!['matiereName'] ?? 'غير معروف';
-      }
+  Widget _buildHeader() {
+    return FutureBuilder<Map<String, String>>(
+      future: _getClassAndMatiereNames(),
+      builder: (context, snapshot) {
+        String className = widget.isFrenchInterface ? 'Inconnu' : 'غير معروف';
+        String matiereName = widget.isFrenchInterface ? 'Inconnu' : 'غير معروف';
+        
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          className = widget.isFrenchInterface ? 'Chargement...' : 'جاري التحميل...';
+          matiereName = widget.isFrenchInterface ? 'Chargement...' : 'جاري التحميل...';
+        } else if (snapshot.hasData) {
+          className = snapshot.data!['className'] ?? (widget.isFrenchInterface ? 'Inconnu' : 'غير معروف');
+          matiereName = snapshot.data!['matiereName'] ?? (widget.isFrenchInterface ? 'Inconnu' : 'غير معروف');
+        }
 
-      return Card(
-        elevation: 3,
-        margin: EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Container(
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_primaryColor, _secondaryColor],
+        return Card(
+          elevation: 3,
+          margin: EdgeInsets.all(16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_primaryColor, _secondaryColor],
+              ),
+              borderRadius: BorderRadius.circular(12),
             ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              IconButton(
-                icon: Icon(Icons.refresh, color: Colors.white),
-                onPressed: _refreshData,
-                tooltip: 'Rafraîchir les données',
-              ),
-              SizedBox(width: 12),
-              Icon(Icons.school, color: Colors.white, size: 32),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'جدول التقييم',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      '$className - $matiereName',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
+            child: Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.refresh, color: Colors.white),
+                  onPressed: _refreshData,
+                  tooltip: _getTranslatedText('تحديث البيانات', 'Rafraîchir les données'),
                 ),
-              ),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${widget.totalStudents} طالب',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                SizedBox(width: 12),
+                Icon(Icons.school, color: Colors.white, size: 32),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _getTranslatedText('جدول التقييم', 'Tableau d\'évaluation'),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '$className - $matiereName',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${widget.totalStudents} ' + _getTranslatedText('طالب', 'élèves'),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
-Future<Map<String, String>> _getClassAndMatiereNames() async {
-  try {
-    // Récupérer le nom de la classe
-    var classDoc = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(widget.selectedClass)
-        .get();
-    var className = classDoc['name'] ?? 'غير معروف';
-
-    // Récupérer le nom de la matière
-    var matiereDoc = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(widget.selectedClass)
-        .collection('matieres')
-        .doc(widget.selectedMatiere)
-        .get();
-    var matiereName = matiereDoc['name'] ?? 'غير معروف';
-
-    return {
-      'className': className,
-      'matiereName': matiereName,
-    };
-  } catch (e) {
-    print('Erreur lors de la récupération des noms: $e');
-    return {
-      'className': 'غير معروف',
-      'matiereName': 'غير معروف',
-    };
+        );
+      },
+    );
   }
-}
+
+  Future<Map<String, String>> _getClassAndMatiereNames() async {
+    try {
+      // Récupérer le nom de la classe
+      var classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .get();
+      var className = classDoc['name'] ?? 'غير معروف';
+
+      // Récupérer le nom de la matière
+      var matiereDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .collection('matieres')
+          .doc(widget.selectedMatiere)
+          .get();
+      var matiereName = matiereDoc['name'] ?? 'غير معروف';
+
+      // Traduire si l'interface est en français
+      if (widget.isFrenchInterface) {
+        className = DataTranslator.translateClass(className);
+        matiereName = DataTranslator.translateMatiere(matiereName);
+      }
+
+      return {
+        'className': className,
+        'matiereName': matiereName,
+      };
+    } catch (e) {
+      return {
+        'className': widget.isFrenchInterface ? 'Inconnu' : 'غير معروف',
+        'matiereName': widget.isFrenchInterface ? 'Inconnu' : 'غير معروف',
+      };
+    }
+  }
+
   Widget _buildLoadingIndicator() {
     return Center(
       child: Column(
@@ -2013,7 +2266,7 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
           ),
           SizedBox(height: 16),
           Text(
-            'جاري تحميل البيانات...',
+            _getTranslatedText('جاري تحميل البيانات...', 'Chargement des données...'),
             style: TextStyle(
               color: _textColor,
               fontSize: 16,
@@ -2033,7 +2286,7 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
           SizedBox(height: 16),
           Text(
             error,
-            textDirection: TextDirection.rtl,
+            textDirection: widget.isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
             style: TextStyle(color: Colors.red, fontSize: 16),
             textAlign: TextAlign.center,
           ),
@@ -2050,8 +2303,8 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
           Icon(Icons.people_outline, color: Colors.grey, size: 64),
           SizedBox(height: 16),
           Text(
-            'لم يتم العثور على أي طالب.',
-            textDirection: TextDirection.rtl,
+            _getTranslatedText('لم يتم العثور على أي طالب.', 'Aucun élève trouvé.'),
+            textDirection: widget.isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
             style: TextStyle(color: Colors.grey, fontSize: 16),
           ),
         ],
@@ -2075,7 +2328,7 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
           return _buildLoadingIndicator();
         }
         if (baremesValuesSnapshot.hasError) {
-          return _buildErrorWidget('خطأ: ${baremesValuesSnapshot.error}');
+          return _buildErrorWidget('${_getTranslatedText('خطأ:', 'Erreur:')} ${baremesValuesSnapshot.error}');
         }
         if (!baremesValuesSnapshot.hasData || baremesValuesSnapshot.data!.isEmpty) {
           return _buildEmptyStateForCriteria();
@@ -2094,8 +2347,8 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
           Icon(Icons.assessment_outlined, color: Colors.grey, size: 64),
           SizedBox(height: 16),
           Text(
-            'لم يتم العثور على أي معيار.',
-            textDirection: TextDirection.rtl,
+            _getTranslatedText('لم يتم العثور على أي معيار.', 'Aucun critère trouvé.'),
+            textDirection: widget.isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
             style: TextStyle(color: Colors.grey, fontSize: 16),
           ),
         ],
@@ -2145,7 +2398,7 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
                     ),
                     child: Center(
                       child: Text(
-                        'الاسم واللقب',
+                        _getTranslatedText('الاسم واللقب', 'Nom et prénom'),
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: _primaryColor,
@@ -2209,7 +2462,7 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
                   final index = entry.key;
                   final studentDoc = entry.value;
                   final studentId = studentDoc.id;
-                  final studentName = studentDoc['name'] ?? 'غير معروف';
+                  final studentName = studentDoc['name'] ?? _getTranslatedText('غير معروف', 'Inconnu');
 
                   return DataRow(
                     color: MaterialStateProperty.resolveWith<Color>(
@@ -2238,7 +2491,7 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
                               Expanded(
                                 child: Text(
                                   studentName,
-                                  textDirection: TextDirection.rtl,
+                                  textDirection: widget.isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
                                   style: TextStyle(
                                     color: _textColor,
                                     fontWeight: FontWeight.w500,
@@ -2303,13 +2556,13 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
                   );
                 }).toList(),
                 // Ligne des statistiques
-                _buildStatsRow('عدد التلاميذ المحققين', groupedBaremes, isPercentage: false),
+                _buildStatsRow(_getTranslatedText('عدد التلاميذ المحققين', 'Nombre d\'élèves ayant atteint'), groupedBaremes, isPercentage: false),
                 // Ligne des pourcentages
-                _buildStatsRow('النسبة المئوية', groupedBaremes, isPercentage: true),
+                _buildStatsRow(_getTranslatedText('النسبة المئوية', 'Pourcentage'), groupedBaremes, isPercentage: true),
                 // Ligne des boutons "تصنيف"
-                _buildButtonRow('تصنيف', Colors.green, Colors.yellow, groupedBaremes, isClassification: true),
+                _buildButtonRow(_getTranslatedText('تصنيف', 'Classer'), Colors.green, Colors.yellow, groupedBaremes, isClassification: true),
                 // Ligne des boutons "خطة العلاج"
-                _buildButtonRow('خطة العلاج', Colors.blue, Colors.white, groupedBaremes, isClassification: false),
+                _buildButtonRow(_getTranslatedText('خطة العلاج', 'Plan de traitement'), Colors.blue, Colors.white, groupedBaremes, isClassification: false),
               ],
             ),
           ),
@@ -2371,8 +2624,8 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
                       child: Text(
                         isPercentage
                             ? widget.totalStudents == 0
-                                ? 'لا توجد درجات'
-                                : '${((widget.sumCriteriaMaxPerBareme[subEntry['id']] ?? 0) / widget.totalStudents * 100).toStringAsFixed(2)}٪'
+                                ? _getTranslatedText('لا توجد درجات', 'Pas de notes')
+                                : '${((widget.sumCriteriaMaxPerBareme[subEntry['id']] ?? 0) / widget.totalStudents * 100).toStringAsFixed(2)}%'
                             : widget.sumCriteriaMaxPerBareme[subEntry['id']]?.toString() ?? '0',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
@@ -2471,7 +2724,7 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
                 if (_isMounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('حدث خطأ: $e'),
+                      content: Text('${_getTranslatedText('حدث خطأ:', 'Erreur:')} $e'),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -2541,7 +2794,7 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
           .toList();
 
       if (isBaremeSelected) {
-        final baremeName = baremeSnapshot['baremeName'] ?? 'غير معروف';
+        final baremeName = baremeSnapshot['baremeName'] ?? _getTranslatedText('غير معروف', 'Inconnu');
         result.add({
           'id': baremeId,
           'value': baremeName,
@@ -2549,7 +2802,7 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
         });
       } else if (selectedSousBaremes.isNotEmpty) {
         for (final sousBareme in selectedSousBaremes) {
-          final sousBaremeName = sousBareme['sousBaremeName'] ?? 'غير معروف';
+          final sousBaremeName = sousBareme['sousBaremeName'] ?? _getTranslatedText('غير معروف', 'Inconnu');
           result.add({
             'id': sousBareme.id,
             'value': sousBaremeName,
@@ -2605,14 +2858,14 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
           .get();
 
       Map<String, List<String>> studentGroups = {
-        'مجموعة العلاج': [],
-        'مجموعة الدعم': [],
-        'مجموعة التميز': [],
+        _getTranslatedText('مجموعة العلاج', 'Groupe de traitement'): [],
+        _getTranslatedText('مجموعة الدعم', 'Groupe de soutien'): [],
+        _getTranslatedText('مجموعة التميز', 'Groupe d\'excellence'): [],
       };
 
       for (var studentDoc in studentsSnapshot.docs) {
         var studentId = studentDoc.id;
-        var studentName = studentDoc['name'] ?? 'اسم غير معروف';
+        var studentName = studentDoc['name'] ?? _getTranslatedText('اسم غير معروف', 'Nom inconnu');
 
         var baremeRef = FirebaseFirestore.instance
             .collection('users')
@@ -2631,11 +2884,11 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
         if (snapshot.exists) {
           var value = snapshot['Marks'];
           if (value == '( + + + )') {
-            studentGroups['مجموعة التميز']!.add(studentName);
+            studentGroups[_getTranslatedText('مجموعة التميز', 'Groupe d\'excellence')]!.add(studentName);
           } else if (value == '( + + - )') {
-            studentGroups['مجموعة الدعم']!.add(studentName);
+            studentGroups[_getTranslatedText('مجموعة الدعم', 'Groupe de soutien')]!.add(studentName);
           } else if (value == '( + - - )' || value == '( - - - )') {
-            studentGroups['مجموعة العلاج']!.add(studentName);
+            studentGroups[_getTranslatedText('مجموعة العلاج', 'Groupe de traitement')]!.add(studentName);
           }
         }
       }
@@ -2690,7 +2943,7 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
                     ),
                     child: Center(
                       child: Text(
-                        'تصنيف التلاميذ',
+                        _getTranslatedText('تصنيف التلاميذ', 'Classification des élèves'),
                         style: TextStyle(
                           fontSize: titleFontSize.clamp(18, 24),
                           fontWeight: FontWeight.bold,
@@ -2707,7 +2960,11 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          ...['مجموعة التميز', 'مجموعة الدعم', 'مجموعة العلاج'].map((groupName) {
+                          ...[
+                            _getTranslatedText('مجموعة التميز', 'Groupe d\'excellence'),
+                            _getTranslatedText('مجموعة الدعم', 'Groupe de soutien'),
+                            _getTranslatedText('مجموعة العلاج', 'Groupe de traitement')
+                          ].map((groupName) {
                             return _buildResponsiveGroupCard(
                               groupName, 
                               studentGroups[groupName]!,
@@ -2742,7 +2999,7 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
                           minimumSize: Size(screenWidth * 0.3, 50),
                         ),
                         child: Text(
-                          'إغلاق',
+                          _getTranslatedText('إغلاق', 'Fermer'),
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: titleFontSize.clamp(16, 20),
@@ -2770,22 +3027,15 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
     Color cardColor;
     Color textColor;
     
-    switch (groupName) {
-      case 'مجموعة التميز':
-        cardColor = Colors.green.withOpacity(0.1);
-        textColor = Colors.green;
-        break;
-      case 'مجموعة الدعم':
-        cardColor = Colors.orange.withOpacity(0.1);
-        textColor = Colors.orange;
-        break;
-      case 'مجموعة العلاج':
-        cardColor = Colors.red.withOpacity(0.1);
-        textColor = Colors.red;
-        break;
-      default:
-        cardColor = Colors.grey.withOpacity(0.1);
-        textColor = Colors.grey;
+    if (groupName.contains(_getTranslatedText('التميز', 'excellence')) || groupName.contains('excellence')) {
+      cardColor = Colors.green.withOpacity(0.1);
+      textColor = Colors.green;
+    } else if (groupName.contains(_getTranslatedText('الدعم', 'soutien')) || groupName.contains('soutien')) {
+      cardColor = Colors.orange.withOpacity(0.1);
+      textColor = Colors.orange;
+    } else {
+      cardColor = Colors.red.withOpacity(0.1);
+      textColor = Colors.red;
     }
 
     return Card(
@@ -2867,6 +3117,7 @@ Future<Map<String, String>> _getClassAndMatiereNames() async {
     );
   }
 }
+
 class StudentDropdown extends StatefulWidget {
   final String studentId;
   final String baremeId;
@@ -2905,7 +3156,7 @@ class _StudentDropdownState extends State<StudentDropdown> {
       items: widget.dropdownValues
           .map((value) => DropdownMenuItem(
                 value: value,
-                child: Text(value, textDirection: TextDirection.rtl),
+                child: Text(value),
               ))
           .toList(),
       onChanged: (value) {

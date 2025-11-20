@@ -1,19 +1,155 @@
 import 'dart:convert';
-
 import 'package:Taqyem/taqyem/listedeselection.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:Taqyem/taqyem/tableau.dart';
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Classe utilitaire pour la traduction et la détection de langue
+class DataTranslator {
+  static final Map<String, String> _classTranslations = {
+    "السنة الأولى ابتدائي": "1ère année primaire",
+    "السنة الأولى ابتدائي أ": "1ère année primaire A",
+    "السنة الأولى ابتدائي ب": "1ère année primaire B", 
+    "السنة الأولى ابتدائي ج": "1ère année primaire C",
+    "السنة الأولى ابتدائي د": "1ère année primaire D",
+    "السنة الثانية ابتدائي": "2ème année primaire",
+    "السنة الثانية ابتدائي أ": "2ème année primaire A",
+    "السنة الثانية ابتدائي ب": "2ème année primaire B",
+    "السنة الثانية ابتدائي ج": "2ème année primaire C",
+    "السنة الثانية ابتدائي د": "2ème année primaire D",
+    "السنة الثالثة ابتدائي": "3ème année primaire",
+    "السنة الثالثة ابتدائي أ": "3ème année primaire A",
+    "السنة الثالثة ابتدائي ب": "3ème année primaire B",
+    "السنة الثالثة ابتدائي ج": "3ème année primaire C",
+    "السنة الثالثة ابتدائي د": "3ème année primaire D",
+    "السنة الرابعة ابتدائي": "4ème année primaire",
+    "السنة الرابعة ابتدائي أ": "4ème année primaire A",
+    "السنة الرابعة ابتدائي ب": "4ème année primaire B",
+    "السنة الرابعة ابتدائي ج": "4ème année primaire C",
+    "السنة الرابعة ابتدائي د": "4ème année primaire D",
+    "السنة الخامسة ابتدائي": "5ème année primaire",
+    "السنة الخامسة ابتدائي أ": "5ème année primaire A",
+    "السنة الخامسة ابتدائي ب": "5ème année primaire B",
+    "السنة الخامسة ابتدائي ج": "5ème année primaire C",
+    "السنة الخامسة ابتدائي د": "5ème année primaire D",
+    "السنة السادسة ابتدائي": "6ème année primaire",
+    "السنة السادسة ابتدائي أ": "6ème année primaire A",
+    "السنة السادسة ابتدائي ب": "6ème année primaire B",
+    "السنة السادسة ابتدائي ج": "6ème année primaire C",
+    "السنة السادسة ابتدائي د": "6ème année primaire D"
+  };
+
+  static final Map<String, String> _matiereTranslations = {
+    "التواصل الشفوي": "Communication orale",
+    "قراءة": "Lecture",
+    "انتاج كتابي": "Production écrite",
+    "رياضيات": "Mathématiques",
+    "ايقاظ علمي": "Éveil scientifique",
+    "تربية اسلامية": "Éducation islamique",
+    "تربية تكنولوجية": "Éducation technologique",
+    "تربية موسيقية": "Éducation musicale",
+    "تربية تشكيلية": "Éducation artistique", 
+    "تربية بدنية": "Éducation physique",
+    "قواعد لغة": "Grammaire",
+    "Expression orale et récitation": "Expression orale et récitation",
+    "Lecture": "Lecture",
+    "Production écrite": "Production écrite",
+    "écriture": "Écriture",
+    "dictée": "Dictée",
+    "langue": "Langue",
+    "لغة انقليزية": "Anglais",
+    "التاريخ": "Histoire",
+    "الجغرافيا": "Géographie",
+    "التربية المدنية": "Éducation civique"
+  };
+
+  static final Map<String, String> _baremeTranslations = {
+    "مع 1": "C1",
+    "مع 2": "C2", 
+    "مع 3": "C3",
+    "مع 4": "C4",
+    "مع 5": "C5",
+    "مع 1.1": "C1.1",
+    "مع 1.2": "C1.2",
+    "مع 1.3": "C1.3",
+    "مع 2.1": "C2.1",
+    "مع 2.2": "C2.2", 
+    "مع 2.3": "C2.3",
+    "مع 3.1": "C3.1",
+    "مع 3.2": "C3.2",
+    "مع 3.3": "C3.3",
+    "مع 4.1": "C4.1",
+    "مع 4.2": "C4.2",
+    "مع 4.3": "C4.3",
+    "مع 5.1": "C5.1",
+    "مع 5.2": "C5.2",
+    "مع 5.3": "C5.3"
+  };
+
+  // Liste des matières considérées comme étrangères (doivent être en français)
+  static final List<String> _foreignMatieres = [
+    "Expression orale et récitation",
+    "Lecture",
+    "Production écrite",
+    "écriture",
+    "dictée",
+    "langue",
+    "لغة انقليزية"
+  ];
+
+  // Détecter si une matière est étrangère
+  static bool isForeignMatiere(String matiereName) {
+    return _foreignMatieres.contains(matiereName);
+  }
+
+  // Traduire le nom d'une classe
+  static String translateClass(String arabicName) {
+    return _classTranslations[arabicName] ?? arabicName;
+  }
+
+  // Traduire le nom d'une matière
+  static String translateMatiere(String arabicName) {
+    return _matiereTranslations[arabicName] ?? arabicName;
+  }
+
+  // Traduire un critère/barème
+  static String translateBareme(String arabicName) {
+    return _baremeTranslations[arabicName] ?? arabicName;
+  }
+
+  // Traduire un sous-critère
+  static String translateSousBareme(String arabicName) {
+    return _baremeTranslations[arabicName] ?? arabicName;
+  }
+
+  // Obtenir le nom original arabe à partir de la traduction française
+  static String getArabicClassFromFrench(String frenchName) {
+    return _classTranslations.entries
+        .firstWhere((entry) => entry.value == frenchName, 
+                   orElse: () => MapEntry(frenchName, frenchName))
+        .key;
+  }
+
+  static String getArabicMatiereFromFrench(String frenchName) {
+    return _matiereTranslations.entries
+        .firstWhere((entry) => entry.value == frenchName,
+                   orElse: () => MapEntry(frenchName, frenchName))
+        .key;
+  }
+}
 
 class BaremesPage extends StatefulWidget {
   final String selectedClass;
   final String selectedMatiere;
+  final String matiereName;
 
-  BaremesPage({required this.selectedClass, required this.selectedMatiere});
+  BaremesPage({
+    required this.selectedClass,
+    required this.selectedMatiere,
+    required this.matiereName,
+  });
 
   @override
   _BaremesPageState createState() => _BaremesPageState();
@@ -23,12 +159,20 @@ class _BaremesPageState extends State<BaremesPage> {
   Map<String, bool> _selectedBaremes = {};
   Map<String, Map<String, bool>> _selectedSousBaremes = {};
   bool _isLoading = true;
+  bool _isFrenchInterface = false;
 
   @override
   void initState() {
     super.initState();
+    _detectLanguage();
     _loadExistingSelections();
     _showUtilityDialog();
+  }
+
+  void _detectLanguage() {
+    setState(() {
+      _isFrenchInterface = DataTranslator.isForeignMatiere(widget.matiereName);
+    });
   }
 
   Future<void> _showUtilityDialog() async {
@@ -66,7 +210,7 @@ class _BaremesPageState extends State<BaremesPage> {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'معلومات عن الواجهة',
+                    _isFrenchInterface ? 'Informations sur l\'interface' : 'معلومات عن الواجهة',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -75,8 +219,11 @@ class _BaremesPageState extends State<BaremesPage> {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'هذه الواجهة تتيح لك اختيار المعايير والمؤشرات للقسم والمادة المحددة. '
-                    'يمكنك تحديد المعايير والمؤشرات وحفظها للرجوع إليها لاحقًا.',
+                    _isFrenchInterface 
+                      ? 'Cette interface vous permet de sélectionner les critères et indicateurs pour la classe et la matière choisies. '
+                         'Vous pouvez sélectionner les critères et indicateurs et les sauvegarder pour les consulter ultérieurement.'
+                      : 'هذه الواجهة تتيح لك اختيار المعايير والمؤشرات للقسم والمادة المحددة. '
+                         'يمكنك تحديد المعايير والمؤشرات وحفظها للرجوع إليها لاحقًا.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -101,7 +248,7 @@ class _BaremesPageState extends State<BaremesPage> {
                         elevation: 3,
                       ),
                       child: Text(
-                        'موافق',
+                        _isFrenchInterface ? 'Compris' : 'موافق',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -140,7 +287,7 @@ class _BaremesPageState extends State<BaremesPage> {
       String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
       if (userId.isEmpty) {
-        throw Exception('Utilisateur non connecté');
+        throw Exception(_isFrenchInterface ? 'Utilisateur non connecté' : 'المستخدم غير مسجل الدخول');
       }
 
       var selectionsRef = FirebaseFirestore.instance
@@ -170,7 +317,7 @@ class _BaremesPageState extends State<BaremesPage> {
         _isLoading = false;
       });
     } catch (e) {
-      print('Erreur lors du chargement des sélections existantes: $e');
+      print('${_isFrenchInterface ? 'Erreur lors du chargement des sélections existantes' : 'خطأ في تحميل التحديدات الموجودة'}: $e');
       setState(() {
         _isLoading = false;
       });
@@ -203,7 +350,7 @@ class _BaremesPageState extends State<BaremesPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'المعايير و المؤشرات',
+          _isFrenchInterface ? 'Critères et Indicateurs' : 'المعايير و المؤشرات',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -218,7 +365,7 @@ class _BaremesPageState extends State<BaremesPage> {
               onPressed: _saveSelections,
               icon: Icon(Icons.save, size: 20),
               label: Text(
-                'حفظ',
+                _isFrenchInterface ? 'Sauvegarder' : 'حفظ',
                 style: TextStyle(fontSize: 14),
               ),
               style: ElevatedButton.styleFrom(
@@ -237,7 +384,7 @@ class _BaremesPageState extends State<BaremesPage> {
             child: ElevatedButton.icon(
               icon: Icon(Icons.table_chart, size: 20),
               label: Text(
-                'عرض الجدول',
+                _isFrenchInterface ? 'Afficher le tableau' : 'عرض الجدول',
                 style: TextStyle(fontSize: 14),
               ),
               style: ElevatedButton.styleFrom(
@@ -273,7 +420,7 @@ class _BaremesPageState extends State<BaremesPage> {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'جاري تحميل المعايير...',
+                    _isFrenchInterface ? 'Chargement des critères...' : 'جاري تحميل المعايير...',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.grey.shade600,
@@ -310,7 +457,7 @@ class _BaremesPageState extends State<BaremesPage> {
                         ),
                         SizedBox(height: 16),
                         Text(
-                          'خطأ في تحميل البيانات',
+                          _isFrenchInterface ? 'Erreur de chargement des données' : 'خطأ في تحميل البيانات',
                           style: TextStyle(
                             fontSize: 18,
                             color: Colors.red.shade700,
@@ -339,7 +486,7 @@ class _BaremesPageState extends State<BaremesPage> {
                         ),
                         SizedBox(height: 16),
                         Text(
-                          'لم يتم العثور على أي معايير',
+                          _isFrenchInterface ? 'Aucun critère trouvé' : 'لم يتم العثور على أي معايير',
                           style: TextStyle(
                             fontSize: 18,
                             color: Colors.grey.shade600,
@@ -357,6 +504,11 @@ class _BaremesPageState extends State<BaremesPage> {
                     var bareme = snapshot.data!.docs[index];
                     var baremeId = bareme.id;
                     var baremeValue = bareme['value'];
+                    
+                    // Traduire le nom du critère si l'interface est en français
+                    String displayedBareme = _isFrenchInterface 
+                        ? DataTranslator.translateBareme(baremeValue)
+                        : baremeValue;
 
                     return Container(
                       margin: EdgeInsets.only(bottom: 12),
@@ -402,7 +554,7 @@ class _BaremesPageState extends State<BaremesPage> {
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  baremeValue,
+                                  displayedBareme,
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w600,
@@ -433,7 +585,7 @@ class _BaremesPageState extends State<BaremesPage> {
                                     child: Padding(
                                       padding: EdgeInsets.all(16),
                                       child: Text(
-                                        'خطأ في تحميل المؤشرات',
+                                        _isFrenchInterface ? 'Erreur de chargement des indicateurs' : 'خطأ في تحميل المؤشرات',
                                         style: TextStyle(color: Colors.red),
                                       ),
                                     ),
@@ -445,7 +597,7 @@ class _BaremesPageState extends State<BaremesPage> {
                                     child: Padding(
                                       padding: EdgeInsets.all(16),
                                       child: Text(
-                                        'لا توجد مؤشرات',
+                                        _isFrenchInterface ? 'Aucun indicateur' : 'لا توجد مؤشرات',
                                         style: TextStyle(color: Colors.grey),
                                       ),
                                     ),
@@ -460,6 +612,11 @@ class _BaremesPageState extends State<BaremesPage> {
                                     var sousBareme = sousSnapshot.data!.docs[sousIndex];
                                     var sousBaremeId = sousBareme.id;
                                     var sousBaremeName = sousBareme['name'];
+                                    
+                                    // Traduire le nom du sous-critère si l'interface est en français
+                                    String displayedSousBareme = _isFrenchInterface
+                                        ? DataTranslator.translateSousBareme(sousBaremeName)
+                                        : sousBaremeName;
 
                                     return Container(
                                       margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -487,7 +644,7 @@ class _BaremesPageState extends State<BaremesPage> {
                                             ),
                                           ),
                                           title: Text(
-                                            sousBaremeName,
+                                            displayedSousBareme,
                                             style: TextStyle(
                                               fontSize: 14,
                                               color: Colors.grey.shade700,
@@ -591,6 +748,7 @@ class _BaremesPageState extends State<BaremesPage> {
           builder: (context) => SelectedBaremesPage(
             selectedClass: widget.selectedClass,
             selectedMatiere: widget.selectedMatiere,
+            matiereName: widget.matiereName,
           ),
         ),
       );
@@ -641,9 +799,12 @@ class _BaremesPageState extends State<BaremesPage> {
           .collection('baremes')
           .doc(baremeId)
           .get();
-      return baremeDoc['value'];
+      String arabicName = baremeDoc['value'];
+      return _isFrenchInterface 
+          ? DataTranslator.translateBareme(arabicName)
+          : arabicName;
     } catch (e) {
-      print('Erreur lors de la récupération du nom du barème: $e');
+      print('${_isFrenchInterface ? 'Erreur lors de la récupération du nom du critère' : 'خطأ في استرجاع اسم المعيار'}: $e');
       return '';
     }
   }
@@ -661,16 +822,16 @@ class _BaremesPageState extends State<BaremesPage> {
           .collection('sousBaremes')
           .doc(sousBaremeId)
           .get();
-      return sousBaremeDoc['name'];
+      String arabicName = sousBaremeDoc['name'];
+      return _isFrenchInterface
+          ? DataTranslator.translateSousBareme(arabicName)
+          : arabicName;
     } catch (e) {
-      print('Erreur lors de la récupération du nom du sous-barème: $e');
+      print('${_isFrenchInterface ? 'Erreur lors de la récupération du nom de l\'indicateur' : 'خطأ في استرجاع اسم المؤشر'}: $e');
       return '';
     }
   }
 }
-
-//////////////////////////////////////////////
-////////////////////////////////////////////////
 class SelectionPage extends StatefulWidget {
   @override
   _SelectionPageState createState() => _SelectionPageState();
@@ -720,10 +881,14 @@ class _SelectionPageState extends State<SelectionPage> {
           await FirebaseFirestore.instance.collection('classes').get();
       setState(() {
         classes = snapshot.docs
-            .map((doc) => {'id': doc.id, 'name': doc['name'] as String})
+            .map((doc) => {
+                  'id': doc.id, 
+                  'name': doc['name'] as String,
+                  'translatedName': DataTranslator.translateClass(doc['name'] as String)
+                })
             .toList()
           ..sort((a, b) =>
-              a['name']!.toLowerCase().compareTo(b['name']!.toLowerCase()));
+              a['name']!.toLowerCase().compareTo(b['name']!.toLowerCase())); // Trier par nom arabe
       });
     } catch (e) {
       print('Erreur lors de la récupération des classes: $e');
@@ -739,8 +904,14 @@ class _SelectionPageState extends State<SelectionPage> {
           .get();
       setState(() {
         matieres = snapshot.docs
-            .map((doc) => {'id': doc.id, 'name': doc['name'] as String})
-            .toList();
+            .map((doc) => {
+                  'id': doc.id,
+                  'name': doc['name'] as String,
+                  'translatedName': DataTranslator.translateMatiere(doc['name'] as String)
+                })
+            .toList()
+          ..sort((a, b) =>
+              a['name']!.toLowerCase().compareTo(b['name']!.toLowerCase())); // Trier par nom arabe
       });
     } catch (e) {
       print('Erreur lors de la récupération des matières: $e');
@@ -982,13 +1153,13 @@ class _SelectionPageState extends State<SelectionPage> {
                                       ),
                                     ),
                                     title: Text(
-                                      '${access['className']}',
+                                      access['className'] ?? '',
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                     subtitle: Text(
-                                      '${access['matiereName']}',
+                                      access['matiereName'] ?? '',
                                       style: TextStyle(
                                         color: Colors.grey.shade600,
                                       ),
@@ -1025,7 +1196,7 @@ class _SelectionPageState extends State<SelectionPage> {
                       SizedBox(height: 10),
                     ],
 
-                    // Dropdown pour les classes
+                    // Dropdown pour les classes - Afficher les noms arabes
                     Container(
                       margin: EdgeInsets.only(bottom: 20),
                       child: Column(
@@ -1050,7 +1221,7 @@ class _SelectionPageState extends State<SelectionPage> {
                             child: Padding(
                               padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
                               child: DropdownButton<String>(
-                                value: selectedClassName,
+                                value: selectedClassName, // Utiliser le nom arabe directement
                                 hint: Text(
                                   'اختر قسما',
                                   style: TextStyle(color: Colors.grey.shade500),
@@ -1060,7 +1231,7 @@ class _SelectionPageState extends State<SelectionPage> {
                                   Map<String, String> classe = entry.value;
                                   Color color = groupColors[(index ~/ 5) % groupColors.length];
                                   return DropdownMenuItem<String>(
-                                    value: classe['name'],
+                                    value: classe['name'], // Valeur = nom arabe
                                     child: Container(
                                       padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                                       decoration: BoxDecoration(
@@ -1074,7 +1245,7 @@ class _SelectionPageState extends State<SelectionPage> {
                                           SizedBox(width: 12),
                                           Expanded(
                                             child: Text(
-                                              classe['name']!,
+                                              classe['name']!, // Afficher le nom arabe
                                               style: TextStyle(
                                                 color: color,
                                                 fontWeight: FontWeight.bold,
@@ -1114,7 +1285,7 @@ class _SelectionPageState extends State<SelectionPage> {
                       ),
                     ),
 
-                    // Dropdown pour les matières
+                    // Dropdown pour les matières - Afficher les noms arabes
                     Container(
                       margin: EdgeInsets.only(bottom: 30),
                       child: Column(
@@ -1139,18 +1310,18 @@ class _SelectionPageState extends State<SelectionPage> {
                             child: Padding(
                               padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
                               child: DropdownButton<String>(
-                                value: selectedMatiereName,
+                                value: selectedMatiereName, // Utiliser le nom arabe directement
                                 hint: Text(
                                   'اختر مادة',
                                   style: TextStyle(color: Colors.grey.shade500),
                                 ),
                                 items: matieres.map((Map<String, String> matiere) {
                                   return DropdownMenuItem<String>(
-                                    value: matiere['name'],
+                                    value: matiere['name'], // Valeur = nom arabe
                                     child: Padding(
                                       padding: EdgeInsets.symmetric(vertical: 12),
                                       child: Text(
-                                        matiere['name']!,
+                                        matiere['name']!, // Afficher le nom arabe
                                         style: TextStyle(
                                           fontSize: 15,
                                           color: Colors.grey.shade800,
@@ -1178,7 +1349,7 @@ class _SelectionPageState extends State<SelectionPage> {
                       ),
                     ),
 
-                    // Boutons d'action
+                    // Boutons d'action - Toujours en arabe
                     Wrap(
                       alignment: WrapAlignment.center,
                       spacing: screenWidth > 600 ? 20.0 : 12.0,
@@ -1197,6 +1368,7 @@ class _SelectionPageState extends State<SelectionPage> {
                                   builder: (context) => SelectedBaremesPage(
                                     selectedClass: selectedClassId!,
                                     selectedMatiere: selectedMatiereId!,
+                                    matiereName: selectedMatiereName!,
                                   ),
                                 ),
                               );
@@ -1218,6 +1390,7 @@ class _SelectionPageState extends State<SelectionPage> {
                                   builder: (context) => BaremesPage(
                                     selectedClass: selectedClassId!,
                                     selectedMatiere: selectedMatiereId!,
+                                    matiereName: selectedMatiereName!,
                                   ),
                                 ),
                               );
@@ -1312,17 +1485,15 @@ class _SelectionPageState extends State<SelectionPage> {
     );
   }
 }
-
-/////////////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////////
-
 class SelectedBaremesPage extends StatefulWidget {
   final String selectedClass;
   final String selectedMatiere;
+  final String matiereName;
 
   SelectedBaremesPage({
     required this.selectedClass,
     required this.selectedMatiere,
+    required this.matiereName,
   });
 
   @override
@@ -1331,15 +1502,23 @@ class SelectedBaremesPage extends StatefulWidget {
 
 class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
   bool _isLoading = true;
+  bool _isFrenchInterface = false;
 
   @override
   void initState() {
     super.initState();
+    _detectLanguage();
     _showUtilityDialog();
     Future.delayed(Duration(milliseconds: 500), () {
       setState(() {
         _isLoading = false;
       });
+    });
+  }
+
+  void _detectLanguage() {
+    setState(() {
+      _isFrenchInterface = DataTranslator.isForeignMatiere(widget.matiereName);
     });
   }
 
@@ -1378,7 +1557,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'معلومات عن الواجهة',
+                    _isFrenchInterface ? 'Informations sur l\'interface' : 'معلومات عن الواجهة',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -1386,11 +1565,20 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
                     ),
                   ),
                   SizedBox(height: 16),
-                  _buildInfoItem(Icons.list_alt_rounded, 'هذه الواجهة تعرض المعايير والمؤشرات المحددة'),
+                  _buildInfoItem(Icons.list_alt_rounded, 
+                    _isFrenchInterface 
+                      ? 'Cette interface affiche les critères et indicateurs sélectionnés'
+                      : 'هذه الواجهة تعرض المعايير والمؤشرات المحددة'),
                   SizedBox(height: 12),
-                  _buildInfoItem(Icons.table_chart_rounded, 'اضغط على زر الجدول لعرض البيانات بشكل جدولي'),
+                  _buildInfoItem(Icons.table_chart_rounded, 
+                    _isFrenchInterface 
+                      ? 'Cliquez sur le bouton tableau pour afficher les données sous forme de tableau'
+                      : 'اضغط على زر الجدول لعرض البيانات بشكل جدولي'),
                   SizedBox(height: 12),
-                  _buildInfoItem(Icons.settings_rounded, 'يمكنك الرجوع لتعديل الاختيارات في أي وقت'),
+                  _buildInfoItem(Icons.settings_rounded, 
+                    _isFrenchInterface 
+                      ? 'Vous pouvez revenir pour modifier les sélections à tout moment'
+                      : 'يمكنك الرجوع لتعديل الاختيارات في أي وقت'),
                   SizedBox(height: 24),
                   Container(
                     width: double.infinity,
@@ -1406,7 +1594,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
                       ),
                       onPressed: () => Navigator.of(context).pop(),
                       child: Text(
-                        'فهمت',
+                        _isFrenchInterface ? 'Compris' : 'فهمت',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
@@ -1448,7 +1636,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
       return Scaffold(
         appBar: AppBar(
           title: Text(
-            'المعايير المحددة',
+            _isFrenchInterface ? 'Critères Sélectionnés' : 'المعايير المحددة',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           centerTitle: true,
@@ -1461,7 +1649,9 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
               Icon(Icons.warning_amber_rounded, size: 64, color: Colors.orange.shade600),
               SizedBox(height: 20),
               Text(
-                'يجب تسجيل الدخول لعرض المعايير المحددة',
+                _isFrenchInterface 
+                  ? 'Vous devez vous connecter pour afficher les critères sélectionnés'
+                  : 'يجب تسجيل الدخول لعرض المعايير المحددة',
                 style: TextStyle(fontSize: 18, color: Colors.grey.shade700),
                 textAlign: TextAlign.center,
               ),
@@ -1476,7 +1666,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
                 ),
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(
-                  'العودة',
+                  _isFrenchInterface ? 'Retour' : 'العودة',
                   style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
               ),
@@ -1489,7 +1679,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'المعايير المحددة',
+          _isFrenchInterface ? 'Critères Sélectionnés' : 'المعايير المحددة',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -1500,7 +1690,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
             child: ElevatedButton.icon(
               icon: Icon(Icons.table_chart_rounded, size: 20),
               label: Text(
-                'عرض الجدول',
+                _isFrenchInterface ? 'Afficher le tableau' : 'عرض الجدول',
                 style: TextStyle(fontSize: 14),
               ),
               style: ElevatedButton.styleFrom(
@@ -1536,7 +1726,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
                   ),
                   SizedBox(height: 16),
                   Text(
-                    'جاري تحميل المعايير...',
+                    _isFrenchInterface ? 'Chargement des critères...' : 'جاري تحميل المعايير...',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.grey.shade600,
@@ -1562,7 +1752,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
         child: FloatingActionButton.extended(
           icon: Icon(Icons.table_chart_rounded, size: 24),
           label: Text(
-            'عرض الجدول الجامع',
+            _isFrenchInterface ? 'Afficher le tableau complet' : 'عرض الجدول الجامع',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
@@ -1612,7 +1802,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
                 Icon(Icons.error_outline_rounded, size: 64, color: Colors.red.shade400),
                 SizedBox(height: 16),
                 Text(
-                  'حدث خطأ في تحميل البيانات',
+                  _isFrenchInterface ? 'Erreur de chargement des données' : 'حدث خطأ في تحميل البيانات',
                   style: TextStyle(fontSize: 18, color: Colors.red.shade700, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 8),
@@ -1634,7 +1824,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
                 Icon(Icons.inbox_outlined, size: 64, color: Colors.grey.shade400),
                 SizedBox(height: 16),
                 Text(
-                  'لم يتم تحديد أي معايير بعد',
+                  _isFrenchInterface ? 'Aucun critère sélectionné pour le moment' : 'لم يتم تحديد أي معايير بعد',
                   style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
                 ),
                 SizedBox(height: 24),
@@ -1648,7 +1838,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
                   ),
                   onPressed: () => Navigator.of(context).pop(),
                   child: Text(
-                    'تحديد المعايير',
+                    _isFrenchInterface ? 'Sélectionner des critères' : 'تحديد المعايير',
                     style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 ),
@@ -1664,11 +1854,16 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
             var doc = snapshot.data!.docs[index];
             bool isBaremeSelected = doc['selected'] ?? false;
             String baremeName = doc['baremeName'] ?? '';
+            
+            // Traduire le nom du critère si l'interface est en français
+            String displayedBaremeName = _isFrenchInterface
+                ? DataTranslator.translateBareme(baremeName)
+                : baremeName;
 
             return Column(
               children: [
-                if (isBaremeSelected) _buildBaremeCard(baremeName, true),
-                _buildSousBaremesList(doc.reference, baremeName, isBaremeSelected),
+                if (isBaremeSelected) _buildBaremeCard(displayedBaremeName, true),
+                _buildSousBaremesList(doc.reference, displayedBaremeName, isBaremeSelected),
               ],
             );
           },
@@ -1708,7 +1903,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
             ),
           ),
           subtitle: Text(
-            'معيار رئيسي',
+            _isFrenchInterface ? 'Critère principal' : 'معيار رئيسي',
             style: TextStyle(color: Colors.grey.shade600),
           ),
           trailing: Container(
@@ -1748,7 +1943,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
           return Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Text(
-              'خطأ في تحميل المؤشرات',
+              _isFrenchInterface ? 'Erreur de chargement des indicateurs' : 'خطأ في تحميل المؤشرات',
               style: TextStyle(color: Colors.red),
             ),
           );
@@ -1760,6 +1955,12 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
         return Column(
           children: sousBaremes.map((sousDoc) {
             String sousBaremeName = sousDoc['sousBaremeName'] ?? '';
+            
+            // Traduire le nom du sous-critère si l'interface est en français
+            String displayedSousBaremeName = _isFrenchInterface
+                ? DataTranslator.translateSousBareme(sousBaremeName)
+                : sousBaremeName;
+
             return Container(
               margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               child: Card(
@@ -1783,7 +1984,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
                     ),
                   ),
                   title: Text(
-                    sousBaremeName,
+                    displayedSousBaremeName,
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey.shade800,
@@ -1791,7 +1992,9 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
                     ),
                   ),
                   subtitle: Text(
-                    isBaremeSelected ? 'تابع لـ $baremeName' : 'مؤشر',
+                    isBaremeSelected 
+                      ? '${_isFrenchInterface ? 'Dépend de' : 'تابع لـ'} $baremeName' 
+                      : _isFrenchInterface ? 'Indicateur' : 'مؤشر',
                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                   trailing: Icon(

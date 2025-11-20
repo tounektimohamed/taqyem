@@ -15,6 +15,8 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
   final TextEditingController _sousBaremeNomController = TextEditingController();
   final TextEditingController _sousBaremeValueController = TextEditingController();
 
+  bool _isLoading = false;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -23,13 +25,295 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
     super.dispose();
   }
 
-  // Edit class
+  // Fonction pour vérifier si une classe existe déjà
+  Future<bool> classExists(String className) async {
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('classes')
+        .where('name', isEqualTo: className)
+        .get();
+    return snapshot.docs.isNotEmpty;
+  }
+
+  // Fonction pour vérifier si une matière existe déjà dans une classe
+  Future<bool> matiereExists(String classId, String matiereName) async {
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(classId)
+        .collection('matieres')
+        .where('name', isEqualTo: matiereName)
+        .get();
+    return snapshot.docs.isNotEmpty;
+  }
+
+  // Fonction pour vérifier si un barème existe déjà dans une matière
+  Future<bool> baremeExists(String classId, String matiereId, String baremeValue) async {
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(classId)
+        .collection('matieres')
+        .doc(matiereId)
+        .collection('baremes')
+        .where('value', isEqualTo: baremeValue)
+        .get();
+    return snapshot.docs.isNotEmpty;
+  }
+
+  // Fonction pour vérifier si un sous-barème existe déjà dans un barème
+  Future<bool> sousBaremeExists(String classId, String matiereId, String baremeId, String sousBaremeName) async {
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(classId)
+        .collection('matieres')
+        .doc(matiereId)
+        .collection('baremes')
+        .doc(baremeId)
+        .collection('sousBaremes')
+        .where('name', isEqualTo: sousBaremeName)
+        .get();
+    return snapshot.docs.isNotEmpty;
+  }
+
+  // Fonction pour ajouter toutes les données automatiquement
+  Future<void> addAllDataAutomatically() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Liste des classes
+      List<String> classes = [
+        "السنة الأولى ابتدائي",
+        "السنة الأولى ابتدائي أ",
+        "السنة الأولى ابتدائي ب", 
+        "السنة الأولى ابتدائي ج",
+        "السنة الأولى ابتدائي د",
+        "السنة الثانية ابتدائي",
+        "السنة الثانية ابتدائي أ",
+        "السنة الثانية ابتدائي ب",
+        "السنة الثانية ابتدائي ج",
+        "السنة الثانية ابتدائي د",
+        "السنة الثالثة ابتدائي",
+        "السنة الثالثة ابتدائي أ",
+        "السنة الثالثة ابتدائي ب",
+        "السنة الثالثة ابتدائي ج",
+        "السنة الثالثة ابتدائي د",
+        "السنة الرابعة ابتدائي",
+        "السنة الرابعة ابتدائي أ",
+        "السنة الرابعة ابتدائي ب",
+        "السنة الرابعة ابتدائي ج",
+        "السنة الرابعة ابتدائي د",
+        "السنة الخامسة ابتدائي",
+        "السنة الخامسة ابتدائي أ",
+        "السنة الخامسة ابتدائي ب",
+        "السنة الخامسة ابتدائي ج",
+        "السنة الخامسة ابتدائي د",
+        "السنة السادسة ابتدائي",
+        "السنة السادسة ابتدائي أ",
+        "السنة السادسة ابتدائي ب",
+        "السنة السادسة ابتدائي ج",
+        "السنة السادسة ابتدائي د"
+      ];
+
+      // Liste des matières
+      List<String> matieres = [
+        "التواصل الشفوي", "قراءة", "انتاج كتابي", "رياضيات", "ايقاظ علمي",
+        "تربية اسلامية", "تربية تكنولوجية", "تربية موسيقية", "تربية تشكيلية", 
+        "تربية بدنية", "قواعد لغة", "Expression orale et récitation", "Lecture",
+        "Production écrite", "écriture", "dictée", "langue", "لغة انقليزية",
+        "التاريخ", "الجغرافيا", "التربية المدنية"
+      ];
+
+      int totalClasses = 0;
+      int totalMatieres = 0;
+      int totalBaremes = 0;
+      int totalSousBaremes = 0;
+      int skippedClasses = 0;
+      int skippedMatieres = 0;
+      int skippedBaremes = 0;
+      int skippedSousBaremes = 0;
+
+      // Ajouter chaque classe
+      for (String className in classes) {
+        // Vérifier si la classe existe déjà
+        if (await classExists(className)) {
+          print('Classe déjà existante: $className');
+          skippedClasses++;
+          continue;
+        }
+
+        DocumentReference classRef = await FirebaseFirestore.instance
+            .collection('classes')
+            .add({
+              'name': className,
+              'createdAt': FieldValue.serverTimestamp()
+            });
+        totalClasses++;
+
+        // Ajouter chaque matière pour cette classe
+        for (String matiereName in matieres) {
+          // Vérifier si la matière existe déjà dans cette classe
+          if (await matiereExists(classRef.id, matiereName)) {
+            print('Matière déjà existante: $matiereName dans $className');
+            skippedMatieres++;
+            continue;
+          }
+
+          DocumentReference matiereRef = await classRef
+              .collection('matieres')
+              .add({
+                'name': matiereName,
+                'createdAt': FieldValue.serverTimestamp()
+              });
+          totalMatieres++;
+
+          // Ajouter 5 barèmes pour chaque matière
+          for (int baremeNum = 1; baremeNum <= 5; baremeNum++) {
+            String baremeValue = "مع $baremeNum";
+            
+            // Vérifier si le barème existe déjà
+            if (await baremeExists(classRef.id, matiereRef.id, baremeValue)) {
+              print('Barème déjà existant: $baremeValue dans $matiereName');
+              skippedBaremes++;
+              continue;
+            }
+
+            DocumentReference baremeRef = await matiereRef
+                .collection('baremes')
+                .add({
+                  'value': baremeValue,
+                  'createdAt': FieldValue.serverTimestamp()
+                });
+            totalBaremes++;
+
+            // Ajouter 3 sous-barèmes pour chaque barème
+            for (int sousBaremeNum = 1; sousBaremeNum <= 3; sousBaremeNum++) {
+              String sousBaremeName = "مع $baremeNum.$sousBaremeNum";
+              String sousBaremeValue = "valeur $baremeNum.$sousBaremeNum";
+              
+              // Vérifier si le sous-barème existe déjà
+              if (await sousBaremeExists(classRef.id, matiereRef.id, baremeRef.id, sousBaremeName)) {
+                print('Sous-barème déjà existant: $sousBaremeName');
+                skippedSousBaremes++;
+                continue;
+              }
+              
+              await baremeRef
+                  .collection('sousBaremes')
+                  .add({
+                    'name': sousBaremeName,
+                    'value': sousBaremeValue,
+                    'createdAt': FieldValue.serverTimestamp()
+                  });
+              totalSousBaremes++;
+            }
+          }
+        }
+      }
+
+      String message = 'Données ajoutées avec succès!\n'
+          'Nouvelles classes: $totalClasses\n'
+          'Nouvelles matières: $totalMatieres\n'
+          'Nouveaux barèmes: $totalBaremes\n'
+          'Nouveaux sous-barèmes: $totalSousBaremes';
+
+      if (skippedClasses > 0 || skippedMatieres > 0 || skippedBaremes > 0 || skippedSousBaremes > 0) {
+        message += '\n\nÉléments ignorés (déjà existants):\n'
+            'Classes: $skippedClasses\n'
+            'Matières: $skippedMatieres\n'
+            'Barèmes: $skippedBaremes\n'
+            'Sous-barèmes: $skippedSousBaremes';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+          message,
+          style: TextStyle(fontSize: 14),
+        ),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 8),
+      ));
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Erreur lors de l\'ajout automatique: $e'),
+        backgroundColor: Colors.red,
+      ));
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Fonction pour supprimer toutes les données
+  Future<void> deleteAllData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Récupérer toutes les classes
+      QuerySnapshot classesSnapshot = await FirebaseFirestore.instance
+          .collection('classes')
+          .get();
+
+      int deletedCount = 0;
+
+      // Supprimer chaque classe et ses sous-collections
+      for (var classDoc in classesSnapshot.docs) {
+        await classDoc.reference.delete();
+        deletedCount++;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('$deletedCount classes supprimées avec succès!'),
+        backgroundColor: Colors.green,
+      ));
+
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Erreur lors de la suppression: $e'),
+        backgroundColor: Colors.red,
+      ));
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Edit class avec vérification
   void editClass(String classId) async {
     try {
+      String newName = _controller.text.trim();
+      if (newName.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Le nom ne peut pas être vide'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+
+      // Vérifier si le nouveau nom existe déjà (sauf pour le document actuel)
+      QuerySnapshot existing = await FirebaseFirestore.instance
+          .collection('classes')
+          .where('name', isEqualTo: newName)
+          .get();
+
+      bool nameExists = existing.docs.any((doc) => doc.id != classId);
+
+      if (nameExists) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Une classe avec ce nom existe déjà'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+
       await FirebaseFirestore.instance
           .collection('classes')
           .doc(classId)
-          .update({'name': _controller.text});
+          .update({'name': newName});
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Classe modifiée avec succès !'),
           backgroundColor: Colors.green));
@@ -40,15 +324,42 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
     }
   }
 
-  // Edit subject
+  // Edit subject avec vérification
   void editMatiere(String matiereId) async {
     try {
+      String newName = _controller.text.trim();
+      if (newName.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Le nom ne peut pas être vide'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+
+      // Vérifier si le nouveau nom existe déjà dans la même classe
+      QuerySnapshot existing = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(selectedClass)
+          .collection('matieres')
+          .where('name', isEqualTo: newName)
+          .get();
+
+      bool nameExists = existing.docs.any((doc) => doc.id != matiereId);
+
+      if (nameExists) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Une matière avec ce nom existe déjà dans cette classe'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+
       await FirebaseFirestore.instance
           .collection('classes')
           .doc(selectedClass)
           .collection('matieres')
           .doc(matiereId)
-          .update({'name': _controller.text});
+          .update({'name': newName});
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Matière modifiée avec succès !'),
           backgroundColor: Colors.green));
@@ -59,9 +370,38 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
     }
   }
 
-  // Edit grade
+  // Edit grade avec vérification
   void editBareme(String baremeId) async {
     try {
+      String newValue = _controller.text.trim();
+      if (newValue.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('La valeur ne peut pas être vide'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+
+      // Vérifier si la nouvelle valeur existe déjà dans la même matière
+      QuerySnapshot existing = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(selectedClass)
+          .collection('matieres')
+          .doc(selectedMatiere)
+          .collection('baremes')
+          .where('value', isEqualTo: newValue)
+          .get();
+
+      bool valueExists = existing.docs.any((doc) => doc.id != baremeId);
+
+      if (valueExists) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Un barème avec cette valeur existe déjà dans cette matière'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+
       await FirebaseFirestore.instance
           .collection('classes')
           .doc(selectedClass)
@@ -69,7 +409,7 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
           .doc(selectedMatiere)
           .collection('baremes')
           .doc(baremeId)
-          .update({'value': _controller.text});
+          .update({'value': newValue});
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Barème modifié avec succès !'),
           backgroundColor: Colors.green));
@@ -80,9 +420,40 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
     }
   }
 
-  // Edit sub-grade (Sous-bareme)
+  // Edit sub-grade avec vérification
   void editSousBareme(String sousBaremeId) async {
     try {
+      String newName = _controller.text.trim();
+      if (newName.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Le nom ne peut pas être vide'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+
+      // Vérifier si le nouveau nom existe déjà dans le même barème
+      QuerySnapshot existing = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(selectedClass)
+          .collection('matieres')
+          .doc(selectedMatiere)
+          .collection('baremes')
+          .doc(selectedBareme)
+          .collection('sousBaremes')
+          .where('name', isEqualTo: newName)
+          .get();
+
+      bool nameExists = existing.docs.any((doc) => doc.id != sousBaremeId);
+
+      if (nameExists) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Un sous-barème avec ce nom existe déjà dans ce barème'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+
       await FirebaseFirestore.instance
           .collection('classes')
           .doc(selectedClass)
@@ -92,7 +463,7 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
           .doc(selectedBareme)
           .collection('sousBaremes')
           .doc(sousBaremeId)
-          .update({'name': _controller.text});
+          .update({'name': newName});
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Sous-bareme modifié avec succès !'),
           backgroundColor: Colors.green));
@@ -160,7 +531,7 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
     }
   }
 
-  // Delete sub-grade (Sous-bareme)
+  // Delete sub-grade
   void deleteSousBareme(String sousBaremeId) async {
     try {
       await FirebaseFirestore.instance
@@ -183,14 +554,32 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
     }
   }
 
-  // Add new subject
+  // Add new subject avec vérification
   void addMatiere() async {
     try {
+      String matiereName = _controller.text.trim();
+      if (matiereName.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Le nom ne peut pas être vide'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+
+      // Vérifier si la matière existe déjà
+      if (await matiereExists(selectedClass!, matiereName)) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Cette matière existe déjà dans cette classe'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+
       await FirebaseFirestore.instance
           .collection('classes')
           .doc(selectedClass)
           .collection('matieres')
-          .add({'name': _controller.text});
+          .add({'name': matiereName});
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Matière ajoutée avec succès !'),
           backgroundColor: Colors.green));
@@ -201,16 +590,34 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
     }
   }
 
-  // Add new grade
+  // Add new grade avec vérification
   void addBareme() async {
     try {
+      String baremeValue = _controller.text.trim();
+      if (baremeValue.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('La valeur ne peut pas être vide'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+
+      // Vérifier si le barème existe déjà
+      if (await baremeExists(selectedClass!, selectedMatiere!, baremeValue)) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Ce barème existe déjà dans cette matière'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+
       await FirebaseFirestore.instance
           .collection('classes')
           .doc(selectedClass)
           .collection('matieres')
           .doc(selectedMatiere)
           .collection('baremes')
-          .add({'value': _controller.text});
+          .add({'value': baremeValue});
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Barème ajouté avec succès !'),
           backgroundColor: Colors.green));
@@ -221,9 +628,29 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
     }
   }
 
-  // Add new sub-grade (Sous-bareme)
+  // Add new sub-grade avec vérification
   void addSousBareme() async {
     try {
+      String sousBaremeName = _sousBaremeNomController.text.trim();
+      String sousBaremeValue = _sousBaremeValueController.text.trim();
+
+      if (sousBaremeName.isEmpty || sousBaremeValue.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Le nom et la valeur ne peuvent pas être vides'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+
+      // Vérifier si le sous-barème existe déjà
+      if (await sousBaremeExists(selectedClass!, selectedMatiere!, selectedBareme!, sousBaremeName)) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Ce sous-barème existe déjà dans ce barème'),
+          backgroundColor: Colors.red,
+        ));
+        return;
+      }
+
       await FirebaseFirestore.instance
           .collection('classes')
           .doc(selectedClass)
@@ -233,8 +660,8 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
           .doc(selectedBareme)
           .collection('sousBaremes')
           .add({
-        'value': _sousBaremeValueController.text,
-        'name': _sousBaremeNomController.text, // Utilisez le nom saisi par l'utilisateur
+        'value': sousBaremeValue,
+        'name': sousBaremeName,
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Sous-bareme ajouté avec succès !'),
@@ -261,12 +688,83 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
         backgroundColor: Colors.teal,
         elevation: 10,
         centerTitle: true,
+        actions: [
+          if (_isLoading)
+            Padding(
+              padding: EdgeInsets.only(right: 16.0),
+              child: Center(child: CircularProgressIndicator(color: Colors.white)),
+            ),
+        ],
       ),
       
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(
           children: [
+            // Boutons d'administration globale
+            Card(
+              elevation: 6,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Text(
+                      'Administration Globale',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.teal,
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: Icon(Icons.add_circle_outline),
+                            label: Text('Ajouter Tout'),
+                            onPressed: _isLoading ? null : addAllDataAutomatically,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            icon: Icon(Icons.delete_outline),
+                            label: Text('Tout Supprimer'),
+                            onPressed: _isLoading ? null : deleteAllData,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'Attention: L\'ajout automatique vérifiera l\'existence de chaque élément avant de l\'ajouter.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                        fontStyle: FontStyle.italic,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 24),
+
             // Sélectionner une classe
             Card(
               elevation: 6,
@@ -276,7 +774,10 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance.collection('classes').snapshots(),
+                  stream: FirebaseFirestore.instance
+                      .collection('classes')
+                      .orderBy('name')
+                      .snapshots(),
                   builder: (context, snapshot) {
                     if (!snapshot.hasData) {
                       return Center(child: CircularProgressIndicator());
@@ -339,6 +840,7 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
                             .collection('classes')
                             .doc(selectedClass)
                             .collection('matieres')
+                            .orderBy('name')
                             .snapshots(),
                         builder: (context, snapshot) {
                           if (!snapshot.hasData) {
@@ -477,6 +979,7 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
                             .collection('matieres')
                             .doc(selectedMatiere)
                             .collection('baremes')
+                            .orderBy('value')
                             .snapshots(),
                         builder: (context, snapshot) {
                           if (!snapshot.hasData) {
@@ -616,8 +1119,8 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
                             .collection('baremes')
                             .doc(selectedBareme)
                             .collection('sousBaremes')
+                            .orderBy('name')
                             .snapshots(),
-                            
                         builder: (context, snapshot) {
                           if (!snapshot.hasData) {
                             return Center(child: CircularProgressIndicator());

@@ -7,13 +7,241 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:convert';
+import 'dart:convert' as json;
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'dart:typed_data';
 import 'dart:html' as html;
+// Classe utilitaire pour la traduction et la détection de langue
+class DataTranslator {
+  static final Map<String, String> _classTranslations = {
+    "السنة الأولى ابتدائي": "1ère année primaire",
+    "السنة الأولى ابتدائي أ": "1ère année primaire A",
+    "السنة الأولى ابتدائي ب": "1ère année primaire B", 
+    "السنة الأولى ابتدائي ج": "1ère année primaire C",
+    "السنة الأولى ابتدائي د": "1ère année primaire D",
+    "السنة الثانية ابتدائي": "2ème année primaire",
+    "السنة الثانية ابتدائي أ": "2ème année primaire A",
+    "السنة الثانية ابتدائي ب": "2ème année primaire B",
+    "السنة الثانية ابتدائي ج": "2ème année primaire C",
+    "السنة الثانية ابتدائي د": "2ème année primaire D",
+    "السنة الثالثة ابتدائي": "3ème année primaire",
+    "السنة الثالثة ابتدائي أ": "3ème année primaire A",
+    "السنة الثالثة ابتدائي ب": "3ème année primaire B",
+    "السنة الثالثة ابتدائي ج": "3ème année primaire C",
+    "السنة الثالثة ابتدائي د": "3ème année primaire D",
+    "السنة الرابعة ابتدائي": "4ème année primaire",
+    "السنة الرابعة ابتدائي أ": "4ème année primaire A",
+    "السنة الرابعة ابتدائي ب": "4ème année primaire B",
+    "السنة الرابعة ابتدائي ج": "4ème année primaire C",
+    "السنة الرابعة ابتدائي د": "4ème année primaire D",
+    "السنة الخامسة ابتدائي": "5ème année primaire",
+    "السنة الخامسة ابتدائي أ": "5ème année primaire A",
+    "السنة الخامسة ابتدائي ب": "5ème année primaire B",
+    "السنة الخامسة ابتدائي ج": "5ème année primaire C",
+    "السنة الخامسة ابتدائي د": "5ème année primaire D",
+    "السنة السادسة ابتدائي": "6ème année primaire",
+    "السنة السادسة ابتدائي أ": "6ème année primaire A",
+    "السنة السادسة ابتدائي ب": "6ème année primaire B",
+    "السنة السادسة ابتدائي ج": "6ème année primaire C",
+    "السنة السادسة ابتدائي د": "6ème année primaire D"
+  };
 
+  static final Map<String, String> _matiereTranslations = {
+    "التواصل الشفوي": "Communication orale",
+    "قراءة": "Lecture",
+    "انتاج كتابي": "Production écrite",
+    "رياضيات": "Mathématiques",
+    "ايقاظ علمي": "Éveil scientifique",
+    "تربية اسلامية": "Éducation islamique",
+    "تربية تكنولوجية": "Éducation technologique",
+    "تربية موسيقية": "Éducation musicale",
+    "تربية تشكيلية": "Éducation artistique", 
+    "تربية بدنية": "Éducation physique",
+    "قواعد لغة": "Grammaire",
+    "Expression orale et récitation": "Expression orale et récitation",
+    "Lecture": "Lecture",
+    "Production écrite": "Production écrite",
+    "écriture": "Écriture",
+    "dictée": "Dictée",
+    "langue": "Langue",
+    "Langue": "Langue",
+    "لغة انقليزية": "Anglais",
+    "التاريخ": "Histoire",
+    "الجغرافيا": "Géographie",
+    "التربية المدنية": "Éducation civique"
+  };
+
+  static final Map<String, String> _baremeTranslations = {
+    "مع 1": "C1",
+    "مع 2": "C2", 
+    "مع 3": "C3",
+    "مع 4": "C4",
+    "مع 5": "C5",
+    "مع 1.1": "C1.1",
+    "مع 1.2": "C1.2",
+    "مع 1.3": "C1.3",
+    "مع 2.1": "C2.1",
+    "مع 2.2": "C2.2", 
+    "مع 2.3": "C2.3",
+    "مع 3.1": "C3.1",
+    "مع 3.2": "C3.2",
+    "مع 3.3": "C3.3",
+    "مع 4.1": "C4.1",
+    "مع 4.2": "C4.2",
+    "مع 4.3": "C4.3",
+    "مع 5.1": "C5.1",
+    "مع 5.2": "C5.2",
+    "مع 5.3": "C5.3"
+  };
+
+  // Liste des matières considérées comme étrangères (doivent être en français)
+  // Version robuste avec différentes variantes
+  static final List<String> _foreignMatieres = [
+    // Variantes françaises
+    "Expression orale et récitation",
+    "expression orale et récitation",
+    "Expression Orale et Récitation",
+    "Lecture",
+    "lecture", 
+    "Production écrite",
+    "production écrite",
+    "Production Écrite",
+    "écriture",
+    "Ecriture",
+    "ecriture",
+    "Dictée",
+    "dictée",
+    "dictee",
+    "Langue",
+    "langue",
+    "لغة انقليزية",
+    
+    // Variantes pour correspondance flexible
+    "expression",
+    "oral",
+    "récitation", 
+    "production",
+    "écrit",
+    "écriture",
+  ];
+
+  // Détection robuste qui ignore la casse et les accents
+  static bool isForeignMatiere(String matiereName) {
+    if (matiereName.isEmpty) {
+      print('❌ Matière vide - considérée comme non française');
+      return false;
+    }
+    
+    // Normaliser le texte
+    String normalized = _normalizeText(matiereName);
+    
+    // Vérifier la correspondance exacte d'abord
+    bool isExactMatch = _foreignMatieres.any((matiere) => 
+        _normalizeText(matiere) == normalized);
+    
+    // Vérifier aussi la correspondance partielle
+    bool isPartialMatch = _foreignMatieres.any((matiere) => 
+        normalized.contains(_normalizeText(matiere)) || 
+        _normalizeText(matiere).contains(normalized));
+    
+    bool isForeign = isExactMatch || isPartialMatch;
+    
+    // Logs détaillés pour le débogage
+    print('');
+    print('🔍 === DÉTECTION LANGUE DÉTAILLÉE ===');
+    print('📝 Matière originale: "$matiereName"');
+    print('🔄 Matière normalisée: "$normalized"');
+    print('✅ Correspondance exacte: $isExactMatch');
+    print('🔍 Correspondance partielle: $isPartialMatch');
+    print('🎯 Résultat final: $isForeign');
+    print('📋 Liste matières étrangères:');
+    _foreignMatieres.forEach((matiere) {
+      print('   - "$matiere" -> "${_normalizeText(matiere)}"');
+    });
+    print('=== FIN DÉTECTION ===');
+    print('');
+    
+    return isForeign;
+  }
+
+  // Méthode de normalisation robuste
+  static String _normalizeText(String text) {
+    if (text.isEmpty) return '';
+    
+    return text
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[éèêë]'), 'e')
+        .replaceAll(RegExp(r'[àâä]'), 'a')
+        .replaceAll(RegExp(r'[îï]'), 'i')
+        .replaceAll(RegExp(r'[ôö]'), 'o')
+        .replaceAll(RegExp(r'[ùûü]'), 'u')
+        .replaceAll(RegExp(r'[ç]'), 'c')
+        .replaceAll(RegExp(r'\s+'), ' ') // remplacer les espaces multiples
+        .replaceAll(RegExp(r'[^\w\s]'), ''); // supprimer la ponctuation
+  }
+
+  // Traduire le nom d'une classe
+  static String translateClass(String arabicName) {
+    String translated = _classTranslations[arabicName] ?? arabicName;
+    print('🏫 Traduction classe: "$arabicName" -> "$translated"');
+    return translated;
+  }
+
+  // Traduire le nom d'une matière
+  static String translateMatiere(String arabicName) {
+    String translated = _matiereTranslations[arabicName] ?? arabicName;
+    print('📚 Traduction matière: "$arabicName" -> "$translated"');
+    return translated;
+  }
+
+  // Traduire un critère/barème
+  static String translateBareme(String arabicName) {
+    String translated = _baremeTranslations[arabicName] ?? arabicName;
+    print('📊 Traduction barème: "$arabicName" -> "$translated"');
+    return translated;
+  }
+
+  // Traduire un sous-critère
+  static String translateSousBareme(String arabicName) {
+    String translated = _baremeTranslations[arabicName] ?? arabicName;
+    print('📈 Traduction sous-barème: "$arabicName" -> "$translated"');
+    return translated;
+  }
+
+  // Obtenir le nom original arabe à partir de la traduction française
+  static String getArabicClassFromFrench(String frenchName) {
+    String arabic = _classTranslations.entries
+        .firstWhere((entry) => entry.value == frenchName, 
+                   orElse: () => MapEntry(frenchName, frenchName))
+        .key;
+    print('🔄 Classe français->arabe: "$frenchName" -> "$arabic"');
+    return arabic;
+  }
+
+  static String getArabicMatiereFromFrench(String frenchName) {
+    String arabic = _matiereTranslations.entries
+        .firstWhere((entry) => entry.value == frenchName,
+                   orElse: () => MapEntry(frenchName, frenchName))
+        .key;
+    print('🔄 Matière français->arabe: "$frenchName" -> "$arabic"');
+    return arabic;
+  }
+
+  // Méthode utilitaire pour debug
+  static void debugMatiere(String matiereName) {
+    print('');
+    print('🐛 === DEBUG MATIERE ===');
+    print('Matière: "$matiereName"');
+    print('Longueur: ${matiereName.length}');
+    print('Code units: ${matiereName.codeUnits}');
+    print('Est française: ${isForeignMatiere(matiereName)}');
+    print('=== FIN DEBUG ===');
+    print('');
+  }
+}
 class ClassificationPage extends StatefulWidget {
   final String selectedClass;
   final String selectedBaremeId;
@@ -48,18 +276,36 @@ class _ClassificationPageState extends State<ClassificationPage> {
   bool _isGeneratingReport = false;
   bool _isLoading = true;
   int _selectedTabIndex = 0;
+  bool _isFrenchInterface = false;
 
   @override
   void initState() {
     super.initState();
+    _detectLanguage();
     loadJsonData();
+  }
+
+  void _detectLanguage() {
+    print('=== DÉTECTION LANGUE ClassificationPage ===');
+    print('Matière: ${widget.matiereName}');
+    print('Est française: ${DataTranslator.isForeignMatiere(widget.matiereName)}');
+    print('=== FIN DÉTECTION ===');
+    
+    setState(() {
+      _isFrenchInterface = DataTranslator.isForeignMatiere(widget.matiereName);
+    });
+  }
+
+  // Méthode de traduction
+  String _getTranslatedText(String arabicText, String frenchText) {
+    return _isFrenchInterface ? frenchText : arabicText;
   }
 
   Future<void> loadJsonData() async {
     try {
       String jsonString = await rootBundle.loadString('assets/data.json');
       setState(() {
-        jsonData = json.decode(jsonString);
+        jsonData = json.jsonDecode(jsonString);
         _isLoading = false;
       });
     } catch (e) {
@@ -165,7 +411,10 @@ class _ClassificationPageState extends State<ClassificationPage> {
                       SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'خطة العلاج وأصل الخطأ لـ $groupName',
+                          _getTranslatedText(
+                            'خطة العلاج وأصل الخطأ لـ $groupName',
+                            'Plan de traitement et origine de l\'erreur pour $groupName'
+                          ),
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -200,7 +449,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                                   Icon(Icons.lightbulb_outline, color: Colors.orange.shade700, size: 18),
                                   SizedBox(width: 8),
                                   Text(
-                                    'الحل:',
+                                    _getTranslatedText('الحل:', 'Solution:'),
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: Colors.orange.shade700,
@@ -210,7 +459,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                               ),
                               SizedBox(height: 8),
                               Text(
-                                result != null ? result['solution'] : 'لا يوجد حل متاح',
+                                result != null ? result['solution'] : _getTranslatedText('لا يوجد حل متاح', 'Aucune solution disponible'),
                                 style: TextStyle(
                                   fontSize: 14,
                                   height: 1.5,
@@ -238,7 +487,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                                   Icon(Icons.warning_amber_outlined, color: Colors.red.shade700, size: 18),
                                   SizedBox(width: 8),
                                   Text(
-                                    'المشكلة:',
+                                    _getTranslatedText('المشكلة:', 'Problème:'),
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: Colors.red.shade700,
@@ -248,7 +497,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                               ),
                               SizedBox(height: 8),
                               Text(
-                                result != null ? result['probleme'] : 'لا يوجد مشكلة محددة',
+                                result != null ? result['probleme'] : _getTranslatedText('لا يوجد مشكلة محددة', 'Aucun problème spécifié'),
                                 style: TextStyle(
                                   fontSize: 14,
                                   height: 1.5,
@@ -266,7 +515,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                               Icon(Icons.history, color: Colors.blue.shade700, size: 20),
                               SizedBox(width: 8),
                               Text(
-                                'مقترحاتك:',
+                                _getTranslatedText('مقترحاتك:', 'Vos propositions:'),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
@@ -296,7 +545,10 @@ class _ClassificationPageState extends State<ClassificationPage> {
                                         SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
-                                            'الحل المقترح: ${proposal['solution']}',
+                                            _getTranslatedText(
+                                              'الحل المقترح: ${proposal['solution']}',
+                                              'Solution proposée: ${proposal['solution']}'
+                                            ),
                                             style: TextStyle(fontSize: 14),
                                           ),
                                         ),
@@ -313,7 +565,10 @@ class _ClassificationPageState extends State<ClassificationPage> {
                                         SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
-                                            'أصل المشكلة المقترح: ${proposal['probleme']}',
+                                            _getTranslatedText(
+                                              'أصل المشكلة المقترح: ${proposal['probleme']}',
+                                              'Origine du problème proposée: ${proposal['probleme']}'
+                                            ),
                                             style: TextStyle(fontSize: 14),
                                           ),
                                         ),
@@ -332,7 +587,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                                             _deleteUserProposal(proposal['id']);
                                             Navigator.of(context).pop();
                                           },
-                                          tooltip: 'حذف المقترح',
+                                          tooltip: _getTranslatedText('حذف المقترح', 'Supprimer la proposition'),
                                         ),
                                     ],
                                   ),
@@ -348,7 +603,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                             Icon(Icons.add_circle_outline, color: Colors.blue.shade700, size: 20),
                             SizedBox(width: 8),
                             Text(
-                              'أضف مقترحات جديدة:',
+                              _getTranslatedText('أضف مقترحات جديدة:', 'Ajouter de nouvelles propositions:'),
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
@@ -362,7 +617,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'الحل المقترح',
+                              _getTranslatedText('الحل المقترح', 'Solution proposée'),
                               style: TextStyle(
                                 fontWeight: FontWeight.w500,
                                 color: Colors.grey.shade700,
@@ -372,7 +627,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                             TextField(
                               controller: solutionController,
                               decoration: InputDecoration(
-                                hintText: 'أدخل اقتراحك للحل...',
+                                hintText: _getTranslatedText('أدخل اقتراحك للحل...', 'Entrez votre suggestion de solution...'),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   borderSide: BorderSide(color: Colors.grey.shade400),
@@ -394,7 +649,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'أصل المشكلة المقترح',
+                              _getTranslatedText('أصل المشكلة المقترح', 'Origine du problème proposée'),
                               style: TextStyle(
                                 fontWeight: FontWeight.w500,
                                 color: Colors.grey.shade700,
@@ -404,7 +659,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                             TextField(
                               controller: problemeController,
                               decoration: InputDecoration(
-                                hintText: 'أدخل اقتراحك لأصل المشكلة...',
+                                hintText: _getTranslatedText('أدخل اقتراحك لأصل المشكلة...', 'Entrez votre suggestion pour l\'origine du problème...'),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
                                   borderSide: BorderSide(color: Colors.grey.shade400),
@@ -440,7 +695,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: Text('إغلاق', style: TextStyle(fontSize: 16)),
+                        child: Text(_getTranslatedText('إغلاق', 'Fermer'), style: TextStyle(fontSize: 16)),
                       ),
                     ),
                     SizedBox(width: 12),
@@ -456,7 +711,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                             );
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('تم حفظ المقترحات بنجاح'),
+                                content: Text(_getTranslatedText('تم حفظ المقترحات بنجاح', 'Propositions enregistrées avec succès')),
                                 backgroundColor: Colors.green,
                                 behavior: SnackBarBehavior.floating,
                               ),
@@ -465,7 +720,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: Text('يرجى إدخال حل أو مشكلة على الأقل'),
+                                content: Text(_getTranslatedText('يرجى إدخال حل أو مشكلة على الأقل', 'Veuillez entrer au moins une solution ou un problème')),
                                 backgroundColor: Colors.orange,
                                 behavior: SnackBarBehavior.floating,
                               ),
@@ -480,7 +735,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                           ),
                         ),
                         child: Text(
-                          'حفظ المقترحات الجديدة',
+                          _getTranslatedText('حفظ المقترحات الجديدة', 'Enregistrer les nouvelles propositions'),
                           style: TextStyle(fontSize: 16, color: Colors.white),
                         ),
                       ),
@@ -518,12 +773,12 @@ class _ClassificationPageState extends State<ClassificationPage> {
                 ),
                 SizedBox(height: 20),
                 Text(
-                  "جاري إنشاء التقرير...",
+                  _getTranslatedText("جاري إنشاء التقرير...", "Génération du rapport en cours..."),
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 10),
                 Text(
-                  "يرجى الانتظار، هذه العملية قد تستغرق بضع لحظات",
+                  _getTranslatedText("يرجى الانتظار، هذه العملية قد تستغرق بضع لحظات", "Veuillez patienter, cette opération peut prendre quelques instants"),
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                 ),
@@ -538,7 +793,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
       final groupedStudents = await _getGroupedStudentsData();
 
       if (groupedStudents.isEmpty) {
-        throw Exception('Aucun étudiant trouvé dans la classe');
+        throw Exception(_getTranslatedText('لم يتم العثور على أي طالب في القسم', 'Aucun étudiant trouvé dans la classe'));
       }
 
       final unifiedSolutions = await _getUnifiedSolutions();
@@ -551,17 +806,17 @@ class _ClassificationPageState extends State<ClassificationPage> {
         'baremeName': widget.baremeName,
         'sousBaremeName': widget.sousBaremeName ?? '',
         'groups': {
-          'treatment': groupedStudents['مجموعة العلاج']
+          'treatment': groupedStudents[_getTranslatedText('مجموعة العلاج', 'Groupe de traitement')]
                   ?.map((s) => s['name'])
                   .whereType<String>()
                   .toList() ??
               [],
-          'support': groupedStudents['مجموعة الدعم']
+          'support': groupedStudents[_getTranslatedText('مجموعة الدعم', 'Groupe de soutien')]
                   ?.map((s) => s['name'])
                   .whereType<String>()
                   .toList() ??
               [],
-          'excellence': groupedStudents['مجموعة التميز']
+          'excellence': groupedStudents[_getTranslatedText('مجموعة التميز', 'Groupe d\'excellence')]
                   ?.map((s) => s['name'])
                   .whereType<String>()
                   .toList() ??
@@ -600,7 +855,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
           .post(
             Uri.parse(serverUrl),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(reportData),
+            body: json.jsonEncode(reportData),
           )
           .timeout(const Duration(seconds: 30));
 
@@ -619,19 +874,19 @@ class _ClassificationPageState extends State<ClassificationPage> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('تم إنشاء التقرير بنجاح'),
+            content: Text(_getTranslatedText('تم إنشاء التقرير بنجاح', 'Rapport généré avec succès')),
             backgroundColor: Colors.green,
           ),
         );
       } else {
         throw Exception(
-            'Erreur serveur: ${response.statusCode}\n${response.body}');
+            _getTranslatedText('خطأ في الخادم:', 'Erreur serveur:') + ' ${response.statusCode}\n${response.body}');
       }
     } catch (e) {
       debugPrint('[TreatmentPlan] ERREUR: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('خطأ في الإنشاء: ${e.toString()}'),
+          content: Text(_getTranslatedText('خطأ في الإنشاء:', 'Erreur lors de la création:') + ' ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -643,19 +898,52 @@ class _ClassificationPageState extends State<ClassificationPage> {
     }
   }
 
-// Ajoutez cette méthode helper pour obtenir des noms courts
-String _getShortGroupName(String fullName) {
-  switch (fullName) {
-    case 'مجموعة العلاج':
-      return 'العلاج';
-    case 'مجموعة الدعم':
-      return 'الدعم';
-    case 'مجموعة التميز':
-      return 'التميز';
-    default:
-      return fullName;
+  // Méthode pour obtenir les noms de groupes selon la langue
+  String _getGroupName(String arabicName) {
+    if (!_isFrenchInterface) return arabicName;
+    
+    switch (arabicName) {
+      case 'مجموعة العلاج':
+        return 'Groupe de traitement';
+      case 'مجموعة الدعم':
+        return 'Groupe de soutien';
+      case 'مجموعة التميز':
+        return 'Groupe d\'excellence';
+      default:
+        return arabicName;
+    }
   }
-}
+
+  // Méthode pour obtenir les noms courts des groupes
+  String _getShortGroupName(String fullName) {
+    if (!_isFrenchInterface) {
+      switch (fullName) {
+        case 'مجموعة العلاج':
+          return 'العلاج';
+        case 'مجموعة الدعم':
+          return 'الدعم';
+        case 'مجموعة التميز':
+          return 'التميز';
+        default:
+          return fullName;
+      }
+    } else {
+      switch (fullName) {
+        case 'مجموعة العلاج':
+        case 'Groupe de traitement':
+          return 'Traitement';
+        case 'مجموعة الدعم':
+        case 'Groupe de soutien':
+          return 'Soutien';
+        case 'مجموعة التميز':
+        case 'Groupe d\'excellence':
+          return 'Excellence';
+        default:
+          return fullName;
+      }
+    }
+  }
+
   Future<Map<String, dynamic>> _getUnifiedSolutions() async {
     final defaultSol = _getSolutionsData();
 
@@ -749,10 +1037,11 @@ String _getShortGroupName(String fullName) {
 
     for (var student in students) {
       String group = student['group'] ?? '';
-      if (!groupedStudents.containsKey(group)) {
-        groupedStudents[group] = [];
+      String translatedGroup = _getGroupName(group);
+      if (!groupedStudents.containsKey(translatedGroup)) {
+        groupedStudents[translatedGroup] = [];
       }
-      groupedStudents[group]!.add(student);
+      groupedStudents[translatedGroup]!.add(student);
     }
 
     return groupedStudents;
@@ -787,7 +1076,7 @@ String _getShortGroupName(String fullName) {
                 SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    '$groupName (${students.length} طالب)',
+                    '$groupName (${students.length} ${_getTranslatedText('طالب', 'élève' + (students.length > 1 ? 's' : ''))})',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -800,7 +1089,7 @@ String _getShortGroupName(String fullName) {
                     showSolutionAndProbleme(groupName);
                   },
                   icon: Icon(Icons.work_outline, size: 20),
-                  label: Text('عمل'),
+                  label: Text(_getTranslatedText('عمل', 'Traiter')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: color,
                     foregroundColor: Colors.white,
@@ -824,7 +1113,7 @@ String _getShortGroupName(String fullName) {
                         Icon(icon, size: 64, color: color.withOpacity(0.3)),
                         SizedBox(height: 16),
                         Text(
-                          'لا توجد طلاب في هذه المجموعة',
+                          _getTranslatedText('لا توجد طلاب في هذه المجموعة', 'Aucun élève dans ce groupe'),
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.grey.shade600,
@@ -853,7 +1142,7 @@ String _getShortGroupName(String fullName) {
                             ),
                           ),
                           title: Text(
-                            student['name'] ?? 'غير معروف',
+                            student['name'] ?? _getTranslatedText('غير معروف', 'Inconnu'),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
@@ -864,12 +1153,12 @@ String _getShortGroupName(String fullName) {
                             children: [
                               if (student['treatmentPlan']?.isNotEmpty == true)
                                 Text(
-                                  'خطة العلاج: ${student['treatmentPlan']}',
+                                  '${_getTranslatedText('خطة العلاج:', 'Plan de traitement:')} ${student['treatmentPlan']}',
                                   style: TextStyle(fontSize: 12),
                                 ),
                               if (student['errorOrigin']?.isNotEmpty == true)
                                 Text(
-                                  'أصل الخطأ: ${student['errorOrigin']}',
+                                  '${_getTranslatedText('أصل الخطأ:', 'Origine de l\'erreur:')} ${student['errorOrigin']}',
                                   style: TextStyle(fontSize: 12),
                                 ),
                             ],
@@ -884,15 +1173,14 @@ String _getShortGroupName(String fullName) {
       ),
     );
   }
-
-  @override
+@override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl,
+      textDirection: _isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
           title: Text(
-            'خطة العلاج وأصل الخطأ',
+            _getTranslatedText('خطة العلاج وأصل الخطأ', 'Plan de traitement et origine de l\'erreur'),
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 20,
@@ -917,7 +1205,7 @@ String _getShortGroupName(String fullName) {
                       )
                     : Icon(Icons.print_outlined),
                 onPressed: _isGeneratingReport ? null : generateAndOpenTreatmentPlan,
-                tooltip: 'طباعة التقرير',
+                tooltip: _getTranslatedText('طباعة التقرير', 'Imprimer le rapport'),
               ),
             ),
           ],
@@ -933,7 +1221,7 @@ String _getShortGroupName(String fullName) {
                     ),
                     SizedBox(height: 16),
                     Text(
-                      'جاري تحميل البيانات...',
+                      _getTranslatedText('جاري تحميل البيانات...', 'Chargement des données...'),
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.grey.shade600,
@@ -944,7 +1232,7 @@ String _getShortGroupName(String fullName) {
               )
             : Column(
                 children: [
-                  // En-tête
+                  // En-tête CORRIGÉ avec traduction
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -961,18 +1249,14 @@ String _getShortGroupName(String fullName) {
                     ),
                     child: Column(
                       children: [
-                        PageHeader(
-                          profName: widget.profName,
-                          schoolName: widget.schoolName,
-                          className: widget.className,
-                          matiereName: widget.matiereName,
-                        ),
+                        // REMPLACER PageHeader par un en-tête personnalisé traduit
+                        _buildTranslatedHeader(),
                         Container(
                           padding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 20),
                           child: Column(
                             children: [
                               Text(
-                                'خطة العلاج وأصل الخطأ',
+                                _getTranslatedText('خطة العلاج وأصل الخطأ', 'Plan de traitement et origine de l\'erreur'),
                                 style: TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
@@ -981,7 +1265,10 @@ String _getShortGroupName(String fullName) {
                               ),
                               SizedBox(height: 4),
                               Text(
-                                'في مادة ${widget.matiereName} في معيار ${widget.sousBaremeName ?? widget.baremeName}',
+                                _getTranslatedText(
+                                  'في مادة ${widget.matiereName} في معيار ${widget.sousBaremeName ?? widget.baremeName}',
+                                  'En ${widget.matiereName} dans le critère ${widget.sousBaremeName ?? widget.baremeName}'
+                                ),
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.grey.shade700,
@@ -1003,7 +1290,10 @@ String _getShortGroupName(String fullName) {
                                     SizedBox(width: 12),
                                     Expanded(
                                       child: Text(
-                                        'يمكنك إضافة مقترحاتك الشخصية للحلول وأصل المشكلة بالضغط على زر "عمل"',
+                                        _getTranslatedText(
+                                          'يمكنك إضافة مقترحاتك الشخصية للحلول وأصل المشكلة بالضغط على زر "عمل"',
+                                          'Vous pouvez ajouter vos propositions personnelles pour les solutions et l\'origine du problème en cliquant sur le bouton "Traiter"'
+                                        ),
                                         style: TextStyle(
                                           color: Colors.blue.shade800,
                                           fontSize: 14,
@@ -1038,7 +1328,7 @@ String _getShortGroupName(String fullName) {
                                 ),
                                 SizedBox(height: 16),
                                 Text(
-                                  'جاري تحميل قائمة الطلاب...',
+                                  _getTranslatedText('جاري تحميل قائمة الطلاب...', 'Chargement de la liste des élèves...'),
                                   style: TextStyle(
                                     color: Colors.grey.shade600,
                                   ),
@@ -1056,7 +1346,7 @@ String _getShortGroupName(String fullName) {
                                     color: Colors.red, size: 48),
                                 SizedBox(height: 16),
                                 Text(
-                                  'حدث خطأ في تحميل البيانات',
+                                  _getTranslatedText('حدث خطأ في تحميل البيانات', 'Erreur lors du chargement des données'),
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: Colors.grey.shade700,
@@ -1075,7 +1365,7 @@ String _getShortGroupName(String fullName) {
                                     color: Colors.grey, size: 48),
                                 SizedBox(height: 16),
                                 Text(
-                                  'لا توجد بيانات للعرض',
+                                  _getTranslatedText('لا توجد بيانات للعرض', 'Aucune donnée à afficher'),
                                   style: TextStyle(
                                     fontSize: 16,
                                     color: Colors.grey.shade600,
@@ -1091,31 +1381,32 @@ String _getShortGroupName(String fullName) {
 
                         for (var student in students) {
                           String group = student['group'] ?? '';
-                          if (!groupedStudents.containsKey(group)) {
-                            groupedStudents[group] = [];
+                          String translatedGroup = _getGroupName(group);
+                          if (!groupedStudents.containsKey(translatedGroup)) {
+                            groupedStudents[translatedGroup] = [];
                           }
-                          groupedStudents[group]!.add(student);
+                          groupedStudents[translatedGroup]!.add(student);
                         }
 
                         // Définir les groupes dans l'ordre souhaité
                         final groups = [
                           {
-                            'name': 'مجموعة العلاج',
+                            'name': _getTranslatedText('مجموعة العلاج', 'Groupe de traitement'),
                             'color': Colors.red,
                             'icon': Icons.medical_services_outlined,
-                            'students': groupedStudents['مجموعة العلاج'] ?? [],
+                            'students': groupedStudents[_getTranslatedText('مجموعة العلاج', 'Groupe de traitement')] ?? [],
                           },
                           {
-                            'name': 'مجموعة الدعم',
+                            'name': _getTranslatedText('مجموعة الدعم', 'Groupe de soutien'),
                             'color': Colors.orange,
                             'icon': Icons.support_outlined,
-                            'students': groupedStudents['مجموعة الدعم'] ?? [],
+                            'students': groupedStudents[_getTranslatedText('مجموعة الدعم', 'Groupe de soutien')] ?? [],
                           },
                           {
-                            'name': 'مجموعة التميز',
+                            'name': _getTranslatedText('مجموعة التميز', 'Groupe d\'excellence'),
                             'color': Colors.green,
                             'icon': Icons.emoji_events_outlined,
-                            'students': groupedStudents['مجموعة التميز'] ?? [],
+                            'students': groupedStudents[_getTranslatedText('مجموعة التميز', 'Groupe d\'excellence')] ?? [],
                           },
                         ];
 
@@ -1126,69 +1417,62 @@ String _getShortGroupName(String fullName) {
                               // Barre d'onglets
                               Container(
                                 color: Colors.white,
-                                child: // Dans la méthode build, remplacez la partie TabBar par ceci :
-
-// Barre d'onglets
-Container(
-  color: Colors.white,
-  child: TabBar(
-    isScrollable: true, // Ajout de cette ligne pour permettre le défilement horizontal
-    labelColor: Colors.blue.shade800,
-    unselectedLabelColor: Colors.grey.shade600,
-    indicatorColor: Colors.blue.shade700,
-    indicatorWeight: 3,
-    labelStyle: TextStyle(
-      fontWeight: FontWeight.bold,
-      fontSize: 14,
-    ),
-    unselectedLabelStyle: TextStyle(
-      fontWeight: FontWeight.normal,
-    ),
-    tabs: groups.map((group) {
-      return Tab(
-        child: Container(
-          constraints: BoxConstraints(minWidth: 120), // Largeur minimale pour chaque onglet
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min, // Utiliser min pour éviter le débordement
-            children: [
-              Icon(
-                group['icon'] as IconData,
-                size: 18, // Réduire légèrement la taille de l'icône
-              ),
-              SizedBox(width: 6),
-              Flexible( // Utiliser Flexible pour le texte
-                child: Text(
-                  _getShortGroupName(group['name'] as String), // Nom court
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12, // Réduire la taille de police
-                  ),
-                ),
-              ),
-              SizedBox(width: 4),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: (group['color'] as Color).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '${(group['students'] as List).length}',
-                  style: TextStyle(
-                    fontSize: 10, // Réduire la taille de police du compteur
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }).toList(),
-  ),
-),
-
+                                child: TabBar(
+                                  isScrollable: true,
+                                  labelColor: Colors.blue.shade800,
+                                  unselectedLabelColor: Colors.grey.shade600,
+                                  indicatorColor: Colors.blue.shade700,
+                                  indicatorWeight: 3,
+                                  labelStyle: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                  unselectedLabelStyle: TextStyle(
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                                  tabs: groups.map((group) {
+                                    return Tab(
+                                      child: Container(
+                                        constraints: BoxConstraints(minWidth: 120),
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              group['icon'] as IconData,
+                                              size: 18,
+                                            ),
+                                            SizedBox(width: 6),
+                                            Flexible(
+                                              child: Text(
+                                                _getShortGroupName(group['name'] as String),
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(width: 4),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: (group['color'] as Color).withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(10),
+                                              ),
+                                              child: Text(
+                                                '${(group['students'] as List).length}',
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
                               ),
                               
                               // Contenu des onglets
@@ -1215,6 +1499,101 @@ Container(
       ),
     );
   }
+ Widget _buildTranslatedHeader() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [
+            Colors.blue.shade700,
+            Colors.blue.shade800,
+          ],
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getTranslatedText('المدرسة:', 'École:') + ' ${widget.schoolName}',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      _getTranslatedText('الأستاذ:', 'Professeur:') + ' ${widget.profName}',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      _getTranslatedText('القسم:', 'Classe:') + ' ${widget.className}',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      _getTranslatedText('المادة:', 'Matière:') + ' ${widget.matiereName}',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          Container(
+            height: 1,
+            color: Colors.white.withOpacity(0.3),
+          ),
+          SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.assessment, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text(
+                _getTranslatedText(
+                  'معيار: ${widget.sousBaremeName ?? widget.baremeName}',
+                  'Critère: ${widget.sousBaremeName ?? widget.baremeName}'
+                ),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<List<Map<String, String>>> _getClassifiedStudents(
       String classId, String baremeId) async {
@@ -1232,7 +1611,7 @@ Container(
 
     for (var studentDoc in studentsSnapshot.docs) {
       var studentId = studentDoc.id;
-      var studentName = studentDoc['name'] ?? 'غير معروف';
+      var studentName = studentDoc['name'] ?? _getTranslatedText('غير معروف', 'Inconnu');
 
       futures.add(FirebaseFirestore.instance
           .collection('users')
@@ -1251,11 +1630,11 @@ Container(
 
           String group;
           if (value == '( + + + )') {
-            group = 'مجموعة التميز';
+            group = _getTranslatedText('مجموعة التميز', 'Groupe d\'excellence');
           } else if (value == '( + + - )') {
-            group = 'مجموعة الدعم';
+            group = _getTranslatedText('مجموعة الدعم', 'Groupe de soutien');
           } else {
-            group = 'مجموعة العلاج';
+            group = _getTranslatedText('مجموعة العلاج', 'Groupe de traitement');
           }
 
           students.add({
@@ -1324,14 +1703,14 @@ Container(
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تم حذف المقترح بنجاح'),
+          content: Text(_getTranslatedText('تم حذف المقترح بنجاح', 'Proposition supprimée avec succès')),
           backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('خطأ في حذف المقترح: $e'),
+          content: Text(_getTranslatedText('خطأ في حذف المقترح:', 'Erreur lors de la suppression:') + ' $e'),
           backgroundColor: Colors.red,
         ),
       );
