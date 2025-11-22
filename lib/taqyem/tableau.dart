@@ -18,7 +18,7 @@ class DataTranslator {
   static final Map<String, String> _classTranslations = {
     "السنة الأولى ابتدائي": "1ère année primaire",
     "السنة الأولى ابتدائي أ": "1ère année primaire A",
-    "السنة الأولى ابتدائي ب": "1ère année primaire B", 
+    "السنة الأولى ابتدائي ب": "1ère année primaire B",
     "السنة الأولى ابتدائي ج": "1ère année primaire C",
     "السنة الأولى ابتدائي د": "1ère année primaire D",
     "السنة الثانية ابتدائي": "2ème année primaire",
@@ -57,7 +57,7 @@ class DataTranslator {
     "تربية اسلامية": "Éducation islamique",
     "تربية تكنولوجية": "Éducation technologique",
     "تربية موسيقية": "Éducation musicale",
-    "تربية تشكيلية": "Éducation artistique", 
+    "تربية تشكيلية": "Éducation artistique",
     "تربية بدنية": "Éducation physique",
     "قواعد لغة": "Grammaire",
     "Expression orale et récitation": "Expression orale et récitation",
@@ -74,7 +74,7 @@ class DataTranslator {
 
   static final Map<String, String> _baremeTranslations = {
     "مع 1": "C1",
-    "مع 2": "C2", 
+    "مع 2": "C2",
     "مع 3": "C3",
     "مع 4": "C4",
     "مع 5": "C5",
@@ -82,7 +82,7 @@ class DataTranslator {
     "مع 1.2": "C1.2",
     "مع 1.3": "C1.3",
     "مع 2.1": "C2.1",
-    "مع 2.2": "C2.2", 
+    "مع 2.2": "C2.2",
     "مع 2.3": "C2.3",
     "مع 3.1": "C3.1",
     "مع 3.2": "C3.2",
@@ -134,18 +134,19 @@ class DataTranslator {
   // Obtenir le nom original arabe à partir de la traduction française (pour la recherche)
   static String getArabicClassFromFrench(String frenchName) {
     return _classTranslations.entries
-        .firstWhere((entry) => entry.value == frenchName, 
-                   orElse: () => MapEntry(frenchName, frenchName))
+        .firstWhere((entry) => entry.value == frenchName,
+            orElse: () => MapEntry(frenchName, frenchName))
         .key;
   }
 
   static String getArabicMatiereFromFrench(String frenchName) {
     return _matiereTranslations.entries
         .firstWhere((entry) => entry.value == frenchName,
-                   orElse: () => MapEntry(frenchName, frenchName))
+            orElse: () => MapEntry(frenchName, frenchName))
         .key;
   }
 }
+
 class DynamicTablePage extends StatefulWidget {
   final String selectedClass;
   final String selectedMatiere;
@@ -190,7 +191,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     _setupUserListener();
     _detectLanguage();
   }
- void _detectLanguage() async {
+
+  void _detectLanguage() async {
     try {
       var matiereDoc = await FirebaseFirestore.instance
           .collection('classes')
@@ -198,18 +200,18 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .collection('matieres')
           .doc(widget.selectedMatiere)
           .get();
-      
+
       String matiereName = matiereDoc['name'] ?? '';
       setState(() {
         _matiereName = matiereName;
         _isFrenchInterface = DataTranslator.isForeignMatiere(matiereName);
-        print('Détection langue - Matière: $matiereName, Français: $_isFrenchInterface');
+        print(
+            'Détection langue - Matière: $matiereName, Français: $_isFrenchInterface');
       });
     } catch (e) {
       print('Erreur détection langue: $e');
     }
   }
-
 
   @override
   void dispose() {
@@ -352,9 +354,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   }
 
   // MODIFICATION : Traduction des textes selon la langue
-   String _getTranslatedText(String arabicText, String frenchText) {
+  String _getTranslatedText(String arabicText, String frenchText) {
     return _isFrenchInterface ? frenchText : arabicText;
   }
+
   Future<void> _generatePDF() async {
     if (!await _checkAndUpdatePrintCredit()) {
       _showCreditErrorDialog();
@@ -389,18 +392,14 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _getTranslatedText(
-                'لم يعد لديك رصيد طباعة متاح.',
-                'Vous n\'avez plus de crédits d\'impression disponibles.'
-              ),
+              _getTranslatedText('لم يعد لديك رصيد طباعة متاح.',
+                  'Vous n\'avez plus de crédits d\'impression disponibles.'),
               style: TextStyle(fontSize: 16),
             ),
             SizedBox(height: 10),
             Text(
-              _getTranslatedText(
-                'يرجى تفعيل حسابك للمواصلة في إنشاء التقارير.',
-                'Veuillez activer votre compte pour continuer à générer des rapports.'
-              ),
+              _getTranslatedText('يرجى تفعيل حسابك للمواصلة في إنشاء التقارير.',
+                  'Veuillez activer votre compte pour continuer à générer des rapports.'),
               style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
             SizedBox(height: 10),
@@ -416,10 +415,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      _getTranslatedText(
-                        'الرصيد المتبقي: $_remainingPrints/5',
-                        'Crédits restants: $_remainingPrints/5'
-                      ),
+                      _getTranslatedText('الرصيد المتبقي: $_remainingPrints/5',
+                          'Crédits restants: $_remainingPrints/5'),
                       style: TextStyle(fontSize: 14, color: Colors.orange[800]),
                     ),
                   ),
@@ -444,7 +441,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
             ),
-            child: Text(_getTranslatedText('تفعيل الحساب', 'Activer le compte')),
+            child:
+                Text(_getTranslatedText('تفعيل الحساب', 'Activer le compte')),
           ),
         ],
       ),
@@ -454,7 +452,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   Future<void> _generateReport(String type) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      _showErrorSnackbar(_getTranslatedText('المستخدم غير مسجل الدخول.', 'Utilisateur non connecté.'));
+      _showErrorSnackbar(_getTranslatedText(
+          'المستخدم غير مسجل الدخول.', 'Utilisateur non connecté.'));
       return;
     }
 
@@ -501,7 +500,9 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         await _deductPrintCredit();
       }
     } catch (e) {
-      _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء التقرير:', 'Erreur lors de la génération du rapport:') + ' $e');
+      _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء التقرير:',
+              'Erreur lors de la génération du rapport:') +
+          ' $e');
     } finally {
       setState(() {
         _isGeneratingReport = false;
@@ -527,7 +528,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           ),
           SizedBox(height: 20),
           Text(
-            _getTranslatedText("جاري إنشاء التقرير...", "Génération du rapport en cours..."),
+            _getTranslatedText(
+                "جاري إنشاء التقرير...", "Génération du rapport en cours..."),
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
           ),
           SizedBox(height: 10),
@@ -551,9 +553,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                   SizedBox(width: 5),
                   Text(
                     _getTranslatedText(
-                      'الرصيد المستخدم: ${_remainingPrints - 1}/5',
-                      'Crédit utilisé: ${_remainingPrints - 1}/5'
-                    ),
+                        'الرصيد المستخدم: ${_remainingPrints - 1}/5',
+                        'Crédit utilisé: ${_remainingPrints - 1}/5'),
                     style: TextStyle(fontSize: 12, color: Colors.orange[800]),
                   ),
                 ],
@@ -563,64 +564,74 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       ),
     );
   }
-Future<bool> _sendDataToFlask(Map<String, dynamic> data) async {
-  try {
-    // IMPORTANT: S'assurer que les données envoyées au serveur sont en arabe
-    // Créer une copie des données avec les valeurs originales arabes
-    Map<String, dynamic> dataForServer = Map.from(data);
-    
-    // Remplacer les valeurs affichées par les valeurs originales arabes
-    if (data['baremes'] != null) {
-      List<dynamic> originalBaremes = [];
-      for (var bareme in data['baremes']) {
-        Map<String, dynamic> originalBareme = Map.from(bareme);
-        // Utiliser la valeur originale arabe pour le serveur
-        if (bareme['originalValue'] != null) {
-          originalBareme['value'] = bareme['originalValue'];
+
+  Future<bool> _sendDataToFlask(Map<String, dynamic> data) async {
+    try {
+      // IMPORTANT: S'assurer que les données envoyées au serveur sont en arabe
+      // Créer une copie des données avec les valeurs originales arabes
+      Map<String, dynamic> dataForServer = Map.from(data);
+
+      // Remplacer les valeurs affichées par les valeurs originales arabes
+      if (data['baremes'] != null) {
+        List<dynamic> originalBaremes = [];
+        for (var bareme in data['baremes']) {
+          Map<String, dynamic> originalBareme = Map.from(bareme);
+          // Utiliser la valeur originale arabe pour le serveur
+          if (bareme['originalValue'] != null) {
+            originalBareme['value'] = bareme['originalValue'];
+          }
+          originalBaremes.add(originalBareme);
         }
-        originalBaremes.add(originalBareme);
+        dataForServer['baremes'] = originalBaremes;
       }
-      dataForServer['baremes'] = originalBaremes;
-    }
 
-    final url = Uri.parse('https://imprission.onrender.com/generate_pdf');
-    final response = await http
-        .post(
-          url,
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: json.encode(dataForServer), // Envoyer les données arabes au serveur
-        )
-        .timeout(const Duration(seconds: 30));
+      final url = Uri.parse('https://imprission.onrender.com/generate_pdf');
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: json
+                .encode(dataForServer), // Envoyer les données arabes au serveur
+          )
+          .timeout(const Duration(seconds: 30));
 
-    if (response.statusCode == 200) {
-      final bytes = response.bodyBytes;
-      final blob = html.Blob([bytes], 'application/pdf');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute('download', 'tableau_resultats.pdf')
-        ..click();
-      html.Url.revokeObjectUrl(url);
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+        final blob = html.Blob([bytes], 'application/pdf');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', 'tableau_resultats.pdf')
+          ..click();
+        html.Url.revokeObjectUrl(url);
 
-      _showSuccessSnackbar(_getTranslatedText('تم إنشاء PDF بنجاح', 'PDF généré avec succès'));
-      return true;
-    } else {
-      _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء PDF', 'Erreur lors de la génération du PDF'));
+        _showSuccessSnackbar(
+            _getTranslatedText('تم إنشاء PDF بنجاح', 'PDF généré avec succès'));
+        return true;
+      } else {
+        _showErrorSnackbar(_getTranslatedText(
+            'خطأ في إنشاء PDF', 'Erreur lors de la génération du PDF'));
+        return false;
+      }
+    } on TimeoutException {
+      _showErrorSnackbar(_getTranslatedText(
+          'انتهت المهلة - استغرق الخادم وقتًا طويلاً للرد',
+          'Timeout - Le serveur a mis trop de temps à répondre'));
+      return false;
+    } on SocketException {
+      _showErrorSnackbar(_getTranslatedText(
+          'خطأ في الاتصال - تحقق من اتصالك بالإنترنت',
+          'Erreur de connexion - Vérifiez votre internet'));
+      return false;
+    } catch (e) {
+      _showErrorSnackbar(_getTranslatedText('خطأ تقني:', 'Erreur technique:') +
+          ' ${e.toString()}');
       return false;
     }
-  } on TimeoutException {
-    _showErrorSnackbar(_getTranslatedText('انتهت المهلة - استغرق الخادم وقتًا طويلاً للرد', 'Timeout - Le serveur a mis trop de temps à répondre'));
-    return false;
-  } on SocketException {
-    _showErrorSnackbar(_getTranslatedText('خطأ في الاتصال - تحقق من اتصالك بالإنترنت', 'Erreur de connexion - Vérifiez votre internet'));
-    return false;
-  } catch (e) {
-    _showErrorSnackbar(_getTranslatedText('خطأ تقني:', 'Erreur technique:') + ' ${e.toString()}');
-    return false;
   }
-}
+
   Future<bool> _sendHTMLDataToFlask(Map<String, dynamic> data) async {
     try {
       final url =
@@ -643,23 +654,28 @@ Future<bool> _sendDataToFlask(Map<String, dynamic> data) async {
         html.window.open(url, '_blank');
         html.Url.revokeObjectUrl(url);
 
-        _showSuccessSnackbar(_getTranslatedText('تم إنشاء التقرير بنجاح', 'Rapport généré avec succès'));
+        _showSuccessSnackbar(_getTranslatedText(
+            'تم إنشاء التقرير بنجاح', 'Rapport généré avec succès'));
         return true; // SUCCÈS
       } else {
-        _showErrorSnackbar(
-            _getTranslatedText('خطأ في إنشاء التقرير HTML:', 'Erreur lors de la génération du rapport HTML:') + ' ${response.statusCode}');
+        _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء التقرير HTML:',
+                'Erreur lors de la génération du rapport HTML:') +
+            ' ${response.statusCode}');
         return false; // ÉCHEC
       }
     } on TimeoutException {
-      _showErrorSnackbar(
-          _getTranslatedText('انتهت المهلة - استغرق الخادم وقتًا طويلاً للرد. يرجى المحاولة مرة أخرى.', 'Timeout - Le serveur a mis trop de temps à répondre. Veuillez réessayer.'));
+      _showErrorSnackbar(_getTranslatedText(
+          'انتهت المهلة - استغرق الخادم وقتًا طويلاً للرد. يرجى المحاولة مرة أخرى.',
+          'Timeout - Le serveur a mis trop de temps à répondre. Veuillez réessayer.'));
       return false;
     } on SocketException {
-      _showErrorSnackbar(
-          _getTranslatedText('خطأ في الاتصال - تحقق من اتصالك بالإنترنت', 'Erreur de connexion - Vérifiez votre connexion internet'));
+      _showErrorSnackbar(_getTranslatedText(
+          'خطأ في الاتصال - تحقق من اتصالك بالإنترنت',
+          'Erreur de connexion - Vérifiez votre connexion internet'));
       return false;
     } catch (e) {
-      _showErrorSnackbar(_getTranslatedText('خطأ تقني:', 'Erreur technique:') + ' ${e.toString()}');
+      _showErrorSnackbar(_getTranslatedText('خطأ تقني:', 'Erreur technique:') +
+          ' ${e.toString()}');
       return false;
     }
   }
@@ -731,113 +747,113 @@ Future<bool> _sendDataToFlask(Map<String, dynamic> data) async {
   }
 
   // MODIFICATION : Traduction des noms pour l'interface
- // MODIFICATION : Garder les noms arabes dans la BD, traduire uniquement pour l'affichage
-Future<String> _getMatiereName() async {
-  try {
-    var matiereDoc = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(widget.selectedClass)
-        .collection('matieres')
-        .doc(widget.selectedMatiere)
-        .get();
+  // MODIFICATION : Garder les noms arabes dans la BD, traduire uniquement pour l'affichage
+  Future<String> _getMatiereName() async {
+    try {
+      var matiereDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .collection('matieres')
+          .doc(widget.selectedMatiere)
+          .get();
 
-    String arabicName = _getFieldSafe(matiereDoc, 'name', 'غير معروف');
-    // L'enregistrement en BD reste en arabe, on traduit uniquement pour l'affichage
-    return _isFrenchInterface 
-        ? DataTranslator.translateMatiere(arabicName)
-        : arabicName;
-  } catch (e) {
-    return _isFrenchInterface ? 'Inconnu' : 'غير معروف';
+      String arabicName = _getFieldSafe(matiereDoc, 'name', 'غير معروف');
+      // L'enregistrement en BD reste en arabe, on traduit uniquement pour l'affichage
+      return _isFrenchInterface
+          ? DataTranslator.translateMatiere(arabicName)
+          : arabicName;
+    } catch (e) {
+      return _isFrenchInterface ? 'Inconnu' : 'غير معروف';
+    }
   }
-}
 
-Future<String> _getClassName() async {
-  try {
-    var classDoc = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(widget.selectedClass)
-        .get();
+  Future<String> _getClassName() async {
+    try {
+      var classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .get();
 
-    String arabicName = _getFieldSafe(classDoc, 'name', 'غير معروف');
-    // L'enregistrement en BD reste en arabe, on traduit uniquement pour l'affichage
-    return _isFrenchInterface 
-        ? DataTranslator.translateClass(arabicName)
-        : arabicName;
-  } catch (e) {
-    return _isFrenchInterface ? 'Inconnu' : 'غير معروف';
+      String arabicName = _getFieldSafe(classDoc, 'name', 'غير معروف');
+      // L'enregistrement en BD reste en arabe, on traduit uniquement pour l'affichage
+      return _isFrenchInterface
+          ? DataTranslator.translateClass(arabicName)
+          : arabicName;
+    } catch (e) {
+      return _isFrenchInterface ? 'Inconnu' : 'غير معروف';
+    }
   }
-}
 
-Future<List<dynamic>> _getBaremes() async {
-  try {
-    final baremesSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('selections')
-        .doc(widget.selectedClass)
-        .collection(widget.selectedMatiere)
-        .get();
-
-    final List<dynamic> baremes = [];
-    for (final baremeDoc in baremesSnapshot.docs) {
-      final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
-      final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
-      final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
-
-      // IMPORTANT: Garder le nom arabe dans la BD, traduire uniquement pour l'affichage
-      final displayedBaremeName = _isFrenchInterface
-          ? DataTranslator.translateBareme(baremeName)
-          : baremeName;
-
-      if (isBaremeSelected) {
-        baremes.add({
-          'id': baremeId,
-          'value': displayedBaremeName, // Affichage traduit
-          'originalValue': baremeName,  // Valeur originale arabe pour la BD
-          'type': 'bareme',
-        });
-      }
-
-      final sousBaremesSnapshot = await FirebaseFirestore.instance
+  Future<List<dynamic>> _getBaremes() async {
+    try {
+      final baremesSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
           .collection('selections')
           .doc(widget.selectedClass)
           .collection(widget.selectedMatiere)
-          .doc(baremeId)
-          .collection('sousBaremes')
           .get();
 
-      for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-        final sousBaremeId = sousBaremeDoc.id;
-        final sousBaremeName =
-            _getFieldSafe(sousBaremeDoc, 'sousBaremeName', 'غير معروف');
-        final isSousBaremeSelected =
-            _getFieldSafe(sousBaremeDoc, 'selected', false);
+      final List<dynamic> baremes = [];
+      for (final baremeDoc in baremesSnapshot.docs) {
+        final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
+        final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
+        final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
         // IMPORTANT: Garder le nom arabe dans la BD, traduire uniquement pour l'affichage
-        final displayedSousBaremeName = _isFrenchInterface
-            ? DataTranslator.translateSousBareme(sousBaremeName)
-            : sousBaremeName;
+        final displayedBaremeName = _isFrenchInterface
+            ? DataTranslator.translateBareme(baremeName)
+            : baremeName;
 
-        if (isSousBaremeSelected) {
+        if (isBaremeSelected) {
           baremes.add({
-            'id': sousBaremeId,
-            'value': displayedSousBaremeName, // Affichage traduit
-            'originalValue': sousBaremeName,  // Valeur originale arabe pour la BD
-            'type': 'sousBareme',
-            'parentBaremeId': baremeId,
+            'id': baremeId,
+            'value': displayedBaremeName, // Affichage traduit
+            'originalValue': baremeName, // Valeur originale arabe pour la BD
+            'type': 'bareme',
           });
         }
+
+        final sousBaremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('selections')
+            .doc(widget.selectedClass)
+            .collection(widget.selectedMatiere)
+            .doc(baremeId)
+            .collection('sousBaremes')
+            .get();
+
+        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+          final sousBaremeId = sousBaremeDoc.id;
+          final sousBaremeName =
+              _getFieldSafe(sousBaremeDoc, 'sousBaremeName', 'غير معروف');
+          final isSousBaremeSelected =
+              _getFieldSafe(sousBaremeDoc, 'selected', false);
+
+          // IMPORTANT: Garder le nom arabe dans la BD, traduire uniquement pour l'affichage
+          final displayedSousBaremeName = _isFrenchInterface
+              ? DataTranslator.translateSousBareme(sousBaremeName)
+              : sousBaremeName;
+
+          if (isSousBaremeSelected) {
+            baremes.add({
+              'id': sousBaremeId,
+              'value': displayedSousBaremeName, // Affichage traduit
+              'originalValue':
+                  sousBaremeName, // Valeur originale arabe pour la BD
+              'type': 'sousBareme',
+              'parentBaremeId': baremeId,
+            });
+          }
+        }
       }
+
+      return baremes;
+    } catch (e) {
+      return [];
     }
-
-    return baremes;
-  } catch (e) {
-    return [];
   }
-}
-
 
   Future<List<dynamic>> _getStudents() async {
     try {
@@ -852,7 +868,8 @@ Future<List<dynamic>> _getBaremes() async {
       final List<dynamic> students = [];
       for (final studentDoc in studentsSnapshot.docs) {
         final studentId = studentDoc.id;
-        final studentName = _getFieldSafe(studentDoc, 'name', _isFrenchInterface ? 'Élève inconnu' : 'طالب غير معروف');
+        final studentName = _getFieldSafe(studentDoc, 'name',
+            _isFrenchInterface ? 'Élève inconnu' : 'طالب غير معروف');
 
         final baremesSnapshot = await FirebaseFirestore.instance
             .collection('users')
@@ -940,7 +957,9 @@ Future<List<dynamic>> _getBaremes() async {
             children: [
               Icon(Icons.edit, color: Colors.blue),
               SizedBox(width: 8),
-              Text(_getTranslatedText('تعديل المعلومات', 'Modifier les informations'),
+              Text(
+                  _getTranslatedText(
+                      'تعديل المعلومات', 'Modifier les informations'),
                   style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
@@ -950,7 +969,8 @@ Future<List<dynamic>> _getBaremes() async {
               TextField(
                 controller: profController,
                 decoration: InputDecoration(
-                  labelText: _getTranslatedText('اسم الأستاذ', 'Nom du professeur'),
+                  labelText:
+                      _getTranslatedText('اسم الأستاذ', 'Nom du professeur'),
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.person),
                 ),
@@ -959,7 +979,8 @@ Future<List<dynamic>> _getBaremes() async {
               TextField(
                 controller: schoolController,
                 decoration: InputDecoration(
-                  labelText: _getTranslatedText('اسم المدرسة', 'Nom de l\'école'),
+                  labelText:
+                      _getTranslatedText('اسم المدرسة', 'Nom de l\'école'),
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.school),
                 ),
@@ -990,7 +1011,8 @@ Future<List<dynamic>> _getBaremes() async {
                     _schoolName = schoolController.text;
                   });
 
-                  _showSuccessSnackbar(_getTranslatedText('تم تحديث المعلومات', 'Informations mises à jour'));
+                  _showSuccessSnackbar(_getTranslatedText(
+                      'تم تحديث المعلومات', 'Informations mises à jour'));
                 }
                 Navigator.of(context).pop();
               },
@@ -1015,22 +1037,24 @@ Future<List<dynamic>> _getBaremes() async {
             children: [
               Icon(Icons.person_add, color: Colors.blue),
               SizedBox(width: 8),
-              Text(_getTranslatedText('معلومات جديدة', 'Nouvelles informations'),
+              Text(
+                  _getTranslatedText('معلومات جديدة', 'Nouvelles informations'),
                   style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(_getTranslatedText(
-                'يرجى إكمال معلوماتك للمتابعة',
-                'Veuillez compléter vos informations pour continuer'
-              ), style: TextStyle(color: Colors.grey[600])),
+              Text(
+                  _getTranslatedText('يرجى إكمال معلوماتك للمتابعة',
+                      'Veuillez compléter vos informations pour continuer'),
+                  style: TextStyle(color: Colors.grey[600])),
               SizedBox(height: 16),
               TextField(
                 controller: profController,
                 decoration: InputDecoration(
-                  labelText: _getTranslatedText('اسم الأستاذ', 'Nom du professeur'),
+                  labelText:
+                      _getTranslatedText('اسم الأستاذ', 'Nom du professeur'),
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.person),
                 ),
@@ -1039,7 +1063,8 @@ Future<List<dynamic>> _getBaremes() async {
               TextField(
                 controller: schoolController,
                 decoration: InputDecoration(
-                  labelText: _getTranslatedText('اسم المدرسة', 'Nom de l\'école'),
+                  labelText:
+                      _getTranslatedText('اسم المدرسة', 'Nom de l\'école'),
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.school),
                 ),
@@ -1051,10 +1076,8 @@ Future<List<dynamic>> _getBaremes() async {
               onPressed: () async {
                 if (profController.text.isEmpty ||
                     schoolController.text.isEmpty) {
-                  _showErrorSnackbar(_getTranslatedText(
-                    'يرجى ملء جميع الحقول',
-                    'Veuillez remplir tous les champs'
-                  ));
+                  _showErrorSnackbar(_getTranslatedText('يرجى ملء جميع الحقول',
+                      'Veuillez remplir tous les champs'));
                   return;
                 }
 
@@ -1077,7 +1100,8 @@ Future<List<dynamic>> _getBaremes() async {
                     _isDialogCompleted = true;
                   });
 
-                  _showSuccessSnackbar(_getTranslatedText('تم حفظ المعلومات', 'Informations enregistrées'));
+                  _showSuccessSnackbar(_getTranslatedText(
+                      'تم حفظ المعلومات', 'Informations enregistrées'));
                 }
                 Navigator.of(context).pop();
               },
@@ -1118,54 +1142,129 @@ Future<List<dynamic>> _getBaremes() async {
           .collection(widget.selectedMatiere)
           .get();
 
+      // Réinitialiser les compteurs
+      sumCriteriaMaxPerBareme.clear();
+
+      // DEBUG: Afficher les barèmes sélectionnés
+      print('=== DEBUG fetchMarks ===');
+      print('Total étudiants: $totalStudents');
+      print('Barèmes sélectionnés: ${selectedBaremes.docs.length}');
+
       for (var baremeDoc in selectedBaremes.docs) {
         var baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
-        sumCriteriaMaxPerBareme[baremeId] = 0;
+        var isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
+        // DEBUG
+        print('Barème $baremeId - sélectionné: $isBaremeSelected');
+
+        // Initialiser le compteur pour le barème principal si sélectionné
+        if (isBaremeSelected) {
+          sumCriteriaMaxPerBareme[baremeId] = 0;
+          print('  -> Compteur initialisé pour barème principal: $baremeId');
+        }
+
+        // Vérifier les sous-barèmes
         var sousBaremesSnapshot =
-            await baremeDoc.reference.collection('sous_baremes').get();
+            await baremeDoc.reference.collection('sousBaremes').get();
         for (var sousBaremeDoc in sousBaremesSnapshot.docs) {
-          var sousBaremeId = _getFieldSafe(sousBaremeDoc, 'sousBaremeId', '');
-          sumCriteriaMaxPerBareme['$baremeId-$sousBaremeId'] = 0;
+          var isSousBaremeSelected =
+              _getFieldSafe(sousBaremeDoc, 'selected', false);
+          if (isSousBaremeSelected) {
+            var sousBaremeId = sousBaremeDoc.id;
+            // Créer une clé unique pour le sous-barème
+            var sousBaremeKey = '$baremeId-$sousBaremeId';
+            sumCriteriaMaxPerBareme[sousBaremeKey] = 0;
+            print('  -> Compteur initialisé pour sous-barème: $sousBaremeKey');
+          }
         }
       }
 
+      // Compter les élèves qui ont atteint chaque critère
       for (var studentDoc in studentsSnapshot.docs) {
         var studentId = studentDoc.id;
 
         for (var baremeDoc in selectedBaremes.docs) {
           var baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
+          var isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
-          var baremeSnapshot = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(currentUser.uid)
-              .collection('user_classes')
-              .doc(widget.selectedClass)
-              .collection('students')
-              .doc(studentId)
-              .collection('baremes')
-              .doc(baremeId)
-              .get();
+          if (isBaremeSelected) {
+            // Vérifier le barème principal
+            var baremeSnapshot = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser.uid)
+                .collection('user_classes')
+                .doc(widget.selectedClass)
+                .collection('students')
+                .doc(studentId)
+                .collection('baremes')
+                .doc(baremeId)
+                .get();
 
-          if (baremeSnapshot.exists) {
-            var value = _getFieldSafe(baremeSnapshot, 'Marks', '');
-            if (value == '( + + + )' || value == '( + + - )') {
-              sumCriteriaMaxPerBareme[baremeId] =
-                  (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
-            }
-          } else {
-            var sousBaremesSnapshot =
-                await baremeSnapshot.reference.collection('sous_baremes').get();
-            for (var sousBaremeDoc in sousBaremesSnapshot.docs) {
-              var value = _getFieldSafe(sousBaremeDoc, 'Marks', '');
+            if (baremeSnapshot.exists) {
+              var value = _getFieldSafe(baremeSnapshot, 'Marks', '');
               if (value == '( + + + )' || value == '( + + - )') {
-                sumCriteriaMaxPerBareme[sousBaremeDoc.id] =
-                    (sumCriteriaMaxPerBareme[sousBaremeDoc.id] ?? 0) + 1;
+                sumCriteriaMaxPerBareme[baremeId] =
+                    (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
+                print(
+                    '  ✅ Étudiant $studentId - Barème $baremeId: $value -> COMPTÉ');
+              } else {
+                print(
+                    '  ❌ Étudiant $studentId - Barème $baremeId: $value -> NON COMPTÉ');
+              }
+            } else {
+              print('  📭 Étudiant $studentId - Barème $baremeId: NON TROUVÉ');
+            }
+          }
+
+          // Vérifier les sous-barèmes
+          var sousBaremesSnapshot =
+              await baremeDoc.reference.collection('sousBaremes').get();
+          for (var sousBaremeDoc in sousBaremesSnapshot.docs) {
+            var isSousBaremeSelected =
+                _getFieldSafe(sousBaremeDoc, 'selected', false);
+            if (isSousBaremeSelected) {
+              var sousBaremeId = sousBaremeDoc.id;
+              var sousBaremeKey = '$baremeId-$sousBaremeId';
+
+              // Vérifier la valeur du sous-barème
+              var sousBaremeSnapshot = await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentUser.uid)
+                  .collection('user_classes')
+                  .doc(widget.selectedClass)
+                  .collection('students')
+                  .doc(studentId)
+                  .collection('baremes')
+                  .doc(baremeId)
+                  .collection('sous_baremes')
+                  .doc(sousBaremeId)
+                  .get();
+
+              if (sousBaremeSnapshot.exists) {
+                var value = _getFieldSafe(sousBaremeSnapshot, 'Marks', '');
+                if (value == '( + + + )' || value == '( + + - )') {
+                  sumCriteriaMaxPerBareme[sousBaremeKey] =
+                      (sumCriteriaMaxPerBareme[sousBaremeKey] ?? 0) + 1;
+                  print(
+                      '  ✅ Étudiant $studentId - Sous-barème $sousBaremeKey: $value -> COMPTÉ');
+                } else {
+                  print(
+                      '  ❌ Étudiant $studentId - Sous-barème $sousBaremeKey: $value -> NON COMPTÉ');
+                }
+              } else {
+                print(
+                    '  📭 Étudiant $studentId - Sous-barème $sousBaremeKey: NON TROUVÉ');
               }
             }
           }
         }
       }
+
+      // DEBUG: Afficher les résultats finaux
+      print('=== RÉSULTATS FINAUX ===');
+      sumCriteriaMaxPerBareme.forEach((key, value) {
+        print('$key: $value étudiants');
+      });
 
       if (_isMounted) {
         setState(() {});
@@ -1187,7 +1286,8 @@ Future<List<dynamic>> _getBaremes() async {
     }
 
     return Tooltip(
-      message: _getTranslatedText('الرصيد المتبقي للطباعة', 'Crédit d\'impression restant'),
+      message: _getTranslatedText(
+          'الرصيد المتبقي للطباعة', 'Crédit d\'impression restant'),
       child: Container(
         margin: EdgeInsets.symmetric(horizontal: 4),
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -1227,7 +1327,8 @@ Future<List<dynamic>> _getBaremes() async {
     Color timeColor = _remainingTime.inDays <= 7 ? Colors.orange : Colors.teal;
 
     return Tooltip(
-      message: _getTranslatedText('الوقت المتبقي قبل الانتهاء', 'Temps restant avant expiration'),
+      message: _getTranslatedText(
+          'الوقت المتبقي قبل الانتهاء', 'Temps restant avant expiration'),
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
@@ -1262,7 +1363,7 @@ Future<List<dynamic>> _getBaremes() async {
 
   Widget _buildAccountStatusIndicator() {
     return Tooltip(
-      message: _isAccountActive 
+      message: _isAccountActive
           ? _getTranslatedText('حساب نشط', 'Compte actif')
           : _getTranslatedText('حساب غير نشط', 'Compte inactif'),
       child: Container(
@@ -1288,7 +1389,7 @@ Future<List<dynamic>> _getBaremes() async {
             ),
             SizedBox(width: 6),
             Text(
-              _isAccountActive 
+              _isAccountActive
                   ? _getTranslatedText('نشط', 'Actif')
                   : _getTranslatedText('غير نشط', 'Inactif'),
               style: TextStyle(
@@ -1349,7 +1450,8 @@ Future<List<dynamic>> _getBaremes() async {
             children: [
               Icon(Icons.description, color: Colors.blue),
               SizedBox(width: 8),
-              Text(_getTranslatedText('طباعة الجدول (HTML)', 'Imprimer le tableau (HTML)')),
+              Text(_getTranslatedText(
+                  'طباعة الجدول (HTML)', 'Imprimer le tableau (HTML)')),
             ],
           ),
         ),
@@ -1359,7 +1461,8 @@ Future<List<dynamic>> _getBaremes() async {
             children: [
               Icon(Icons.picture_as_pdf, color: Colors.red),
               SizedBox(width: 8),
-              Text(_getTranslatedText('طباعة الجدول (PDF)', 'Imprimer le tableau (PDF)')),
+              Text(_getTranslatedText(
+                  'طباعة الجدول (PDF)', 'Imprimer le tableau (PDF)')),
             ],
           ),
         ),
@@ -1402,7 +1505,9 @@ Future<List<dynamic>> _getBaremes() async {
             children: [
               Icon(Icons.error_outline, size: 64, color: Colors.red),
               SizedBox(height: 16),
-              Text(_getTranslatedText('المستخدم غير مسجل الدخول.', 'Utilisateur non connecté.'), 
+              Text(
+                  _getTranslatedText(
+                      'المستخدم غير مسجل الدخول.', 'Utilisateur non connecté.'),
                   style: TextStyle(fontSize: 18)),
               SizedBox(height: 16),
               ElevatedButton(
@@ -1423,7 +1528,9 @@ Future<List<dynamic>> _getBaremes() async {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 16),
-              Text(_getTranslatedText('جاري تحميل معلوماتك...', 'Chargement de vos informations...'),
+              Text(
+                  _getTranslatedText('جاري تحميل معلوماتك...',
+                      'Chargement de vos informations...'),
                   style: TextStyle(fontSize: 16)),
             ],
           ),
@@ -1444,7 +1551,9 @@ Future<List<dynamic>> _getBaremes() async {
       ),
       home: Scaffold(
         appBar: AppBar(
-          title: Text(_getTranslatedText('الجدول الجامع للنتائج', 'Tableau Global des Résultats'),
+          title: Text(
+              _getTranslatedText(
+                  'الجدول الجامع للنتائج', 'Tableau Global des Résultats'),
               style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -1462,7 +1571,8 @@ Future<List<dynamic>> _getBaremes() async {
           ],
         ),
         body: Directionality(
-          textDirection: _isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
+          textDirection:
+              _isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
           child: Column(
             children: [
               // Header amélioré
@@ -1507,9 +1617,8 @@ Future<List<dynamic>> _getBaremes() async {
                   children: [
                     Text(
                       _getTranslatedText(
-                        'تاريخ الإصدار: ${DateTime.now().toString().substring(0, 10)}',
-                        'Date d\'émission: ${DateTime.now().toString().substring(0, 10)}'
-                      ),
+                          'تاريخ الإصدار: ${DateTime.now().toString().substring(0, 10)}',
+                          'Date d\'émission: ${DateTime.now().toString().substring(0, 10)}'),
                       style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                     ),
                     if (!_isAccountActive)
@@ -1528,9 +1637,8 @@ Future<List<dynamic>> _getBaremes() async {
                             SizedBox(width: 4),
                             Text(
                               _getTranslatedText(
-                                'حساب محدود - $_remainingPrints/5 طباعة',
-                                'Compte limité - $_remainingPrints/5 impressions'
-                              ),
+                                  'حساب محدود - $_remainingPrints/5 طباعة',
+                                  'Compte limité - $_remainingPrints/5 impressions'),
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.orange[800],
@@ -1556,24 +1664,29 @@ Future<List<dynamic>> _getBaremes() async {
       builder: (context, snapshot) {
         String className = _isFrenchInterface ? 'Inconnu' : 'غير معروف';
         String matiereName = _isFrenchInterface ? 'Inconnu' : 'غير معروف';
-        
+
         if (snapshot.connectionState == ConnectionState.waiting) {
           className = _isFrenchInterface ? 'Chargement...' : 'جاري التحميل...';
-          matiereName = _isFrenchInterface ? 'Chargement...' : 'جاري التحميل...';
+          matiereName =
+              _isFrenchInterface ? 'Chargement...' : 'جاري التحميل...';
         } else if (snapshot.hasData) {
-          className = snapshot.data!['className'] ?? (_isFrenchInterface ? 'Inconnu' : 'غير معروف');
-          matiereName = snapshot.data!['matiereName'] ?? (_isFrenchInterface ? 'Inconnu' : 'غير معروف');
+          className = snapshot.data!['className'] ??
+              (_isFrenchInterface ? 'Inconnu' : 'غير معروف');
+          matiereName = snapshot.data!['matiereName'] ??
+              (_isFrenchInterface ? 'Inconnu' : 'غير معروف');
         }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildInfoRow(
-              _getTranslatedText('الأستاذ:', 'Professeur:'), 
-              _profName.isEmpty ? (_isFrenchInterface ? 'Non renseigné' : 'غير محدد') : _profName
-            ),
+                _getTranslatedText('الأستاذ:', 'Professeur:'),
+                _profName.isEmpty
+                    ? (_isFrenchInterface ? 'Non renseigné' : 'غير محدد')
+                    : _profName),
             SizedBox(height: 4),
-            _buildInfoRow(_getTranslatedText('المادة:', 'Matière:'), matiereName),
+            _buildInfoRow(
+                _getTranslatedText('المادة:', 'Matière:'), matiereName),
             SizedBox(height: 4),
             _buildInfoRow(_getTranslatedText('القسم:', 'Classe:'), className),
           ],
@@ -1689,7 +1802,8 @@ Future<List<dynamic>> _getBaremes() async {
               children: [
                 CircularProgressIndicator(),
                 SizedBox(height: 16),
-                Text(_getTranslatedText('جاري تحميل الأقسام...', 'Chargement des classes...')),
+                Text(_getTranslatedText(
+                    'جاري تحميل الأقسام...', 'Chargement des classes...')),
               ],
             ),
           );
@@ -1702,7 +1816,9 @@ Future<List<dynamic>> _getBaremes() async {
               children: [
                 Icon(Icons.error_outline, size: 48, color: Colors.red),
                 SizedBox(height: 16),
-                Text(_getTranslatedText('خطأ في التحميل', 'Erreur de chargement'),
+                Text(
+                    _getTranslatedText(
+                        'خطأ في التحميل', 'Erreur de chargement'),
                     style: TextStyle(fontSize: 16, color: Colors.red)),
                 SizedBox(height: 8),
                 Text('${userClassesSnapshot.error}'),
@@ -1719,10 +1835,14 @@ Future<List<dynamic>> _getBaremes() async {
               children: [
                 Icon(Icons.class_, size: 64, color: Colors.grey),
                 SizedBox(height: 16),
-                Text(_getTranslatedText('لم يتم العثور على أي قسم.', 'Aucune classe trouvée.'),
+                Text(
+                    _getTranslatedText(
+                        'لم يتم العثور على أي قسم.', 'Aucune classe trouvée.'),
                     style: TextStyle(fontSize: 16)),
                 SizedBox(height: 8),
-                Text(_getTranslatedText('يرجى إضافة أقسام أولاً.', 'Veuillez ajouter des classes d\'abord.'),
+                Text(
+                    _getTranslatedText('يرجى إضافة أقسام أولاً.',
+                        'Veuillez ajouter des classes d\'abord.'),
                     style: TextStyle(fontSize: 14, color: Colors.grey)),
               ],
             ),
@@ -1754,10 +1874,14 @@ Future<List<dynamic>> _getBaremes() async {
             children: [
               Icon(Icons.search_off, size: 64, color: Colors.orange),
               SizedBox(height: 16),
-              Text(_getTranslatedText('لم يتم العثور على أي قسم مطابق.', 'Aucune classe correspondante trouvée.'),
+              Text(
+                  _getTranslatedText('لم يتم العثور على أي قسم مطابق.',
+                      'Aucune classe correspondante trouvée.'),
                   style: TextStyle(fontSize: 16)),
               SizedBox(height: 8),
-              Text(_getTranslatedText('القسم المحدد غير موجود.', 'La classe sélectionnée n\'existe pas.'),
+              Text(
+                  _getTranslatedText('القسم المحدد غير موجود.',
+                      'La classe sélectionnée n\'existe pas.'),
                   style: TextStyle(fontSize: 14, color: Colors.grey)),
             ],
           ),
@@ -1767,7 +1891,8 @@ Future<List<dynamic>> _getBaremes() async {
   }
 
   // MODIFICATION : Navigation avec détection de langue
-  void _navigateToClassificationPage(String baremeId, {String? sousBaremeId}) async {
+  void _navigateToClassificationPage(String baremeId,
+      {String? sousBaremeId}) async {
     try {
       var classAndMatiereNames = await _getClassAndMatiereNames();
 
@@ -1779,14 +1904,19 @@ Future<List<dynamic>> _getBaremes() async {
           .collection(widget.selectedMatiere)
           .get();
 
-      List<Map<String, dynamic>> baremesValues = await _getBaremesValues(selectedBaremes.docs);
+      List<Map<String, dynamic>> baremesValues =
+          await _getBaremesValues(selectedBaremes.docs);
 
       var selectedBareme = baremesValues.firstWhere(
         (bareme) => bareme['id'] == baremeId,
-        orElse: () => {'id': baremeId, 'value': _isFrenchInterface ? 'Inconnu' : 'غير معروف'},
+        orElse: () => {
+          'id': baremeId,
+          'value': _isFrenchInterface ? 'Inconnu' : 'غير معروف'
+        },
       );
 
-      String baremeName = selectedBareme['value'] ?? (_isFrenchInterface ? 'Inconnu' : 'غير معروف');
+      String baremeName = selectedBareme['value'] ??
+          (_isFrenchInterface ? 'Inconnu' : 'غير معروف');
 
       String? sousBaremeName;
       if (sousBaremeId != null) {
@@ -1794,10 +1924,14 @@ Future<List<dynamic>> _getBaremes() async {
           (bareme) =>
               bareme['id'] == sousBaremeId &&
               bareme['parentBaremeId'] == baremeId,
-          orElse: () => {'id': sousBaremeId, 'value': _isFrenchInterface ? 'Inconnu' : 'غير معروف'},
+          orElse: () => {
+            'id': sousBaremeId,
+            'value': _isFrenchInterface ? 'Inconnu' : 'غير معروف'
+          },
         );
 
-        sousBaremeName = selectedSousBareme['value'] ?? (_isFrenchInterface ? 'Inconnu' : 'غير معروف');
+        sousBaremeName = selectedSousBareme['value'] ??
+            (_isFrenchInterface ? 'Inconnu' : 'غير معروف');
       }
 
       Navigator.push(
@@ -1810,8 +1944,10 @@ Future<List<dynamic>> _getBaremes() async {
             currentUser: currentUser!,
             profName: _profName,
             schoolName: _schoolName,
-            className: classAndMatiereNames['className'] ?? (_isFrenchInterface ? 'Inconnu' : 'غير معروف'),
-            matiereName: classAndMatiereNames['matiereName'] ?? (_isFrenchInterface ? 'Inconnu' : 'غير معروف'),
+            className: classAndMatiereNames['className'] ??
+                (_isFrenchInterface ? 'Inconnu' : 'غير معروف'),
+            matiereName: classAndMatiereNames['matiereName'] ??
+                (_isFrenchInterface ? 'Inconnu' : 'غير معروف'),
             baremeName: baremeName,
             sousBaremeName: sousBaremeName,
           ),
@@ -1819,7 +1955,8 @@ Future<List<dynamic>> _getBaremes() async {
       );
     } catch (e) {
       print('Erreur lors de la navigation vers la page de classification : $e');
-      _showErrorSnackbar(_getTranslatedText('خطأ في التنقل', 'Erreur lors de la navigation'));
+      _showErrorSnackbar(
+          _getTranslatedText('خطأ في التنقل', 'Erreur lors de la navigation'));
     }
   }
 
@@ -1830,17 +1967,7 @@ Future<List<dynamic>> _getBaremes() async {
 
     for (final baremeDoc in selectedBaremes) {
       final baremeId = baremeDoc['baremeId'];
-
-      final baremeSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('selections')
-          .doc(widget.selectedClass)
-          .collection(widget.selectedMatiere)
-          .doc(baremeId)
-          .get();
-
-      final isBaremeSelected = _getFieldSafe(baremeSnapshot, 'selected', false);
+      final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
       final sousBaremesSnapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -1857,33 +1984,74 @@ Future<List<dynamic>> _getBaremes() async {
           .toList();
 
       if (isBaremeSelected) {
-        final baremeName =
-            _getFieldSafe(baremeSnapshot, 'baremeName', _isFrenchInterface ? 'Inconnu' : 'غير معروف');
-        // Traduire le nom du barème si l'interface est en français
+        final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
+
         final displayedBaremeName = _isFrenchInterface
             ? DataTranslator.translateBareme(baremeName)
             : baremeName;
-        result.add({
-          'id': baremeId,
-          'value': displayedBaremeName,
-          'sousBaremes': [],
-        });
-      } else if (selectedSousBaremes.isNotEmpty) {
+
+        // CORRECTION: Créer une liste pour les sous-barèmes de ce barème
+        List<Map<String, dynamic>> sousBaremesList = [];
+
+        // Ajouter les sous-barèmes sélectionnés
         for (final sousBareme in selectedSousBaremes) {
           final sousBaremeName =
-              _getFieldSafe(sousBareme, 'sousBaremeName', _isFrenchInterface ? 'Inconnu' : 'غير معروف');
-          // Traduire le nom du sous-barème si l'interface est en français
+              _getFieldSafe(sousBareme, 'sousBaremeName', 'غير معروف');
           final displayedSousBaremeName = _isFrenchInterface
               ? DataTranslator.translateSousBareme(sousBaremeName)
               : sousBaremeName;
-          result.add({
-            'id': sousBareme.id,
+
+          sousBaremesList.add({
+            'id':
+                '$baremeId-${sousBareme.id}', // Clé unique pour le sous-barème
             'value': displayedSousBaremeName,
+            'type': 'sousBareme',
+            'parentBaremeId': baremeId,
+          });
+        }
+
+        // Ajouter le barème principal avec ses sous-barèmes
+        result.add({
+          'id': baremeId,
+          'value': displayedBaremeName,
+          'type': 'bareme',
+          'sousBaremes':
+              sousBaremesList, // CORRECTION: Stocker les sous-barèmes ici
+        });
+      } else if (selectedSousBaremes.isNotEmpty) {
+        // Si seulement des sous-barèmes sont sélectionnés (sans le barème principal)
+        for (final sousBareme in selectedSousBaremes) {
+          final sousBaremeName =
+              _getFieldSafe(sousBareme, 'sousBaremeName', 'غير معروف');
+          final displayedSousBaremeName = _isFrenchInterface
+              ? DataTranslator.translateSousBareme(sousBaremeName)
+              : sousBaremeName;
+
+          result.add({
+            'id':
+                '$baremeId-${sousBareme.id}', // Clé unique pour le sous-barème
+            'value': displayedSousBaremeName,
+            'type': 'sousBareme',
             'parentBaremeId': baremeId,
           });
         }
       }
     }
+
+    // DEBUG: Afficher la structure des barèmes
+    print('=== STRUCTURE BARÈMES ===');
+    result.forEach((bareme) {
+      print(
+          'Barème: ${bareme['id']} - ${bareme['value']} - Type: ${bareme['type']}');
+      if (bareme['sousBaremes'] != null &&
+          (bareme['sousBaremes'] as List).isNotEmpty) {
+        print('  Sous-barèmes:');
+        (bareme['sousBaremes'] as List).forEach((sousBareme) {
+          print('    - ${sousBareme['id']} - ${sousBareme['value']}');
+        });
+      }
+    });
+
     return result;
   }
 }
@@ -1961,7 +2129,8 @@ class _StudentsTableState extends State<StudentsTable> {
   }
 
   // Fonction pour trier les barèmes par ordre alphabétique
-  List<Map<String, dynamic>> _sortBaremesAlphabetically(List<Map<String, dynamic>> baremesValues) {
+  List<Map<String, dynamic>> _sortBaremesAlphabetically(
+      List<Map<String, dynamic>> baremesValues) {
     baremesValues.sort((a, b) {
       String nameA = a['value'] ?? '';
       String nameB = b['value'] ?? '';
@@ -1971,47 +2140,66 @@ class _StudentsTableState extends State<StudentsTable> {
   }
 
   // Fonction modifiée pour grouper les barèmes triés
- // CORRECTION : Méthode groupBaremes sécurisée
-Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> baremesValues) {
-  // Trier d'abord les barèmes par ordre alphabétique
-  List<Map<String, dynamic>> sortedBaremes = _sortBaremesAlphabetically(baremesValues);
-  
+  // CORRECTION : Méthode groupBaremes sécurisée
+ Map<String, List<Map<String, dynamic>>> groupBaremes(
+    List<Map<String, dynamic>> baremesValues) {
+  List<Map<String, dynamic>> sortedBaremes =
+      _sortBaremesAlphabetically(baremesValues);
   Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
 
   for (var bareme in sortedBaremes) {
     String baremeValue = bareme['value'] ?? '';
-    
-    // CORRECTION : Vérifier la longueur avant d'utiliser substring
+    String type = bareme['type'] ?? 'bareme';
+
     String key;
-    if (baremeValue.length >= 4) {
-      key = baremeValue.substring(0, 4);
-    } else if (baremeValue.isNotEmpty) {
-      key = baremeValue; // Utiliser la valeur complète si trop courte
+    if (type == 'sousBareme') {
+      // Pour les sous-barèmes, utiliser le parent comme clé de groupe
+      String parentId = bareme['parentBaremeId'] ?? '';
+      key = parentId.isNotEmpty ? parentId : 'sousBaremes';
     } else {
-      key = 'autre'; // Valeur par défaut si vide
+      // Pour les barèmes principaux, utiliser les premiers caractères
+      if (baremeValue.length >= 2) {
+        key = baremeValue.substring(0, 2);
+      } else if (baremeValue.isNotEmpty) {
+        key = baremeValue;
+      } else {
+        key = 'autre';
+      }
     }
 
     if (!groupedBaremes.containsKey(key)) {
       groupedBaremes[key] = [];
     }
-    groupedBaremes[key]!.add(bareme);
+    
+    // CORRECTION: S'assurer qu'on n'ajoute pas les mêmes barèmes plusieurs fois
+    bool alreadyExists = groupedBaremes[key]!.any((existingBareme) => 
+        existingBareme['id'] == bareme['id']);
+    
+    if (!alreadyExists) {
+      groupedBaremes[key]!.add(bareme);
+    }
   }
 
   return groupedBaremes;
 }
+
   // Fonction pour déterminer si c'est un barème principal ou sous-barème
-  String _getBaremeDisplayName(Map<String, dynamic> bareme, Map<String, dynamic> subEntry) {
-    // Si c'est le barème principal (même ID)
-    if (bareme['id'] == subEntry['id']) {
-      return bareme['value']; // Nom du barème principal
-    } else {
-      // C'est un sous-barème - retourner seulement le nom du sous-barème
+  String _getBaremeDisplayName(
+      Map<String, dynamic> bareme, Map<String, dynamic> subEntry) {
+    String type = subEntry['type'] ?? 'bareme';
+
+    if (type == 'sousBareme') {
+      // Pour les sous-barèmes, afficher seulement le nom du sous-barème
       return subEntry['value'];
+    } else {
+      // Pour les barèmes principaux
+      return bareme['value'];
     }
   }
 
   // Générer une clé unique pour chaque bouton
-  String _getButtonKey(String baremeId, String? sousBaremeId, bool isClassification) {
+  String _getButtonKey(
+      String baremeId, String? sousBaremeId, bool isClassification) {
     return '${baremeId}_${sousBaremeId ?? 'main'}_${isClassification ? 'classification' : 'treatment'}';
   }
 
@@ -2065,7 +2253,7 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
           .doc(widget.classDocId)
           .collection('students')
           .get();
-      
+
       if (_isMounted) {
         setState(() {
           _cachedStudents = snapshot.docs;
@@ -2086,7 +2274,7 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
           .doc(widget.selectedClass)
           .collection(widget.selectedMatiere)
           .get();
-      
+
       if (_isMounted) {
         setState(() {
           _cachedSelections = snapshot.docs;
@@ -2144,19 +2332,24 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
       builder: (context, snapshot) {
         String className = widget.isFrenchInterface ? 'Inconnu' : 'غير معروف';
         String matiereName = widget.isFrenchInterface ? 'Inconnu' : 'غير معروف';
-        
+
         if (snapshot.connectionState == ConnectionState.waiting) {
-          className = widget.isFrenchInterface ? 'Chargement...' : 'جاري التحميل...';
-          matiereName = widget.isFrenchInterface ? 'Chargement...' : 'جاري التحميل...';
+          className =
+              widget.isFrenchInterface ? 'Chargement...' : 'جاري التحميل...';
+          matiereName =
+              widget.isFrenchInterface ? 'Chargement...' : 'جاري التحميل...';
         } else if (snapshot.hasData) {
-          className = snapshot.data!['className'] ?? (widget.isFrenchInterface ? 'Inconnu' : 'غير معروف');
-          matiereName = snapshot.data!['matiereName'] ?? (widget.isFrenchInterface ? 'Inconnu' : 'غير معروف');
+          className = snapshot.data!['className'] ??
+              (widget.isFrenchInterface ? 'Inconnu' : 'غير معروف');
+          matiereName = snapshot.data!['matiereName'] ??
+              (widget.isFrenchInterface ? 'Inconnu' : 'غير معروف');
         }
 
         return Card(
           elevation: 3,
           margin: EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Container(
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -2170,7 +2363,8 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
                 IconButton(
                   icon: Icon(Icons.refresh, color: Colors.white),
                   onPressed: _refreshData,
-                  tooltip: _getTranslatedText('تحديث البيانات', 'Rafraîchir les données'),
+                  tooltip: _getTranslatedText(
+                      'تحديث البيانات', 'Rafraîchir les données'),
                 ),
                 SizedBox(width: 12),
                 Icon(Icons.school, color: Colors.white, size: 32),
@@ -2180,7 +2374,8 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _getTranslatedText('جدول التقييم', 'Tableau d\'évaluation'),
+                        _getTranslatedText(
+                            'جدول التقييم', 'Tableau d\'évaluation'),
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -2205,7 +2400,8 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '${widget.totalStudents} ' + _getTranslatedText('طالب', 'élèves'),
+                    '${widget.totalStudents} ' +
+                        _getTranslatedText('طالب', 'élèves'),
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -2266,7 +2462,8 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
           ),
           SizedBox(height: 16),
           Text(
-            _getTranslatedText('جاري تحميل البيانات...', 'Chargement des données...'),
+            _getTranslatedText(
+                'جاري تحميل البيانات...', 'Chargement des données...'),
             style: TextStyle(
               color: _textColor,
               fontSize: 16,
@@ -2286,7 +2483,9 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
           SizedBox(height: 16),
           Text(
             error,
-            textDirection: widget.isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
+            textDirection: widget.isFrenchInterface
+                ? TextDirection.ltr
+                : TextDirection.rtl,
             style: TextStyle(color: Colors.red, fontSize: 16),
             textAlign: TextAlign.center,
           ),
@@ -2303,8 +2502,11 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
           Icon(Icons.people_outline, color: Colors.grey, size: 64),
           SizedBox(height: 16),
           Text(
-            _getTranslatedText('لم يتم العثور على أي طالب.', 'Aucun élève trouvé.'),
-            textDirection: widget.isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
+            _getTranslatedText(
+                'لم يتم العثور على أي طالب.', 'Aucun élève trouvé.'),
+            textDirection: widget.isFrenchInterface
+                ? TextDirection.ltr
+                : TextDirection.rtl,
             style: TextStyle(color: Colors.grey, fontSize: 16),
           ),
         ],
@@ -2328,9 +2530,11 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
           return _buildLoadingIndicator();
         }
         if (baremesValuesSnapshot.hasError) {
-          return _buildErrorWidget('${_getTranslatedText('خطأ:', 'Erreur:')} ${baremesValuesSnapshot.error}');
+          return _buildErrorWidget(
+              '${_getTranslatedText('خطأ:', 'Erreur:')} ${baremesValuesSnapshot.error}');
         }
-        if (!baremesValuesSnapshot.hasData || baremesValuesSnapshot.data!.isEmpty) {
+        if (!baremesValuesSnapshot.hasData ||
+            baremesValuesSnapshot.data!.isEmpty) {
           return _buildEmptyStateForCriteria();
         }
 
@@ -2347,229 +2551,329 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
           Icon(Icons.assessment_outlined, color: Colors.grey, size: 64),
           SizedBox(height: 16),
           Text(
-            _getTranslatedText('لم يتم العثور على أي معيار.', 'Aucun critère trouvé.'),
-            textDirection: widget.isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
+            _getTranslatedText(
+                'لم يتم العثور على أي معيار.', 'Aucun critère trouvé.'),
+            textDirection: widget.isFrenchInterface
+                ? TextDirection.ltr
+                : TextDirection.rtl,
             style: TextStyle(color: Colors.grey, fontSize: 16),
           ),
         ],
       ),
     );
   }
+Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
+    List<Map<String, dynamic>> baremesValues) {
+  Map<String, List<Map<String, dynamic>>> groupedBaremes =
+      groupBaremes(baremesValues);
 
-  Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
-      List<Map<String, dynamic>> baremesValues) {
-    Map<String, List<Map<String, dynamic>>> groupedBaremes = groupBaremes(baremesValues);
+  // DEBUG: Afficher le contenu de sumCriteriaMaxPerBareme
+  print('=== STATISTIQUES DISPONIBLES ===');
+  widget.sumCriteriaMaxPerBareme.forEach((key, value) {
+    print('$key: $value');
+  });
 
-    return Card(
-      elevation: 4,
-      margin: EdgeInsets.all(16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        decoration: BoxDecoration(
-          color: _cardColor,
-          borderRadius: BorderRadius.circular(12),
-        ),
+  // DEBUG: Afficher la structure des barèmes
+  print('=== STRUCTURE DES BARÈMES POUR AFFICHAGE ===');
+  groupedBaremes.forEach((key, baremes) {
+    print('Groupe: $key');
+    for (var bareme in baremes) {
+      print('  Barème: ${bareme['id']} - ${bareme['value']} - Type: ${bareme['type']}');
+      if (bareme['type'] == 'bareme' && bareme['sousBaremes'] != null) {
+        for (var sousBareme in (bareme['sousBaremes'] as List)) {
+          print('    Sous-barème: ${sousBareme['id']} - ${sousBareme['value']}');
+        }
+      }
+    }
+  });
+
+  return Card(
+    elevation: 4,
+    margin: EdgeInsets.all(16),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    child: Container(
+      decoration: BoxDecoration(
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
         child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.vertical,
-            child: DataTable(
-              columnSpacing: 16,
-              horizontalMargin: 16,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              dataRowColor: MaterialStateProperty.resolveWith<Color>(
-                (Set<MaterialState> states) {
-                  if (states.contains(MaterialState.selected)) {
-                    return _accentColor.withOpacity(0.2);
-                  }
-                  return Colors.transparent;
-                },
-              ),
-              columns: [
-                DataColumn(
-                  label: Container(
-                    width: 160,
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: _primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Text(
-                        _getTranslatedText('الاسم واللقب', 'Nom et prénom'),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: _primaryColor,
-                          fontSize: 14,
-                        ),
+          scrollDirection: Axis.vertical,
+          child: DataTable(
+            columnSpacing: 16,
+            horizontalMargin: 16,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            dataRowColor: MaterialStateProperty.resolveWith<Color>(
+              (Set<MaterialState> states) {
+                if (states.contains(MaterialState.selected)) {
+                  return _accentColor.withOpacity(0.2);
+                }
+                return Colors.transparent;
+              },
+            ),
+            columns: [
+              DataColumn(
+                label: Container(
+                  width: 160,
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      _getTranslatedText('الاسم واللقب', 'Nom et prénom'),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _primaryColor,
+                        fontSize: 14,
                       ),
                     ),
                   ),
                 ),
-                for (var entry in groupedBaremes.entries)
-                  for (final bareme in entry.value)
-                    for (final subEntry in [
-                      {'id': bareme['id'], 'value': bareme['value']},
-                      ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-                    ])
-                      DataColumn(
-                        label: Container(
-                          width: 110,
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                _headerColors.putIfAbsent(
-                                    entry.key, () => _getRandomColor()),
-                                _headerColors[entry.key]!.withOpacity(0.8),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black12,
-                                blurRadius: 4,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              Text(
-                                _getBaremeDisplayName(bareme, subEntry),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                ),
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-              ],
-              rows: [
-                ...studentsDocs.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final studentDoc = entry.value;
-                  final studentId = studentDoc.id;
-                  final studentName = studentDoc['name'] ?? _getTranslatedText('غير معروف', 'Inconnu');
-
-                  return DataRow(
-                    color: MaterialStateProperty.resolveWith<Color>(
-                      (Set<MaterialState> states) {
-                        return index.isEven
-                            ? _backgroundColor.withOpacity(0.3)
-                            : Colors.transparent;
-                      },
-                    ),
-                    cells: [
-                      DataCell(
-                        Container(
-                          width: 160,
-                          padding: EdgeInsets.symmetric(vertical: 8),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: _accentColor,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  studentName,
-                                  textDirection: widget.isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
-                                  style: TextStyle(
-                                    color: _textColor,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      for (var entry in groupedBaremes.entries)
-                        for (final bareme in entry.value)
-                          for (final subEntry in [
-                            {'id': bareme['id'], 'type': 'bareme'},
-                            ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-                                .map((s) => {'id': s['id'], 'type': 'sousBareme'})
-                          ])
-                            DataCell(
-                              Container(
-                                width: 110,
-                                padding: EdgeInsets.symmetric(vertical: 8),
-                                child: FutureBuilder<String>(
-                                  future: _getSelectedValue(studentId, subEntry['id']),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState == ConnectionState.waiting) {
-                                      return SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
-                                        ),
-                                      );
-                                    }
-                                    final value = snapshot.data ?? _dropdownValues[0];
-                                    return Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                                      decoration: BoxDecoration(
-                                        color: _getValueColor(value).withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: _getValueColor(value).withOpacity(0.3),
-                                        ),
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          value,
-                                          style: TextStyle(
-                                            color: _getValueColor(value),
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                    ],
-                  );
-                }).toList(),
-                // Ligne des statistiques
-                _buildStatsRow(_getTranslatedText('عدد التلاميذ المحققين', 'Nombre d\'élèves ayant atteint'), groupedBaremes, isPercentage: false),
-                // Ligne des pourcentages
-                _buildStatsRow(_getTranslatedText('النسبة المئوية', 'Pourcentage'), groupedBaremes, isPercentage: true),
-                // Ligne des boutons "تصنيف"
-                _buildButtonRow(_getTranslatedText('تصنيف', 'Classer'), Colors.green, Colors.yellow, groupedBaremes, isClassification: true),
-                // Ligne des boutons "خطة العلاج"
-                _buildButtonRow(_getTranslatedText('خطة العلاج', 'Plan de traitement'), Colors.blue, Colors.white, groupedBaremes, isClassification: false),
-              ],
-            ),
+              ),
+              // CORRECTION: Construction des colonnes simplifiée
+              ..._buildTableColumns(groupedBaremes),
+            ],
+            rows: [
+              ..._buildStudentRows(studentsDocs, groupedBaremes),
+              _buildStatsRow(
+                  _getTranslatedText('عدد التلاميذ المحققين',
+                      'Nombre d\'élèves ayant atteint'),
+                  groupedBaremes,
+                  isPercentage: false),
+              _buildStatsRow(
+                  _getTranslatedText('النسبة المئوية', 'Pourcentage'),
+                  groupedBaremes,
+                  isPercentage: true),
+              ..._buildButtonRows(groupedBaremes),
+            ],
           ),
         ),
       ),
-    );
+    ),
+  );
+}
+
+// NOUVELLE MÉTHODE: Construction des colonnes
+List<DataColumn> _buildTableColumns(Map<String, List<Map<String, dynamic>>> groupedBaremes) {
+  List<DataColumn> columns = [];
+  
+  for (var entry in groupedBaremes.entries) {
+    for (final bareme in entry.value) {
+      if (bareme['type'] == 'bareme') {
+        // Barème principal
+        columns.add(DataColumn(
+          label: _buildColumnHeader(bareme['value'], entry.key),
+        ));
+        
+        // Sous-barèmes de ce barème
+        for (final sousBareme in (bareme['sousBaremes'] as List<dynamic>? ?? [])) {
+          columns.add(DataColumn(
+            label: _buildColumnHeader(sousBareme['value'], entry.key),
+          ));
+        }
+      } else {
+        // Sous-barème seul
+        columns.add(DataColumn(
+          label: _buildColumnHeader(bareme['value'], entry.key),
+        ));
+      }
+    }
   }
+  
+  return columns;
+}
+
+// NOUVELLE MÉTHODE: Construction de l'en-tête de colonne
+Widget _buildColumnHeader(String title, String groupKey) {
+  return Container(
+    width: 110,
+    padding: EdgeInsets.symmetric(vertical: 8),
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [
+          _headerColors.putIfAbsent(groupKey, () => _getRandomColor()),
+          _headerColors[groupKey]!.withOpacity(0.8),
+        ],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderRadius: BorderRadius.circular(8),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black12,
+          blurRadius: 4,
+          offset: Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: Colors.white,
+            fontSize: 12,
+          ),
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    ),
+  );
+}
+
+// NOUVELLE MÉTHODE: Construction des lignes étudiants
+List<DataRow> _buildStudentRows(
+    List<QueryDocumentSnapshot> studentsDocs,
+    Map<String, List<Map<String, dynamic>>> groupedBaremes) {
+  return studentsDocs.asMap().entries.map((entry) {
+    final index = entry.key;
+    final studentDoc = entry.value;
+    final studentId = studentDoc.id;
+    final studentName = studentDoc['name'] ??
+        _getTranslatedText('غير معروف', 'Inconnu');
+
+    return DataRow(
+      color: MaterialStateProperty.resolveWith<Color>(
+        (Set<MaterialState> states) {
+          return index.isEven
+              ? _backgroundColor.withOpacity(0.3)
+              : Colors.transparent;
+        },
+      ),
+      cells: [
+        DataCell(_buildStudentNameCell(studentName)),
+        ..._buildStudentCells(studentId, groupedBaremes),
+      ],
+    );
+  }).toList();
+}
+
+// NOUVELLE MÉTHODE: Cellule nom étudiant
+Widget _buildStudentNameCell(String studentName) {
+  return Container(
+    width: 160,
+    padding: EdgeInsets.symmetric(vertical: 8),
+    child: Row(
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: _accentColor,
+            shape: BoxShape.circle,
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            studentName,
+            textDirection: widget.isFrenchInterface
+                ? TextDirection.ltr
+                : TextDirection.rtl,
+            style: TextStyle(
+              color: _textColor,
+              fontWeight: FontWeight.w500,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// NOUVELLE MÉTHODE: Cellules des barèmes pour un étudiant
+List<DataCell> _buildStudentCells(
+    String studentId, Map<String, List<Map<String, dynamic>>> groupedBaremes) {
+  List<DataCell> cells = [];
+  
+  for (var entry in groupedBaremes.entries) {
+    for (final bareme in entry.value) {
+      if (bareme['type'] == 'bareme') {
+        // Barème principal
+        cells.add(DataCell(_buildMarkCell(studentId, bareme['id'])));
+        
+        // Sous-barèmes
+        for (final sousBareme in (bareme['sousBaremes'] as List<dynamic>? ?? [])) {
+          cells.add(DataCell(_buildMarkCell(studentId, sousBareme['id'])));
+        }
+      } else {
+        // Sous-barème seul
+        cells.add(DataCell(_buildMarkCell(studentId, bareme['id'])));
+      }
+    }
+  }
+  
+  return cells;
+}
+
+// NOUVELLE MÉTHODE: Cellule de note
+Widget _buildMarkCell(String studentId, String baremeKey) {
+  return Container(
+    width: 110,
+    padding: EdgeInsets.symmetric(vertical: 8),
+    child: FutureBuilder<String>(
+      future: _getSelectedValue(studentId, baremeKey),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+            ),
+          );
+        }
+        final value = snapshot.data ?? _dropdownValues[0];
+        return Container(
+          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: _getValueColor(value).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: _getValueColor(value).withOpacity(0.3),
+            ),
+          ),
+          child: Center(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: _getValueColor(value),
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
+}
+
+// NOUVELLE MÉTHODE: Lignes de boutons
+List<DataRow> _buildButtonRows(Map<String, List<Map<String, dynamic>>> groupedBaremes) {
+  return [
+    _buildButtonRow(_getTranslatedText('تصنيف', 'Classer'), Colors.green, Colors.yellow, groupedBaremes,
+        isClassification: true),
+    _buildButtonRow(
+        _getTranslatedText('خطة العلاج', 'Plan de traitement'),
+        Colors.blue,
+        Colors.white,
+        groupedBaremes,
+        isClassification: false),
+  ];
+}
 
   Color _getValueColor(String value) {
     switch (value) {
@@ -2586,7 +2890,8 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
     }
   }
 
-  DataRow _buildStatsRow(String title, Map<String, List<Map<String, dynamic>>> groupedBaremes, 
+  DataRow _buildStatsRow(
+      String title, Map<String, List<Map<String, dynamic>>> groupedBaremes,
       {required bool isPercentage}) {
     return DataRow(
       color: MaterialStateProperty.all(_primaryColor.withOpacity(0.05)),
@@ -2606,10 +2911,32 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
         ),
         for (var entry in groupedBaremes.entries)
           for (final bareme in entry.value)
-            for (final subEntry in [
-              {'id': bareme['id']},
-              ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-            ])
+            if (bareme['type'] == 'bareme')
+              // Barème principal avec ses sous-barèmes
+              for (final subEntry in [
+                {'id': bareme['id'], 'type': 'bareme'},
+                ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+              ])
+                DataCell(
+                  Container(
+                    width: 110,
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isPercentage
+                            ? _secondaryColor.withOpacity(0.1)
+                            : _accentColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Center(
+                        child: _buildStatValue(subEntry['id'], isPercentage),
+                      ),
+                    ),
+                  ),
+                )
+            else
+              // Sous-barème seul
               DataCell(
                 Container(
                   width: 110,
@@ -2617,22 +2944,13 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
                   child: Container(
                     padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                     decoration: BoxDecoration(
-                      color: isPercentage ? _secondaryColor.withOpacity(0.1) : _accentColor.withOpacity(0.1),
+                      color: isPercentage
+                          ? _secondaryColor.withOpacity(0.1)
+                          : _accentColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Center(
-                      child: Text(
-                        isPercentage
-                            ? widget.totalStudents == 0
-                                ? _getTranslatedText('لا توجد درجات', 'Pas de notes')
-                                : '${((widget.sumCriteriaMaxPerBareme[subEntry['id']] ?? 0) / widget.totalStudents * 100).toStringAsFixed(2)}%'
-                            : widget.sumCriteriaMaxPerBareme[subEntry['id']]?.toString() ?? '0',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isPercentage ? _secondaryColor : _accentColor,
-                          fontSize: 12,
-                        ),
-                      ),
+                      child: _buildStatValue(bareme['id'], isPercentage),
                     ),
                   ),
                 ),
@@ -2641,25 +2959,77 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
     );
   }
 
-  DataRow _buildButtonRow(String buttonText, Color backgroundColor, Color textColor,
-      Map<String, List<Map<String, dynamic>>> groupedBaremes, {required bool isClassification}) {
+// CORRECTION : Méthode améliorée pour afficher les statistiques
+  Widget _buildStatValue(String baremeKey, bool isPercentage) {
+    // DEBUG: Afficher la clé recherchée
+    print('🔍 Recherche statistique pour: $baremeKey');
+
+    // Rechercher la valeur dans sumCriteriaMaxPerBareme
+    int? count = widget.sumCriteriaMaxPerBareme[baremeKey];
+
+    // Si non trouvé, essayer de chercher avec différentes variations de la clé
+    if (count == null) {
+      // Essayer de trouver la clé dans les statistiques disponibles
+      for (var key in widget.sumCriteriaMaxPerBareme.keys) {
+        if (key.contains(baremeKey) || baremeKey.contains(key)) {
+          count = widget.sumCriteriaMaxPerBareme[key];
+          print('🔄 Clé trouvée avec variation: $key -> $count');
+          break;
+        }
+      }
+    }
+
+    // Si toujours null, utiliser 0
+    count ??= 0;
+
+    print(
+        '📊 Statistique finale - Clé: $baremeKey, Valeur: $count, Pourcentage: $isPercentage');
+
+    if (isPercentage) {
+      if (widget.totalStudents == 0) {
+        return Text(
+          _getTranslatedText('لا توجد درجات', 'Pas de notes'),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: _secondaryColor,
+            fontSize: 12,
+          ),
+        );
+      } else {
+        final percentage = (count / widget.totalStudents * 100);
+        return Text(
+          '${percentage.toStringAsFixed(2)}%',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: _secondaryColor,
+            fontSize: 12,
+          ),
+        );
+      }
+    } else {
+      return Text(
+        count.toString(),
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: _accentColor,
+          fontSize: 12,
+        ),
+      );
+    }
+  }
+
+  DataRow _buildButtonRow(String buttonText, Color backgroundColor,
+      Color textColor, Map<String, List<Map<String, dynamic>>> groupedBaremes,
+      {required bool isClassification}) {
     return DataRow(
       cells: [
         DataCell(Container()),
         for (var entry in groupedBaremes.entries)
           for (final bareme in entry.value)
             for (final subEntry in [
-              {
-                'id': bareme['id'],
-                'type': 'bareme',
-                'name': bareme['value']
-              },
-              ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
-                  (s) => {
-                        'id': s['id'],
-                        'type': 'sousBareme',
-                        'name': s['value']
-                      })
+              {'id': bareme['id'], 'type': 'bareme', 'name': bareme['value']},
+              ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map((s) =>
+                  {'id': s['id'], 'type': 'sousBareme', 'name': s['value']})
             ])
               DataCell(
                 Container(
@@ -2724,7 +3094,8 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
                 if (_isMounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('${_getTranslatedText('حدث خطأ:', 'Erreur:')} $e'),
+                      content: Text(
+                          '${_getTranslatedText('حدث خطأ:', 'Erreur:')} $e'),
                       backgroundColor: Colors.red,
                     ),
                   );
@@ -2794,7 +3165,8 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
           .toList();
 
       if (isBaremeSelected) {
-        final baremeName = baremeSnapshot['baremeName'] ?? _getTranslatedText('غير معروف', 'Inconnu');
+        final baremeName = baremeSnapshot['baremeName'] ??
+            _getTranslatedText('غير معروف', 'Inconnu');
         result.add({
           'id': baremeId,
           'value': baremeName,
@@ -2802,7 +3174,8 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
         });
       } else if (selectedSousBaremes.isNotEmpty) {
         for (final sousBareme in selectedSousBaremes) {
-          final sousBaremeName = sousBareme['sousBaremeName'] ?? _getTranslatedText('غير معروف', 'Inconnu');
+          final sousBaremeName = sousBareme['sousBaremeName'] ??
+              _getTranslatedText('غير معروف', 'Inconnu');
           result.add({
             'id': sousBareme.id,
             'value': sousBaremeName,
@@ -2816,38 +3189,56 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
 
   Future<String> _getSelectedValue(String studentId, String baremeKey) async {
     try {
-      var docRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.currentUser.uid)
-          .collection('user_classes')
-          .doc(widget.classDocId)
-          .collection('students')
-          .doc(studentId)
-          .collection('baremes')
-          .doc(baremeKey);
+      // Vérifier si c'est un sous-barème (contient un tiret)
+      if (baremeKey.contains('-')) {
+        var parts = baremeKey.split('-');
+        var baremeId = parts[0];
+        var sousBaremeId = parts[1];
 
-      final parentDoc = await docRef.get();
-      if (!parentDoc.exists) {
-        return _dropdownValues[0];
-      }
+        var sousBaremeDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.currentUser.uid)
+            .collection('user_classes')
+            .doc(widget.classDocId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .doc(baremeId)
+            .collection('sous_baremes')
+            .doc(sousBaremeId)
+            .get();
 
-      final haveSoubarem = parentDoc.data()?['haveSoubarem'] ?? false;
-      if (haveSoubarem) {
-        final sousBaremesSnapshot = await docRef.collection('sous_baremes').get();
-        if (sousBaremesSnapshot.docs.isNotEmpty) {
-          final sousBaremeDocRef = sousBaremesSnapshot.docs.first;
-          final sousBaremeData = sousBaremeDocRef.data();
-          return sousBaremeData?['Marks']?.toString() ?? _dropdownValues[0];
+        if (sousBaremeDoc.exists) {
+          return sousBaremeDoc.data()?['Marks']?.toString() ??
+              _dropdownValues[0];
+        }
+      } else {
+        // C'est un barème principal
+        var baremeDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.currentUser.uid)
+            .collection('user_classes')
+            .doc(widget.classDocId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .doc(baremeKey)
+            .get();
+
+        if (baremeDoc.exists) {
+          return baremeDoc.data()?['Marks']?.toString() ?? _dropdownValues[0];
         }
       }
 
-      return parentDoc.data()?['Marks']?.toString() ?? _dropdownValues[0];
+      return _dropdownValues[0];
     } catch (e) {
+      print('Erreur récupération valeur pour $baremeKey: $e');
       return _dropdownValues[0];
     }
   }
 
-  Future<void> _classifyStudentsByBarem(String baremeId, {String? sousBaremeId}) async {
+  Future<void> _classifyStudentsByBarem(String baremeId,
+      {String? sousBaremeId}) async {
     try {
       var studentsSnapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -2865,7 +3256,8 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
 
       for (var studentDoc in studentsSnapshot.docs) {
         var studentId = studentDoc.id;
-        var studentName = studentDoc['name'] ?? _getTranslatedText('اسم غير معروف', 'Nom inconnu');
+        var studentName = studentDoc['name'] ??
+            _getTranslatedText('اسم غير معروف', 'Nom inconnu');
 
         var baremeRef = FirebaseFirestore.instance
             .collection('users')
@@ -2884,11 +3276,17 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
         if (snapshot.exists) {
           var value = snapshot['Marks'];
           if (value == '( + + + )') {
-            studentGroups[_getTranslatedText('مجموعة التميز', 'Groupe d\'excellence')]!.add(studentName);
+            studentGroups[_getTranslatedText(
+                    'مجموعة التميز', 'Groupe d\'excellence')]!
+                .add(studentName);
           } else if (value == '( + + - )') {
-            studentGroups[_getTranslatedText('مجموعة الدعم', 'Groupe de soutien')]!.add(studentName);
+            studentGroups[
+                    _getTranslatedText('مجموعة الدعم', 'Groupe de soutien')]!
+                .add(studentName);
           } else if (value == '( + - - )' || value == '( - - - )') {
-            studentGroups[_getTranslatedText('مجموعة العلاج', 'Groupe de traitement')]!.add(studentName);
+            studentGroups[_getTranslatedText(
+                    'مجموعة العلاج', 'Groupe de traitement')]!
+                .add(studentName);
           }
         }
       }
@@ -2908,8 +3306,9 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
       builder: (BuildContext context) {
         final screenWidth = MediaQuery.of(context).size.width;
         final screenHeight = MediaQuery.of(context).size.height;
-        final isPortrait = MediaQuery.of(context).orientation == Orientation.portrait;
-        
+        final isPortrait =
+            MediaQuery.of(context).orientation == Orientation.portrait;
+
         final dialogWidth = screenWidth * (isPortrait ? 0.9 : 0.7);
         final dialogMaxHeight = screenHeight * 0.8;
         final titleFontSize = screenWidth * 0.045;
@@ -2917,7 +3316,8 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
         final studentFontSize = screenWidth * 0.03;
 
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: ConstrainedBox(
             constraints: BoxConstraints(
               maxWidth: dialogWidth,
@@ -2943,7 +3343,8 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
                     ),
                     child: Center(
                       child: Text(
-                        _getTranslatedText('تصنيف التلاميذ', 'Classification des élèves'),
+                        _getTranslatedText(
+                            'تصنيف التلاميذ', 'Classification des élèves'),
                         style: TextStyle(
                           fontSize: titleFontSize.clamp(18, 24),
                           fontWeight: FontWeight.bold,
@@ -2953,7 +3354,6 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
                       ),
                     ),
                   ),
-                  
                   Expanded(
                     child: SingleChildScrollView(
                       padding: EdgeInsets.all(16),
@@ -2961,12 +3361,15 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           ...[
-                            _getTranslatedText('مجموعة التميز', 'Groupe d\'excellence'),
-                            _getTranslatedText('مجموعة الدعم', 'Groupe de soutien'),
-                            _getTranslatedText('مجموعة العلاج', 'Groupe de traitement')
+                            _getTranslatedText(
+                                'مجموعة التميز', 'Groupe d\'excellence'),
+                            _getTranslatedText(
+                                'مجموعة الدعم', 'Groupe de soutien'),
+                            _getTranslatedText(
+                                'مجموعة العلاج', 'Groupe de traitement')
                           ].map((groupName) {
                             return _buildResponsiveGroupCard(
-                              groupName, 
+                              groupName,
                               studentGroups[groupName]!,
                               groupTitleFontSize: groupTitleFontSize,
                               studentFontSize: studentFontSize,
@@ -2976,11 +3379,11 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
                       ),
                     ),
                   ),
-                  
                   Container(
                     padding: EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      border: Border(top: BorderSide(color: Colors.grey.shade300)),
+                      border:
+                          Border(top: BorderSide(color: Colors.grey.shade300)),
                       color: Colors.white,
                       borderRadius: BorderRadius.only(
                         bottomLeft: Radius.circular(16),
@@ -2992,7 +3395,8 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
                         onPressed: () => Navigator.of(context).pop(),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primaryColor,
-                          padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 12),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -3019,18 +3423,20 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
   }
 
   Widget _buildResponsiveGroupCard(
-    String groupName, 
+    String groupName,
     List<String> students, {
     required double groupTitleFontSize,
     required double studentFontSize,
   }) {
     Color cardColor;
     Color textColor;
-    
-    if (groupName.contains(_getTranslatedText('التميز', 'excellence')) || groupName.contains('excellence')) {
+
+    if (groupName.contains(_getTranslatedText('التميز', 'excellence')) ||
+        groupName.contains('excellence')) {
       cardColor = Colors.green.withOpacity(0.1);
       textColor = Colors.green;
-    } else if (groupName.contains(_getTranslatedText('الدعم', 'soutien')) || groupName.contains('soutien')) {
+    } else if (groupName.contains(_getTranslatedText('الدعم', 'soutien')) ||
+        groupName.contains('soutien')) {
       cardColor = Colors.orange.withOpacity(0.1);
       textColor = Colors.orange;
     } else {
@@ -3100,7 +3506,8 @@ Map<String, List<Map<String, dynamic>>> groupBaremes(List<Map<String, dynamic>> 
                   color: textColor.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.person, color: textColor.withOpacity(0.7), size: 16),
+                child: Icon(Icons.person,
+                    color: textColor.withOpacity(0.7), size: 16),
               ),
               title: Text(
                 student,

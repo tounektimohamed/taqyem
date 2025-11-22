@@ -1,14 +1,14 @@
-2025/10/06-21:46:18.049 41c41 Reusing MANIFEST /tmp/flutter_tools.YQXTNU/flutter_tools_chrome_device.TPHZWR/Default/shared_proto_db/MANIFEST-000001
-2025/10/06-21:46:18.054 41c41 Recovering log #23
-2025/10/06-21:46:18.056 41c41 Reusing old log /tmp/flutter_tools.YQXTNU/flutter_tools_chrome_device.TPHZWR/Default/shared_proto_db/000023.log 
-2025/10/06-21:46:18.056 41c41 Delete type=0 #7
-2025/10/06-21:46:18.058 41c41 Delete type=0 #10
-2025/10/06-21:46:18.058 41c41 Delete type=0 #19
-2025/10/06-21:46:18.058 41c41 Delete type=2 #17
-2025/10/06-21:46:18.058 41c41 Delete type=0 #16
-2025/10/06-21:46:18.058 41c41 Delete type=2 #11
-2025/10/06-21:46:18.058 41c41 Delete type=2 #14
-2025/10/06-21:46:18.058 41c41 Delete type=0 #4
-2025/10/06-21:46:18.058 41c41 Delete type=0 #13
-2025/10/06-21:46:18.058 41c41 Delete type=0 #3
-2025/10/06-21:46:18.058 41c41 Delete type=2 #8
+2025/11/21-20:21:30.994 39314 Reusing MANIFEST /tmp/flutter_tools.YHLJTK/flutter_tools_chrome_device.TMLPTF/Default/shared_proto_db/MANIFEST-000001
+2025/11/21-20:21:30.995 39314 Recovering log #23
+2025/11/21-20:21:31.006 39314 Reusing old log /tmp/flutter_tools.YHLJTK/flutter_tools_chrome_device.TMLPTF/Default/shared_proto_db/000023.log 
+2025/11/21-20:21:31.014 39314 Delete type=0 #7
+2025/11/21-20:21:31.015 39314 Delete type=0 #10
+2025/11/21-20:21:31.015 39314 Delete type=0 #19
+2025/11/21-20:21:31.015 39314 Delete type=2 #17
+2025/11/21-20:21:31.019 39314 Delete type=0 #16
+2025/11/21-20:21:31.019 39314 Delete type=2 #11
+2025/11/21-20:21:31.019 39314 Delete type=2 #14
+2025/11/21-20:21:31.019 39314 Delete type=0 #4
+2025/11/21-20:21:31.019 39314 Delete type=0 #13
+2025/11/21-20:21:31.019 39314 Delete type=0 #3
+2025/11/21-20:21:31.019 39314 Delete type=2 #8

@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:math';
 import 'package:Taqyem/taqyem/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
+import 'package:Taqyem/taqyem/StatisticsDashboard.dart';
 import 'package:Taqyem/taqyem/feedback_system.dart';
 import 'package:Taqyem/taqyem/payment/PaymentPage.dart';
 import 'package:Taqyem/taqyem/pdf/ManagePDFPage.dart';
+import 'package:Taqyem/taqyem/presence.dart';
 import 'package:Taqyem/taqyem/selectionPage.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -1238,6 +1240,28 @@ Widget _buildQuickAccessSection(BuildContext context) {
                   isLargeScreen,
                   () => Navigator.push(context,
                       MaterialPageRoute(builder: (_) => SelectionPage())),
+                ),
+                _buildResponsiveQuickAccessCard(
+                  context,
+                  Icons.analytics,
+                  'الإحصائيات',
+                  Colors.teal, // Nouvelle couleur
+                  isLargeScreen,
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => StatisticsPage()),
+                  ),
+                ),
+                _buildResponsiveQuickAccessCard(
+                  context,
+                  Icons.analytics,
+                  'سجل الحضور',
+                  Colors.teal,
+                  isLargeScreen,
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => AttendanceSystemPage()),
+                  ),
                 ),
                 _buildResponsiveQuickAccessCard(
                   context,
