@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:html' as html;
 import 'dart:math';
 import 'package:Taqyem/taqyem/payment/PaymentPage.dart';
+import 'package:Taqyem/taqyem/pdf_report_generator.dart';
+import 'package:Taqyem/taqyem/word_report_generator.dart';
 import 'package:http/http.dart' as http;
 import 'package:Taqyem/taqyem/da3m_tableau.dart';
 import 'package:flutter/material.dart';

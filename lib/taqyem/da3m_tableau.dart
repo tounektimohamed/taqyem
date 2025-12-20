@@ -19,7 +19,7 @@ class DataTranslator {
   static final Map<String, String> _classTranslations = {
     "السنة الأولى ابتدائي": "1ère année primaire",
     "السنة الأولى ابتدائي أ": "1ère année primaire A",
-    "السنة الأولى ابتدائي ب": "1ère année primaire B", 
+    "السنة الأولى ابتدائي ب": "1ère année primaire B",
     "السنة الأولى ابتدائي ج": "1ère année primaire C",
     "السنة الأولى ابتدائي د": "1ère année primaire D",
     "السنة الثانية ابتدائي": "2ème année primaire",
@@ -58,7 +58,7 @@ class DataTranslator {
     "تربية اسلامية": "Éducation islamique",
     "تربية تكنولوجية": "Éducation technologique",
     "تربية موسيقية": "Éducation musicale",
-    "تربية تشكيلية": "Éducation artistique", 
+    "تربية تشكيلية": "Éducation artistique",
     "تربية بدنية": "Éducation physique",
     "قواعد لغة": "Grammaire",
     "Expression orale et récitation": "Expression orale et récitation",
@@ -76,7 +76,7 @@ class DataTranslator {
 
   static final Map<String, String> _baremeTranslations = {
     "مع 1": "C1",
-    "مع 2": "C2", 
+    "مع 2": "C2",
     "مع 3": "C3",
     "مع 4": "C4",
     "مع 5": "C5",
@@ -84,7 +84,7 @@ class DataTranslator {
     "مع 1.2": "C1.2",
     "مع 1.3": "C1.3",
     "مع 2.1": "C2.1",
-    "مع 2.2": "C2.2", 
+    "مع 2.2": "C2.2",
     "مع 2.3": "C2.3",
     "مع 3.1": "C3.1",
     "مع 3.2": "C3.2",
@@ -97,66 +97,66 @@ class DataTranslator {
     "مع 5.3": "C5.3"
   };
 
-  // Version ultra-simple et robuste de détection
   static bool isForeignMatiere(String matiereName) {
     if (matiereName.isEmpty) return false;
-    
-    // Liste simple et large des matières étrangères
+
     final foreignKeywords = [
-      'expression', 'oral', 'récitation', 'lecture', 'production', 
-      'écrit', 'écriture', 'dictée', 'langue', 'anglais', 'français',
+      'expression',
+      'oral',
+      'récitation',
+      'lecture',
+      'production',
+      'écrit',
+      'écriture',
+      'dictée',
+      'langue',
+      'anglais',
+      'français',
       'لغة انقليزية'
     ];
-    
+
     String normalized = matiereName.toLowerCase().trim();
-    
-    // Vérifier si la matière contient un mot-clé étranger
-    bool isForeign = foreignKeywords.any((keyword) => 
-        normalized.contains(keyword));
-    
+
+    bool isForeign =
+        foreignKeywords.any((keyword) => normalized.contains(keyword));
+
     print('🔍 Détection: "$matiereName" -> $isForeign');
-    
+
     return isForeign;
   }
 
-  // Méthode de normalisation
   static String _normalizeText(String text) {
     if (text.isEmpty) return '';
     return text.trim().toLowerCase();
   }
 
-  // Traduire le nom d'une classe
   static String translateClass(String arabicName) {
     return _classTranslations[arabicName] ?? arabicName;
   }
 
-  // Traduire le nom d'une matière
   static String translateMatiere(String arabicName) {
     return _matiereTranslations[arabicName] ?? arabicName;
   }
 
-  // Traduire un critère/barème
   static String translateBareme(String arabicName) {
     return _baremeTranslations[arabicName] ?? arabicName;
   }
 
-  // Traduire un sous-critère
   static String translateSousBareme(String arabicName) {
     return _baremeTranslations[arabicName] ?? arabicName;
   }
 
-  // Obtenir le nom original arabe à partir de la traduction française
   static String getArabicClassFromFrench(String frenchName) {
     return _classTranslations.entries
-        .firstWhere((entry) => entry.value == frenchName, 
-                   orElse: () => MapEntry(frenchName, frenchName))
+        .firstWhere((entry) => entry.value == frenchName,
+            orElse: () => MapEntry(frenchName, frenchName))
         .key;
   }
 
   static String getArabicMatiereFromFrench(String frenchName) {
     return _matiereTranslations.entries
         .firstWhere((entry) => entry.value == frenchName,
-                   orElse: () => MapEntry(frenchName, frenchName))
+            orElse: () => MapEntry(frenchName, frenchName))
         .key;
   }
 }
@@ -190,12 +190,31 @@ class ClassificationPage extends StatefulWidget {
   _ClassificationPageState createState() => _ClassificationPageState();
 }
 
+class SolutionSelection {
+  final String text;
+  final String type; // 'json', 'global', 'personal', 'new'
+  final bool isProblem; // true pour problème, false pour solution
+  bool isSelected;
+
+  SolutionSelection({
+    required this.text,
+    required this.type,
+    required this.isProblem,
+    this.isSelected = false,
+  });
+}
+
 class _ClassificationPageState extends State<ClassificationPage> {
   List<dynamic> jsonData = [];
   bool _isGeneratingReport = false;
   bool _isLoading = true;
   int _selectedTabIndex = 0;
   bool _isFrenchInterface = false;
+  Map<String, List<SolutionSelection>> _groupSelections = {
+    'treatment': [],
+    'support': [],
+    'excellence': [],
+  };
 
   @override
   void initState() {
@@ -206,26 +225,24 @@ class _ClassificationPageState extends State<ClassificationPage> {
 
   void _detectLanguage() {
     bool isFrench = DataTranslator.isForeignMatiere(widget.matiereName);
-    
+
     print('=== DÉTECTION LANGUE ClassificationPage ===');
     print('Matière: "${widget.matiereName}"');
     print('Est française: $isFrench');
     print('=== FIN DÉTECTION ===');
-    
+
     setState(() {
       _isFrenchInterface = isFrench;
     });
   }
 
-  // Méthode de traduction - CORRIGÉE
   String _getTranslatedText(String arabicText, String frenchText) {
     return _isFrenchInterface ? frenchText : arabicText;
   }
 
-  // Méthode pour obtenir les noms de groupes selon la langue
   String _getGroupName(String arabicName) {
     if (!_isFrenchInterface) return arabicName;
-    
+
     switch (arabicName) {
       case 'مجموعة العلاج':
         return 'Groupe de traitement';
@@ -238,7 +255,6 @@ class _ClassificationPageState extends State<ClassificationPage> {
     }
   }
 
-  // Méthode pour obtenir les noms courts des groupes
   String _getShortGroupName(String fullName) {
     if (!_isFrenchInterface) {
       switch (fullName) {
@@ -325,10 +341,83 @@ class _ClassificationPageState extends State<ClassificationPage> {
     await batch.commit();
   }
 
-  void showSolutionAndProbleme(String groupName) async {
-    final userProposals = await _getUserProposal();
+  Future<List<Map<String, dynamic>>> _getProposals() async {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+    List<Map<String, dynamic>> allProposals = [];
+
+    try {
+      final userQuery = FirebaseFirestore.instance
+          .collection('users_proposals')
+          .doc(userId)
+          .collection('user_proposals')
+          .where('className', isEqualTo: widget.className)
+          .where('matiereName', isEqualTo: widget.matiereName)
+          .where('baremeName', isEqualTo: widget.baremeName);
+
+      if (widget.sousBaremeName != null && widget.sousBaremeName!.isNotEmpty) {
+        (userQuery as Query)
+            .where('sousBaremeName', isEqualTo: widget.sousBaremeName);
+      }
+
+      final userSnapshot = await userQuery.get();
+
+      for (var doc in userSnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        allProposals.add({
+          'id': doc.id,
+          ...data,
+          'isUserProposal': true,
+          'source': 'personal',
+        });
+      }
+
+      Query globalQuery = FirebaseFirestore.instance
+          .collection('users_proposals')
+          .doc('global_proposals')
+          .collection('approved_proposals')
+          .where('status', isEqualTo: 'approved')
+          .where('className', isEqualTo: widget.className)
+          .where('matiereName', isEqualTo: widget.matiereName)
+          .where('baremeName', isEqualTo: widget.baremeName);
+
+      if (widget.sousBaremeName != null && widget.sousBaremeName!.isNotEmpty) {
+        globalQuery = globalQuery.where('sousBaremeName',
+            isEqualTo: widget.sousBaremeName);
+      }
+
+      final globalSnapshot = await globalQuery.get();
+
+      for (var doc in globalSnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        allProposals.add({
+          'id': doc.id,
+          ...data,
+          'isUserProposal': false,
+          'source': 'global',
+          'userName':
+              data['userName'] ?? _getTranslatedText('مسؤول', 'Administrateur'),
+        });
+      }
+
+      print('📋 Nombre total de propositions: ${allProposals.length}');
+      print('📋 Personnelles: ${userSnapshot.docs.length}');
+      print('📋 Globales: ${globalSnapshot.docs.length}');
+
+      return allProposals;
+    } catch (e) {
+      print('❌ Erreur lors de la récupération des propositions: $e');
+      return [];
+    }
+  }
+
+  void showSolutionAndProbleme(String groupName, String groupKey) async {
+    print('🔍 Chargement des propositions pour le groupe: $groupName ($groupKey)');
     
-    var result = jsonData.firstWhere(
+    final proposals = await _getProposals();
+    
+    List<SolutionSelection> currentSelections = _groupSelections[groupKey] ?? [];
+    
+    var jsonResult = jsonData.firstWhere(
       (item) {
         String jsonClasse = item['classe'].trim().toLowerCase();
         String jsonMatiere = item['matiere'].trim().toLowerCase();
@@ -346,378 +435,467 @@ class _ClassificationPageState extends State<ClassificationPage> {
       orElse: () => null,
     );
 
+    List<SolutionSelection> allSelections = [];
+
+    if (jsonResult != null) {
+      if (jsonResult['solution']?.isNotEmpty == true) {
+        allSelections.add(SolutionSelection(
+          text: jsonResult['solution'],
+          type: 'json',
+          isProblem: false,
+          isSelected: currentSelections.any((s) => s.text == jsonResult['solution'] && s.type == 'json'),
+        ));
+      }
+      if (jsonResult['probleme']?.isNotEmpty == true) {
+        allSelections.add(SolutionSelection(
+          text: jsonResult['probleme'],
+          type: 'json',
+          isProblem: true,
+          isSelected: currentSelections.any((s) => s.text == jsonResult['probleme'] && s.type == 'json'),
+        ));
+      }
+    }
+
+    final globalProposals = proposals.where((p) => p['source'] == 'global').toList();
+    for (var proposal in globalProposals) {
+      if (proposal['solution']?.isNotEmpty == true) {
+        allSelections.add(SolutionSelection(
+          text: proposal['solution'],
+          type: 'global',
+          isProblem: false,
+          isSelected: currentSelections.any((s) => s.text == proposal['solution'] && s.type == 'global'),
+        ));
+      }
+      if (proposal['probleme']?.isNotEmpty == true) {
+        allSelections.add(SolutionSelection(
+          text: proposal['probleme'],
+          type: 'global',
+          isProblem: true,
+          isSelected: currentSelections.any((s) => s.text == proposal['probleme'] && s.type == 'global'),
+        ));
+      }
+    }
+
+    final personalProposals = proposals.where((p) => p['source'] == 'personal').toList();
+    for (var proposal in personalProposals) {
+      if (proposal['solution']?.isNotEmpty == true) {
+        allSelections.add(SolutionSelection(
+          text: proposal['solution'],
+          type: 'personal',
+          isProblem: false,
+          isSelected: currentSelections.any((s) => s.text == proposal['solution'] && s.type == 'personal'),
+        ));
+      }
+      if (proposal['probleme']?.isNotEmpty == true) {
+        allSelections.add(SolutionSelection(
+          text: proposal['probleme'],
+          type: 'personal',
+          isProblem: true,
+          isSelected: currentSelections.any((s) => s.text == proposal['probleme'] && s.type == 'personal'),
+        ));
+      }
+    }
+
     TextEditingController solutionController = TextEditingController();
     TextEditingController problemeController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16.0),
-          ),
-          elevation: 8,
-          child: Container(
-            padding: EdgeInsets.all(20.0),
-            width: MediaQuery.of(context).size.width * 0.9,
-            height: MediaQuery.of(context).size.height * 0.8,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: EdgeInsets.only(bottom: 16.0),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(color: Colors.grey.shade300),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.assignment, color: Colors.blue.shade700),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          _getTranslatedText(
-                            'خطة العلاج وأصل الخطأ لـ $groupName',
-                            'Plan de traitement et origine de l\'erreur pour $groupName'
-                          ),
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade800,
-                          ),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.0),
+              ),
+              elevation: 8,
+              child: Container(
+                padding: EdgeInsets.all(20.0),
+                width: MediaQuery.of(context).size.width * 0.9,
+                height: MediaQuery.of(context).size.height * 0.8,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.only(bottom: 16.0),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.grey.shade300),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-
-                SizedBox(height: 20),
-
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.all(16.0),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.orange.shade300),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.lightbulb_outline, color: Colors.orange.shade700, size: 18),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    _getTranslatedText('الحل:', 'Solution:'),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.orange.shade700,
-                                    ),
-                                  ),
-                                ],
+                      child: Row(
+                        children: [
+                          Icon(Icons.assignment, color: Colors.blue.shade700),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _getTranslatedText(
+                                'تحديد الحلول والمشاكل لـ $groupName',
+                                'Sélection des solutions et problèmes pour $groupName'
                               ),
-                              SizedBox(height: 8),
-                              Text(
-                                result != null ? result['solution'] : _getTranslatedText('لا يوجد حل متاح', 'Aucune solution disponible'),
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        SizedBox(height: 20),
-
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.all(16.0),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.red.shade300),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.warning_amber_outlined, color: Colors.red.shade700, size: 18),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    _getTranslatedText('المشكلة:', 'Problème:'),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.red.shade700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                result != null ? result['probleme'] : _getTranslatedText('لا يوجد مشكلة محددة', 'Aucun problème spécifié'),
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  height: 1.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        
-                        SizedBox(height: 24),
-                        
-                        if (userProposals.isNotEmpty) ...[
-                          Row(
-                            children: [
-                              Icon(Icons.history, color: Colors.blue.shade700, size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                _getTranslatedText('مقترحاتك:', 'Vos propositions:'),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  color: Colors.blue.shade800,
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 12),
-                          ...userProposals.map((proposal) => Card(
-                            elevation: 2,
-                            margin: EdgeInsets.only(bottom: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (proposal['solution']?.isNotEmpty == true) ...[
-                                    Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Icon(Icons.check_circle_outline,
-                                            color: Colors.green.shade600, size: 16),
-                                        SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            _getTranslatedText(
-                                              'الحل المقترح: ${proposal['solution']}',
-                                              'Solution proposée: ${proposal['solution']}'
-                                            ),
-                                            style: TextStyle(fontSize: 14),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 6),
-                                  ],
-                                  if (proposal['probleme']?.isNotEmpty == true) ...[
-                                    Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Icon(Icons.analytics_outlined,
-                                            color: Colors.blue.shade600, size: 16),
-                                        SizedBox(width: 8),
-                                        Expanded(
-                                          child: Text(
-                                            _getTranslatedText(
-                                              'أصل المشكلة المقترح: ${proposal['probleme']}',
-                                              'Origine du problème proposée: ${proposal['probleme']}'
-                                            ),
-                                            style: TextStyle(fontSize: 14),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    SizedBox(height: 6),
-                                  ],
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.end,
-                                    children: [
-                                      if (proposal['isUserProposal'] == true)
-                                        IconButton(
-                                          icon: Icon(Icons.delete_outline,
-                                                    color: Colors.red.shade600, size: 20),
-                                          onPressed: () {
-                                            _deleteUserProposal(proposal['id']);
-                                            Navigator.of(context).pop();
-                                          },
-                                          tooltip: _getTranslatedText('حذف المقترح', 'Supprimer la proposition'),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )).toList(),
-                          SizedBox(height: 16),
-                        ],
-                        
-                        Row(
-                          children: [
-                            Icon(Icons.add_circle_outline, color: Colors.blue.shade700, size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              _getTranslatedText('أضف مقترحات جديدة:', 'Ajouter de nouvelles propositions:'),
                               style: TextStyle(
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 16,
                                 color: Colors.blue.shade800,
                               ),
                             ),
-                          ],
-                        ),
-                        SizedBox(height: 16),
-                        Column(
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.select_all, color: Colors.blue.shade700),
+                            onPressed: () {
+                              bool allSelected = allSelections.every((s) => s.isSelected);
+                              setState(() {
+                                for (var selection in allSelections) {
+                                  selection.isSelected = !allSelected;
+                                }
+                              });
+                            },
+                            tooltip: _getTranslatedText(
+                              'تحديد/إلغاء الكل',
+                              'Tout sélectionner/désélectionner'
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: 20),
+
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              _getTranslatedText('الحل المقترح', 'Solution proposée'),
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade700,
-                              ),
+                            Row(
+                              children: [
+                                Icon(Icons.checklist, color: Colors.blue.shade700, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  _getTranslatedText(
+                                    'اختر ما يناسب هذا المجموعة:',
+                                    'Sélectionnez ce qui convient à ce groupe:'
+                                  ),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Colors.blue.shade800,
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Container(
+                                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    '${allSelections.where((s) => s.isSelected).length}/${allSelections.length}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue.shade700,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            SizedBox(height: 8),
-                            TextField(
-                              controller: solutionController,
-                              decoration: InputDecoration(
-                                hintText: _getTranslatedText('أدخل اقتراحك للحل...', 'Entrez votre suggestion de solution...'),
-                                border: OutlineInputBorder(
+                            SizedBox(height: 12),
+                            
+                            ...allSelections.map((selection) {
+                              Color color;
+                              IconData icon;
+                              String prefix;
+                              
+                              if (selection.type == 'json') {
+                                color = Colors.orange;
+                                icon = selection.isProblem 
+                                    ? Icons.warning_amber_outlined 
+                                    : Icons.lightbulb_outline;
+                                prefix = _getTranslatedText('موصى به', 'Recommandé');
+                              } else if (selection.type == 'global') {
+                                color = Colors.green;
+                                icon = selection.isProblem 
+                                    ? Icons.analytics 
+                                    : Icons.check_circle;
+                                prefix = _getTranslatedText('معتمد', 'Approuvé');
+                              } else {
+                                color = Colors.blue;
+                                icon = selection.isProblem 
+                                    ? Icons.analytics_outlined 
+                                    : Icons.check_circle_outline;
+                                prefix = _getTranslatedText('شخصي', 'Personnel');
+                              }
+                              
+                              return Card(
+                                elevation: 2,
+                                margin: EdgeInsets.only(bottom: 8),
+                                shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: Colors.grey.shade400),
+                                  side: BorderSide(
+                                    color: selection.isSelected ? color : Colors.grey.shade300,
+                                    width: selection.isSelected ? 2 : 1,
+                                  ),
                                 ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: Colors.blue.shade600),
+                                child: InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      selection.isSelected = !selection.isSelected;
+                                    });
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Checkbox(
+                                          value: selection.isSelected,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              selection.isSelected = value!;
+                                            });
+                                          },
+                                          activeColor: color,
+                                          checkColor: Colors.white,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Container(
+                                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: color.withOpacity(0.1),
+                                                      borderRadius: BorderRadius.circular(12),
+                                                      border: Border.all(color: color.withOpacity(0.3)),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(icon, size: 12, color: color),
+                                                        SizedBox(width: 4),
+                                                        Text(
+                                                          '$prefix • ${selection.isProblem ? _getTranslatedText('مشكلة', 'Problème') : _getTranslatedText('حل', 'Solution')}',
+                                                          style: TextStyle(
+                                                            fontSize: 10,
+                                                            fontWeight: FontWeight.bold,
+                                                            color: color,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              SizedBox(height: 8),
+                                              Text(
+                                                selection.text,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  height: 1.4,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                prefixIcon: Icon(Icons.lightbulb, color: Colors.grey.shade600),
-                              ),
-                              maxLines: 3,
-                              textInputAction: TextInputAction.next,
+                              );
+                            }).toList(),
+
+                            SizedBox(height: 24),
+                            
+                            Row(
+                              children: [
+                                Icon(Icons.add_circle_outline, color: Colors.blue.shade700, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  _getTranslatedText('أضف مقترحات جديدة لهذا المجموعة:', 
+                                      'Ajouter de nouvelles propositions pour ce groupe:'),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: Colors.blue.shade800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 16),
+                            
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _getTranslatedText('حل جديد:', 'Nouvelle solution:'),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                TextField(
+                                  controller: solutionController,
+                                  decoration: InputDecoration(
+                                    hintText: _getTranslatedText('أدخل اقتراحك للحل...', 
+                                        'Entrez votre suggestion de solution...'),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: Colors.grey.shade400),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: Colors.blue.shade600),
+                                    ),
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  ),
+                                  maxLines: 3,
+                                ),
+                              ],
+                            ),
+                            
+                            SizedBox(height: 16),
+                            
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _getTranslatedText('مشكلة جديدة:', 'Nouveau problème:'),
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                TextField(
+                                  controller: problemeController,
+                                  decoration: InputDecoration(
+                                    hintText: _getTranslatedText('أدخل اقتراحك لأصل المشكلة...', 
+                                        'Entrez votre suggestion pour l\'origine du problème...'),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: Colors.grey.shade400),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(color: Colors.blue.shade600),
+                                    ),
+                                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  ),
+                                  maxLines: 3,
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        SizedBox(height: 16),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _getTranslatedText('أصل المشكلة المقترح', 'Origine du problème proposée'),
-                              style: TextStyle(
-                                fontWeight: FontWeight.w500,
-                                color: Colors.grey.shade700,
+                      ),
+                    ),
+
+                    SizedBox(height: 20),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              _groupSelections[groupKey] = allSelections.where((s) => s.isSelected).toList();
+                              
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(_getTranslatedText(
+                                    'تم حفظ التحديدات لهذا المجموعة',
+                                    'Sélections enregistrées pour ce groupe'
+                                  )),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                              
+                              Navigator.of(context).pop();
+                            },
+                            icon: Icon(Icons.save, size: 20),
+                            label: Text(
+                              _getTranslatedText('حفظ التحديدات', 'Enregistrer les sélections'),
+                              style: TextStyle(fontSize: 16),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.shade700,
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            SizedBox(height: 8),
-                            TextField(
-                              controller: problemeController,
-                              decoration: InputDecoration(
-                                hintText: _getTranslatedText('أدخل اقتراحك لأصل المشكلة...', 'Entrez votre suggestion pour l\'origine du problème...'),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: Colors.grey.shade400),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: Colors.blue.shade600),
-                                ),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                prefixIcon: Icon(Icons.psychology, color: Colors.grey.shade600),
-                              ),
-                              maxLines: 3,
-                              textInputAction: TextInputAction.next,
+                          ),
+                        ),
+                        
+                        SizedBox(width: 12),
+                        
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              if (solutionController.text.isNotEmpty ||
+                                  problemeController.text.isNotEmpty) {
+                                await _saveUserProposal(
+                                  solutionController.text,
+                                  problemeController.text,
+                                  groupName,
+                                );
+                                
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(_getTranslatedText(
+                                      'تم حفظ المقترحات بنجاح',
+                                      'Propositions enregistrées avec succès'
+                                    )),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                                
+                                Navigator.of(context).pop();
+                                showSolutionAndProbleme(groupName, groupKey);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(_getTranslatedText(
+                                      'يرجى إدخال حل أو مشكلة على الأقل',
+                                      'Veuillez entrer au moins une solution ou un problème'
+                                    )),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                              }
+                            },
+                            icon: Icon(Icons.add, size: 20),
+                            label: Text(
+                              _getTranslatedText('حفظ الجديد', 'Sauvegarder nouveau'),
+                              style: TextStyle(fontSize: 16),
                             ),
-                          ],
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green.shade700,
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                ),
-
-                SizedBox(height: 20),
-
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        style: OutlinedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Text(_getTranslatedText('إغلاق', 'Fermer'), style: TextStyle(fontSize: 16)),
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          if (solutionController.text.isNotEmpty ||
-                              problemeController.text.isNotEmpty) {
-                            await _saveUserProposal(
-                              solutionController.text,
-                              problemeController.text,
-                              groupName,
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(_getTranslatedText('تم حفظ المقترحات بنجاح', 'Propositions enregistrées avec succès')),
-                                backgroundColor: Colors.green,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                            Navigator.of(context).pop();
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(_getTranslatedText('يرجى إدخال حل أو مشكلة على الأقل', 'Veuillez entrer au moins une solution ou un problème')),
-                                backgroundColor: Colors.orange,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue.shade700,
-                          padding: EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Text(
-                          _getTranslatedText('حفظ المقترحات الجديدة', 'Enregistrer les nouvelles propositions'),
-                          style: TextStyle(fontSize: 16, color: Colors.white),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );
   }
 
-  Future<void> generateAndOpenTreatmentPlan() async {
+  Future<void> _generateSingleGroupReport(String groupName, String groupKey) async {
     setState(() {
       _isGeneratingReport = true;
     });
@@ -736,16 +914,19 @@ class _ClassificationPageState extends State<ClassificationPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
                 ),
                 SizedBox(height: 20),
                 Text(
-                  _getTranslatedText("جاري إنشاء التقرير...", "Génération du rapport en cours..."),
+                  _getTranslatedText("جاري إنشاء التقرير...",
+                      "Génération du rapport en cours..."),
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 10),
                 Text(
-                  _getTranslatedText("يرجى الانتظار، هذه العملية قد تستغرق بضع لحظات", "Veuillez patienter, cette opération peut prendre quelques instants"),
+                  _getTranslatedText("تقرير مجموعة $groupName",
+                      "Rapport du groupe $groupName"),
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                 ),
@@ -760,10 +941,50 @@ class _ClassificationPageState extends State<ClassificationPage> {
       final groupedStudents = await _getGroupedStudentsData();
 
       if (groupedStudents.isEmpty) {
-        throw Exception(_getTranslatedText('لم يتم العثور على أي طالب في القسم', 'Aucun étudiant trouvé dans la classe'));
+        throw Exception(_getTranslatedText('لم يتم العثور على أي طالب في القسم',
+            'Aucun étudiant trouvé dans la classe'));
       }
 
-      final unifiedSolutions = await _getUnifiedSolutions();
+      // Obtenir le nom du groupe traduit
+      String translatedGroupName = groupName;
+      String groupKeyForData = '';
+      
+      if (groupName.contains(_getTranslatedText('العلاج', 'traitement'))) {
+        groupKeyForData = 'treatment';
+        translatedGroupName = _getTranslatedText('مجموعة العلاج', 'Groupe de traitement');
+      } else if (groupName.contains(_getTranslatedText('الدعم', 'soutien'))) {
+        groupKeyForData = 'support';
+        translatedGroupName = _getTranslatedText('مجموعة الدعم', 'Groupe de soutien');
+      } else {
+        groupKeyForData = 'excellence';
+        translatedGroupName = _getTranslatedText('مجموعة التميز', 'Groupe d\'excellence');
+      }
+
+      // Sélections pour ce groupe
+      List<SolutionSelection> groupSelections = _groupSelections[groupKey] ?? [];
+      
+      if (groupSelections.isEmpty) {
+        throw Exception(_getTranslatedText(
+          'يرجى تحديد حلول ومشاكل لهذا المجموعة أولاً',
+          'Veuillez d\'abord sélectionner des solutions et problèmes pour ce groupe'
+        ));
+      }
+
+      List<Map<String, dynamic>> selectedSolutions = groupSelections
+          .where((item) => !item.isProblem)
+          .map((item) => {
+                'text': item.text,
+                'source': item.type,
+              })
+          .toList();
+
+      List<Map<String, dynamic>> selectedProblems = groupSelections
+          .where((item) => item.isProblem)
+          .map((item) => {
+                'text': item.text,
+                'source': item.type,
+              })
+          .toList();
 
       final reportData = {
         'schoolName': widget.schoolName,
@@ -772,52 +993,23 @@ class _ClassificationPageState extends State<ClassificationPage> {
         'matiereName': widget.matiereName,
         'baremeName': widget.baremeName,
         'sousBaremeName': widget.sousBaremeName ?? '',
+        'groupName': translatedGroupName,
+        'isCompleteReport': false,
         'groups': {
-          'treatment': groupedStudents[_getTranslatedText('مجموعة العلاج', 'Groupe de traitement')]
-                  ?.map((s) => s['name'])
-                  .whereType<String>()
-                  .toList() ??
-              [],
-          'support': groupedStudents[_getTranslatedText('مجموعة الدعم', 'Groupe de soutien')]
-                  ?.map((s) => s['name'])
-                  .whereType<String>()
-                  .toList() ??
-              [],
-          'excellence': groupedStudents[_getTranslatedText('مجموعة التميز', 'Groupe d\'excellence')]
-                  ?.map((s) => s['name'])
-                  .whereType<String>()
-                  .toList() ??
-              [],
-        },
-        'solutions': {
-          'default': {
-            'solution': unifiedSolutions['defaultSolution'] ?? '',
-            'probleme': unifiedSolutions['defaultProbleme'] ?? '',
-          },
-          'userProposals': [
-            ...(unifiedSolutions['userSolutions']
-                    ?.map((s) => {'solution': s})
+          groupKeyForData: {
+            'students': groupedStudents[translatedGroupName]
+                    ?.map((s) => s['name'])
+                    .whereType<String>()
                     .toList() ??
-                []),
-            ...(unifiedSolutions['userProblems']
-                    ?.map((p) => {'probleme': p})
-                    .toList() ??
-                []),
-          ],
-          'globalProposals': [
-            ...(unifiedSolutions['globalSolutions']
-                    ?.map((s) => {'solution': s})
-                    .toList() ??
-                []),
-            ...(unifiedSolutions['globalProblems']
-                    ?.map((p) => {'probleme': p})
-                    .toList() ??
-                []),
-          ],
+                [],
+            'solutions': selectedSolutions,
+            'problems': selectedProblems,
+          }
         },
       };
 
-      const serverUrl = 'https://print-maker.onrender.com/generate-treatment-plan';
+      const serverUrl =
+          'https://print-maker.onrender.com/generate-treatment-plan';
       final response = await http
           .post(
             Uri.parse(serverUrl),
@@ -834,26 +1026,230 @@ class _ClassificationPageState extends State<ClassificationPage> {
           html.Url.revokeObjectUrl(url);
         } else {
           final tempDir = await getTemporaryDirectory();
-          final file = File('${tempDir.path}/treatment_plan.html');
+          final file = File('${tempDir.path}/treatment_plan_${groupKey}.html');
           await file.writeAsBytes(response.bodyBytes);
           OpenFile.open(file.path);
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(_getTranslatedText('تم إنشاء التقرير بنجاح', 'Rapport généré avec succès')),
+            content: Text(_getTranslatedText(
+                'تم إنشاء التقرير للمجموعة $groupName بنجاح',
+                'Rapport pour le groupe $groupName généré avec succès')),
             backgroundColor: Colors.green,
           ),
         );
       } else {
         throw Exception(
-            _getTranslatedText('خطأ في الخادم:', 'Erreur serveur:') + ' ${response.statusCode}\n${response.body}');
+            _getTranslatedText('خطأ في الخادم:', 'Erreur serveur:') +
+                ' ${response.statusCode}\n${response.body}');
       }
     } catch (e) {
-      debugPrint('[TreatmentPlan] ERREUR: $e');
+      debugPrint('[SingleGroupReport] ERREUR: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_getTranslatedText('خطأ في الإنشاء:', 'Erreur lors de la création:') + ' ${e.toString()}'),
+          content: Text(_getTranslatedText(
+                  'خطأ في الإنشاء:', 'Erreur lors de la création:') +
+              ' ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isGeneratingReport = false;
+      });
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _generateCompleteReport() async {
+    setState(() {
+      _isGeneratingReport = true;
+    });
+
+    bool allGroupsHaveSelections = _groupSelections['treatment']!.isNotEmpty ||
+                                 _groupSelections['support']!.isNotEmpty ||
+                                 _groupSelections['excellence']!.isNotEmpty;
+
+    if (!allGroupsHaveSelections) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_getTranslatedText(
+            'يرجى تحديد حلول ومشاكل على الأقل لمجموعة واحدة',
+            'Veuillez sélectionner des solutions et problèmes pour au moins un groupe'
+          )),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      setState(() {
+        _isGeneratingReport = false;
+      });
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(
+                  valueColor:
+                      AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  _getTranslatedText("جاري إنشاء التقرير الكامل...",
+                      "Génération du rapport complet..."),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 10),
+                Text(
+                  _getTranslatedText("تقرير شامل لجميع المجموعات",
+                      "Rapport complet pour tous les groupes"),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    try {
+      final groupedStudents = await _getGroupedStudentsData();
+
+      if (groupedStudents.isEmpty) {
+        throw Exception(_getTranslatedText('لم يتم العثور على أي طالب في القسم',
+            'Aucun étudiant trouvé dans la classe'));
+      }
+
+      final reportData = {
+        'schoolName': widget.schoolName,
+        'profName': widget.profName,
+        'className': widget.className,
+        'matiereName': widget.matiereName,
+        'baremeName': widget.baremeName,
+        'sousBaremeName': widget.sousBaremeName ?? '',
+        'isCompleteReport': true,
+        'groups': {
+          'treatment': {
+            'students': groupedStudents[_getTranslatedText('مجموعة العلاج', 'Groupe de traitement')]
+                    ?.map((s) => s['name'])
+                    .whereType<String>()
+                    .toList() ??
+                [],
+            'solutions': _groupSelections['treatment']!
+                .where((item) => !item.isProblem)
+                .map((item) => {
+                      'text': item.text,
+                      'source': item.type,
+                    })
+                .toList(),
+            'problems': _groupSelections['treatment']!
+                .where((item) => item.isProblem)
+                .map((item) => {
+                      'text': item.text,
+                      'source': item.type,
+                    })
+                .toList(),
+          },
+          'support': {
+            'students': groupedStudents[_getTranslatedText('مجموعة الدعم', 'Groupe de soutien')]
+                    ?.map((s) => s['name'])
+                    .whereType<String>()
+                    .toList() ??
+                [],
+            'solutions': _groupSelections['support']!
+                .where((item) => !item.isProblem)
+                .map((item) => {
+                      'text': item.text,
+                      'source': item.type,
+                    })
+                .toList(),
+            'problems': _groupSelections['support']!
+                .where((item) => item.isProblem)
+                .map((item) => {
+                      'text': item.text,
+                      'source': item.type,
+                    })
+                .toList(),
+          },
+          'excellence': {
+            'students': groupedStudents[_getTranslatedText('مجموعة التميز', 'Groupe d\'excellence')]
+                    ?.map((s) => s['name'])
+                    .whereType<String>()
+                    .toList() ??
+                [],
+            'solutions': _groupSelections['excellence']!
+                .where((item) => !item.isProblem)
+                .map((item) => {
+                      'text': item.text,
+                      'source': item.type,
+                    })
+                .toList(),
+            'problems': _groupSelections['excellence']!
+                .where((item) => item.isProblem)
+                .map((item) => {
+                      'text': item.text,
+                      'source': item.type,
+                    })
+                .toList(),
+          },
+        },
+      };
+
+      const serverUrl =
+          'https://print-maker.onrender.com/generate-treatment-plan';
+      final response = await http
+          .post(
+            Uri.parse(serverUrl),
+            headers: {'Content-Type': 'application/json'},
+            body: json.jsonEncode(reportData),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        if (kIsWeb) {
+          final blob = html.Blob([response.bodyBytes], 'text/html');
+          final url = html.Url.createObjectUrlFromBlob(blob);
+          html.window.open(url, '_blank');
+          html.Url.revokeObjectUrl(url);
+        } else {
+          final tempDir = await getTemporaryDirectory();
+          final file = File('${tempDir.path}/complete_treatment_plan.html');
+          await file.writeAsBytes(response.bodyBytes);
+          OpenFile.open(file.path);
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_getTranslatedText(
+                'تم إنشاء التقرير الكامل بنجاح',
+                'Rapport complet généré avec succès')),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        throw Exception(
+            _getTranslatedText('خطأ في الخادم:', 'Erreur serveur:') +
+                ' ${response.statusCode}\n${response.body}');
+      }
+    } catch (e) {
+      debugPrint('[CompleteReport] ERREUR: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_getTranslatedText(
+                  'خطأ في الإنشاء:', 'Erreur lors de la création:') +
+              ' ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -868,31 +1264,33 @@ class _ClassificationPageState extends State<ClassificationPage> {
   Future<Map<String, dynamic>> _getUnifiedSolutions() async {
     final defaultSol = _getSolutionsData();
 
-    final userQuery = FirebaseFirestore.instance
+    Query userQuery = FirebaseFirestore.instance
         .collection('users_proposals')
         .doc(FirebaseAuth.instance.currentUser!.uid)
         .collection('user_proposals')
         .where('className', isEqualTo: widget.className)
-        .where('matiereName', isEqualTo: widget.matiereName)
+        .where('matieneName', isEqualTo: widget.matiereName)
         .where('baremeName', isEqualTo: widget.baremeName);
 
-    if (widget.sousBaremeName != null) {
-      userQuery.where('sousBaremeName', isEqualTo: widget.sousBaremeName);
+    if (widget.sousBaremeName != null && widget.sousBaremeName!.isNotEmpty) {
+      userQuery =
+          userQuery.where('sousBaremeName', isEqualTo: widget.sousBaremeName);
     }
 
     final userProposals = await userQuery.get();
 
-    final globalQuery = FirebaseFirestore.instance
+    Query globalQuery = FirebaseFirestore.instance
         .collection('users_proposals')
         .doc('global_proposals')
         .collection('approved_proposals')
         .where('status', isEqualTo: 'approved')
         .where('className', isEqualTo: widget.className)
-        .where('matiereName', isEqualTo: widget.matiereName)
+        .where('matieneName', isEqualTo: widget.matiereName)
         .where('baremeName', isEqualTo: widget.baremeName);
 
-    if (widget.sousBaremeName != null) {
-      globalQuery.where('sousBaremeName', isEqualTo: widget.sousBaremeName);
+    if (widget.sousBaremeName != null && widget.sousBaremeName!.isNotEmpty) {
+      globalQuery =
+          globalQuery.where('sousBaremeName', isEqualTo: widget.sousBaremeName);
     }
 
     final globalProposals = await globalQuery.get();
@@ -968,7 +1366,22 @@ class _ClassificationPageState extends State<ClassificationPage> {
     return groupedStudents;
   }
 
-  Widget _buildGroupTab(String groupName, Color color, IconData icon, List<Map<String, String>> students) {
+  Widget _buildGroupTab(String groupName, Color color, IconData icon,
+      List<Map<String, String>> students) {
+    
+    // Déterminer la clé du groupe
+    String groupKey = '';
+    if (groupName.contains(_getTranslatedText('العلاج', 'traitement'))) {
+      groupKey = 'treatment';
+    } else if (groupName.contains(_getTranslatedText('الدعم', 'soutien'))) {
+      groupKey = 'support';
+    } else {
+      groupKey = 'excellence';
+    }
+    
+    // Compter les sélections pour ce groupe
+    int selectionCount = _groupSelections[groupKey]?.length ?? 0;
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -995,34 +1408,68 @@ class _ClassificationPageState extends State<ClassificationPage> {
                 Icon(icon, color: color, size: 24),
                 SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    '$groupName (${students.length} ${_getTranslatedText('طالب', 'élève' + (students.length > 1 ? 's' : ''))})',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$groupName (${students.length} ${_getTranslatedText('طالب', students.length > 1 ? 'élèves' : 'élève')})',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                        ),
+                      ),
+                      if (selectionCount > 0)
+                        Text(
+                          '$selectionCount ${_getTranslatedText('عنصر', selectionCount > 1 ? 'éléments' : 'élément')}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: color.withOpacity(0.8),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    showSolutionAndProbleme(groupName);
-                  },
-                  icon: Icon(Icons.work_outline, size: 20),
-                  label: Text(_getTranslatedText('عمل', 'Traiter')),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: color,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                Row(
+                  children: [
+                    // Bouton pour sélectionner les solutions/problèmes
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        showSolutionAndProbleme(groupName, groupKey);
+                      },
+                      icon: Icon(Icons.checklist, size: 20),
+                      label: Text(_getTranslatedText('تحديد', 'Sélectionner')),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: color,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
                     ),
-                  ),
+                    SizedBox(width: 8),
+                    // Bouton pour imprimer ce groupe spécifique
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        _generateSingleGroupReport(groupName, groupKey);
+                      },
+                      icon: Icon(Icons.print, size: 18),
+                      label: Text(_getTranslatedText('طباعة', 'Imprimer')),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade700,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          
           Expanded(
             child: students.isEmpty
                 ? Center(
@@ -1032,7 +1479,8 @@ class _ClassificationPageState extends State<ClassificationPage> {
                         Icon(icon, size: 64, color: color.withOpacity(0.3)),
                         SizedBox(height: 16),
                         Text(
-                          _getTranslatedText('لا توجد طلاب في هذه المجموعة', 'Aucun élève dans ce groupe'),
+                          _getTranslatedText('لا توجد طلاب في هذه المجموعة',
+                              'Aucun élève dans ce groupe'),
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.grey.shade600,
@@ -1061,7 +1509,8 @@ class _ClassificationPageState extends State<ClassificationPage> {
                             ),
                           ),
                           title: Text(
-                            student['name'] ?? _getTranslatedText('غير معروف', 'Inconnu'),
+                            student['name'] ??
+                                _getTranslatedText('غير معروف', 'Inconnu'),
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
@@ -1093,425 +1542,129 @@ class _ClassificationPageState extends State<ClassificationPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: _isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            _getTranslatedText('خطة العلاج وأصل الخطأ', 'Plan de traitement et origine de l\'erreur'),
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-            ),
-          ),
-          centerTitle: true,
-          backgroundColor: Colors.blue.shade700,
-          foregroundColor: Colors.white,
-          elevation: 2,
-          actions: [
-            Container(
-              margin: EdgeInsets.only(left: 8),
-              child: IconButton(
-                icon: _isGeneratingReport
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : Icon(Icons.print_outlined),
-                onPressed: _isGeneratingReport ? null : generateAndOpenTreatmentPlan,
-                tooltip: _getTranslatedText('طباعة التقرير', 'Imprimer le rapport'),
-              ),
-            ),
-          ],
-        ),
+  void _showPrintGroupSelection() async {
+    final students = await _getClassifiedStudents(
+        widget.selectedClass, widget.selectedBaremeId);
 
-        body: _isLoading
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+    Map<String, List<Map<String, String>>> groupedStudents = {};
+
+    for (var student in students) {
+      String group = student['group'] ?? '';
+      String translatedGroup = _getGroupName(group);
+      if (!groupedStudents.containsKey(translatedGroup)) {
+        groupedStudents[translatedGroup] = [];
+      }
+      groupedStudents[translatedGroup]!.add(student);
+    }
+
+    final groups = [
+      _getTranslatedText('مجموعة العلاج', 'Groupe de traitement'),
+      _getTranslatedText('مجموعة الدعم', 'Groupe de soutien'),
+      _getTranslatedText('مجموعة التميز', 'Groupe d\'excellence'),
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
-                    ),
-                    SizedBox(height: 16),
+                    Icon(Icons.group, color: Colors.blue.shade700),
+                    SizedBox(width: 8),
                     Text(
-                      _getTranslatedText('جاري تحميل البيانات...', 'Chargement des données...'),
+                      _getTranslatedText('اختر مجموعة للطباعة',
+                          'Choisissez un groupe pour l\'impression'),
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
-              )
-            : Column(
-                children: [
-                  // En-tête CORRIGÉ avec traduction
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topRight,
-                        end: Alignment.bottomLeft,
-                        colors: [
-                          Colors.blue.shade50,
-                          Colors.white,
-                        ],
-                      ),
-                      border: Border(
-                        bottom: BorderSide(color: Colors.grey.shade300),
+                SizedBox(height: 20),
+                ...groups.map((groupName) {
+                  final count = groupedStudents[groupName]?.length ?? 0;
+                  final selectionCount = groupName.contains(
+                              _getTranslatedText('العلاج', 'traitement'))
+                          ? _groupSelections['treatment']?.length ?? 0
+                          : groupName.contains(
+                                  _getTranslatedText('الدعم', 'soutien'))
+                              ? _groupSelections['support']?.length ?? 0
+                              : _groupSelections['excellence']?.length ?? 0;
+
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor:
+                          groupName.contains(_getTranslatedText('العلاج', 'traitement'))
+                              ? Colors.red.shade100
+                              : groupName.contains(
+                                      _getTranslatedText('الدعم', 'soutien'))
+                                  ? Colors.orange.shade100
+                                  : Colors.green.shade100,
+                      child: Icon(
+                        groupName.contains(
+                                _getTranslatedText('العلاج', 'traitement'))
+                            ? Icons.medical_services
+                            : groupName.contains(
+                                    _getTranslatedText('الدعم', 'soutien'))
+                                ? Icons.support
+                                : Icons.emoji_events,
+                        size: 20,
+                        color: groupName.contains(
+                                _getTranslatedText('العلاج', 'traitement'))
+                            ? Colors.red
+                            : groupName.contains(
+                                    _getTranslatedText('الدعم', 'soutien'))
+                                ? Colors.orange
+                                : Colors.green,
                       ),
                     ),
-                    child: Column(
+                    title: Text(groupName),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildTranslatedHeader(),
-                        Container(
-                          padding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 20),
-                          child: Column(
-                            children: [
-                              Text(
-                                _getTranslatedText('خطة العلاج وأصل الخطأ', 'Plan de traitement et origine de l\'erreur'),
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.blue.shade800,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                _getTranslatedText(
-                                  'في مادة ${widget.matiereName} في معيار ${widget.sousBaremeName ?? widget.baremeName}',
-                                  'En ${widget.matiereName} dans le critère ${widget.sousBaremeName ?? widget.baremeName}'
-                                ),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.grey.shade700,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                              SizedBox(height: 12),
-                              Container(
-                                padding: EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.shade50,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.blue.shade100),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.info_outline_rounded,
-                                        color: Colors.blue.shade700, size: 24),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      child: Text(
-                                        _getTranslatedText(
-                                          'يمكنك إضافة مقترحاتك الشخصية للحلول وأصل المشكلة بالضغط على زر "عمل"',
-                                          'Vous pouvez ajouter vos propositions personnelles pour les solutions et l\'origine du problème en cliquant sur le bouton "Traiter"'
-                                        ),
-                                        style: TextStyle(
-                                          color: Colors.blue.shade800,
-                                          fontSize: 14,
-                                          height: 1.4,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                        Text('$count ${_getTranslatedText('طالب', count > 1 ? 'élèves' : 'élève')}'),
+                        if (selectionCount > 0)
+                          Text(
+                            '$selectionCount ${_getTranslatedText('محدد', selectionCount > 1 ? 'sélectionnés' : 'sélectionné')}',
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
                       ],
                     ),
-                  ),
-
-                  // Contenu principal avec onglets
-                  Expanded(
-                    child: FutureBuilder<List<Map<String, String>>>(
-                      future: _getClassifiedStudents(
-                          widget.selectedClass, widget.selectedBaremeId),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                CircularProgressIndicator(
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.blue.shade700),
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  _getTranslatedText('جاري تحميل قائمة الطلاب...', 'Chargement de la liste des élèves...'),
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                        if (snapshot.hasError) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.error_outline,
-                                    color: Colors.red, size: 48),
-                                SizedBox(height: 16),
-                                Text(
-                                  _getTranslatedText('حدث خطأ في تحميل البيانات', 'Erreur lors du chargement des données'),
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey.shade700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.group_off,
-                                    color: Colors.grey, size: 48),
-                                SizedBox(height: 16),
-                                Text(
-                                  _getTranslatedText('لا توجد بيانات للعرض', 'Aucune donnée à afficher'),
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        var students = snapshot.data!;
-                        Map<String, List<Map<String, String>>> groupedStudents = {};
-
-                        for (var student in students) {
-                          String group = student['group'] ?? '';
-                          String translatedGroup = _getGroupName(group);
-                          if (!groupedStudents.containsKey(translatedGroup)) {
-                            groupedStudents[translatedGroup] = [];
-                          }
-                          groupedStudents[translatedGroup]!.add(student);
-                        }
-
-                        // Définir les groupes dans l'ordre souhaité
-                        final groups = [
-                          {
-                            'name': _getTranslatedText('مجموعة العلاج', 'Groupe de traitement'),
-                            'color': Colors.red,
-                            'icon': Icons.medical_services_outlined,
-                            'students': groupedStudents[_getTranslatedText('مجموعة العلاج', 'Groupe de traitement')] ?? [],
-                          },
-                          {
-                            'name': _getTranslatedText('مجموعة الدعم', 'Groupe de soutien'),
-                            'color': Colors.orange,
-                            'icon': Icons.support_outlined,
-                            'students': groupedStudents[_getTranslatedText('مجموعة الدعم', 'Groupe de soutien')] ?? [],
-                          },
-                          {
-                            'name': _getTranslatedText('مجموعة التميز', 'Groupe d\'excellence'),
-                            'color': Colors.green,
-                            'icon': Icons.emoji_events_outlined,
-                            'students': groupedStudents[_getTranslatedText('مجموعة التميز', 'Groupe d\'excellence')] ?? [],
-                          },
-                        ];
-
-                        return DefaultTabController(
-                          length: groups.length,
-                          child: Column(
-                            children: [
-                              // Barre d'onglets
-                              Container(
-                                color: Colors.white,
-                                child: TabBar(
-                                  isScrollable: true,
-                                  labelColor: Colors.blue.shade800,
-                                  unselectedLabelColor: Colors.grey.shade600,
-                                  indicatorColor: Colors.blue.shade700,
-                                  indicatorWeight: 3,
-                                  labelStyle: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                  unselectedLabelStyle: TextStyle(
-                                    fontWeight: FontWeight.normal,
-                                  ),
-                                  tabs: groups.map((group) {
-                                    return Tab(
-                                      child: Container(
-                                        constraints: BoxConstraints(minWidth: 120),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              group['icon'] as IconData,
-                                              size: 18,
-                                            ),
-                                            SizedBox(width: 6),
-                                            Flexible(
-                                              child: Text(
-                                                _getShortGroupName(group['name'] as String),
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                ),
-                                              ),
-                                            ),
-                                            SizedBox(width: 4),
-                                            Container(
-                                              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: (group['color'] as Color).withOpacity(0.1),
-                                                borderRadius: BorderRadius.circular(10),
-                                              ),
-                                              child: Text(
-                                                '${(group['students'] as List).length}',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                              
-                              // Contenu des onglets
-                              Expanded(
-                                child: TabBarView(
-                                  children: groups.map((group) {
-                                    return _buildGroupTab(
-                                      group['name'] as String,
-                                      group['color'] as Color,
-                                      group['icon'] as IconData,
-                                      group['students'] as List<Map<String, String>>,
-                                    );
-                                  }).toList(),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-      ),
-    );
-  }
-
-  Widget _buildTranslatedHeader() {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [
-            Colors.blue.shade700,
-            Colors.blue.shade800,
-          ],
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _getTranslatedText('المدرسة:', 'École:') + ' ${widget.schoolName}',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      _getTranslatedText('الأستاذ:', 'Professeur:') + ' ${widget.profName}',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      _getTranslatedText('القسم:', 'Classe:') + ' ${widget.className}',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      _getTranslatedText('المادة:', 'Matière:') + ' ${widget.matiereName}',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                    trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: () {
+                      String groupKey = '';
+                      if (groupName.contains(_getTranslatedText('العلاج', 'traitement'))) {
+                        groupKey = 'treatment';
+                      } else if (groupName.contains(
+                          _getTranslatedText('الدعم', 'soutien'))) {
+                        groupKey = 'support';
+                      } else {
+                        groupKey = 'excellence';
+                      }
+                      
+                      Navigator.of(context).pop();
+                      _generateSingleGroupReport(groupName, groupKey);
+                    },
+                  );
+                }).toList(),
+              ],
+            ),
           ),
-          SizedBox(height: 12),
-          Container(
-            height: 1,
-            color: Colors.white.withOpacity(0.3),
-          ),
-          SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.assessment, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text(
-                _getTranslatedText(
-                  'معيار: ${widget.sousBaremeName ?? widget.baremeName}',
-                  'Critère: ${widget.sousBaremeName ?? widget.baremeName}'
-                ),
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -1531,7 +1684,8 @@ class _ClassificationPageState extends State<ClassificationPage> {
 
     for (var studentDoc in studentsSnapshot.docs) {
       var studentId = studentDoc.id;
-      var studentName = studentDoc['name'] ?? _getTranslatedText('غير معروف', 'Inconnu');
+      var studentData = studentDoc.data() as Map<String, dynamic>;
+      var studentName = studentData['name'] ?? _getTranslatedText('غير معروف', 'Inconnu');
 
       futures.add(FirebaseFirestore.instance
           .collection('users')
@@ -1571,38 +1725,6 @@ class _ClassificationPageState extends State<ClassificationPage> {
     return students;
   }
 
-  Future<List<Map<String, dynamic>>> _getUserProposal() async {
-    final userId = FirebaseAuth.instance.currentUser!.uid;
-
-    try {
-      final query = FirebaseFirestore.instance
-          .collection('users_proposals')
-          .doc(userId)
-          .collection('user_proposals')
-          .where('className', isEqualTo: widget.className)
-          .where('matiereName', isEqualTo: widget.matiereName)
-          .where('baremeName', isEqualTo: widget.baremeName);
-
-      if (widget.sousBaremeName != null) {
-        query.where('sousBaremeName', isEqualTo: widget.sousBaremeName);
-      }
-
-      final snapshot = await query.get();
-
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        return {
-          'id': doc.id,
-          ...data,
-          'isUserProposal': true,
-        };
-      }).toList();
-    } catch (e) {
-      print('Error getting user proposals: $e');
-      return [];
-    }
-  }
-
   Future<void> _deleteUserProposal(String proposalId) async {
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
@@ -1623,17 +1745,549 @@ class _ClassificationPageState extends State<ClassificationPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_getTranslatedText('تم حذف المقترح بنجاح', 'Proposition supprimée avec succès')),
+          content: Text(_getTranslatedText(
+              'تم حذف المقترح بنجاح', 'Proposition supprimée avec succès')),
           backgroundColor: Colors.green,
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_getTranslatedText('خطأ في حذف المقترح:', 'Erreur lors de la suppression:') + ' $e'),
+          content: Text(_getTranslatedText(
+                  'خطأ في حذف المقترح:', 'Erreur lors de la suppression:') +
+              ' $e'),
           backgroundColor: Colors.red,
         ),
       );
     }
+  }
+
+  Widget _buildTranslatedHeader() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [
+            Colors.blue.shade700,
+            Colors.blue.shade800,
+          ],
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getTranslatedText('المدرسة:', 'École:') +
+                          ' ${widget.schoolName}',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      _getTranslatedText('الأستاذ:', 'Professeur:') +
+                          ' ${widget.profName}',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      _getTranslatedText('القسم:', 'Classe:') +
+                          ' ${widget.className}',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      _getTranslatedText('المادة:', 'Matière:') +
+                          ' ${widget.matiereName}',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12),
+          Container(
+            height: 1,
+            color: Colors.white.withOpacity(0.3),
+          ),
+          SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.assessment, color: Colors.white, size: 20),
+              SizedBox(width: 8),
+              Text(
+                _getTranslatedText(
+                    'معيار: ${widget.sousBaremeName ?? widget.baremeName}',
+                    'Critère: ${widget.sousBaremeName ?? widget.baremeName}'),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: _isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            _getTranslatedText('خطة العلاج وأصل الخطأ',
+                'Plan de traitement et origine de l\'erreur'),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+            ),
+          ),
+          centerTitle: true,
+          backgroundColor: Colors.blue.shade700,
+          foregroundColor: Colors.white,
+          elevation: 2,
+          actions: [
+            Container(
+              margin: EdgeInsets.only(left: 8),
+              child: PopupMenuButton<String>(
+                icon: _isGeneratingReport
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Icon(Icons.print_outlined),
+                onSelected: (value) {
+                  if (value == 'single') {
+                    _showPrintGroupSelection();
+                  } else if (value == 'complete') {
+                    _generateCompleteReport();
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'single',
+                    child: Row(
+                      children: [
+                        Icon(Icons.group, color: Colors.blue.shade700),
+                        SizedBox(width: 8),
+                        Text(_getTranslatedText(
+                            'تقرير مجموعة واحدة', 'Rapport groupe unique')),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'complete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.description, color: Colors.green.shade700),
+                        SizedBox(width: 8),
+                        Text(_getTranslatedText('تقرير كامل', 'Rapport complet')),
+                      ],
+                    ),
+                  ),
+                ],
+                tooltip:
+                    _getTranslatedText('طباعة التقرير', 'Imprimer le rapport'),
+              ),
+            ),
+          ],
+        ),
+        body: _isLoading
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      _getTranslatedText('جاري تحميل البيانات...',
+                          'Chargement des données...'),
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : Column(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topRight,
+                        end: Alignment.bottomLeft,
+                        colors: [
+                          Colors.blue.shade50,
+                          Colors.white,
+                        ],
+                      ),
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey.shade300),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildTranslatedHeader(),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              vertical: 16.0, horizontal: 20),
+                          child: Column(
+                            children: [
+                              Text(
+                                _getTranslatedText('خطة العلاج وأصل الخطأ',
+                                    'Plan de traitement et origine de l\'erreur'),
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade800,
+                                ),
+                              ),
+                              SizedBox(height: 4),
+                              Text(
+                                _getTranslatedText(
+                                    'في مادة ${widget.matiereName} في معيار ${widget.sousBaremeName ?? widget.baremeName}',
+                                    'En ${widget.matiereName} dans le critère ${widget.sousBaremeName ?? widget.baremeName}'),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey.shade700,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 12),
+                              Container(
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border:
+                                      Border.all(color: Colors.blue.shade100),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.info_outline_rounded,
+                                        color: Colors.blue.shade700, size: 24),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            _getTranslatedText(
+                                                'حدد حلول ومشاكل لكل مجموعة ثم اختر نوع التقرير:',
+                                                'Sélectionnez des solutions et problèmes pour chaque groupe puis choisissez le type de rapport:'),
+                                            style: TextStyle(
+                                              color: Colors.blue.shade800,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          SizedBox(height: 8),
+                                          Text(
+                                            _getTranslatedText(
+                                                '• تقرير مجموعة واحدة: يطبع مجموعة محددة مع طلابها وحلولها',
+                                                '• Rapport groupe unique: imprime un groupe spécifique avec ses élèves et solutions'),
+                                            style: TextStyle(
+                                              color: Colors.blue.shade700,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          SizedBox(height: 4),
+                                          Text(
+                                            _getTranslatedText(
+                                                '• تقرير كامل: يطبع جميع المجموعات مع طلابها وحلولها',
+                                                '• Rapport complet: imprime tous les groupes avec leurs élèves et solutions'),
+                                            style: TextStyle(
+                                              color: Colors.blue.shade700,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  Expanded(
+                    child: FutureBuilder<List<Map<String, String>>>(
+                      future: _getClassifiedStudents(
+                          widget.selectedClass, widget.selectedBaremeId),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.blue.shade700),
+                                ),
+                                SizedBox(height: 16),
+                                Text(
+                                  _getTranslatedText(
+                                      'جاري تحميل قائمة الطلاب...',
+                                      'Chargement de la liste des élèves...'),
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.error_outline,
+                                    color: Colors.red, size: 48),
+                                SizedBox(height: 16),
+                                Text(
+                                  _getTranslatedText(
+                                      'حدث خطأ في تحميل البيانات',
+                                      'Erreur lors du chargement des données'),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.group_off,
+                                    color: Colors.grey, size: 48),
+                                SizedBox(height: 16),
+                                Text(
+                                  _getTranslatedText('لا توجد بيانات للعرض',
+                                      'Aucune donnée à afficher'),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        var students = snapshot.data!;
+                        Map<String, List<Map<String, String>>> groupedStudents =
+                            {};
+
+                        for (var student in students) {
+                          String group = student['group'] ?? '';
+                          String translatedGroup = _getGroupName(group);
+                          if (!groupedStudents.containsKey(translatedGroup)) {
+                            groupedStudents[translatedGroup] = [];
+                          }
+                          groupedStudents[translatedGroup]!.add(student);
+                        }
+
+                        final groups = [
+                          {
+                            'name': _getTranslatedText(
+                                'مجموعة العلاج', 'Groupe de traitement'),
+                            'color': Colors.red,
+                            'icon': Icons.medical_services_outlined,
+                            'students': groupedStudents[_getTranslatedText(
+                                    'مجموعة العلاج', 'Groupe de traitement')] ??
+                                [],
+                          },
+                          {
+                            'name': _getTranslatedText(
+                                'مجموعة الدعم', 'Groupe de soutien'),
+                            'color': Colors.orange,
+                            'icon': Icons.support_outlined,
+                            'students': groupedStudents[_getTranslatedText(
+                                    'مجموعة الدعم', 'Groupe de soutien')] ??
+                                [],
+                          },
+                          {
+                            'name': _getTranslatedText(
+                                'مجموعة التميز', 'Groupe d\'excellence'),
+                            'color': Colors.green,
+                            'icon': Icons.emoji_events_outlined,
+                            'students': groupedStudents[_getTranslatedText(
+                                    'مجموعة التميز', 'Groupe d\'excellence')] ??
+                                [],
+                          },
+                        ];
+
+                        return DefaultTabController(
+                          length: groups.length,
+                          child: Column(
+                            children: [
+                              Container(
+                                color: Colors.white,
+                                child: TabBar(
+                                  isScrollable: true,
+                                  labelColor: Colors.blue.shade800,
+                                  unselectedLabelColor: Colors.grey.shade600,
+                                  indicatorColor: Colors.blue.shade700,
+                                  indicatorWeight: 3,
+                                  labelStyle: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                  unselectedLabelStyle: TextStyle(
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                                  tabs: groups.map((group) {
+                                    String groupKey = '';
+                                    if (group['name'].toString().contains(
+                                        _getTranslatedText('العلاج', 'traitement'))) {
+                                      groupKey = 'treatment';
+                                    } else if (group['name'].toString().contains(
+                                        _getTranslatedText('الدعم', 'soutien'))) {
+                                      groupKey = 'support';
+                                    } else {
+                                      groupKey = 'excellence';
+                                    }
+                                    
+                                    int selectionCount = _groupSelections[groupKey]?.length ?? 0;
+                                    
+                                    return Tab(
+                                      child: Container(
+                                        constraints:
+                                            BoxConstraints(minWidth: 120),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              group['icon'] as IconData,
+                                              size: 18,
+                                            ),
+                                            SizedBox(width: 6),
+                                            Flexible(
+                                              child: Text(
+                                                _getShortGroupName(
+                                                    group['name'] as String),
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(width: 4),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: (group['color'] as Color)
+                                                    .withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    '${(group['students'] as List).length}',
+                                                    style: TextStyle(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  ),
+                                                  if (selectionCount > 0)
+                                                    Text(
+                                                      '$selectionCount✓',
+                                                      style: TextStyle(
+                                                        fontSize: 8,
+                                                        color: Colors.green,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                              
+                              Expanded(
+                                child: TabBarView(
+                                  children: groups.map((group) {
+                                    return _buildGroupTab(
+                                      group['name'] as String,
+                                      group['color'] as Color,
+                                      group['icon'] as IconData,
+                                      group['students']
+                                          as List<Map<String, String>>,
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
   }
 }

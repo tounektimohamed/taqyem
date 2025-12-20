@@ -1,0 +1,1 @@
+ /home/tounekti/Bureau/taqyem-backup/lib/l10n/app_localizations_en.dart /home/tounekti/Bureau/taqyem-backup/lib/l10n/app_localizations_si.dart /home/tounekti/Bureau/taqyem-backup/lib/l10n/app_localizations.dart:  /home/tounekti/Bureau/taqyem-backup/l10n.yaml /home/tounekti/Bureau/taqyem-backup/lib/l10n/app_en.arb /home/tounekti/Bureau/taqyem-backup/lib/l10n/app_si.arb
