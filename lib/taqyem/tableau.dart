@@ -3,9 +3,14 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:html' as html;
 import 'dart:math';
+import 'dart:math' as math;
+import 'dart:typed_data';
 import 'package:Taqyem/taqyem/payment/PaymentPage.dart';
 import 'package:Taqyem/taqyem/pdf_report_generator.dart';
+import 'package:Taqyem/taqyem/tableau_pdf.dart';
 import 'package:Taqyem/taqyem/word_report_generator.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:Taqyem/taqyem/da3m_tableau.dart';
 import 'package:flutter/material.dart';
@@ -49,6 +54,76 @@ class DataTranslator {
     "السنة السادسة ابتدائي ج": "6ème année primaire C",
     "السنة السادسة ابتدائي د": "6ème année primaire D"
   };
+
+  // Ordre numérique des classes
+  static int _getClassOrder(String className) {
+    final Map<String, int> classOrder = {
+      "السنة الأولى ابتدائي": 1,
+      "السنة الأولى ابتدائي أ": 1,
+      "السنة الأولى ابتدائي ب": 1,
+      "السنة الأولى ابتدائي ج": 1,
+      "السنة الأولى ابتدائي د": 1,
+      "السنة الثانية ابتدائي": 2,
+      "السنة الثانية ابتدائي أ": 2,
+      "السنة الثانية ابتدائي ب": 2,
+      "السنة الثانية ابتدائي ج": 2,
+      "السنة الثانية ابتدائي د": 2,
+      "السنة الثالثة ابتدائي": 3,
+      "السنة الثالثة ابتدائي أ": 3,
+      "السنة الثالثة ابتدائي ب": 3,
+      "السنة الثالثة ابتدائي ج": 3,
+      "السنة الثالثة ابتدائي د": 3,
+      "السنة الرابعة ابتدائي": 4,
+      "السنة الرابعة ابتدائي أ": 4,
+      "السنة الرابعة ابتدائي ب": 4,
+      "السنة الرابعة ابتدائي ج": 4,
+      "السنة الرابعة ابتدائي د": 4,
+      "السنة الخامسة ابتدائي": 5,
+      "السنة الخامسة ابتدائي أ": 5,
+      "السنة الخامسة ابتدائي ب": 5,
+      "السنة الخامسة ابتدائي ج": 5,
+      "السنة الخامسة ابتدائي د": 5,
+      "السنة السادسة ابتدائي": 6,
+      "السنة السادسة ابتدائي أ": 6,
+      "السنة السادسة ابتدائي ب": 6,
+      "السنة السادسة ابتدائي ج": 6,
+      "السنة السادسة ابتدائي د": 6
+    };
+
+    return classOrder[className] ?? 999;
+  }
+// Méthode pour mapper les classes avec sections aux classes de base du JSON
+
+  static List<String> sortClassesByNumericalOrder(List<String> classes) {
+    return List<String>.from(classes)
+      ..sort((a, b) {
+        final orderA = _getClassOrder(a);
+        final orderB = _getClassOrder(b);
+
+        if (orderA != orderB) {
+          return orderA.compareTo(orderB);
+        }
+
+        // Si même année, trier par section
+        return _compareClassSections(a, b);
+      });
+  }
+
+  static int _compareClassSections(String a, String b) {
+    final sections = ['أ', 'ب', 'ج', 'د'];
+
+    for (final section in sections) {
+      if (a.contains(section) && !b.contains(section)) return -1;
+      if (!a.contains(section) && b.contains(section)) return 1;
+      if (a.contains(section) && b.contains(section)) {
+        final indexA = sections.indexOf(section);
+        final indexB = sections.indexOf(section);
+        return indexA.compareTo(indexB);
+      }
+    }
+
+    return a.compareTo(b);
+  }
 
   static final Map<String, String> _matiereTranslations = {
     "التواصل الشفوي": "Communication orale",
@@ -182,6 +257,1050 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   StreamSubscription? _userSubscription;
   bool _isFrenchInterface = false;
   String _matiereName = '';
+  String _selectedTrimestre = 'الأول';
+  String _selectedPeriode = '';
+  String _selectedEvaluationType = 'تقييم';
+  String _getDomaineForMatiere(String matiereName, bool isFrenchInterface) {
+    // Définir les domaines en arabe
+    final Map<String, String> domainesArabic = {
+      'التواصل الشفوي': 'مجال اللغة العربية',
+      'قراءة': 'مجال اللغة العربية',
+      'قواعد لغة': 'مجال اللغة العربية',
+      'انتاج كتابي': 'مجال اللغة العربية',
+      'إنتاج كتابي': 'مجال اللغة العربية',
+      'رياضيات': 'مجال العلوم والتكنولوجيا',
+      'ايقاظ علمي': 'مجال العلوم والتكنولوجيا',
+      'التربية التكنولوجية': 'مجال العلوم والتكنولوجيا',
+      'تاريخ': 'مجال التنشئة',
+      'التاريخ': 'مجال التنشئة',
+      'الجغرافيا': 'مجال التنشئة',
+      'التربية المدنية': 'مجال التنشئة',
+      'التربية التشكيلية': 'مجال التنشئة',
+      'التربية الموسيقية': 'مجال التنشئة',
+      'تربية بدنية': 'مجال التنشئة',
+      'تربية تشكيلية': 'مجال التنشئة',
+      'تربية موسيقية': 'مجال التنشئة',
+      'تربية تكنولوجية': 'مجال العلوم والتكنولوجيا',
+      'تربية اسلامية': 'مجال التنشئة',
+      'لغة فرنسية': 'مجال اللغة الفرنسية',
+      'فرنسية': 'مجال اللغة الفرنسية',
+      'لغة انقليزية': 'مجال اللغة الإنجليزية',
+      'انجليزي': 'مجال اللغة الإنجليزية',
+      'لغة إنجليزية': 'مجال اللغة الإنجليزية',
+      'Expression orale et récitation': 'مجال اللغة العربية',
+      'Lecture': 'مجال اللغة العربية',
+      'Production écrite': 'مجال اللغة العربية',
+      'écriture': 'مجال اللغة العربية',
+      'dictée': 'مجال اللغة العربية',
+      'langue': 'مجال اللغة العربية',
+    };
+
+    // Définir les domaines en français
+    final Map<String, String> domainesFrench = {
+      'Communication orale': 'Domaine Langue Arabe',
+      'Lecture': 'Domaine Langue Arabe',
+      'Grammaire': 'Domaine Langue Arabe',
+      'Production écrite': 'Domaine Langue Arabe',
+      'Écriture': 'Domaine Langue Arabe',
+      'Dictée': 'Domaine Langue Arabe',
+      'Mathématiques': 'Domaine Sciences et Technologie',
+      'Éveil scientifique': 'Domaine Sciences et Technologie',
+      'Éducation technologique': 'Domaine Sciences et Technologie',
+      'Histoire': 'Domaine Socialisation',
+      'Géographie': 'Domaine Socialisation',
+      'Éducation civique': 'Domaine Socialisation',
+      'Éducation artistique': 'Domaine Socialisation',
+      'Éducation musicale': 'Domaine Socialisation',
+      'Éducation physique': 'Domaine Socialisation',
+      'Éducation islamique': 'Domaine Socialisation',
+      'Français': 'Domaine Langue Française',
+      'Langue française': 'Domaine Langue Française',
+      'Anglais': 'Domaine Langue Anglaise',
+      'Langue anglaise': 'Domaine Langue Anglaise',
+      'Expression orale et récitation': 'Domaine Langue Arabe',
+    };
+
+    // Sélectionner la map appropriée selon la langue
+    final domaines = isFrenchInterface ? domainesFrench : domainesArabic;
+
+    // Chercher le domaine correspondant
+    for (var key in domaines.keys) {
+      if (matiereName.contains(key) || key.contains(matiereName)) {
+        return domaines[key]!;
+      }
+    }
+
+    // Retourner un domaine par défaut
+    return isFrenchInterface ? 'Domaine Général' : 'المجال العام';
+  }
+
+// Nouvelle méthode pour le rapport complet
+  void _showCompleteReportDialog() {
+    // Contrôleurs pour les champs
+    TextEditingController periodeController =
+        TextEditingController(text: _selectedPeriode);
+
+    // États pour les listes filtrées
+    List<Map<String, dynamic>> filteredClasses = [];
+    List<Map<String, dynamic>> filteredMatieres = [];
+
+    // États pour les sélections
+    Map<String, dynamic>? selectedClass;
+    Map<String, dynamic>? selectedMatiere;
+
+    // Options pour le trimestre
+    final trimestreOptions = ['الأول', 'الثاني', 'الثالث'];
+    final trimestreTranslations = {
+      'الأول': 'Premier',
+      'الثاني': 'Deuxième',
+      'الثالث': 'Troisième'
+    };
+
+    // Options pour le type d'évaluation
+    final evaluationOptions = ['تقييم', 'امتحان'];
+    final evaluationTranslations = {'تقييم': 'Évaluation', 'امتحان': 'Examen'};
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // Charger les classes depuis Firestore
+            Future<void> loadClasses() async {
+              try {
+                final classesSnapshot = await FirebaseFirestore.instance
+                    .collection('classes')
+                    .get();
+
+                List<Map<String, dynamic>> classes = [];
+                for (var classDoc in classesSnapshot.docs) {
+                  classes.add({
+                    'id': classDoc.id,
+                    'name': classDoc['name'] ?? 'غير معروف',
+                    'frenchName': DataTranslator.translateClass(
+                        classDoc['name'] ?? 'غير معروف'),
+                  });
+                }
+
+                setState(() {
+                  filteredClasses = classes;
+                });
+              } catch (e) {
+                print('Erreur chargement classes: $e');
+              }
+            }
+
+            // Charger les matières pour une classe
+            Future<void> loadMatieres(String classId) async {
+              try {
+                final matieresSnapshot = await FirebaseFirestore.instance
+                    .collection('classes')
+                    .doc(classId)
+                    .collection('matieres')
+                    .get();
+
+                List<Map<String, dynamic>> matieres = [];
+                for (var matiereDoc in matieresSnapshot.docs) {
+                  matieres.add({
+                    'id': matiereDoc.id,
+                    'name': matiereDoc['name'] ?? 'غير معروف',
+                    'frenchName': DataTranslator.translateMatiere(
+                        matiereDoc['name'] ?? 'غير معروف'),
+                  });
+                }
+
+                setState(() {
+                  filteredMatieres = matieres;
+                });
+              } catch (e) {
+                print('Erreur chargement matières: $e');
+              }
+            }
+
+            // Initialisation
+            if (filteredClasses.isEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                loadClasses();
+              });
+            }
+
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.book, color: Colors.blue),
+                  SizedBox(width: 8),
+                  Text(
+                    _getTranslatedText('تقرير كامل', 'Rapport Complet'),
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: Container(
+                width: double.maxFinite,
+                height: MediaQuery.of(context).size.height * 0.7,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      // Section 1: Sélection du trimestre et période
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.blue),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.calendar_today,
+                                    size: 20, color: Colors.blue),
+                                SizedBox(width: 8),
+                                Text(
+                                  _getTranslatedText('الفترة والتقييم',
+                                      'Période et Évaluation'),
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+
+                            // الثلاثي
+                            Container(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _getTranslatedText(
+                                        'الثلاثي:', 'Trimestre:'),
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.w500),
+                                  ),
+                                  SizedBox(height: 8),
+                                  DropdownButtonFormField<String>(
+                                    value: _selectedTrimestre,
+                                    items: trimestreOptions
+                                        .map((t) => DropdownMenuItem(
+                                              value: t,
+                                              child: Text(
+                                                _isFrenchInterface
+                                                    ? trimestreTranslations[
+                                                            t] ??
+                                                        t
+                                                    : t,
+                                              ),
+                                            ))
+                                        .toList(),
+                                    onChanged: (v) {
+                                      if (v != null) {
+                                        setState(() {
+                                          _selectedTrimestre = v;
+                                        });
+                                      }
+                                    },
+                                    decoration: InputDecoration(
+                                      border: OutlineInputBorder(),
+                                      contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 10),
+                                    ),
+                                    isExpanded: true,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 16),
+
+                            // الوحدة / الفترة
+                            Container(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _getTranslatedText(
+                                        'الوحدة / الفترة:', 'Unité / Période:'),
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.w500),
+                                  ),
+                                  SizedBox(height: 8),
+                                  TextField(
+                                    controller: periodeController,
+                                    decoration: InputDecoration(
+                                      border: OutlineInputBorder(),
+                                      hintText: _getTranslatedText(
+                                          'مثال: الوحدة 1', 'Ex: Unité 1'),
+                                      contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 10),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: 16),
+
+                            // نوع التقييم
+                            Container(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _getTranslatedText(
+                                        'نوع التقييم:', 'Type d\'évaluation:'),
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.w500),
+                                  ),
+                                  SizedBox(height: 8),
+                                  DropdownButtonFormField<String>(
+                                    value: _selectedEvaluationType,
+                                    items: evaluationOptions
+                                        .map((t) => DropdownMenuItem(
+                                              value: t,
+                                              child: Text(
+                                                _isFrenchInterface
+                                                    ? evaluationTranslations[
+                                                            t] ??
+                                                        t
+                                                    : t,
+                                              ),
+                                            ))
+                                        .toList(),
+                                    onChanged: (v) {
+                                      if (v != null) {
+                                        setState(() {
+                                          _selectedEvaluationType = v;
+                                        });
+                                      }
+                                    },
+                                    decoration: InputDecoration(
+                                      border: OutlineInputBorder(),
+                                      contentPadding: EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 10),
+                                    ),
+                                    isExpanded: true,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(height: 16),
+
+                      // Section 2: Sélection de la classe
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.school,
+                                    size: 20, color: Colors.green),
+                                SizedBox(width: 8),
+                                Text(
+                                  _getTranslatedText(
+                                      'اختر القسم', 'Sélectionnez la Classe'),
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Container(
+                              height: 120,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.white,
+                              ),
+                              child: filteredClasses.isEmpty
+                                  ? Center(
+                                      child: CircularProgressIndicator(),
+                                    )
+                                  : ListView.builder(
+                                      itemCount: filteredClasses.length,
+                                      itemBuilder: (context, index) {
+                                        final classe = filteredClasses[index];
+                                        return ListTile(
+                                          leading: Icon(Icons.class_,
+                                              color: selectedClass?['id'] ==
+                                                      classe['id']
+                                                  ? Colors.green
+                                                  : Colors.grey),
+                                          title: Text(
+                                            _isFrenchInterface
+                                                ? classe['frenchName']
+                                                : classe['name'],
+                                          ),
+                                          trailing: selectedClass?['id'] ==
+                                                  classe['id']
+                                              ? Icon(Icons.check,
+                                                  color: Colors.green)
+                                              : null,
+                                          onTap: () {
+                                            setState(() {
+                                              selectedClass = classe;
+                                              selectedMatiere = null;
+                                              filteredMatieres.clear();
+                                              loadMatieres(classe['id']);
+                                            });
+                                          },
+                                        );
+                                      },
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(height: 16),
+
+                      // Section 3: Sélection de la matière
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.orange),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.book,
+                                    size: 20, color: Colors.orange),
+                                SizedBox(width: 8),
+                                Text(
+                                  _getTranslatedText(
+                                      'اختر المادة', 'Sélectionnez la Matière'),
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.orange),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            Container(
+                              height: 120,
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey[300]!),
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.white,
+                              ),
+                              child: selectedClass == null
+                                  ? Center(
+                                      child: Text(
+                                        _getTranslatedText('اختر قسمًا أولاً',
+                                            'Sélectionnez d\'abord une classe'),
+                                        style: TextStyle(color: Colors.grey),
+                                      ),
+                                    )
+                                  : filteredMatieres.isEmpty
+                                      ? Center(
+                                          child: CircularProgressIndicator(),
+                                        )
+                                      : ListView.builder(
+                                          itemCount: filteredMatieres.length,
+                                          itemBuilder: (context, index) {
+                                            final matiere =
+                                                filteredMatieres[index];
+                                            return ListTile(
+                                              leading: Icon(Icons.menu_book,
+                                                  color:
+                                                      selectedMatiere?['id'] ==
+                                                              matiere['id']
+                                                          ? Colors.orange
+                                                          : Colors.grey),
+                                              title: Text(
+                                                _isFrenchInterface
+                                                    ? matiere['frenchName']
+                                                    : matiere['name'],
+                                              ),
+                                              trailing:
+                                                  selectedMatiere?['id'] ==
+                                                          matiere['id']
+                                                      ? Icon(Icons.check,
+                                                          color: Colors.orange)
+                                                      : null,
+                                              onTap: () {
+                                                setState(() {
+                                                  selectedMatiere = matiere;
+                                                });
+                                              },
+                                            );
+                                          },
+                                        ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Résumé de la sélection
+                      if (selectedClass != null && selectedMatiere != null)
+                        Container(
+                          margin: EdgeInsets.only(top: 16),
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.purple[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.purple),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.summarize, color: Colors.purple),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _getTranslatedText('ملخص التقرير:',
+                                          'Résumé du Rapport:'),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.purple[800],
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    Text(
+                                      '${_getTranslatedText('الثلاثي', 'Trimestre')}: ${_isFrenchInterface ? trimestreTranslations[_selectedTrimestre] ?? _selectedTrimestre : _selectedTrimestre}',
+                                      style:
+                                          TextStyle(color: Colors.purple[800]),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      '${_getTranslatedText('الفترة', 'Période')}: ${periodeController.text.isNotEmpty ? periodeController.text : _getTranslatedText('غير محدد', 'Non spécifié')}',
+                                      style:
+                                          TextStyle(color: Colors.purple[800]),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      '${_isFrenchInterface ? selectedClass!['frenchName'] : selectedClass!['name']} - ${_isFrenchInterface ? selectedMatiere!['frenchName'] : selectedMatiere!['name']}',
+                                      style: TextStyle(
+                                        color: Colors.purple[800],
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // Aperçu du contenu du rapport
+                      if (selectedClass != null && selectedMatiere != null)
+                        Container(
+                          margin: EdgeInsets.only(top: 16),
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.teal[50],
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.teal),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.description, color: Colors.teal),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    _getTranslatedText('محتوى التقرير:',
+                                        'Contenu du Rapport:'),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.teal[800],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 8),
+                              _buildReportContentItem(
+                                  '1. صفحة الغلاف', '1. Page de garde'),
+                              _buildReportContentItem(
+                                  '2. جدول المعايير والباريمات',
+                                  '2. Tableau des critères et barèmes'),
+                              _buildReportContentItem(
+                                  '3. الجدول الكامل للنتائج',
+                                  '3. Tableau complet des résultats'),
+                              _buildReportContentItem('4. الإحصائيات والنسب',
+                                  '4. Statistiques et pourcentages'),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(_getTranslatedText('إلغاء', 'Annuler')),
+                ),
+                ElevatedButton(
+                  onPressed: selectedClass != null && selectedMatiere != null
+                      ? () {
+                          setState(() {
+                            _selectedPeriode = periodeController.text.trim();
+                          });
+                          Navigator.pop(context);
+                          _generateCompleteReport(
+                            selectedClass!['id'],
+                            selectedMatiere!['id'],
+                            selectedClass!['name'],
+                            selectedMatiere!['name'],
+                          );
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple,
+                  ),
+                  child: Text(_getTranslatedText(
+                      'إنشاء التقرير', 'Générer le Rapport')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+// Méthode pour générer le rapport complet
+
+// Méthode pour générer le rapport complet
+  Future<void> _generateCompleteReport(
+    String classId,
+    String matiereId,
+    String className,
+    String matiereName,
+  ) async {
+    if (!await _checkAndUpdatePrintCredit()) {
+      _showCreditErrorDialog();
+      return;
+    }
+
+    setState(() {
+      _isGeneratingReport = true;
+    });
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) => _buildLoadingDialog(isPDF: true),
+      );
+
+      // 1. Récupérer les critères (barèmes) depuis le JSON
+      final criteria = await _getCriteriaFromJson(
+          classId, matiereId, className, matiereName);
+
+      // 2. Récupérer les données COMPLÈTES comme dans le tableau normal
+      final matiereDisplayName = _isFrenchInterface
+          ? DataTranslator.translateMatiere(matiereName)
+          : matiereName;
+      final classDisplayName = _isFrenchInterface
+          ? DataTranslator.translateClass(className)
+          : className;
+
+      // RÉCUPÉRER LES MÊMES DONNÉES QUE POUR L'IMPRESSION NORMALE
+      final baremes = await _getBaremesForCompleteReport(classId, matiereId);
+      final students = await _getStudentsForCompleteReport(classId, matiereId);
+
+      // CALCULER LES STATISTIQUES CORRECTEMENT
+      final Map<String, int> sumCriteriaMaxPerBareme = {};
+      int totalStudents = students.length;
+
+      // Initialiser les compteurs
+      for (var bareme in baremes) {
+        final baremeId = bareme['id'].toString();
+        sumCriteriaMaxPerBareme[baremeId] = 0;
+      }
+
+      // Compter les étudiants qui ont atteint chaque critère
+      for (var student in students) {
+        final studentBaremes = student['baremes'] as Map<String, dynamic>;
+
+        for (var bareme in baremes) {
+          final baremeId = bareme['id'].toString();
+          final mark = studentBaremes[baremeId]?.toString() ?? '( - - - )';
+
+          if (mark == '( + + + )' || mark == '( + + - )') {
+            sumCriteriaMaxPerBareme[baremeId] =
+                (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
+          }
+        }
+      }
+
+      // DEBUG: Afficher les statistiques
+      print('=== STATISTIQUES RAPPORT COMPLET ===');
+      print('Total étudiants: $totalStudents');
+      sumCriteriaMaxPerBareme.forEach((key, value) {
+        if (totalStudents > 0) {
+          final percentage = (value / totalStudents * 100).toStringAsFixed(2);
+          print('$key: $value/$totalStudents = $percentage%');
+        }
+      });
+
+      // 3. Générer le rapport HTML complet
+      await HTMLReportGenerator.generateAndDownloadReport(
+        profName: _profName,
+        matiereName: matiereDisplayName,
+        className: classDisplayName,
+        schoolName: _schoolName,
+        baremes: baremes,
+        students: students,
+        sumCriteriaMaxPerBareme: sumCriteriaMaxPerBareme,
+        totalStudents: totalStudents,
+        isFrenchInterface: _isFrenchInterface,
+        downloadAsPDF: true,
+        trimestre: _selectedTrimestre,
+        periode: _selectedPeriode,
+        evaluationType: _selectedEvaluationType,
+        selectedClass: classId,
+        criteria: criteria,
+      );
+
+      // Dédure le crédit
+      await _deductPrintCredit();
+
+      _showSuccessSnackbar(_getTranslatedText('تم إنشاء التقرير الكامل بنجاح',
+          'Rapport complet généré avec succès'));
+    } catch (e) {
+      _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء التقرير الكامل',
+              'Erreur lors de la génération du rapport complet') +
+          ': $e');
+    } finally {
+      setState(() {
+        _isGeneratingReport = false;
+      });
+      Navigator.of(context).pop();
+    }
+  }
+
+// Méthode pour récupérer les barèmes POUR LE RAPPORT COMPLET
+  Future<List<dynamic>> _getBaremesForCompleteReport(
+      String classId, String matiereId) async {
+    try {
+      final baremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(classId)
+          .collection(matiereId)
+          .get();
+
+      final List<dynamic> baremes = [];
+      for (final baremeDoc in baremesSnapshot.docs) {
+        final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
+        final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
+        final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
+
+        final displayedBaremeName = _isFrenchInterface
+            ? DataTranslator.translateBareme(baremeName)
+            : baremeName;
+
+        if (isBaremeSelected) {
+          baremes.add({
+            'id': baremeId,
+            'value': displayedBaremeName,
+            'originalValue': baremeName,
+            'type': 'bareme',
+            'parentBaremeId': null, // Barème principal
+          });
+        }
+
+        final sousBaremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('selections')
+            .doc(classId)
+            .collection(matiereId)
+            .doc(baremeId)
+            .collection('sousBaremes')
+            .get();
+
+        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+          final sousBaremeId = sousBaremeDoc.id;
+          final sousBaremeName =
+              _getFieldSafe(sousBaremeDoc, 'sousBaremeName', 'غير معروف');
+          final isSousBaremeSelected =
+              _getFieldSafe(sousBaremeDoc, 'selected', false);
+
+          final displayedSousBaremeName = _isFrenchInterface
+              ? DataTranslator.translateSousBareme(sousBaremeName)
+              : sousBaremeName;
+
+          if (isSousBaremeSelected) {
+            baremes.add({
+              'id': sousBaremeId,
+              'value': displayedSousBaremeName,
+              'originalValue': sousBaremeName,
+              'type': 'sousBareme',
+              'parentBaremeId': baremeId,
+            });
+          }
+        }
+      }
+
+      return baremes;
+    } catch (e) {
+      print('Erreur récupération barèmes rapport complet: $e');
+      return [];
+    }
+  }
+
+// Méthode pour récupérer les étudiants POUR LE RAPPORT COMPLET
+  Future<List<dynamic>> _getStudentsForCompleteReport(
+      String classId, String matiereId) async {
+    try {
+      final studentsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(classId)
+          .collection('students')
+          .get();
+
+      final List<dynamic> students = [];
+      for (final studentDoc in studentsSnapshot.docs) {
+        final studentId = studentDoc.id;
+        final studentName = _getFieldSafe(studentDoc, 'name',
+            _isFrenchInterface ? 'Élève inconnu' : 'طالب غير معروف');
+
+        final baremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('user_classes')
+            .doc(classId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .get();
+
+        final Map<String, String> baremes = {};
+        for (final baremeDoc in baremesSnapshot.docs) {
+          final baremeId = baremeDoc.id;
+          final marks = _getFieldSafe(baremeDoc, 'Marks', '( - - - )');
+          baremes[baremeId] = marks;
+
+          // Ajouter les sous-barèmes avec leur clé complète
+          final sousBaremesSnapshot =
+              await baremeDoc.reference.collection('sous_baremes').get();
+
+          for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+            final sousBaremeId = sousBaremeDoc.id;
+            final sousMarks =
+                _getFieldSafe(sousBaremeDoc, 'Marks', '( - - - )');
+            // IMPORTANT: Créer la clé au format "baremeId-sousBaremeId"
+            baremes['$baremeId-$sousBaremeId'] = sousMarks;
+          }
+        }
+
+        students.add({
+          'id': studentId,
+          'name': studentName,
+          'baremes': baremes,
+        });
+      }
+
+      return students;
+    } catch (e) {
+      print('Erreur récupération étudiants rapport complet: $e');
+      return [];
+    }
+  }
+
+// Méthodes auxiliaires pour récupérer les données
+  Future<Map<String, dynamic>> _getStudentsForReport(
+      String classId, String matiereId) async {
+    try {
+      final studentsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(classId)
+          .collection('students')
+          .get();
+
+      final List<dynamic> students = [];
+      for (final studentDoc in studentsSnapshot.docs) {
+        final studentId = studentDoc.id;
+        final studentName = _getFieldSafe(studentDoc, 'name',
+            _isFrenchInterface ? 'Élève inconnu' : 'طالب غير معروف');
+
+        final baremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('user_classes')
+            .doc(classId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .get();
+
+        final Map<String, String> baremes = {};
+        for (final baremeDoc in baremesSnapshot.docs) {
+          final baremeId = baremeDoc.id;
+          final marks = _getFieldSafe(baremeDoc, 'Marks', '( - - - )');
+          baremes[baremeId] = marks;
+
+          final sousBaremesSnapshot =
+              await baremeDoc.reference.collection('sous_baremes').get();
+
+          for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+            final sousBaremeId = sousBaremeDoc.id;
+            final sousMarks =
+                _getFieldSafe(sousBaremeDoc, 'Marks', '( - - - )');
+            baremes['$baremeId-$sousBaremeId'] = sousMarks;
+          }
+        }
+
+        students.add({
+          'id': studentId,
+          'name': studentName,
+          'baremes': baremes,
+        });
+      }
+
+      return {'students': students};
+    } catch (e) {
+      print('Erreur récupération étudiants: $e');
+      return {'students': []};
+    }
+  }
+
+  Future<Map<String, dynamic>> _getBaremesForReport(
+      String classId, String matiereId) async {
+    try {
+      final baremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(classId)
+          .collection(matiereId)
+          .get();
+
+      final List<dynamic> baremes = [];
+      for (final baremeDoc in baremesSnapshot.docs) {
+        final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
+        final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
+        final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
+
+        final displayedBaremeName = _isFrenchInterface
+            ? DataTranslator.translateBareme(baremeName)
+            : baremeName;
+
+        if (isBaremeSelected) {
+          baremes.add({
+            'id': baremeId,
+            'value': displayedBaremeName,
+            'originalValue': baremeName,
+            'type': 'bareme',
+          });
+        }
+
+        final sousBaremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('selections')
+            .doc(classId)
+            .collection(matiereId)
+            .doc(baremeId)
+            .collection('sousBaremes')
+            .get();
+
+        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+          final sousBaremeId = sousBaremeDoc.id;
+          final sousBaremeName =
+              _getFieldSafe(sousBaremeDoc, 'sousBaremeName', 'غير معروف');
+          final isSousBaremeSelected =
+              _getFieldSafe(sousBaremeDoc, 'selected', false);
+
+          final displayedSousBaremeName = _isFrenchInterface
+              ? DataTranslator.translateSousBareme(sousBaremeName)
+              : sousBaremeName;
+
+          if (isSousBaremeSelected) {
+            baremes.add({
+              'id': sousBaremeId,
+              'value': displayedSousBaremeName,
+              'originalValue': sousBaremeName,
+              'type': 'sousBareme',
+              'parentBaremeId': baremeId,
+            });
+          }
+        }
+      }
+
+      return {'baremes': baremes};
+    } catch (e) {
+      print('Erreur récupération barèmes: $e');
+      return {'baremes': []};
+    }
+  }
+
+  Future<Map<String, dynamic>> _getSummaryForReport(
+      String classId, String matiereId) async {
+    try {
+      final studentsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(classId)
+          .collection('students')
+          .get();
+
+      final totalStudents = studentsSnapshot.docs.length;
+      final Map<String, int> sumCriteriaMaxPerBareme = {};
+
+      // Logique pour calculer les statistiques (similaire à fetchMarks)
+      // ... (vous pouvez adapter la logique de fetchMarks ici)
+
+      return {
+        'totalStudents': totalStudents,
+        'sumCriteriaMaxPerBareme': sumCriteriaMaxPerBareme,
+      };
+    } catch (e) {
+      print('Erreur récupération résumé: $e');
+      return {
+        'totalStudents': 0,
+        'sumCriteriaMaxPerBareme': {},
+      };
+    }
+  }
+
+// Widget pour afficher un élément du contenu du rapport
+  Widget _buildReportContentItem(String arabicText, String frenchText) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(Icons.check_circle, size: 16, color: Colors.teal),
+          SizedBox(width: 8),
+          Text(
+            _isFrenchInterface ? frenchText : arabicText,
+            style: TextStyle(color: Colors.teal[800]),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -194,6 +1313,869 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     _detectLanguage();
   }
 
+  void _showClassAndMatiereSelectionDialog() {
+    // Contrôleurs pour les champs de recherche
+    TextEditingController classSearchController = TextEditingController();
+    TextEditingController matiereSearchController = TextEditingController();
+
+    // États pour les listes filtrées
+    List<Map<String, dynamic>> filteredClasses = [];
+    List<Map<String, dynamic>> filteredMatieres = [];
+
+    // États pour les sélections
+    Map<String, dynamic>? selectedClass;
+    Map<String, dynamic>? selectedMatiere;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // Charger les classes depuis Firestore
+            Future<void> loadClasses() async {
+              try {
+                final classesSnapshot = await FirebaseFirestore.instance
+                    .collection('classes')
+                    .get();
+
+                List<Map<String, dynamic>> classes = [];
+                for (var classDoc in classesSnapshot.docs) {
+                  classes.add({
+                    'id': classDoc.id,
+                    'name': classDoc['name'] ?? 'غير معروف',
+                    'frenchName': DataTranslator.translateClass(
+                        classDoc['name'] ?? 'غير معروف'),
+                    'order': _getClassOrder(classDoc['name'] ?? 'غير معروف'),
+                  });
+                }
+
+                // Trier par ordre numérique
+                classes.sort((a, b) {
+                  final orderA = a['order'] as int;
+                  final orderB = b['order'] as int;
+                  return orderA.compareTo(orderB);
+                });
+
+                setState(() {
+                  filteredClasses = classes;
+                });
+              } catch (e) {
+                print('Erreur chargement classes: $e');
+              }
+            }
+
+            // Charger les matières pour une classe
+            Future<void> loadMatieres(String classId) async {
+              try {
+                final matieresSnapshot = await FirebaseFirestore.instance
+                    .collection('classes')
+                    .doc(classId)
+                    .collection('matieres')
+                    .get();
+
+                List<Map<String, dynamic>> matieres = [];
+                for (var matiereDoc in matieresSnapshot.docs) {
+                  matieres.add({
+                    'id': matiereDoc.id,
+                    'name': matiereDoc['name'] ?? 'غير معروف',
+                    'frenchName': DataTranslator.translateMatiere(
+                        matiereDoc['name'] ?? 'غير معروف'),
+                  });
+                }
+
+                setState(() {
+                  filteredMatieres = matieres;
+                });
+              } catch (e) {
+                print('Erreur chargement matières: $e');
+              }
+            }
+
+            // Initialisation
+            if (filteredClasses.isEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                loadClasses();
+              });
+            }
+
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.table_chart, color: Colors.blue),
+                  SizedBox(width: 8),
+                  Text(
+                    _getTranslatedText(
+                        'طباعة جدول المعايير', 'Imprimer tableau des critères'),
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: Container(
+                width: double.maxFinite,
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: Column(
+                  children: [
+                    // Recherche de classe
+                    Container(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _getTranslatedText(
+                                'اختر القسم:', 'Sélectionnez la classe:'),
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          SizedBox(height: 8),
+                          TextField(
+                            controller: classSearchController,
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(),
+                              hintText: _getTranslatedText(
+                                  'بحث عن قسم...', 'Rechercher une classe...'),
+                              prefixIcon: Icon(Icons.search),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                // Filtrer les classes selon la recherche
+                                // Cette fonctionnalité nécessiterait une liste complète des classes
+                              });
+                            },
+                          ),
+                          SizedBox(height: 8),
+                          Container(
+                            height: 120,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey[300]!),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: filteredClasses.isEmpty
+                                ? Center(
+                                    child: CircularProgressIndicator(),
+                                  )
+                                : ListView.builder(
+                                    itemCount: filteredClasses.length,
+                                    itemBuilder: (context, index) {
+                                      final classe = filteredClasses[index];
+                                      return ListTile(
+                                        leading: Icon(Icons.class_,
+                                            color: selectedClass?['id'] ==
+                                                    classe['id']
+                                                ? Colors.blue
+                                                : Colors.grey),
+                                        title: Text(
+                                          _isFrenchInterface
+                                              ? classe['frenchName']
+                                              : classe['name'],
+                                        ),
+                                        trailing:
+                                            selectedClass?['id'] == classe['id']
+                                                ? Icon(Icons.check,
+                                                    color: Colors.green)
+                                                : null,
+                                        onTap: () {
+                                          setState(() {
+                                            selectedClass = classe;
+                                            selectedMatiere = null;
+                                            filteredMatieres.clear();
+                                            loadMatieres(classe['id']);
+                                          });
+                                        },
+                                      );
+                                    },
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: 16),
+
+                    // Recherche de matière
+                    Container(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _getTranslatedText(
+                                'اختر المادة:', 'Sélectionnez la matière:'),
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          SizedBox(height: 8),
+                          TextField(
+                            controller: matiereSearchController,
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(),
+                              hintText: _getTranslatedText('بحث عن مادة...',
+                                  'Rechercher une matière...'),
+                              prefixIcon: Icon(Icons.search),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                              enabled: selectedClass != null,
+                            ),
+                            enabled: selectedClass != null,
+                            onChanged: (value) {
+                              setState(() {
+                                // Filtrer les matières selon la recherche
+                              });
+                            },
+                          ),
+                          SizedBox(height: 8),
+                          Container(
+                            height: 120,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey[300]!),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: selectedClass == null
+                                ? Center(
+                                    child: Text(
+                                      _getTranslatedText('اختر قسمًا أولاً',
+                                          'Sélectionnez d\'abord une classe'),
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
+                                  )
+                                : filteredMatieres.isEmpty
+                                    ? Center(
+                                        child: CircularProgressIndicator(),
+                                      )
+                                    : ListView.builder(
+                                        itemCount: filteredMatieres.length,
+                                        itemBuilder: (context, index) {
+                                          final matiere =
+                                              filteredMatieres[index];
+                                          return ListTile(
+                                            leading: Icon(Icons.book,
+                                                color: selectedMatiere?['id'] ==
+                                                        matiere['id']
+                                                    ? Colors.blue
+                                                    : Colors.grey),
+                                            title: Text(
+                                              _isFrenchInterface
+                                                  ? matiere['frenchName']
+                                                  : matiere['name'],
+                                            ),
+                                            trailing: selectedMatiere?['id'] ==
+                                                    matiere['id']
+                                                ? Icon(Icons.check,
+                                                    color: Colors.green)
+                                                : null,
+                                            onTap: () {
+                                              setState(() {
+                                                selectedMatiere = matiere;
+                                              });
+                                            },
+                                          );
+                                        },
+                                      ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Résumé de la sélection
+                    if (selectedClass != null && selectedMatiere != null)
+                      Container(
+                        margin: EdgeInsets.only(top: 16),
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle, color: Colors.green),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _getTranslatedText(
+                                        'تم الاختيار:', 'Sélection:'),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green[800],
+                                    ),
+                                  ),
+                                  Text(
+                                    '${_isFrenchInterface ? selectedClass!['frenchName'] : selectedClass!['name']} - '
+                                    '${_isFrenchInterface ? selectedMatiere!['frenchName'] : selectedMatiere!['name']}',
+                                    style: TextStyle(color: Colors.green[800]),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(_getTranslatedText('إلغاء', 'Annuler')),
+                ),
+                ElevatedButton(
+                  onPressed: selectedClass != null && selectedMatiere != null
+                      ? () {
+                          Navigator.pop(context);
+                          _generateBaremesTableReport(
+                            selectedClass!['id'],
+                            selectedMatiere!['id'],
+                            selectedClass!['name'],
+                            selectedMatiere!['name'],
+                          );
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                  ),
+                  child: Text(_getTranslatedText(
+                      'طباعة الجدول', 'Imprimer le tableau')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  int _getClassOrder(String className) {
+    if (className.contains('الأولى')) return 1;
+    if (className.contains('الثانية')) return 2;
+    if (className.contains('الثالثة')) return 3;
+    if (className.contains('الرابعة')) return 4;
+    if (className.contains('الخامسة')) return 5;
+    if (className.contains('السادسة')) return 6;
+    return 999;
+  }
+
+// Nouvelle méthode pour générer le rapport de barèmes
+  Future<void> _generateBaremesTableReport(
+    String classId,
+    String matiereId,
+    String className,
+    String matiereName,
+  ) async {
+    // Normaliser le nom de la classe
+    final normalizedClassName = _mapClassToJsonBase(className);
+
+    // Récupérer les critères depuis le JSON
+    final criteria = await _getCriteriaFromJson(
+        classId, matiereId, normalizedClassName, matiereName);
+    if (!await _checkAndUpdatePrintCredit()) {
+      _showCreditErrorDialog();
+      return;
+    }
+
+    setState(() {
+      _isGeneratingReport = true;
+    });
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) => _buildLoadingDialog(isPDF: true),
+      );
+
+      // Récupérer les critères depuis le code 3
+      final criteria = await _getCriteriaFromJson(
+          classId, matiereId, className, matiereName);
+
+      // Générer le rapport HTML
+      await HTMLReportGenerator.generateAndDownloadReport(
+        profName: _profName,
+        matiereName: matiereName,
+        className: className,
+        schoolName: _schoolName,
+        baremes: [], // Vide car on affiche seulement les critères
+        students: [], // Vide
+        sumCriteriaMaxPerBareme: {},
+        totalStudents: 0,
+        isFrenchInterface: _isFrenchInterface,
+        downloadAsPDF: true,
+        trimestre: _selectedTrimestre,
+        periode: _selectedPeriode,
+        evaluationType: _selectedEvaluationType,
+        selectedClass: classId,
+        criteria: criteria, // Nouveau paramètre pour les critères
+      );
+
+      // Dédure le crédit
+      await _deductPrintCredit();
+
+      _showSuccessSnackbar(_getTranslatedText('تم إنشاء جدول المعايير بنجاح',
+          'Tableau des critères généré avec succès'));
+    } catch (e) {
+      _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء جدول المعايير',
+              'Erreur lors de la génération du tableau des critères') +
+          ': $e');
+    } finally {
+      setState(() {
+        _isGeneratingReport = false;
+      });
+      Navigator.of(context).pop();
+    }
+  }
+
+// Méthode pour récupérer les critères depuis le JSON
+// Méthode pour normaliser le nom de classe
+
+  String _mapClassToJsonBase(String classNameWithSection) {
+    // Dictionnaire de mapping
+    final Map<String, String> classMapping = {
+      // Première année
+      'السنة الأولى ابتدائي': 'السنة الأولى ابتدائي',
+      'السنة الأولى ابتدائي أ': 'السنة الأولى ابتدائي',
+      'السنة الأولى ابتدائي ب': 'السنة الأولى ابتدائي',
+      'السنة الأولى ابتدائي ج': 'السنة الأولى ابتدائي',
+      'السنة الأولى ابتدائي د': 'السنة الأولى ابتدائي',
+
+      // Deuxième année
+      'السنة الثانية ابتدائي': 'السنة الثانية ابتدائي',
+      'السنة الثانية ابتدائي أ': 'السنة الثانية ابتدائي',
+      'السنة الثانية ابتدائي ب': 'السنة الثانية ابتدائي',
+      'السنة الثانية ابتدائي ج': 'السنة الثانية ابتدائي',
+      'السنة الثانية ابتدائي د': 'السنة الثانية ابتدائي',
+
+      // Troisième année
+      'السنة الثالثة ابتدائي': 'السنة الثالثة ابتدائي',
+      'السنة الثالثة ابتدائي أ': 'السنة الثالثة ابتدائي',
+      'السنة الثالثة ابتدائي ب': 'السنة الثالثة ابتدائي',
+      'السنة الثالثة ابتدائي ج': 'السنة الثالثة ابتدائي',
+      'السنة الثالثة ابتدائي د': 'السنة الثالثة ابتدائي',
+
+      // Quatrième année
+      'السنة الرابعة ابتدائي': 'السنة الرابعة ابتdائي',
+      'السنة الرابعة ابتدائي أ': 'السنة الرابعة ابتدائي',
+      'السنة الرابعة ابتدائي ب': 'السنة الرابعة ابتدائي',
+      'السنة الرابعة ابتدائي ج': 'السنة الرابعة ابتدائي',
+      'السنة الرابعة ابتدائي د': 'السنة الرابعة ابتدائي',
+
+      // Cinquième année
+      'السنة الخامسة ابتدائي': 'السنة الخامسة ابتدائي',
+      'السنة الخامسة ابتدائي أ': 'السنة الخامسة ابتدائي',
+      'السنة الخامسة ابتدائي ب': 'السنة الخامسة ابتدائي',
+      'السنة الخامسة ابتدائي ج': 'السنة الخامسة ابتدائي',
+      'السنة الخامسة ابتدائي د': 'السنة الخامسة ابتدائي',
+
+      // Sixième année
+      'السنة السادسة ابتدائي': 'السنة السادسة ابتدائي',
+      'السنة السادسة ابتدائي أ': 'السنة السادسة ابتدائي',
+      'السنة السادسة ابتدائي ب': 'السنة السادسة ابتدائي',
+      'السنة السادسة ابتدائي ج': 'السنة السادسة ابتدائي',
+      'السنة السادسة ابتدائي د': 'السنة السادسة ابتدائي',
+    };
+
+    return classMapping[classNameWithSection] ?? classNameWithSection;
+  }
+
+// Utilisez cette méthode dans _getCriteriaFromJson
+  Future<List<Map<String, dynamic>>> _getCriteriaFromJson(
+    String classId,
+    String matiereId,
+    String className,
+    String matiereName,
+  ) async {
+    try {
+      print('🎯 ===== DEBUT RECHERCHE CRITERES JSON =====');
+      print('📌 Paramètres d\'entrée:');
+      print('   • Classe: "$className"');
+      print('   • Matière: "$matiereName"');
+
+      // 1. Mapper la classe avec section vers la classe de base du JSON
+      final String jsonClassName = _mapClassToJsonBase(className);
+      print('🔄 Classe mappée pour JSON: "$jsonClassName"');
+
+      // 2. Charger le JSON
+      final jsonString =
+          await rootBundle.loadString('assets/evaluation_excel.json');
+      final jsonData = json.decode(jsonString);
+      // 3. Vérifier la structure
+      if (!jsonData.containsKey('classes')) {
+        print('❌ ERREUR: Clé "classes" non trouvée dans JSON');
+        return [];
+      }
+
+      final classes = jsonData['classes'] as Map<String, dynamic>;
+      print('📚 Classes disponibles dans JSON: ${classes.keys.length}');
+
+      // Afficher toutes les classes disponibles pour le débogage
+      print('   Liste des classes JSON:');
+      classes.keys.toList().sort();
+      for (final key in classes.keys) {
+        print('   • $key');
+      }
+
+      // 4. Chercher la classe dans le JSON
+      if (!classes.containsKey(jsonClassName)) {
+        print('❌ ERREUR: Classe "$jsonClassName" non trouvée dans JSON');
+        print('   Chercher des correspondances partielles...');
+
+        // Chercher des correspondances partielles
+        for (final key in classes.keys) {
+          if (key.contains(jsonClassName) || jsonClassName.contains(key)) {
+            print('   🔍 Correspondance trouvée: "$key"');
+            return _extractCriteriaForClass(classes[key], matiereName);
+          }
+        }
+
+        // Si toujours pas trouvé, afficher les premières lettres pour aider
+        print('   ❌ Aucune correspondance trouvée');
+        return [];
+      }
+
+      print('✅ SUCCES: Classe "$jsonClassName" trouvée dans JSON');
+
+      // 5. Extraire les critères
+      final classData = classes[jsonClassName];
+      return _extractCriteriaForClass(classData, matiereName);
+    } catch (e) {
+      print('💥 ERREUR FATALE dans _getCriteriaFromJson: $e');
+      print('   Stack trace: ${e.toString()}');
+      return [];
+    } finally {
+      print('===== FIN RECHERCHE CRITERES JSON =====\n');
+    }
+  }
+
+  List<Map<String, dynamic>> _extractCriteriaForClass(
+      dynamic classData, String matiereName) {
+    try {
+      print('🔍 Extraction critères pour matière: "$matiereName"');
+
+      if (classData is! Map<String, dynamic>) {
+        print('❌ Données de classe invalides');
+        return [];
+      }
+
+      // Vérifier la structure subjects
+      if (!classData.containsKey('subjects') ||
+          classData['subjects'] is! Map<String, dynamic>) {
+        print('❌ Clé "subjects" non trouvée ou invalide');
+        return [];
+      }
+
+      final subjects = classData['subjects'] as Map<String, dynamic>;
+      print('📖 Matières disponibles dans la classe: ${subjects.keys.length}');
+
+      // Afficher toutes les matières pour le débogage
+      print('   Liste des matières:');
+      for (final key in subjects.keys) {
+        print('   • $key');
+      }
+
+      // Chercher la matière exacte
+      if (!subjects.containsKey(matiereName)) {
+        print('❌ Matière "$matiereName" non trouvée');
+        print('   Chercher des correspondances...');
+
+        // Chercher par nom partiel
+        for (final key in subjects.keys) {
+          if (key.contains(matiereName) || matiereName.contains(key)) {
+            print('   ✅ Matière trouvée par correspondance: "$key"');
+            return _processSubjectData(subjects[key], key);
+          }
+        }
+
+        // Chercher par traduction
+        if (_isFrenchInterface) {
+          final arabicMatiereName =
+              DataTranslator.getArabicMatiereFromFrench(matiereName);
+          print('   🔍 Chercher version arabe: "$arabicMatiereName"');
+
+          if (subjects.containsKey(arabicMatiereName)) {
+            print('   ✅ Matière trouvée par traduction: "$arabicMatiereName"');
+            return _processSubjectData(
+                subjects[arabicMatiereName], arabicMatiereName);
+          }
+        }
+
+        print('❌ Matière non trouvée après toutes les recherches');
+        return [];
+      }
+
+      print('✅ Matière trouvée: "$matiereName"');
+      return _processSubjectData(subjects[matiereName], matiereName);
+    } catch (e) {
+      print('❌ Erreur extraction critères: $e');
+      return [];
+    }
+  }
+
+  List<Map<String, dynamic>> _processSubjectData(
+      dynamic subjectData, String originalMatiereName) {
+    try {
+      if (subjectData is! Map<String, dynamic>) {
+        print('❌ Données matière invalides');
+        return [];
+      }
+
+      print('📊 Vérification données matière:');
+      print('   • has_criteria: ${subjectData['has_criteria']}');
+      print('   • criteria_count: ${subjectData['criteria_count']}');
+
+      if (subjectData['has_criteria'] != true) {
+        print('⚠️ Matière sans critères (has_criteria = false)');
+        return [];
+      }
+
+      final criteriaList = subjectData['criteria'] as List<dynamic>?;
+      if (criteriaList == null || criteriaList.isEmpty) {
+        print('⚠️ Liste de critères vide ou null');
+        return [];
+      }
+
+      print('✅ ${criteriaList.length} critères trouvés');
+
+      // Afficher les noms des critères pour le débogage
+      for (int i = 0; i < criteriaList.length; i++) {
+        final criterion = criteriaList[i] as Map<String, dynamic>;
+        print(
+            '   ${i + 1}. ${criterion['name']} (${criterion['indicators_count'] ?? 0} indicateurs)');
+      }
+
+      // Traiter et trier les critères
+      return _createCriteriaList(criteriaList, originalMatiereName);
+    } catch (e) {
+      print('❌ Erreur traitement données matière: $e');
+      return [];
+    }
+  }
+
+  List<Map<String, dynamic>> _createCriteriaList(
+      List<dynamic> criteriaList, String matiereName) {
+    final List<Map<String, dynamic>> criteria = [];
+
+    for (int i = 0; i < criteriaList.length; i++) {
+      final criterion = criteriaList[i] as Map<String, dynamic>;
+      final criteriaName = criterion['name']?.toString() ?? 'معيار ${i + 1}';
+
+      // Récupérer les indicateurs
+      final indicators = criterion['indicators'] as List<dynamic>? ?? [];
+
+      // Filtrer les indicateurs non vides
+      final List<String> indicatorStrings = indicators
+          .map((indicator) => indicator.toString())
+          .where((indicator) => indicator.trim().isNotEmpty)
+          .toList();
+
+      // Trier les indicateurs
+      indicatorStrings.sort(_arabicStringComparator);
+
+      // Créer l'entrée du critère
+      criteria.add({
+        'id': i + 1,
+        'name': _isFrenchInterface
+            ? DataTranslator.translateMatiere(criteriaName)
+            : criteriaName,
+        'originalName': criteriaName,
+        'frenchName': DataTranslator.translateMatiere(criteriaName),
+        'arabicName': criteriaName,
+        'domaine': _getDomaineForMatiere(matiereName, _isFrenchInterface),
+        'indicators': indicatorStrings,
+        'indicators_count': indicatorStrings.length,
+        'displayNumber': i + 1,
+        'sortKey': _generateArabicSortKey(criteriaName),
+      });
+    }
+
+    // Trier les critères selon la langue
+    if (_isFrenchInterface) {
+      criteria
+          .sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
+    } else {
+      criteria.sort((a, b) => _arabicStringComparator(
+            a['originalName'] as String,
+            b['originalName'] as String,
+          ));
+    }
+
+    // Mettre à jour les numéros d'affichage après tri
+    for (int i = 0; i < criteria.length; i++) {
+      criteria[i]['displayNumber'] = i + 1;
+    }
+
+    print('✅ ${criteria.length} critères traités avec succès');
+    return criteria;
+  }
+
+// Méthode auxiliaire pour extraire les critères d'une classe
+  List<Map<String, dynamic>> _extractCriteriaFromClassData(
+      dynamic classData, String matiereName) {
+    if (classData is Map<String, dynamic> &&
+        classData.containsKey('subjects') &&
+        classData['subjects'] is Map<String, dynamic>) {
+      final subjects = classData['subjects'] as Map<String, dynamic>;
+
+      if (subjects.containsKey(matiereName)) {
+        final subjectData = subjects[matiereName];
+        final bool hasCriteria = subjectData['has_criteria'] ?? false;
+
+        if (hasCriteria && subjectData['criteria'] != null) {
+          final criteriaList = subjectData['criteria'] as List<dynamic>;
+          print('✅ Critères trouvés pour $matiereName: ${criteriaList.length}');
+
+          return _processCriteriaList(criteriaList, matiereName);
+        } else {
+          print('⚠️ Pas de critères pour $matiereName ou has_criteria=false');
+        }
+      } else {
+        print('❌ Matière non trouvée dans la classe: $matiereName');
+        print('Matières disponibles: ${subjects.keys.join(', ')}');
+      }
+    }
+
+    return [];
+  }
+
+// Méthode auxiliaire pour traiter la liste des critères
+  List<Map<String, dynamic>> _processCriteriaList(
+      List<dynamic> criteriaList, String matiereName) {
+    List<Map<String, dynamic>> criteria = [];
+
+    for (int i = 0; i < criteriaList.length; i++) {
+      final criteriaData = criteriaList[i] as Map<String, dynamic>;
+      final criteriaName = criteriaData['name']?.toString() ?? 'معيار ${i + 1}';
+      final indicators = criteriaData['indicators'] as List<dynamic>? ?? [];
+
+      // Trier les indicateurs par ordre alphabétique arabe
+      final List<String> indicatorStrings = indicators
+          .map((indicator) => indicator.toString())
+          .where(
+              (indicator) => indicator.isNotEmpty) // Exclure les chaînes vides
+          .toList();
+
+      // Trier les indicateurs
+      indicatorStrings.sort(_arabicStringComparator);
+
+      criteria.add({
+        'name': _isFrenchInterface
+            ? DataTranslator.translateMatiere(criteriaName)
+            : criteriaName,
+        'originalName': criteriaName,
+        'domaine': _getDomaineForMatiere(matiereName, _isFrenchInterface),
+        'indicators': indicatorStrings.map((indicator) {
+          return _isFrenchInterface
+              ? DataTranslator.translateMatiere(indicator)
+              : indicator;
+        }).toList(),
+        'sortKey': _generateArabicSortKey(criteriaName),
+      });
+    }
+
+    // Trier les critères
+    criteria.sort((a, b) {
+      if (_isFrenchInterface) {
+        return (a['name'] as String).compareTo(b['name'] as String);
+      } else {
+        return _arabicStringComparator(
+          a['originalName'] as String,
+          b['originalName'] as String,
+        );
+      }
+    });
+
+    // Réassigner les numéros après le tri
+    for (int i = 0; i < criteria.length; i++) {
+      criteria[i]['displayNumber'] = i + 1;
+    }
+
+    return criteria;
+  }
+
+// Méthode pour extraire l'année arabe d'un nom de classe
+  String _extractArabicYear(String className) {
+    // Extrait "الأولى", "الثانية", etc.
+    final patterns = [
+      'الأولى',
+      'الثانية',
+      'الثالثة',
+      'الرابعة',
+      'الخامسة',
+      'السادسة'
+    ];
+
+    for (final pattern in patterns) {
+      if (className.contains(pattern)) {
+        return pattern;
+      }
+    }
+
+    return className;
+  }
+
+// Comparateur pour tri alphabétique arabe
+  int _arabicStringComparator(String a, String b) {
+    // Normaliser les chaînes
+    final normalizedA = _normalizeArabicForSort(a);
+    final normalizedB = _normalizeArabicForSort(b);
+
+    // Ordre des lettres arabes
+    const arabicAlphabet = 'اأإآبتثجحخدذرزسشصضطظعغفقكلمنهويىةؤئء';
+
+    for (int i = 0; i < math.min(normalizedA.length, normalizedB.length); i++) {
+      final charA = normalizedA[i];
+      final charB = normalizedB[i];
+
+      final indexA = arabicAlphabet.indexOf(charA);
+      final indexB = arabicAlphabet.indexOf(charB);
+
+      if (indexA != -1 && indexB != -1 && indexA != indexB) {
+        return indexA - indexB;
+      }
+
+      // Comparaison Unicode comme fallback
+      if (charA != charB) {
+        return charA.codeUnitAt(0) - charB.codeUnitAt(0);
+      }
+    }
+
+    return normalizedA.length - normalizedB.length;
+  }
+
+// Normalisation du texte arabe pour le tri
+  String _normalizeArabicForSort(String text) {
+    // Supprimer les diacritiques
+    String normalized = text.replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '');
+
+    // Normaliser les formes de lettres
+    final Map<String, String> normalizationMap = {
+      'أ': 'ا',
+      'إ': 'ا',
+      'آ': 'ا',
+      'ؤ': 'و',
+      'ئ': 'ي',
+      'ة': 'ه',
+      'ى': 'ي',
+      'ٱ': 'ا',
+      'ٳ': 'ا',
+      'ٲ': 'ا',
+    };
+
+    normalizationMap.forEach((key, value) {
+      normalized = normalized.replaceAll(key, value);
+    });
+
+    return normalized.trim();
+  }
+
+// Générer une clé de tri pour l'arabe
+  String _generateArabicSortKey(String text) {
+    final normalized = _normalizeArabicForSort(text);
+    final withoutSpaces = normalized.replaceAll(' ', '');
+    return withoutSpaces.toLowerCase();
+  }
+
   void _detectLanguage() async {
     try {
       var matiereDoc = await FirebaseFirestore.instance
@@ -204,14 +2186,33 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .get();
 
       String matiereName = matiereDoc['name'] ?? '';
+
+      // Vérifier si c'est une matière en français
+      bool isFrenchInterface;
+
+      if (DataTranslator.isForeignMatiere(matiereName)) {
+        isFrenchInterface = true;
+      } else {
+        // Vérifier le contenu de la matière
+        final containsFrench =
+            matiereName.contains(RegExp(r'[a-zA-Zéèêëàâäôöûüç]'));
+        final containsArabic = matiereName.contains(RegExp(r'[\u0600-\u06FF]'));
+
+        // Si contient du français mais pas d'arabe
+        isFrenchInterface = containsFrench && !containsArabic;
+      }
+
       setState(() {
         _matiereName = matiereName;
-        _isFrenchInterface = DataTranslator.isForeignMatiere(matiereName);
-        print(
-            'Détection langue - Matière: $matiereName, Français: $_isFrenchInterface');
+        _isFrenchInterface = isFrenchInterface;
+        print('Détection langue - Matière: "$matiereName", '
+            'Interface française: $isFrenchInterface');
       });
     } catch (e) {
       print('Erreur détection langue: $e');
+      setState(() {
+        _isFrenchInterface = false;
+      });
     }
   }
 
@@ -261,6 +2262,176 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         });
       }
     });
+  }
+
+  void _showEvaluationInfoDialog(VoidCallback onConfirm) {
+    TextEditingController periodeController =
+        TextEditingController(text: _selectedPeriode);
+
+    // Options pour le trimestre
+    final trimestreOptions = ['الأول', 'الثاني', 'الثالث'];
+    final trimestreTranslations = {
+      'الأول': 'Premier',
+      'الثاني': 'Deuxième',
+      'الثالث': 'Troisième'
+    };
+
+    // Options pour le type d'évaluation
+    final evaluationOptions = ['تقييم', 'امتحان'];
+    final evaluationTranslations = {'تقييم': 'Évaluation', 'امتحان': 'Examen'};
+
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.info, color: Colors.blue),
+            SizedBox(width: 8),
+            Text(
+              _getTranslatedText(
+                  'معلومات التقييم', 'Informations d\'évaluation'),
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Container(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // الثلاثي
+              Container(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getTranslatedText('الثلاثي:', 'Trimestre:'),
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: _selectedTrimestre,
+                      items: trimestreOptions
+                          .map((t) => DropdownMenuItem(
+                                value: t,
+                                child: Text(
+                                  _isFrenchInterface
+                                      ? trimestreTranslations[t] ?? t
+                                      : t,
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() {
+                            _selectedTrimestre = v;
+                          });
+                        }
+                      },
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      isExpanded: true,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+
+              // الوحدة / الفترة
+              Container(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getTranslatedText(
+                          'الوحدة / الفترة:', 'Unité / Période:'),
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    SizedBox(height: 8),
+                    TextField(
+                      controller: periodeController,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText:
+                            _getTranslatedText('مثال: الوحدة 1', 'Ex: Unité 1'),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+
+              // نوع التقييم
+              Container(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getTranslatedText('نوع التقييم:', 'Type d\'évaluation:'),
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: _selectedEvaluationType,
+                      items: evaluationOptions
+                          .map((t) => DropdownMenuItem(
+                                value: t,
+                                child: Text(
+                                  _isFrenchInterface
+                                      ? evaluationTranslations[t] ?? t
+                                      : t,
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() {
+                            _selectedEvaluationType = v;
+                          });
+                        }
+                      },
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      isExpanded: true,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(_getTranslatedText('إلغاء', 'Annuler')),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _selectedPeriode = periodeController.text.trim();
+              });
+              Navigator.pop(context);
+              onConfirm(); // Appeler la fonction de callback
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+            ),
+            child: Text(_getTranslatedText('متابعة', 'Continuer')),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _checkPrintCredit() async {
@@ -360,22 +2531,172 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     return _isFrenchInterface ? frenchText : arabicText;
   }
 
-  Future<void> _generatePDF() async {
-    if (!await _checkAndUpdatePrintCredit()) {
-      _showCreditErrorDialog();
-      return;
+  Future<void> _saveAndOpenPDF(Uint8List pdfBytes) async {
+    try {
+      if (kIsWeb) {
+        // Pour le web
+        final blob = html.Blob([pdfBytes], 'application/pdf');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', 'tableau_resultats.pdf')
+          ..click();
+        html.Url.revokeObjectUrl(url);
+      } else {
+        // Pour mobile/desktop
+        final directory = await getTemporaryDirectory();
+        final file = File('${directory.path}/tableau_resultats.pdf');
+        await file.writeAsBytes(pdfBytes);
+        await OpenFile.open(file.path);
+      }
+    } catch (e) {
+      print('Erreur sauvegarde PDF: $e');
+      throw e;
     }
-
-    await _generateReport('pdf');
   }
 
-  Future<void> _generateHTMLReport() async {
+  Future<void> _generateHTMLReport({bool downloadAsPDF = false}) async {
     if (!await _checkAndUpdatePrintCredit()) {
       _showCreditErrorDialog();
       return;
     }
 
-    await _generateReport('html');
+    setState(() {
+      _isGeneratingReport = true;
+    });
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) =>
+            _buildLoadingDialog(isPDF: downloadAsPDF),
+      );
+
+      // Récupérer les données CORRECTEMENT
+      final matiereName = await _getMatiereName();
+      final className = await _getClassName();
+
+      // DEBUG: Afficher les données avant envoi
+      print('=== DONNÉES POUR RAPPORT HTML ===');
+      print('Total étudiants: $totalStudents');
+      print('Statistiques sumCriteriaMaxPerBareme:');
+      sumCriteriaMaxPerBareme.forEach((key, value) {
+        print('  $key: $value');
+      });
+
+      var data = {
+        'profName': _profName,
+        'matiereName': matiereName,
+        'className': className,
+        'schoolName': _schoolName,
+        'baremes': await _getBaremes(),
+        'students': await _getStudents(),
+        'sumCriteriaMaxPerBareme': sumCriteriaMaxPerBareme,
+        'totalStudents': totalStudents,
+        'selectedClass': widget.selectedClass,
+        'isFrenchInterface': _isFrenchInterface,
+        'trimestre': _selectedTrimestre,
+        'periode': _selectedPeriode,
+        'evaluationType': _selectedEvaluationType,
+      };
+
+      // Générer le rapport (HTML ou PDF)
+      await HTMLReportGenerator.generateAndDownloadReport(
+        profName: _profName,
+        matiereName: matiereName,
+        className: className,
+        schoolName: _schoolName,
+        baremes: data['baremes'] as List<dynamic>,
+        students: data['students'] as List<dynamic>,
+        sumCriteriaMaxPerBareme:
+            sumCriteriaMaxPerBareme, // IMPORTANT: envoyer les bonnes données
+        totalStudents: totalStudents,
+        isFrenchInterface: _isFrenchInterface,
+        downloadAsPDF: downloadAsPDF,
+        trimestre: _selectedTrimestre,
+        periode: _selectedPeriode,
+        evaluationType: _selectedEvaluationType,
+      );
+
+      // Dédure le crédit
+      await _deductPrintCredit();
+
+      _showSuccessSnackbar(downloadAsPDF
+          ? _getTranslatedText('تم إنشاء PDF بنجاح', 'PDF généré avec succès')
+          : _getTranslatedText(
+              'تم إنشاء التقرير بنجاح', 'Rapport généré avec succès'));
+    } catch (e) {
+      _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء التقرير',
+              'Erreur lors de la génération du rapport') +
+          ': $e');
+    } finally {
+      setState(() {
+        _isGeneratingReport = false;
+      });
+      Navigator.of(context).pop();
+    }
+  }
+
+  Widget _buildLoadingDialog({bool isPDF = false}) {
+    return AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                    isPDF ? Colors.red : Colors.blue),
+                strokeWidth: 3,
+              ),
+              Icon(
+                isPDF ? Icons.picture_as_pdf : Icons.description,
+                color: isPDF ? Colors.red : Colors.blue,
+                size: 20,
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          Text(
+            isPDF
+                ? _getTranslatedText(
+                    "جاري إنشاء PDF...", "Génération du PDF en cours...")
+                : _getTranslatedText("جاري إنشاء التقرير...",
+                    "Génération du rapport en cours..."),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          SizedBox(height: 10),
+          Text(
+            _getTranslatedText("يرجى الانتظار...", "Veuillez patienter..."),
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
+          SizedBox(height: 10),
+          if (!_isAccountActive)
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.info, size: 16, color: Colors.orange),
+                  SizedBox(width: 5),
+                  Text(
+                    _getTranslatedText(
+                        'الرصيد المستخدم: ${_remainingPrints - 1}/5',
+                        'Crédit utilisé: ${_remainingPrints - 1}/5'),
+                    style: TextStyle(fontSize: 12, color: Colors.orange[800]),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   void _showCreditErrorDialog() {
@@ -489,6 +2810,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         'baremeName': baremeName,
         'sousBaremeName': sousBaremeName,
         'selectedSousBaremeId': selectedSousBaremeId,
+        // Ajouter les informations du dialogue
+        'trimestre': _selectedTrimestre,
+        'periode': _selectedPeriode,
+        'evaluationType': _selectedEvaluationType,
       };
 
       if (type == 'pdf') {
@@ -513,7 +2838,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
-  Widget _buildLoadingDialog() {
+  Widget _buildLoadingDialogForReport() {
     return AlertDialog(
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -587,6 +2912,11 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         dataForServer['baremes'] = originalBaremes;
       }
 
+      // Ajouter les informations du dialogue (elles sont déjà en arabe)
+      dataForServer['trimestre'] = _selectedTrimestre;
+      dataForServer['periode'] = _selectedPeriode;
+      dataForServer['evaluationType'] = _selectedEvaluationType;
+
       final url = Uri.parse('https://imprission.onrender.com/generate_pdf');
       final response = await http
           .post(
@@ -595,8 +2925,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
             },
-            body: json
-                .encode(dataForServer), // Envoyer les données arabes au serveur
+            body: json.encode(dataForServer),
           )
           .timeout(const Duration(seconds: 30));
 
@@ -636,6 +2965,11 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
   Future<bool> _sendHTMLDataToFlask(Map<String, dynamic> data) async {
     try {
+      // Ajouter les informations du dialogue
+      data['trimestre'] = _selectedTrimestre;
+      data['periode'] = _selectedPeriode;
+      data['evaluationType'] = _selectedEvaluationType;
+
       final url =
           Uri.parse('https://imprission.onrender.com/generate-html-report');
 
@@ -1439,10 +3773,21 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       onSelected: _isGeneratingReport
           ? null
           : (value) {
-              if (value == 'html') {
-                _generateHTMLReport();
-              } else if (value == 'pdf') {
-                _generatePDF();
+              if (value == 'complete_report') {
+                // NOUVELLE OPTION: Rapport complet
+                _showCompleteReportDialog();
+              } else if (value == 'baremes_table') {
+                // Option existante: Tableau des barèmes
+                _showClassAndMatiereSelectionDialog();
+              } else {
+                // Options existantes
+                _showEvaluationInfoDialog(() {
+                  if (value == 'html') {
+                    _generateHTMLReport(downloadAsPDF: false);
+                  } else if (value == 'pdf') {
+                    _generateHTMLReport(downloadAsPDF: true);
+                  }
+                });
               }
             },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -1465,6 +3810,30 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               SizedBox(width: 8),
               Text(_getTranslatedText(
                   'طباعة الجدول (PDF)', 'Imprimer le tableau (PDF)')),
+            ],
+          ),
+        ),
+        PopupMenuDivider(),
+        PopupMenuItem<String>(
+          value: 'baremes_table',
+          child: Row(
+            children: [
+              Icon(Icons.table_chart, color: Colors.green),
+              SizedBox(width: 8),
+              Text(_getTranslatedText(
+                  'طباعة جدول المعايير', 'Imprimer tableau des critères')),
+            ],
+          ),
+        ),
+        PopupMenuDivider(),
+        // NOUVELLE OPTION: Rapport complet
+        PopupMenuItem<String>(
+          value: 'complete_report',
+          child: Row(
+            children: [
+              Icon(Icons.book, color: Colors.purple),
+              SizedBox(width: 8),
+              Text(_getTranslatedText('تقرير كامل', 'Rapport Complet')),
             ],
           ),
         ),
@@ -2143,47 +4512,47 @@ class _StudentsTableState extends State<StudentsTable> {
 
   // Fonction modifiée pour grouper les barèmes triés
   // CORRECTION : Méthode groupBaremes sécurisée
- Map<String, List<Map<String, dynamic>>> groupBaremes(
-    List<Map<String, dynamic>> baremesValues) {
-  List<Map<String, dynamic>> sortedBaremes =
-      _sortBaremesAlphabetically(baremesValues);
-  Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
+  Map<String, List<Map<String, dynamic>>> groupBaremes(
+      List<Map<String, dynamic>> baremesValues) {
+    List<Map<String, dynamic>> sortedBaremes =
+        _sortBaremesAlphabetically(baremesValues);
+    Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
 
-  for (var bareme in sortedBaremes) {
-    String baremeValue = bareme['value'] ?? '';
-    String type = bareme['type'] ?? 'bareme';
+    for (var bareme in sortedBaremes) {
+      String baremeValue = bareme['value'] ?? '';
+      String type = bareme['type'] ?? 'bareme';
 
-    String key;
-    if (type == 'sousBareme') {
-      // Pour les sous-barèmes, utiliser le parent comme clé de groupe
-      String parentId = bareme['parentBaremeId'] ?? '';
-      key = parentId.isNotEmpty ? parentId : 'sousBaremes';
-    } else {
-      // Pour les barèmes principaux, utiliser les premiers caractères
-      if (baremeValue.length >= 2) {
-        key = baremeValue.substring(0, 2);
-      } else if (baremeValue.isNotEmpty) {
-        key = baremeValue;
+      String key;
+      if (type == 'sousBareme') {
+        // Pour les sous-barèmes, utiliser le parent comme clé de groupe
+        String parentId = bareme['parentBaremeId'] ?? '';
+        key = parentId.isNotEmpty ? parentId : 'sousBaremes';
       } else {
-        key = 'autre';
+        // Pour les barèmes principaux, utiliser les premiers caractères
+        if (baremeValue.length >= 2) {
+          key = baremeValue.substring(0, 2);
+        } else if (baremeValue.isNotEmpty) {
+          key = baremeValue;
+        } else {
+          key = 'autre';
+        }
+      }
+
+      if (!groupedBaremes.containsKey(key)) {
+        groupedBaremes[key] = [];
+      }
+
+      // CORRECTION: S'assurer qu'on n'ajoute pas les mêmes barèmes plusieurs fois
+      bool alreadyExists = groupedBaremes[key]!
+          .any((existingBareme) => existingBareme['id'] == bareme['id']);
+
+      if (!alreadyExists) {
+        groupedBaremes[key]!.add(bareme);
       }
     }
 
-    if (!groupedBaremes.containsKey(key)) {
-      groupedBaremes[key] = [];
-    }
-    
-    // CORRECTION: S'assurer qu'on n'ajoute pas les mêmes barèmes plusieurs fois
-    bool alreadyExists = groupedBaremes[key]!.any((existingBareme) => 
-        existingBareme['id'] == bareme['id']);
-    
-    if (!alreadyExists) {
-      groupedBaremes[key]!.add(bareme);
-    }
+    return groupedBaremes;
   }
-
-  return groupedBaremes;
-}
 
   // Fonction pour déterminer si c'est un barème principal ou sous-barème
   String _getBaremeDisplayName(
@@ -2564,318 +4933,322 @@ class _StudentsTableState extends State<StudentsTable> {
       ),
     );
   }
-Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
-    List<Map<String, dynamic>> baremesValues) {
-  Map<String, List<Map<String, dynamic>>> groupedBaremes =
-      groupBaremes(baremesValues);
 
-  // DEBUG: Afficher le contenu de sumCriteriaMaxPerBareme
-  print('=== STATISTIQUES DISPONIBLES ===');
-  widget.sumCriteriaMaxPerBareme.forEach((key, value) {
-    print('$key: $value');
-  });
+  Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
+      List<Map<String, dynamic>> baremesValues) {
+    Map<String, List<Map<String, dynamic>>> groupedBaremes =
+        groupBaremes(baremesValues);
 
-  // DEBUG: Afficher la structure des barèmes
-  print('=== STRUCTURE DES BARÈMES POUR AFFICHAGE ===');
-  groupedBaremes.forEach((key, baremes) {
-    print('Groupe: $key');
-    for (var bareme in baremes) {
-      print('  Barème: ${bareme['id']} - ${bareme['value']} - Type: ${bareme['type']}');
-      if (bareme['type'] == 'bareme' && bareme['sousBaremes'] != null) {
-        for (var sousBareme in (bareme['sousBaremes'] as List)) {
-          print('    Sous-barème: ${sousBareme['id']} - ${sousBareme['value']}');
+    // DEBUG: Afficher le contenu de sumCriteriaMaxPerBareme
+    print('=== STATISTIQUES DISPONIBLES ===');
+    widget.sumCriteriaMaxPerBareme.forEach((key, value) {
+      print('$key: $value');
+    });
+
+    // DEBUG: Afficher la structure des barèmes
+    print('=== STRUCTURE DES BARÈMES POUR AFFICHAGE ===');
+    groupedBaremes.forEach((key, baremes) {
+      print('Groupe: $key');
+      for (var bareme in baremes) {
+        print(
+            '  Barème: ${bareme['id']} - ${bareme['value']} - Type: ${bareme['type']}');
+        if (bareme['type'] == 'bareme' && bareme['sousBaremes'] != null) {
+          for (var sousBareme in (bareme['sousBaremes'] as List)) {
+            print(
+                '    Sous-barème: ${sousBareme['id']} - ${sousBareme['value']}');
+          }
         }
       }
-    }
-  });
+    });
 
-  return Card(
-    elevation: 4,
-    margin: EdgeInsets.all(16),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    child: Container(
-      decoration: BoxDecoration(
-        color: _cardColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
+    return Card(
+      elevation: 4,
+      margin: EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _cardColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: SingleChildScrollView(
-          scrollDirection: Axis.vertical,
-          child: DataTable(
-            columnSpacing: 16,
-            horizontalMargin: 16,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            dataRowColor: MaterialStateProperty.resolveWith<Color>(
-              (Set<MaterialState> states) {
-                if (states.contains(MaterialState.selected)) {
-                  return _accentColor.withOpacity(0.2);
-                }
-                return Colors.transparent;
-              },
-            ),
-            columns: [
-              DataColumn(
-                label: Container(
-                  width: 160,
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: _primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Center(
-                    child: Text(
-                      _getTranslatedText('الاسم واللقب', 'Nom et prénom'),
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: _primaryColor,
-                        fontSize: 14,
+          scrollDirection: Axis.horizontal,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: DataTable(
+              columnSpacing: 16,
+              horizontalMargin: 16,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              dataRowColor: MaterialStateProperty.resolveWith<Color>(
+                (Set<MaterialState> states) {
+                  if (states.contains(MaterialState.selected)) {
+                    return _accentColor.withOpacity(0.2);
+                  }
+                  return Colors.transparent;
+                },
+              ),
+              columns: [
+                DataColumn(
+                  label: Container(
+                    width: 160,
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: _primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _getTranslatedText('الاسم واللقب', 'Nom et prénom'),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: _primaryColor,
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              // CORRECTION: Construction des colonnes simplifiée
-              ..._buildTableColumns(groupedBaremes),
-            ],
-            rows: [
-              ..._buildStudentRows(studentsDocs, groupedBaremes),
-              _buildStatsRow(
-                  _getTranslatedText('عدد التلاميذ المحققين',
-                      'Nombre d\'élèves ayant atteint'),
-                  groupedBaremes,
-                  isPercentage: false),
-              _buildStatsRow(
-                  _getTranslatedText('النسبة المئوية', 'Pourcentage'),
-                  groupedBaremes,
-                  isPercentage: true),
-              ..._buildButtonRows(groupedBaremes),
-            ],
+                // CORRECTION: Construction des colonnes simplifiée
+                ..._buildTableColumns(groupedBaremes),
+              ],
+              rows: [
+                ..._buildStudentRows(studentsDocs, groupedBaremes),
+                _buildStatsRow(
+                    _getTranslatedText('عدد التلاميذ المحققين',
+                        'Nombre d\'élèves ayant atteint'),
+                    groupedBaremes,
+                    isPercentage: false),
+                _buildStatsRow(
+                    _getTranslatedText('النسبة المئوية', 'Pourcentage'),
+                    groupedBaremes,
+                    isPercentage: true),
+                ..._buildButtonRows(groupedBaremes),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
 // NOUVELLE MÉTHODE: Construction des colonnes
-List<DataColumn> _buildTableColumns(Map<String, List<Map<String, dynamic>>> groupedBaremes) {
-  List<DataColumn> columns = [];
-  
-  for (var entry in groupedBaremes.entries) {
-    for (final bareme in entry.value) {
-      if (bareme['type'] == 'bareme') {
-        // Barème principal
-        columns.add(DataColumn(
-          label: _buildColumnHeader(bareme['value'], entry.key),
-        ));
-        
-        // Sous-barèmes de ce barème
-        for (final sousBareme in (bareme['sousBaremes'] as List<dynamic>? ?? [])) {
+  List<DataColumn> _buildTableColumns(
+      Map<String, List<Map<String, dynamic>>> groupedBaremes) {
+    List<DataColumn> columns = [];
+
+    for (var entry in groupedBaremes.entries) {
+      for (final bareme in entry.value) {
+        if (bareme['type'] == 'bareme') {
+          // Barème principal
           columns.add(DataColumn(
-            label: _buildColumnHeader(sousBareme['value'], entry.key),
+            label: _buildColumnHeader(bareme['value'], entry.key),
+          ));
+
+          // Sous-barèmes de ce barème
+          for (final sousBareme
+              in (bareme['sousBaremes'] as List<dynamic>? ?? [])) {
+            columns.add(DataColumn(
+              label: _buildColumnHeader(sousBareme['value'], entry.key),
+            ));
+          }
+        } else {
+          // Sous-barème seul
+          columns.add(DataColumn(
+            label: _buildColumnHeader(bareme['value'], entry.key),
           ));
         }
-      } else {
-        // Sous-barème seul
-        columns.add(DataColumn(
-          label: _buildColumnHeader(bareme['value'], entry.key),
-        ));
       }
     }
+
+    return columns;
   }
-  
-  return columns;
-}
 
 // NOUVELLE MÉTHODE: Construction de l'en-tête de colonne
-Widget _buildColumnHeader(String title, String groupKey) {
-  return Container(
-    width: 110,
-    padding: EdgeInsets.symmetric(vertical: 8),
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [
-          _headerColors.putIfAbsent(groupKey, () => _getRandomColor()),
-          _headerColors[groupKey]!.withOpacity(0.8),
+  Widget _buildColumnHeader(String title, String groupKey) {
+    return Container(
+      width: 110,
+      padding: EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            _headerColors.putIfAbsent(groupKey, () => _getRandomColor()),
+            _headerColors[groupKey]!.withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
         ],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
       ),
-      borderRadius: BorderRadius.circular(8),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black12,
-          blurRadius: 4,
-          offset: Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-            fontSize: 12,
-          ),
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
-    ),
-  );
-}
-
-// NOUVELLE MÉTHODE: Construction des lignes étudiants
-List<DataRow> _buildStudentRows(
-    List<QueryDocumentSnapshot> studentsDocs,
-    Map<String, List<Map<String, dynamic>>> groupedBaremes) {
-  return studentsDocs.asMap().entries.map((entry) {
-    final index = entry.key;
-    final studentDoc = entry.value;
-    final studentId = studentDoc.id;
-    final studentName = studentDoc['name'] ??
-        _getTranslatedText('غير معروف', 'Inconnu');
-
-    return DataRow(
-      color: MaterialStateProperty.resolveWith<Color>(
-        (Set<MaterialState> states) {
-          return index.isEven
-              ? _backgroundColor.withOpacity(0.3)
-              : Colors.transparent;
-        },
-      ),
-      cells: [
-        DataCell(_buildStudentNameCell(studentName)),
-        ..._buildStudentCells(studentId, groupedBaremes),
-      ],
-    );
-  }).toList();
-}
-
-// NOUVELLE MÉTHODE: Cellule nom étudiant
-Widget _buildStudentNameCell(String studentName) {
-  return Container(
-    width: 160,
-    padding: EdgeInsets.symmetric(vertical: 8),
-    child: Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: _accentColor,
-            shape: BoxShape.circle,
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            studentName,
-            textDirection: widget.isFrenchInterface
-                ? TextDirection.ltr
-                : TextDirection.rtl,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            title,
             style: TextStyle(
-              color: _textColor,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+              fontSize: 12,
             ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
+        ],
+      ),
+    );
+  }
+
+// NOUVELLE MÉTHODE: Construction des lignes étudiants
+  List<DataRow> _buildStudentRows(List<QueryDocumentSnapshot> studentsDocs,
+      Map<String, List<Map<String, dynamic>>> groupedBaremes) {
+    return studentsDocs.asMap().entries.map((entry) {
+      final index = entry.key;
+      final studentDoc = entry.value;
+      final studentId = studentDoc.id;
+      final studentName =
+          studentDoc['name'] ?? _getTranslatedText('غير معروف', 'Inconnu');
+
+      return DataRow(
+        color: MaterialStateProperty.resolveWith<Color>(
+          (Set<MaterialState> states) {
+            return index.isEven
+                ? _backgroundColor.withOpacity(0.3)
+                : Colors.transparent;
+          },
         ),
-      ],
-    ),
-  );
-}
+        cells: [
+          DataCell(_buildStudentNameCell(studentName)),
+          ..._buildStudentCells(studentId, groupedBaremes),
+        ],
+      );
+    }).toList();
+  }
+
+// NOUVELLE MÉTHODE: Cellule nom étudiant
+  Widget _buildStudentNameCell(String studentName) {
+    return Container(
+      width: 160,
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: _accentColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              studentName,
+              textDirection: widget.isFrenchInterface
+                  ? TextDirection.ltr
+                  : TextDirection.rtl,
+              style: TextStyle(
+                color: _textColor,
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
 // NOUVELLE MÉTHODE: Cellules des barèmes pour un étudiant
-List<DataCell> _buildStudentCells(
-    String studentId, Map<String, List<Map<String, dynamic>>> groupedBaremes) {
-  List<DataCell> cells = [];
-  
-  for (var entry in groupedBaremes.entries) {
-    for (final bareme in entry.value) {
-      if (bareme['type'] == 'bareme') {
-        // Barème principal
-        cells.add(DataCell(_buildMarkCell(studentId, bareme['id'])));
-        
-        // Sous-barèmes
-        for (final sousBareme in (bareme['sousBaremes'] as List<dynamic>? ?? [])) {
-          cells.add(DataCell(_buildMarkCell(studentId, sousBareme['id'])));
+  List<DataCell> _buildStudentCells(String studentId,
+      Map<String, List<Map<String, dynamic>>> groupedBaremes) {
+    List<DataCell> cells = [];
+
+    for (var entry in groupedBaremes.entries) {
+      for (final bareme in entry.value) {
+        if (bareme['type'] == 'bareme') {
+          // Barème principal
+          cells.add(DataCell(_buildMarkCell(studentId, bareme['id'])));
+
+          // Sous-barèmes
+          for (final sousBareme
+              in (bareme['sousBaremes'] as List<dynamic>? ?? [])) {
+            cells.add(DataCell(_buildMarkCell(studentId, sousBareme['id'])));
+          }
+        } else {
+          // Sous-barème seul
+          cells.add(DataCell(_buildMarkCell(studentId, bareme['id'])));
         }
-      } else {
-        // Sous-barème seul
-        cells.add(DataCell(_buildMarkCell(studentId, bareme['id'])));
       }
     }
+
+    return cells;
   }
-  
-  return cells;
-}
 
 // NOUVELLE MÉTHODE: Cellule de note
-Widget _buildMarkCell(String studentId, String baremeKey) {
-  return Container(
-    width: 110,
-    padding: EdgeInsets.symmetric(vertical: 8),
-    child: FutureBuilder<String>(
-      future: _getSelectedValue(studentId, baremeKey),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
-            ),
-          );
-        }
-        final value = snapshot.data ?? _dropdownValues[0];
-        return Container(
-          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: _getValueColor(value).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(6),
-            border: Border.all(
-              color: _getValueColor(value).withOpacity(0.3),
-            ),
-          ),
-          child: Center(
-            child: Text(
-              value,
-              style: TextStyle(
-                color: _getValueColor(value),
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
+  Widget _buildMarkCell(String studentId, String baremeKey) {
+    return Container(
+      width: 110,
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: FutureBuilder<String>(
+        future: _getSelectedValue(studentId, baremeKey),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+              ),
+            );
+          }
+          final value = snapshot.data ?? _dropdownValues[0];
+          return Container(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: _getValueColor(value).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: _getValueColor(value).withOpacity(0.3),
               ),
             ),
-          ),
-        );
-      },
-    ),
-  );
-}
+            child: Center(
+              child: Text(
+                value,
+                style: TextStyle(
+                  color: _getValueColor(value),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 
 // NOUVELLE MÉTHODE: Lignes de boutons
-List<DataRow> _buildButtonRows(Map<String, List<Map<String, dynamic>>> groupedBaremes) {
-  return [
-    _buildButtonRow(_getTranslatedText('تصنيف', 'Classer'), Colors.green, Colors.yellow, groupedBaremes,
-        isClassification: true),
-    _buildButtonRow(
-        _getTranslatedText('خطة العلاج', 'Plan de traitement'),
-        Colors.blue,
-        Colors.white,
-        groupedBaremes,
-        isClassification: false),
-  ];
-}
+  List<DataRow> _buildButtonRows(
+      Map<String, List<Map<String, dynamic>>> groupedBaremes) {
+    return [
+      _buildButtonRow(_getTranslatedText('تصنيف', 'Classer'), Colors.green,
+          Colors.yellow, groupedBaremes,
+          isClassification: true),
+      _buildButtonRow(_getTranslatedText('خطة العلاج', 'Plan de traitement'),
+          Colors.blue, Colors.white, groupedBaremes,
+          isClassification: false),
+    ];
+  }
 
   Color _getValueColor(String value) {
     switch (value) {

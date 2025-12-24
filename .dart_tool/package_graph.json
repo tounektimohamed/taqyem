@@ -26,6 +26,7 @@
         "flutter_gen",
         "flutter_holo_date_picker",
         "flutter_html",
+        "flutter_html_to_pdf",
         "flutter_localizations",
         "flutter_map",
         "flutter_map_cancellable_tile_provider",
@@ -139,6 +140,13 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "flutter_html_to_pdf",
+      "version": "0.7.0",
+      "dependencies": [
+        "flutter"
       ]
     },
     {

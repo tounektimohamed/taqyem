@@ -476,6 +476,12 @@
       "languageVersion": "3.2"
     },
     {
+      "name": "flutter_html_to_pdf",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/flutter_html_to_pdf-0.7.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "flutter_launcher_icons",
       "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/flutter_launcher_icons-0.14.4",
       "packageUri": "lib/",

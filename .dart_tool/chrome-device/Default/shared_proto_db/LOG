@@ -1,15 +1,2 @@
-2025/12/20-21:12:35.817 8e781 Reusing MANIFEST /tmp/flutter_tools.PXMEKQ/flutter_tools_chrome_device.NFJMNN/Default/shared_proto_db/MANIFEST-000001
-2025/12/20-21:12:35.822 8e781 Recovering log #26
-2025/12/20-21:12:35.823 8e781 Reusing old log /tmp/flutter_tools.PXMEKQ/flutter_tools_chrome_device.NFJMNN/Default/shared_proto_db/000026.log 
-2025/12/20-21:12:35.844 8e781 Delete type=0 #7
-2025/12/20-21:12:35.844 8e781 Delete type=0 #10
-2025/12/20-21:12:35.853 8e781 Delete type=0 #19
-2025/12/20-21:12:35.853 8e781 Delete type=0 #23
-2025/12/20-21:12:35.853 8e781 Delete type=2 #17
-2025/12/20-21:12:35.853 8e781 Delete type=0 #16
-2025/12/20-21:12:35.853 8e781 Delete type=2 #11
-2025/12/20-21:12:35.853 8e781 Delete type=2 #14
-2025/12/20-21:12:35.853 8e781 Delete type=0 #4
-2025/12/20-21:12:35.854 8e781 Delete type=0 #13
-2025/12/20-21:12:35.854 8e781 Delete type=0 #3
-2025/12/20-21:12:35.855 8e781 Delete type=2 #8
+2025/12/23-20:59:48.416 303b7 Creating DB /tmp/flutter_tools.VCOUQI/flutter_tools_chrome_device.YUNKVW/Default/shared_proto_db since it was missing.
+2025/12/23-20:59:48.452 303b7 Reusing MANIFEST /tmp/flutter_tools.VCOUQI/flutter_tools_chrome_device.YUNKVW/Default/shared_proto_db/MANIFEST-000001

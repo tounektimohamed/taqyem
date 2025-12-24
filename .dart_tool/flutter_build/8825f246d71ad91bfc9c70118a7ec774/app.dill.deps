@@ -631,6 +631,8 @@ file:///home/tounekti/.pub-cache/hosted/pub.dev/flutter_holo_date_picker-2.0.0/l
 file:///home/tounekti/.pub-cache/hosted/pub.dev/flutter_holo_date_picker-2.0.0/lib/i18n/strings_zh_cn.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/flutter_holo_date_picker-2.0.0/lib/widget/date_ext.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/flutter_holo_date_picker-2.0.0/lib/widget/date_picker_widget.dart
+file:///home/tounekti/.pub-cache/hosted/pub.dev/flutter_html_to_pdf-0.7.0/lib/file_utils.dart
+file:///home/tounekti/.pub-cache/hosted/pub.dev/flutter_html_to_pdf-0.7.0/lib/flutter_html_to_pdf.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/flutter_native_splash-2.4.6/lib/flutter_native_splash_web.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/flutter_native_splash-2.4.6/lib/remove_splash_from_web.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/flutter_timeline_calendar-1.0.9/lib/timeline/dictionaries/dictionary.dart
@@ -2781,6 +2783,7 @@ file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/AdminProposalsPage.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/EditPage.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/StatisticsDashboard.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/SubjectHelper.dart
+file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/appjson.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/da3m_tableau.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/ereur_solution.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/feedback_management_page.dart
@@ -2794,6 +2797,7 @@ file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/pdf_report_generator.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/presence.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/selectionPage.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/tableau.dart
+file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/tableau_pdf.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/touttableaux.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/word_report_generator.dart
 file:///home/tounekti/flutter/bin/cache/dart-sdk/lib/libraries.json

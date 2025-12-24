@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:Taqyem/taqyem/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
 import 'package:Taqyem/taqyem/StatisticsDashboard.dart';
+import 'package:Taqyem/taqyem/appjson.dart';
 import 'package:Taqyem/taqyem/feedback_system.dart';
 import 'package:Taqyem/taqyem/payment/PaymentPage.dart';
 import 'package:Taqyem/taqyem/pdf/ManagePDFPage.dart';
@@ -554,6 +555,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 );
               },
             ),
+            //  _buildDrawerItem(
+            //   context,
+            //   Icons.class_,
+            //   'إدارة الأقسام',
+            //   () {
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(
+            //         builder: (context) => appmed(),
+            //       ),
+            //     );
+            //   },
+            // ),
             _buildDrawerItem(
               context,
               Icons.class_,
