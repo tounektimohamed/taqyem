@@ -111,7 +111,7 @@ class _SettingsState extends State<MoreUser> {
                         //logo
                         Image(
                           image: AssetImage('lib/assets/icons/me/logo.png'),
-                          height: 50,
+                          height: 100,
                         ),
                         // app name
                         // Text(

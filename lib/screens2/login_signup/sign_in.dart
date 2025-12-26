@@ -161,52 +161,63 @@ class _SignInState extends State<SignIn> {
     }
   }
 
-  Future<void> signInWithGoogle() async {
-    setState(() {
-      isLoadingGoogle = true;
-      _isError = false;
-    });
 
-    try {
-      UserCredential userCredential =
-          await AuthService().signInWithGoogle(context);
-      final user = userCredential.user!;
+Future<void> signInWithGoogle() async {
+  setState(() {
+    isLoadingGoogle = true;
+    _isError = false;
+  });
 
-      // Reference to user document
-      final userDocRef =
-          FirebaseFirestore.instance.collection('Users').doc(user.uid);
+  try {
+    UserCredential userCredential =
+        await AuthService().signInWithGoogle(context);
+    final user = userCredential.user!;
 
+    // Reference to user document
+    final userDocRef =
+        FirebaseFirestore.instance.collection('Users').doc(user.uid);
+
+    // Vérifier si l'utilisateur existe déjà
+    final userDoc = await userDocRef.get();
+    
+    if (!userDoc.exists) {
+      // PREMIÈRE INSCRIPTION : créer le compte avec isActive = false
       await userDocRef.set(
-          {
-            'name': user.displayName,
-            'email': user.email,
-            'isAgent': false,
-            'isActive': false,
-            'address': user.email,
-            'dob': null,
-            'gender': null,
-            'nic': null,
-            'mobile': null,
-            'accountExpiration': null,
-            'createdAt': FieldValue.serverTimestamp(),
-            'lastLogin': FieldValue.serverTimestamp(), // Dernière connexion
-          },
-          SetOptions(
-              merge: true)); // Merge pour ne pas écraser les données existantes
-
-      await handleUserNavigation(userCredential);
-    } catch (e) {
-      print('Google Sign-In Error: $e');
-      if (!mounted) return;
-      setState(() {
-        _isError = true;
-        errorMsg = "Sign-in failed. Please try again.";
+        {
+          'name': user.displayName,
+          'email': user.email,
+          'isAgent': false,
+          'isActive': false, // Seulement false la première fois
+          'address': user.email,
+          'dob': null,
+          'gender': null,
+          'nic': null,
+          'mobile': null,
+          'accountExpiration': null,
+          'createdAt': FieldValue.serverTimestamp(),
+          'lastLogin': FieldValue.serverTimestamp(),
+        },
+      );
+    } else {
+      // UTILISATEUR EXISTANT : seulement mettre à jour lastLogin
+      await userDocRef.update({
+        'lastLogin': FieldValue.serverTimestamp(),
       });
-    } finally {
-      if (!mounted) return;
-      setState(() => isLoadingGoogle = false);
     }
+
+    await handleUserNavigation(userCredential);
+  } catch (e) {
+    print('Google Sign-In Error: $e');
+    if (!mounted) return;
+    setState(() {
+      _isError = true;
+      errorMsg = "Sign-in failed. Please try again.";
+    });
+  } finally {
+    if (!mounted) return;
+    setState(() => isLoadingGoogle = false);
   }
+}
 
   String getErrorMessage(String errorCode) {
     switch (errorCode) {
@@ -265,7 +276,7 @@ class _SignInState extends State<SignIn> {
                   children: [
                     const Image(
                       image: AssetImage('lib/assets/icons/me/logo.png'),
-                      height: 80,
+                      height: 100,
                     ),
                     Text(
                       'Taqyem',

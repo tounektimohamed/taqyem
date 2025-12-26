@@ -23,6 +23,9 @@ class _SignUpState extends State<SignUp> {
   final _passwordController = TextEditingController();
   final _confirmpasswordController = TextEditingController();
   final _nameController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _nicController = TextEditingController();
+  final _mobileController = TextEditingController();
   final _dobController = TextEditingController();
   final _genderController = TextEditingController();
 
@@ -30,6 +33,9 @@ class _SignUpState extends State<SignUp> {
   late FocusNode focusNode_pwd;
   late FocusNode focusNode_pwdConfirm;
   late FocusNode focusNode_name;
+  late FocusNode focusNode_address;
+  late FocusNode focusNode_nic;
+  late FocusNode focusNode_mobile;
   late FocusNode focusNode_dob;
   late FocusNode focusNode_gender;
 
@@ -47,8 +53,9 @@ class _SignUpState extends State<SignUp> {
   String errorMsg = '';
 
   Genders? _genderSelected;
+  DateTime? _dob;
 
-  bool isName(String input) => RegExp(r'^[a-zA-Z]').hasMatch(input);
+  bool isName(String input) => RegExp(r'^[a-zA-Z\s]{2,}$').hasMatch(input);
   bool isEmail(String input) => RegExp(
           r"^[a-zA-Z0-9.a-zA-Z0-9.!#$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
       .hasMatch(input);
@@ -60,6 +67,9 @@ class _SignUpState extends State<SignUp> {
     focusNode_pwd = FocusNode();
     focusNode_pwdConfirm = FocusNode();
     focusNode_name = FocusNode();
+    focusNode_address = FocusNode();
+    focusNode_nic = FocusNode();
+    focusNode_mobile = FocusNode();
     focusNode_dob = FocusNode();
     focusNode_gender = FocusNode();
     super.initState();
@@ -88,6 +98,7 @@ class _SignUpState extends State<SignUp> {
       if (!isName(_nameController.text)) {
         setState(() {
           _isName = true;
+          errorMsg = 'Enter a valid name (min 2 characters)';
         });
         return;
       } else {
@@ -98,6 +109,7 @@ class _SignUpState extends State<SignUp> {
       if (!isEmail(_emailController.text)) {
         setState(() {
           _isEmail = true;
+          errorMsg = 'Enter a valid email address';
         });
         return;
       } else {
@@ -108,6 +120,7 @@ class _SignUpState extends State<SignUp> {
       if (!isPassword(_passwordController.text)) {
         setState(() {
           _isPwd = true;
+          errorMsg = 'Password must be at least 8 characters';
         });
         return;
       } else {
@@ -120,6 +133,7 @@ class _SignUpState extends State<SignUp> {
       if (!isPasswordConfirmed()) {
         setState(() {
           _isPwdConfirm = true;
+          errorMsg = 'Passwords do not match';
         });
         return;
       } else {
@@ -129,6 +143,11 @@ class _SignUpState extends State<SignUp> {
       }
 
       try {
+        setState(() {
+          isLoading = true;
+          _isError = false;
+        });
+
         // Create user in Firebase Authentication
         UserCredential userCredential =
             await FirebaseAuth.instance.createUserWithEmailAndPassword(
@@ -136,22 +155,22 @@ class _SignUpState extends State<SignUp> {
           password: _passwordController.text.trim(),
         );
 
-        // Add user data to Firestore
+        // Add user data to Firestore avec l'UID comme document ID
         await FirebaseFirestore.instance
             .collection('Users')
             .doc(userCredential.user!.uid)
             .set(
           {
-            'name': userCredential?.user!.displayName,
-            'email': userCredential?.user!.email,
+            'name': _nameController.text.trim(), // Utiliser le nom saisi
+            'email': _emailController.text.trim(), // Utiliser l'email saisi
             'isAgent': false,
-            'isActive': false,
-            'address': userCredential?.user!.email,
-            'dob': null,
-            'gender': null,
-            'nic': null,
-            'mobile': null,
-            'accountExpiration': null, // Initialize as null
+            'isActive': false, // Premier signup = false
+            'address': _addressController.text.trim(),
+            'dob': _dob,
+            'gender': _genderSelected?.toString().split('.').last,
+            'nic': _nicController.text.trim(),
+            'mobile': _mobileController.text.trim(),
+            'accountExpiration': null,
             'createdAt': FieldValue.serverTimestamp(),
             'lastLogin': FieldValue.serverTimestamp(),
           },
@@ -161,9 +180,19 @@ class _SignUpState extends State<SignUp> {
           _isError = false;
           _isSuccess = true;
           isLoading = false;
+          errorMsg = '';
         });
 
-        // Handle success UI or navigation here
+        // Naviguer vers la page de connexion après 2 secondes
+        await Future.delayed(const Duration(seconds: 2));
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const SignIn(),
+          ),
+        );
+
       } on FirebaseAuthException catch (e) {
         setState(() {
           _isError = true;
@@ -171,6 +200,91 @@ class _SignUpState extends State<SignUp> {
           isLoading = false;
           errorMsg = getErrorMessage(e.code);
         });
+      } catch (e) {
+        setState(() {
+          _isError = true;
+          _isSuccess = false;
+          isLoading = false;
+          errorMsg = 'An unexpected error occurred. Please try again.';
+        });
+      }
+    }
+  }
+
+  // Fonction pour Google Sign Up (séparée)
+  Future<void> signUpWithGoogle() async {
+    setState(() {
+      isLoadingGoogle = true;
+      _isError = false;
+    });
+
+    try {
+      UserCredential userCredential =
+          await AuthService().signInWithGoogle(context);
+      final user = userCredential.user!;
+
+      // Vérifier si l'utilisateur existe déjà
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        // PREMIÈRE INSCRIPTION : créer le compte avec isActive = false
+        await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(user.uid)
+            .set(
+          {
+            'name': user.displayName,
+            'email': user.email,
+            'isAgent': false,
+            'isActive': false, // Seulement false la première fois
+            'address': user.email,
+            'dob': null,
+            'gender': null,
+            'nic': null,
+            'mobile': null,
+            'accountExpiration': null,
+            'createdAt': FieldValue.serverTimestamp(),
+            'lastLogin': FieldValue.serverTimestamp(),
+          },
+        );
+      } else {
+        // UTILISATEUR EXISTANT : seulement mettre à jour lastLogin
+        await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(user.uid)
+            .update({
+          'lastLogin': FieldValue.serverTimestamp(),
+        });
+      }
+
+      setState(() {
+        _isSuccess = true;
+        _isError = false;
+        errorMsg = '';
+      });
+
+      // Naviguer vers la page d'accueil appropriée
+      // (La navigation sera gérée par handleUserNavigation dans SignIn)
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const SignIn(),
+        ),
+      );
+
+    } catch (e) {
+      print('Google Sign-Up Error: $e');
+      setState(() {
+        _isError = true;
+        errorMsg = "Sign-up with Google failed. Please try again.";
+      });
+    } finally {
+      if (mounted) {
+        setState(() => isLoadingGoogle = false);
       }
     }
   }
@@ -181,6 +295,9 @@ class _SignUpState extends State<SignUp> {
     _passwordController.dispose();
     _confirmpasswordController.dispose();
     _nameController.dispose();
+    _addressController.dispose();
+    _nicController.dispose();
+    _mobileController.dispose();
     _dobController.dispose();
     _genderController.dispose();
     super.dispose();
@@ -221,7 +338,7 @@ class _SignUpState extends State<SignUp> {
                             const Image(
                               image:
                                   AssetImage('lib/assets//icons/me/logo.png'),
-                              height: 50,
+                              height: 100,
                             ),
                             //title
                             Text(
@@ -263,7 +380,7 @@ class _SignUpState extends State<SignUp> {
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(12, 0, 0, 0),
                           child: Text(
-                            'Enter a valid name',
+                            'Enter a valid name (min 2 characters)',
                             style: GoogleFonts.roboto(
                               fontSize: 12,
                               color: const Color.fromRGBO(255, 16, 15, 15),
@@ -337,7 +454,7 @@ class _SignUpState extends State<SignUp> {
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(12, 0, 0, 0),
                           child: Text(
-                            'Enter a strong password',
+                            'Password must be at least 8 characters',
                             style: GoogleFonts.roboto(
                               fontSize: 12,
                               color: const Color.fromRGBO(255, 16, 15, 15),
@@ -384,7 +501,11 @@ class _SignUpState extends State<SignUp> {
                         ),
                       ),
                     ),
-                    //firebase error message
+
+                    // AJOUTER D'AUTRES CHAMPS ICI SI NÉCESSAIRE
+                    // Address, NIC, Mobile, Date of Birth, Gender
+
+                    //error message
                     Visibility(
                       visible: _isError,
                       maintainSize: false,
@@ -393,38 +514,33 @@ class _SignUpState extends State<SignUp> {
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
-                          child: GlowingOverscrollIndicator(
-                            axisDirection: AxisDirection.right,
-                            color: const Color.fromRGBO(255, 16, 15, 15),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.max,
-                              children: [
-                                const Icon(
-                                  Icons.error_outline_rounded,
-                                  color: Color.fromRGBO(255, 16, 15, 15),
-                                ),
-                                const SizedBox(
-                                  width: 3,
-                                ),
-                                Text(
+                          padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.max,
+                            children: [
+                              const Icon(
+                                Icons.error_outline_rounded,
+                                color: Color.fromRGBO(255, 16, 15, 15),
+                              ),
+                              const SizedBox(
+                                width: 8,
+                              ),
+                              Expanded(
+                                child: Text(
                                   errorMsg,
                                   style: GoogleFonts.roboto(
-                                    fontSize: 15,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color:
                                         const Color.fromRGBO(255, 16, 15, 15),
                                   ),
                                   textAlign: TextAlign.start,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(
-                      height: 5,
                     ),
 
                     //success message
@@ -436,35 +552,37 @@ class _SignUpState extends State<SignUp> {
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Padding(
-                          padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
-                          child: GlowingOverscrollIndicator(
-                            axisDirection: AxisDirection.right,
-                            color: const Color.fromARGB(239, 0, 198, 89),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.max,
-                              children: [
-                                const Icon(
-                                  Icons.check_circle_outline,
-                                  color: Color.fromARGB(239, 0, 198, 89),
-                                ),
-                                const SizedBox(
-                                  width: 3,
-                                ),
-                                Text(
+                          padding: const EdgeInsets.fromLTRB(0, 8, 0, 8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.max,
+                            children: [
+                              const Icon(
+                                Icons.check_circle_outline,
+                                color: Color.fromARGB(239, 0, 198, 89),
+                              ),
+                              const SizedBox(
+                                width: 8,
+                              ),
+                              Expanded(
+                                child: Text(
                                   'Account created successfully!',
                                   style: GoogleFonts.roboto(
-                                    fontSize: 15,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color:
                                         const Color.fromARGB(239, 0, 198, 89),
                                   ),
                                   textAlign: TextAlign.start,
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
+                    ),
+
+                    const SizedBox(
+                      height: 10,
                     ),
 
                     //sign up button
@@ -475,9 +593,6 @@ class _SignUpState extends State<SignUp> {
                         onPressed: signUp,
                         style: const ButtonStyle(
                           elevation: MaterialStatePropertyAll(2),
-                          // backgroundColor: MaterialStatePropertyAll(
-                          //   Color.fromARGB(255, 7, 82, 96),
-                          // ),
                           shape: MaterialStatePropertyAll(
                             RoundedRectangleBorder(
                               borderRadius: BorderRadius.all(
@@ -516,41 +631,12 @@ class _SignUpState extends State<SignUp> {
                       height: 15,
                     ),
 
-                    //google
+                    //google sign up button
                     SizedBox(
                       width: double.infinity,
                       height: 55,
                       child: FilledButton.tonalIcon(
-                        onPressed: () async {
-                          UserCredential? userCredential =
-                              await AuthService().signInWithGoogle(context);
-                          print(userCredential?.user!.email);
-                          setState(() {
-                            isLoading = true;
-                          });
-                          await FirebaseFirestore.instance
-                              .collection('Users')
-                              .doc(userCredential?.user!.email)
-                              .set(
-                            {
-                              'name': userCredential?.user!.displayName,
-                              'email': userCredential?.user!.email,
-                              'isAgent': false,
-                              'isActive': false,
-                              'address': userCredential?.user!.email,
-                              'dob': null,
-                              'gender': null,
-                              'nic': null,
-                              'mobile': null,
-                              'accountExpiration': null, // Initialize as null
-                              'createdAt': FieldValue.serverTimestamp(),
-                              'lastLogin': FieldValue.serverTimestamp(),
-                            },
-                          );
-                          setState(() {
-                            isLoading = false;
-                          });
-                        },
+                        onPressed: signUpWithGoogle,
                         style: const ButtonStyle(
                           elevation: MaterialStatePropertyAll(2),
                           shape: MaterialStatePropertyAll(
@@ -561,12 +647,16 @@ class _SignUpState extends State<SignUp> {
                             ),
                           ),
                         ),
-                        icon: const FaIcon(
-                          FontAwesomeIcons.google,
-                          color: Color.fromARGB(255, 7, 82, 96),
-                          size: 20,
-                        ),
-                        label: !isLoading
+                        icon: !isLoadingGoogle
+                            ? const FaIcon(
+                                FontAwesomeIcons.google,
+                                color: Color.fromARGB(255, 7, 82, 96),
+                                size: 20,
+                              )
+                            : const CircularProgressIndicator(
+                                color: Color.fromARGB(255, 7, 82, 96),
+                              ),
+                        label: !isLoadingGoogle
                             ? Text(
                                 'Sign up with Google',
                                 style: GoogleFonts.roboto(
@@ -574,15 +664,13 @@ class _SignUpState extends State<SignUp> {
                                   color: const Color.fromARGB(255, 7, 82, 96),
                                 ),
                               )
-                            : const CircularProgressIndicator(
-                                color: Color.fromARGB(255, 7, 82, 96),
-                              ),
+                            : const SizedBox(),
                       ),
                     ),
                     const SizedBox(
                       height: 10,
                     ),
-                    //redirect to register
+                    //redirect to login
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -594,14 +682,11 @@ class _SignUpState extends State<SignUp> {
                           ),
                         ),
                         ElevatedButton(
-                          //
                           onPressed: () {
-                            Navigator.push(
+                            Navigator.pushReplacement(
                               context,
                               MaterialPageRoute(
-                                builder: (context) {
-                                  return const SignIn();
-                                },
+                                builder: (context) => const SignIn(),
                               ),
                             );
                           },
@@ -624,7 +709,6 @@ class _SignUpState extends State<SignUp> {
                             style: GoogleFonts.roboto(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              // color: const Color.fromARGB(255, 7, 82, 96),
                             ),
                           ),
                         ),
@@ -650,11 +734,11 @@ class _SignUpState extends State<SignUp> {
       case 'invalid-email':
         return 'Email address is invalid.';
       case 'weak-password':
-        return 'Enter a strong password.';
+        return 'Enter a strong password (min 8 characters).';
       case 'network-request-failed':
-        return 'Network error.';
+        return 'Network error. Please check your connection.';
       default:
-        return 'Account creation failed. Please try again';
+        return 'Account creation failed. Please try again.';
     }
   }
 }

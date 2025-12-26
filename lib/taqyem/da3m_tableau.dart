@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:Taqyem/taqyem/header.dart';
+import 'package:Taqyem/taqyem/pdf_generator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -215,12 +216,169 @@ class _ClassificationPageState extends State<ClassificationPage> {
     'support': [],
     'excellence': [],
   };
+  
+  // Variables pour la gestion du crédit d'impression
+  int _remainingPrints = 5;
+  bool _isAccountActive = false;
+  bool _isMounted = true;
+  Timer? _accountStatusTimer;
 
   @override
   void initState() {
     super.initState();
     _detectLanguage();
     loadJsonData();
+    _loadPrintCredit();
+    _startTimer();
+  }
+
+  @override
+  void dispose() {
+    _isMounted = false;
+    _accountStatusTimer?.cancel();
+    super.dispose();
+  }
+
+  // Méthodes pour la gestion du crédit d'impression
+  Future<void> _loadPrintCredit() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .get();
+
+      if (_isMounted && userDoc.exists) {
+        setState(() {
+          _remainingPrints = _getFieldSafe(userDoc, 'remainingPrints', 5);
+          _isAccountActive = _getFieldSafe(userDoc, 'isActive', false);
+        });
+      }
+    } catch (e) {
+      print('Erreur lors du chargement du crédit: $e');
+    }
+  }
+
+  void _startTimer() {
+    _accountStatusTimer?.cancel();
+    _accountStatusTimer = Timer.periodic(const Duration(minutes: 1), (timer) {
+      if (_isMounted) {
+        _checkAccountStatus();
+      } else {
+        timer.cancel();
+      }
+    });
+    _checkAccountStatus();
+  }
+
+  Future<void> _checkAccountStatus() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || !_isMounted) return;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .get();
+
+      if (_isMounted && userDoc.exists) {
+        final isActive = _getFieldSafe(userDoc, 'isActive', false);
+
+        setState(() {
+          _isAccountActive = isActive;
+        });
+      }
+    } catch (e) {
+      print('Erreur lors de la vérification du statut du compte: $e');
+    }
+  }
+
+  // Méthode utilitaire pour obtenir les champs en sécurité
+  dynamic _getFieldSafe(DocumentSnapshot doc, String field, dynamic defaultValue) {
+    try {
+      final data = doc.data() as Map<String, dynamic>?;
+      if (data == null || !data.containsKey(field)) {
+        return defaultValue;
+      }
+      return data[field] ?? defaultValue;
+    } catch (e) {
+      print('Erreur lecture champ $field: $e');
+      return defaultValue;
+    }
+  }
+
+  // Condition de vérification du crédit (identique au code 1)
+  Future<bool> _checkAndUpdatePrintCredit() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists) return false;
+
+      final bool isActive = _getFieldSafe(userDoc, 'isActive', false);
+      final int remainingPrints = _getFieldSafe(userDoc, 'remainingPrints', 5);
+
+      print('Statut compte - Actif: $isActive, Credits: $remainingPrints');
+
+      if (isActive) {
+        print('Compte actif - Pas de déduction de crédit');
+        return true;
+      }
+
+      if (remainingPrints > 0) {
+        print('Crédits suffisants - Restant: $remainingPrints');
+        return true;
+      }
+
+      print('Plus de crédits disponibles');
+      return false;
+    } catch (e) {
+      print('Erreur lors de la vérification du crédit: $e');
+      return false;
+    }
+  }
+
+  // Méthode de déduction du crédit
+  Future<void> _deductPrintCredit() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .get();
+
+      if (!userDoc.exists) return;
+
+      final bool isActive = _getFieldSafe(userDoc, 'isActive', false);
+      final int remainingPrints = _getFieldSafe(userDoc, 'remainingPrints', 5);
+
+      // Ne déduire que si le compte est inactif et qu'il reste des crédits
+      if (!isActive && remainingPrints > 0) {
+        await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(user.uid)
+            .update({'remainingPrints': FieldValue.increment(-1)});
+
+        if (_isMounted) {
+          setState(() {
+            _remainingPrints = remainingPrints - 1;
+          });
+        }
+
+        print('✅ Crédit déduit - Nouveau solde: ${remainingPrints - 1}');
+      }
+    } catch (e) {
+      print('Erreur lors de la déduction du crédit: $e');
+    }
   }
 
   void _detectLanguage() {
@@ -297,6 +455,129 @@ class _ClassificationPageState extends State<ClassificationPage> {
         _isLoading = false;
       });
     }
+  }
+
+  // Méthode pour afficher le dialogue d'erreur de crédit
+  void _showCreditErrorDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.credit_card_off, color: Colors.orange),
+            SizedBox(width: 10),
+            Text(_getTranslatedText('انتهت الرصيد', 'Crédit Épuisé')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _getTranslatedText('لم يعد لديك رصيد طباعة متاح.',
+                  'Vous n\'avez plus de crédits d\'impression disponibles.'),
+              style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 10),
+            Text(
+              _getTranslatedText('يرجى تفعيل حسابك للمواصلة في إنشاء التقارير.',
+                  'Veuillez activer votre compte pour continuer à générer des rapports.'),
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+            SizedBox(height: 10),
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info, size: 16, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _getTranslatedText('الرصيد المتبقي: $_remainingPrints/5',
+                          'Crédits restants: $_remainingPrints/5'),
+                      style: TextStyle(fontSize: 14, color: Colors.orange[800]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(_getTranslatedText('لاحقاً', 'Plus tard')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Méthode pour afficher le dialogue de chargement
+  Widget _buildLoadingDialog({bool isPDF = false}) {
+    return AlertDialog(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                    isPDF ? Colors.red : Colors.blue),
+                strokeWidth: 3,
+              ),
+              Icon(
+                isPDF ? Icons.picture_as_pdf : Icons.description,
+                color: isPDF ? Colors.red : Colors.blue,
+                size: 20,
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+          Text(
+            isPDF
+                ? _getTranslatedText(
+                    "جاري إنشاء PDF...", "Génération du PDF en cours...")
+                : _getTranslatedText("جاري إنشاء التقرير...",
+                    "Génération du rapport en cours..."),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          SizedBox(height: 10),
+          Text(
+            _getTranslatedText("يرجى الانتظار...", "Veuillez patienter..."),
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+          ),
+          SizedBox(height: 10),
+          if (!_isAccountActive)
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.info, size: 16, color: Colors.orange),
+                  SizedBox(width: 5),
+                  Text(
+                    _getTranslatedText(
+                        'الرصيد المستخدم: ${_remainingPrints - 1}/5',
+                        'Crédit utilisé: ${_remainingPrints - 1}/5'),
+                    style: TextStyle(fontSize: 12, color: Colors.orange[800]),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Future<void> _saveUserProposal(
@@ -895,371 +1176,195 @@ class _ClassificationPageState extends State<ClassificationPage> {
     );
   }
 
-  Future<void> _generateSingleGroupReport(String groupName, String groupKey) async {
-    setState(() {
-      _isGeneratingReport = true;
-    });
+  // Méthodes modifiées avec la condition d'impression
+Future<void> _generateSingleGroupReport(String groupName, String groupKey) async {
+  // Vérifier le crédit d'impression
+  if (!await _checkAndUpdatePrintCredit()) {
+    _showCreditErrorDialog();
+    return;
+  }
 
+  setState(() {
+    _isGeneratingReport = true;
+  });
+
+  try {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
-                ),
-                SizedBox(height: 20),
-                Text(
-                  _getTranslatedText("جاري إنشاء التقرير...",
-                      "Génération du rapport en cours..."),
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  _getTranslatedText("تقرير مجموعة $groupName",
-                      "Rapport du groupe $groupName"),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+      builder: (BuildContext context) => _buildLoadingDialog(isPDF: true),
     );
 
-    try {
-      final groupedStudents = await _getGroupedStudentsData();
-
-      if (groupedStudents.isEmpty) {
-        throw Exception(_getTranslatedText('لم يتم العثور على أي طالب في القسم',
-            'Aucun étudiant trouvé dans la classe'));
-      }
-
-      // Obtenir le nom du groupe traduit
-      String translatedGroupName = groupName;
-      String groupKeyForData = '';
-      
-      if (groupName.contains(_getTranslatedText('العلاج', 'traitement'))) {
-        groupKeyForData = 'treatment';
-        translatedGroupName = _getTranslatedText('مجموعة العلاج', 'Groupe de traitement');
-      } else if (groupName.contains(_getTranslatedText('الدعم', 'soutien'))) {
-        groupKeyForData = 'support';
-        translatedGroupName = _getTranslatedText('مجموعة الدعم', 'Groupe de soutien');
-      } else {
-        groupKeyForData = 'excellence';
-        translatedGroupName = _getTranslatedText('مجموعة التميز', 'Groupe d\'excellence');
-      }
-
-      // Sélections pour ce groupe
-      List<SolutionSelection> groupSelections = _groupSelections[groupKey] ?? [];
-      
-      if (groupSelections.isEmpty) {
-        throw Exception(_getTranslatedText(
-          'يرجى تحديد حلول ومشاكل لهذا المجموعة أولاً',
-          'Veuillez d\'abord sélectionner des solutions et problèmes pour ce groupe'
-        ));
-      }
-
-      List<Map<String, dynamic>> selectedSolutions = groupSelections
-          .where((item) => !item.isProblem)
-          .map((item) => {
-                'text': item.text,
-                'source': item.type,
-              })
-          .toList();
-
-      List<Map<String, dynamic>> selectedProblems = groupSelections
-          .where((item) => item.isProblem)
-          .map((item) => {
-                'text': item.text,
-                'source': item.type,
-              })
-          .toList();
-
-      final reportData = {
-        'schoolName': widget.schoolName,
-        'profName': widget.profName,
-        'className': widget.className,
-        'matiereName': widget.matiereName,
-        'baremeName': widget.baremeName,
-        'sousBaremeName': widget.sousBaremeName ?? '',
-        'groupName': translatedGroupName,
-        'isCompleteReport': false,
-        'groups': {
-          groupKeyForData: {
-            'students': groupedStudents[translatedGroupName]
-                    ?.map((s) => s['name'])
-                    .whereType<String>()
-                    .toList() ??
-                [],
-            'solutions': selectedSolutions,
-            'problems': selectedProblems,
-          }
-        },
-      };
-
-      const serverUrl =
-          'https://print-maker.onrender.com/generate-treatment-plan';
-      final response = await http
-          .post(
-            Uri.parse(serverUrl),
-            headers: {'Content-Type': 'application/json'},
-            body: json.jsonEncode(reportData),
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        if (kIsWeb) {
-          final blob = html.Blob([response.bodyBytes], 'text/html');
-          final url = html.Url.createObjectUrlFromBlob(blob);
-          html.window.open(url, '_blank');
-          html.Url.revokeObjectUrl(url);
-        } else {
-          final tempDir = await getTemporaryDirectory();
-          final file = File('${tempDir.path}/treatment_plan_${groupKey}.html');
-          await file.writeAsBytes(response.bodyBytes);
-          OpenFile.open(file.path);
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_getTranslatedText(
-                'تم إنشاء التقرير للمجموعة $groupName بنجاح',
-                'Rapport pour le groupe $groupName généré avec succès')),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        throw Exception(
-            _getTranslatedText('خطأ في الخادم:', 'Erreur serveur:') +
-                ' ${response.statusCode}\n${response.body}');
-      }
-    } catch (e) {
-      debugPrint('[SingleGroupReport] ERREUR: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_getTranslatedText(
-                  'خطأ في الإنشاء:', 'Erreur lors de la création:') +
-              ' ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() {
-        _isGeneratingReport = false;
-      });
-      Navigator.of(context).pop();
+    final groupedStudents = await _getGroupedStudentsData();
+    
+    if (groupedStudents.isEmpty) {
+      throw Exception(_getTranslatedText(
+        'لم يتم العثور على أي تلميذ في القسم',
+        'Aucun étudiant trouvé dans la classe'
+      ));
     }
+
+    // Préparer les données pour le PDF
+    final Map<String, List<Map<String, dynamic>>> pdfGroupSelections = {
+      groupKey: _groupSelections[groupKey]?.map((selection) {
+        return {
+          'text': selection.text,
+          'source': selection.type,
+          'isProblem': selection.isProblem,
+          'isSelected': selection.isSelected,
+        };
+      }).toList() ?? [],
+    };
+
+    await PDFClassificationGenerator.generateAndDownloadClassificationReport(
+      context: context,
+      profName: widget.profName,
+      matiereName: widget.matiereName,
+      className: widget.className,
+      schoolName: widget.schoolName,
+      baremeName: widget.baremeName,
+      sousBaremeName: widget.sousBaremeName ?? '',
+      groupedStudents: groupedStudents,
+      groupSelections: pdfGroupSelections,
+      isFrenchInterface: _isFrenchInterface,
+      isCompleteReport: false,
+      singleGroupName: groupName,
+      singleGroupKey: groupKey,
+    );
+
+    // Dédure le crédit
+    await _deductPrintCredit();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_getTranslatedText(
+          'تم إنشاء التقرير للمجموعة $groupName بنجاح',
+          'Rapport pour le groupe $groupName généré avec succès'
+        )),
+        backgroundColor: Colors.green,
+      ),
+    );
+  } catch (e) {
+    debugPrint('[SingleGroupReport] ERREUR: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_getTranslatedText(
+          'خطأ في الإنشاء:',
+          'Erreur lors de la création:'
+        ) + ' ${e.toString()}'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  } finally {
+    setState(() {
+      _isGeneratingReport = false;
+    });
+    Navigator.of(context).pop();
+  }
+}
+
+Future<void> _generateCompleteReport() async {
+  // Vérifier le crédit d'impression
+  if (!await _checkAndUpdatePrintCredit()) {
+    _showCreditErrorDialog();
+    return;
   }
 
-  Future<void> _generateCompleteReport() async {
-    setState(() {
-      _isGeneratingReport = true;
-    });
+  bool allGroupsHaveSelections = _groupSelections['treatment']!.isNotEmpty ||
+                               _groupSelections['support']!.isNotEmpty ||
+                               _groupSelections['excellence']!.isNotEmpty;
 
-    bool allGroupsHaveSelections = _groupSelections['treatment']!.isNotEmpty ||
-                                 _groupSelections['support']!.isNotEmpty ||
-                                 _groupSelections['excellence']!.isNotEmpty;
+  if (!allGroupsHaveSelections) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_getTranslatedText(
+          'يرجى تحديد حلول ومشاكل على الأقل لمجموعة واحدة',
+          'Veuillez sélectionner des solutions et problèmes pour au moins un groupe'
+        )),
+        backgroundColor: Colors.orange,
+      ),
+    );
+    return;
+  }
 
-    if (!allGroupsHaveSelections) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_getTranslatedText(
-            'يرجى تحديد حلول ومشاكل على الأقل لمجموعة واحدة',
-            'Veuillez sélectionner des solutions et problèmes pour au moins un groupe'
-          )),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      setState(() {
-        _isGeneratingReport = false;
-      });
-      return;
-    }
+  setState(() {
+    _isGeneratingReport = true;
+  });
 
+  try {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
-                ),
-                SizedBox(height: 20),
-                Text(
-                  _getTranslatedText("جاري إنشاء التقرير الكامل...",
-                      "Génération du rapport complet..."),
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  _getTranslatedText("تقرير شامل لجميع المجموعات",
-                      "Rapport complet pour tous les groupes"),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+      builder: (BuildContext context) => _buildLoadingDialog(isPDF: true),
     );
 
-    try {
-      final groupedStudents = await _getGroupedStudentsData();
+    final groupedStudents = await _getGroupedStudentsData();
 
-      if (groupedStudents.isEmpty) {
-        throw Exception(_getTranslatedText('لم يتم العثور على أي طالب في القسم',
-            'Aucun étudiant trouvé dans la classe'));
-      }
-
-      final reportData = {
-        'schoolName': widget.schoolName,
-        'profName': widget.profName,
-        'className': widget.className,
-        'matiereName': widget.matiereName,
-        'baremeName': widget.baremeName,
-        'sousBaremeName': widget.sousBaremeName ?? '',
-        'isCompleteReport': true,
-        'groups': {
-          'treatment': {
-            'students': groupedStudents[_getTranslatedText('مجموعة العلاج', 'Groupe de traitement')]
-                    ?.map((s) => s['name'])
-                    .whereType<String>()
-                    .toList() ??
-                [],
-            'solutions': _groupSelections['treatment']!
-                .where((item) => !item.isProblem)
-                .map((item) => {
-                      'text': item.text,
-                      'source': item.type,
-                    })
-                .toList(),
-            'problems': _groupSelections['treatment']!
-                .where((item) => item.isProblem)
-                .map((item) => {
-                      'text': item.text,
-                      'source': item.type,
-                    })
-                .toList(),
-          },
-          'support': {
-            'students': groupedStudents[_getTranslatedText('مجموعة الدعم', 'Groupe de soutien')]
-                    ?.map((s) => s['name'])
-                    .whereType<String>()
-                    .toList() ??
-                [],
-            'solutions': _groupSelections['support']!
-                .where((item) => !item.isProblem)
-                .map((item) => {
-                      'text': item.text,
-                      'source': item.type,
-                    })
-                .toList(),
-            'problems': _groupSelections['support']!
-                .where((item) => item.isProblem)
-                .map((item) => {
-                      'text': item.text,
-                      'source': item.type,
-                    })
-                .toList(),
-          },
-          'excellence': {
-            'students': groupedStudents[_getTranslatedText('مجموعة التميز', 'Groupe d\'excellence')]
-                    ?.map((s) => s['name'])
-                    .whereType<String>()
-                    .toList() ??
-                [],
-            'solutions': _groupSelections['excellence']!
-                .where((item) => !item.isProblem)
-                .map((item) => {
-                      'text': item.text,
-                      'source': item.type,
-                    })
-                .toList(),
-            'problems': _groupSelections['excellence']!
-                .where((item) => item.isProblem)
-                .map((item) => {
-                      'text': item.text,
-                      'source': item.type,
-                    })
-                .toList(),
-          },
-        },
-      };
-
-      const serverUrl =
-          'https://print-maker.onrender.com/generate-treatment-plan';
-      final response = await http
-          .post(
-            Uri.parse(serverUrl),
-            headers: {'Content-Type': 'application/json'},
-            body: json.jsonEncode(reportData),
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        if (kIsWeb) {
-          final blob = html.Blob([response.bodyBytes], 'text/html');
-          final url = html.Url.createObjectUrlFromBlob(blob);
-          html.window.open(url, '_blank');
-          html.Url.revokeObjectUrl(url);
-        } else {
-          final tempDir = await getTemporaryDirectory();
-          final file = File('${tempDir.path}/complete_treatment_plan.html');
-          await file.writeAsBytes(response.bodyBytes);
-          OpenFile.open(file.path);
-        }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_getTranslatedText(
-                'تم إنشاء التقرير الكامل بنجاح',
-                'Rapport complet généré avec succès')),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        throw Exception(
-            _getTranslatedText('خطأ في الخادم:', 'Erreur serveur:') +
-                ' ${response.statusCode}\n${response.body}');
-      }
-    } catch (e) {
-      debugPrint('[CompleteReport] ERREUR: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_getTranslatedText(
-                  'خطأ في الإنشاء:', 'Erreur lors de la création:') +
-              ' ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      setState(() {
-        _isGeneratingReport = false;
-      });
-      Navigator.of(context).pop();
+    if (groupedStudents.isEmpty) {
+      throw Exception(_getTranslatedText(
+        'لم يتم العثور على أي تلميذ في القسم',
+        'Aucun étudiant trouvé dans la classe'
+      ));
     }
+
+    // Préparer les données pour le PDF
+    final Map<String, List<Map<String, dynamic>>> pdfGroupSelections = {};
+    
+    for (final groupKey in ['treatment', 'support', 'excellence']) {
+      pdfGroupSelections[groupKey] = _groupSelections[groupKey]?.map((selection) {
+        return {
+          'text': selection.text,
+          'source': selection.type,
+          'isProblem': selection.isProblem,
+          'isSelected': selection.isSelected,
+        };
+      }).toList() ?? [];
+    }
+
+    await PDFClassificationGenerator.generateAndDownloadClassificationReport(
+      context: context,
+      profName: widget.profName,
+      matiereName: widget.matiereName,
+      className: widget.className,
+      schoolName: widget.schoolName,
+      baremeName: widget.baremeName,
+      sousBaremeName: widget.sousBaremeName ?? '',
+      groupedStudents: groupedStudents,
+      groupSelections: pdfGroupSelections,
+      isFrenchInterface: _isFrenchInterface,
+      isCompleteReport: true,
+    );
+
+    // Dédure le crédit
+    await _deductPrintCredit();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_getTranslatedText(
+          'تم إنشاء التقرير الكامل بنجاح',
+          'Rapport complet généré avec succès'
+        )),
+        backgroundColor: Colors.green,
+      ),
+    );
+  } catch (e) {
+    debugPrint('[CompleteReport] ERREUR: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_getTranslatedText(
+          'خطأ في الإنشاء:',
+          'Erreur lors de la création:'
+        ) + ' ${e.toString()}'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  } finally {
+    setState(() {
+      _isGeneratingReport = false;
+    });
+    Navigator.of(context).pop();
   }
+}
 
   Future<Map<String, dynamic>> _getUnifiedSolutions() async {
     final defaultSol = _getSolutionsData();
@@ -1349,22 +1454,30 @@ class _ClassificationPageState extends State<ClassificationPage> {
         : {'solution': '', 'probleme': ''};
   }
 
-  Future<Map<String, dynamic>> _getGroupedStudentsData() async {
-    var students = await _getClassifiedStudents(
-        widget.selectedClass, widget.selectedBaremeId);
-    Map<String, List<Map<String, String>>> groupedStudents = {};
+Future<Map<String, List<Map<String, dynamic>>>> _getGroupedStudentsData() async {
+  var students = await _getClassifiedStudents(
+      widget.selectedClass, widget.selectedBaremeId);
+  
+  Map<String, List<Map<String, dynamic>>> groupedStudents = {};
 
-    for (var student in students) {
-      String group = student['group'] ?? '';
-      String translatedGroup = _getGroupName(group);
-      if (!groupedStudents.containsKey(translatedGroup)) {
-        groupedStudents[translatedGroup] = [];
-      }
-      groupedStudents[translatedGroup]!.add(student);
+  for (var student in students) {
+    String group = student['group'] ?? '';
+    String translatedGroup = _getGroupName(group);
+    
+    if (!groupedStudents.containsKey(translatedGroup)) {
+      groupedStudents[translatedGroup] = [];
     }
-
-    return groupedStudents;
+    
+    groupedStudents[translatedGroup]!.add({
+      'name': student['name'] ?? _getTranslatedText('غير معروف', 'Inconnu'),
+      'treatmentPlan': student['treatmentPlan'] ?? '',
+      'errorOrigin': student['errorOrigin'] ?? '',
+      'group': translatedGroup,
+    });
   }
+
+  return groupedStudents;
+}
 
   Widget _buildGroupTab(String groupName, Color color, IconData icon,
       List<Map<String, String>> students) {
@@ -1373,7 +1486,8 @@ class _ClassificationPageState extends State<ClassificationPage> {
     String groupKey = '';
     if (groupName.contains(_getTranslatedText('العلاج', 'traitement'))) {
       groupKey = 'treatment';
-    } else if (groupName.contains(_getTranslatedText('الدعم', 'soutien'))) {
+    } else if (groupName.contains(
+        _getTranslatedText('الدعم', 'soutien'))) {
       groupKey = 'support';
     } else {
       groupKey = 'excellence';
@@ -1412,7 +1526,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '$groupName (${students.length} ${_getTranslatedText('طالب', students.length > 1 ? 'élèves' : 'élève')})',
+                        '$groupName (${students.length} ${_getTranslatedText('تلميذ', students.length > 1 ? 'élèves' : 'élève')})',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -1632,7 +1746,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('$count ${_getTranslatedText('طالب', count > 1 ? 'élèves' : 'élève')}'),
+                        Text('$count ${_getTranslatedText('تلميذ', count > 1 ? 'élèves' : 'élève')}'),
                         if (selectionCount > 0)
                           Text(
                             '$selectionCount ${_getTranslatedText('محدد', selectionCount > 1 ? 'sélectionnés' : 'sélectionné')}',
@@ -1880,6 +1994,34 @@ class _ClassificationPageState extends State<ClassificationPage> {
           foregroundColor: Colors.white,
           elevation: 2,
           actions: [
+            // Afficher l'état du crédit d'impression
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 8),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: _remainingPrints == 0
+                    ? Colors.red
+                    : _remainingPrints <= 2
+                        ? Colors.orange
+                        : Colors.green,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.print, size: 14, color: Colors.white),
+                  SizedBox(width: 4),
+                  Text(
+                    '$_remainingPrints/5',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             Container(
               margin: EdgeInsets.only(left: 8),
               child: PopupMenuButton<String>(

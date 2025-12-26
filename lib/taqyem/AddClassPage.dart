@@ -30,6 +30,7 @@ class _AddClassPageState extends State<AddClassPage> {
     Colors.deepPurple,
     Colors.lightGreen,
   ];
+
   @override
   void initState() {
     super.initState();
@@ -70,136 +71,90 @@ class _AddClassPageState extends State<AddClassPage> {
       _filteredClassNames = _classNames.where((classData) {
         return classData['name']!.toLowerCase().contains(query);
       }).toList()
-        ..sort((a, b) => a['name']!.compareTo(b['name']!)); // Tri alphabétique
+        ..sort((a, b) => a['name']!.compareTo(b['name']!));
     });
   }
-  
 
   Future<void> _saveClassData(String? newClassName) async {
-  User? currentUser = FirebaseAuth.instance.currentUser;
-  if (currentUser != null) {
-    if (_selectedClassName != null && _selectedSubjects.isNotEmpty) {
-      try {
-        // Vérifier si la classe existe déjà dans la collection user_classes de l'utilisateur
-        final existingClass = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser.uid)
-            .collection('user_classes')
-            .where('class_id', isEqualTo: _selectedClassName)
-            .get();
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      if (_selectedClassName != null && _selectedSubjects.isNotEmpty) {
+        try {
+          // Vérifier si la classe existe déjà
+          final existingClass = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
+              .collection('user_classes')
+              .where('class_id', isEqualTo: _selectedClassName)
+              .get();
 
-        if (existingClass.docs.isNotEmpty) {
-          // Afficher un message d'erreur si la classe existe déjà
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('هذا القسم مسجل مسبقًا!'), // Texte en arabe
-              backgroundColor: Colors.red,
-            ),
-          );
-          return; // Arrêter l'exécution de la méthode
-        }
-
-        // Enregistrer la classe si elle n'existe pas déjà
-        var userClassesRef = FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser.uid)
-            .collection('user_classes')
-            .doc(_selectedClassName);
-        await userClassesRef.set({
-          'class_id': _selectedClassName,
-          'class_name': newClassName ?? _selectedClassNameDisplay,
-          'subjects': _selectedSubjects.map((subjectId) {
-            var subject = _subjects.firstWhere(
-              (s) => s['id'] == subjectId,
-              orElse: () => {'name': 'غير معروف'}, // Texte en arabe
+          if (existingClass.docs.isNotEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('هذا القسم مسجل مسبقًا!'),
+                backgroundColor: Colors.red,
+              ),
             );
-            return {
-              'id': subjectId,
-              'name': subject['name'],
-            };
-          }).toList(),
-          'students': _students.map((student) => student['name']).toList(),
-          'timestamp': FieldValue.serverTimestamp(),
-        });
+            return;
+          }
 
-        setState(() {
-          _students.clear();
-          _selectedSubjects.clear();
-          _selectedClassName = null;
-        });
+          // Enregistrer la classe
+          var userClassesRef = FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
+              .collection('user_classes')
+              .doc(_selectedClassName);
+          await userClassesRef.set({
+            'class_id': _selectedClassName,
+            'class_name': newClassName ?? _selectedClassNameDisplay,
+            'subjects': _selectedSubjects.map((subjectId) {
+              var subject = _subjects.firstWhere(
+                (s) => s['id'] == subjectId,
+                orElse: () => {'name': 'غير معروف'},
+              );
+              return {
+                'id': subjectId,
+                'name': subject['name'],
+              };
+            }).toList(),
+            'students': _students.map((student) => student['name']).toList(),
+            'timestamp': FieldValue.serverTimestamp(),
+          });
 
+          setState(() {
+            _students.clear();
+            _selectedSubjects.clear();
+            _selectedClassName = null;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تم حفظ القسم بنجاح!')),
+          );
+
+          Navigator.pop(context);
+        } catch (e) {
+          print("Erreur lors de l'enregistrement : $e");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('حدث خطأ أثناء الحفظ: $e')),
+          );
+        }
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('تم حفظ القسم بنجاح!')), // Texte en arabe
-        );
-
-        // Quitter la page après l'enregistrement
-        Navigator.pop(context);
-      } catch (e) {
-        print("Erreur lors de l'enregistrement : $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('حدث خطأ أثناء الحفظ: $e')), // Texte en arabe
+          SnackBar(content: Text('يرجى ملء جميع الحقول.')),
         );
       }
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('يرجى ملء جميع الحقول.')), // Texte en arabe
+        SnackBar(content: Text('المستخدم غير متصل')),
       );
     }
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('المستخدم غير متصل')), // Texte en arabe
-    );
   }
-}
-
-  // void _showRenameDialog() {
-  //   showDialog(
-  //     context: context,
-  //     builder: (BuildContext context) {
-  //       return AlertDialog(
-  //         title: Text('هل تريد إضافة حرف مميز للقسم؟',
-  //             style: TextStyle(fontSize: 18)), // Texte en arabe
-  //         content: TextField(
-  //           controller: TextEditingController(text: _selectedClassNameDisplay),
-  //           decoration: InputDecoration(
-  //             hintText: "أدخل اسمًا جديدًا للقسم", // Texte en arabe
-  //             border:
-  //                 OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-  //           ),
-  //           onChanged: (newName) {
-  //             setState(() {
-  //               _selectedClassNameDisplay = newName;
-  //             });
-  //           },
-  //         ),
-  //         actions: [
-  //           TextButton(
-  //             onPressed: () {
-  //               _saveClassData(_selectedClassNameDisplay);
-  //               Navigator.of(context).pop();
-  //             },
-  //             child: Text('لا',
-  //                 style: TextStyle(color: Colors.blueAccent)), // Texte en arabe
-  //           ),
-  //           TextButton(
-  //             onPressed: () {
-  //               _saveClassData(_selectedClassNameDisplay);
-  //               Navigator.of(context).pop();
-  //             },
-  //             child: Text('نعم',
-  //                 style: TextStyle(color: Colors.blueAccent)), // Texte en arabe
-  //           ),
-  //         ],
-  //       );
-  //     },
-  //   );
-  // }
 
   Widget _buildSubjectCheckboxes() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('2. اختر المواد', // Texte en arabe
+        Text('2. اختر المواد',
             style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -215,7 +170,7 @@ class _AddClassPageState extends State<AddClassPage> {
               children: _subjects.map((subject) {
                 return CheckboxListTile(
                   title: Text(subject['name'] ?? 'غير معروف',
-                      style: TextStyle(fontSize: 16)), // Texte en arabe
+                      style: TextStyle(fontSize: 16)),
                   value: _selectedSubjects.contains(subject['id']),
                   onChanged: (bool? value) {
                     setState(() {
@@ -251,8 +206,7 @@ class _AddClassPageState extends State<AddClassPage> {
           _subjects.addAll(classDoc.docs.map((doc) {
             return {
               'id': doc.id,
-              'name': doc['name']
-                  as String, // Assurez-vous que 'name' est une String
+              'name': doc['name'] as String,
             };
           }).toList());
         });
@@ -263,8 +217,8 @@ class _AddClassPageState extends State<AddClassPage> {
       }
     } catch (e) {
       print("Erreur lors de la récupération des matières : $e");
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erreur lors de la récupération des matières')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors de la récupération des matières')));
     }
   }
 
@@ -283,7 +237,7 @@ class _AddClassPageState extends State<AddClassPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '1. اختر القسم', // Texte en arabe
+              '1. اختر القسم',
               style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -301,7 +255,7 @@ class _AddClassPageState extends State<AddClassPage> {
                     TextField(
                       controller: _searchController,
                       decoration: InputDecoration(
-                        labelText: 'بحث', // Texte en arabe
+                        labelText: 'بحث',
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
                         suffixIcon: Icon(Icons.search),
@@ -327,12 +281,10 @@ class _AddClassPageState extends State<AddClassPage> {
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.school,
-                                    color: color), // Icône pour la classe
+                                Icon(Icons.school, color: color),
                                 SizedBox(width: 10),
                                 Text(
-                                  classData['name'] ??
-                                      'اسم غير معروف', // Texte en arabe
+                                  classData['name'] ?? 'اسم غير معروف',
                                   style: TextStyle(
                                     color: color,
                                     fontWeight: FontWeight.bold,
@@ -348,8 +300,7 @@ class _AddClassPageState extends State<AddClassPage> {
                           _selectedClassName = value;
                           _selectedClassNameDisplay = _classNames.firstWhere(
                             (classData) => classData['id'] == value,
-                            orElse: () =>
-                                {'name': 'اسم غير معروف'}, // Texte en arabe
+                            orElse: () => {'name': 'اسم غير معروف'},
                           )['name'];
                         });
                         if (value != null) {
@@ -357,22 +308,19 @@ class _AddClassPageState extends State<AddClassPage> {
                         }
                       },
                       decoration: InputDecoration(
-                        labelText: 'اختر القسم', // Texte en arabe
+                        labelText: 'اختر القسم',
                         border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12)),
                       ),
                       isExpanded: true,
-                      icon: Icon(Icons.arrow_drop_down,
-                          color: Colors.blue), // Icône personnalisée
-                      dropdownColor:
-                          Colors.white, // Couleur de fond du dropdown
+                      icon: Icon(Icons.arrow_drop_down, color: Colors.blue),
+                      dropdownColor: Colors.white,
                     ),
                   ],
                 ),
               ),
             ),
             SizedBox(height: 20),
-            // Afficher le nom de la classe sélectionnée avec la couleur correspondante
             if (_selectedClassNameDisplay != null)
               Container(
                 padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -421,32 +369,29 @@ class _AddClassPageState extends State<AddClassPage> {
               ),
             SizedBox(height: 20),
             _buildSubjectCheckboxes(),
-            SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Colors.blueAccent,
-                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                onPressed:
-                    (_selectedClassName != null && _selectedSubjects.isNotEmpty)
-                        ? () async {
-                            await _saveClassData(_selectedClassNameDisplay);
-                          }
-                        : null,
-                child: Text(
-                  'تأكيد الإضافة', // Texte en arabe
-                  style: TextStyle(fontSize: 16),
-                ),
-              ),
-            ),
           ],
         ),
       ),
+      
+      // FloatingActionButton ajouté ici
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: (_selectedClassName != null && _selectedSubjects.isNotEmpty)
+            ? () async {
+                await _saveClassData(_selectedClassNameDisplay);
+              }
+            : null,
+        backgroundColor: (_selectedClassName != null && _selectedSubjects.isNotEmpty)
+            ? Colors.blueAccent
+            : Colors.grey,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        icon: Icon(Icons.check_circle),
+        label: Text('تأكيد الإضافة'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }

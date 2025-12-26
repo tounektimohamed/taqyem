@@ -638,7 +638,7 @@ class _TablePageState extends State<TablePage> {
             if (!studentsSnapshot.hasData ||
                 studentsSnapshot.data!.docs.isEmpty) {
               return Center(
-                  child: Text('لم يتم العثور على أي طالب.',
+                  child: Text('لم يتم العثور على أي تلميذ.',
                       textDirection: TextDirection.rtl));
             }
 

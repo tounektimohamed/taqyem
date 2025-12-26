@@ -270,7 +270,7 @@ class _HomePage2State extends State<HomePage2> {
                     //logo
                     Image(
                       image: AssetImage('lib/assets/LogO.png'),
-                      height: 50,
+                      height: 100,
                     ),
 
                     //app name

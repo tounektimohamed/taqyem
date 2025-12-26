@@ -3,7 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:Taqyem/components/onboarding_content.dart';
 
 class Onboarding extends StatefulWidget {
-  final void Function()? goToHomePage; // Ajoutez cette ligne pour la redirection vers MyHomePage
+  final void Function()?
+      goToHomePage; // Ajoutez cette ligne pour la redirection vers MyHomePage
   const Onboarding({super.key, required this.goToHomePage});
 
   @override
@@ -43,7 +44,8 @@ class _OnboardingState extends State<Onboarding> {
                 children: [
                   //logo
                   const Image(
-                    image: AssetImage('lib/assets/icons/me/logo.png'),
+                    image: AssetImage('lib/assets//icons/me/logo.png'),
+                    height: 50,
                   ),
                   //nom de l'application
                   Text(
@@ -154,7 +156,8 @@ class _OnboardingState extends State<Onboarding> {
                     height: 50,
                     width: 140,
                     child: TextButton(
-                      onPressed: widget.goToHomePage, // Redirection directe vers MyHomePage
+                      onPressed: widget
+                          .goToHomePage, // Redirection directe vers MyHomePage
                       style: const ButtonStyle(
                         backgroundColor: MaterialStatePropertyAll(
                             Color.fromARGB(255, 217, 237, 239)),
@@ -216,7 +219,8 @@ class _OnboardingState extends State<Onboarding> {
                           height: 50,
                           width: 140,
                           child: FilledButton(
-                            onPressed: widget.goToHomePage, // Appelle la méthode pour aller à MyHomePage
+                            onPressed: widget
+                                .goToHomePage, // Appelle la méthode pour aller à MyHomePage
                             style: const ButtonStyle(
                               elevation: MaterialStatePropertyAll(2),
                               shape: MaterialStatePropertyAll(
