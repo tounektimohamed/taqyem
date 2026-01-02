@@ -74,13 +74,30 @@ class DataTranslator {
     "الجغرافيا": "Géographie",
     "التربية المدنية": "Éducation civique"
   };
-
-  static final Map<String, String> _baremeTranslations = {
+ static final Map<String, String> _baremeTranslations = {
     "مع 1": "C1",
     "مع 2": "C2",
     "مع 3": "C3",
     "مع 4": "C4",
     "مع 5": "C5",
+    // Ajoutez ces nouvelles traductions pour les sous-barèmes avec lettres arabes
+    "مع 1.ا": "C1.a",
+    "مع 1.ب": "C1.b", 
+    "مع 1.ج": "C1.c",
+    "مع 2.ا": "C2.a",
+    "مع 2.ب": "C2.b",
+    "مع 2.ج": "C2.c",
+    "مع 3.ا": "C3.a",
+    "مع 3.ب": "C3.b",
+    "مع 3.ج": "C3.c",
+    "مع 4.ا": "C4.a",
+    "مع 4.ب": "C4.b",
+    "مع 4.ج": "C4.c",
+    "مع 5.ا": "C5.a",
+    "مع 5.ب": "C5.b",
+    "مع 5.ج": "C5.c",
+    
+    // Gardez aussi les anciennes traductions numériques au cas où
     "مع 1.1": "C1.1",
     "مع 1.2": "C1.2",
     "مع 1.3": "C1.3",
@@ -97,7 +114,7 @@ class DataTranslator {
     "مع 5.2": "C5.2",
     "مع 5.3": "C5.3"
   };
-
+ 
   static bool isForeignMatiere(String matiereName) {
     if (matiereName.isEmpty) return false;
 

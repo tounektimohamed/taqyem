@@ -72,55 +72,54 @@ class HTMLReportGenerator {
     }
   }
 
-
   // Méthode pour générer le tableau des critères (similaire à _buildCriteriaHTML mais sans la page complète)
-static String _buildCriteriaTableHTML({
-  required List<Map<String, dynamic>> criteria,
-  required bool isFrenchInterface,
-}) {
-  if (criteria.isEmpty) {
-    return '';
-  }
-
-  String rows = '';
-  int totalIndicators = 0;
-
-  // Trier les critères
-  final sortedCriteria = List<Map<String, dynamic>>.from(criteria);
-
-  if (!isFrenchInterface) {
-    // Tri arabe
-    sortedCriteria.sort((a, b) {
-      final nameA = a['name'] as String;
-      final nameB = b['name'] as String;
-      return _arabicComparatorForHTML(nameA, nameB);
-    });
-  } else {
-    // Tri français
-    sortedCriteria.sort((a, b) {
-      return (a['name'] as String).compareTo(b['name'] as String);
-    });
-  }
-
-  for (int i = 0; i < sortedCriteria.length; i++) {
-    final critere = sortedCriteria[i];
-    final name = critere['name']?.toString() ?? 'معيار ${i + 1}';
-    final domaine = critere['domaine']?.toString() ?? '';
-    final indicators = critere['indicators'] as List<dynamic>? ?? [];
-    totalIndicators += indicators.length;
-
-    // Trier les indicateurs
-    final List<String> indicatorStrings =
-        indicators.map((e) => e.toString()).toList();
-
-    if (!isFrenchInterface) {
-      indicatorStrings.sort(_arabicComparatorForHTML);
-    } else {
-      indicatorStrings.sort();
+  static String _buildCriteriaTableHTML({
+    required List<Map<String, dynamic>> criteria,
+    required bool isFrenchInterface,
+  }) {
+    if (criteria.isEmpty) {
+      return '';
     }
 
-    // Ligne principale du critère
-    rows += '''
+    String rows = '';
+    int totalIndicators = 0;
+
+    // Trier les critères
+    final sortedCriteria = List<Map<String, dynamic>>.from(criteria);
+
+    if (!isFrenchInterface) {
+      // Tri arabe
+      sortedCriteria.sort((a, b) {
+        final nameA = a['name'] as String;
+        final nameB = b['name'] as String;
+        return _arabicComparatorForHTML(nameA, nameB);
+      });
+    } else {
+      // Tri français
+      sortedCriteria.sort((a, b) {
+        return (a['name'] as String).compareTo(b['name'] as String);
+      });
+    }
+
+    for (int i = 0; i < sortedCriteria.length; i++) {
+      final critere = sortedCriteria[i];
+      final name = critere['name']?.toString() ?? 'معيار ${i + 1}';
+      final domaine = critere['domaine']?.toString() ?? '';
+      final indicators = critere['indicators'] as List<dynamic>? ?? [];
+      totalIndicators += indicators.length;
+
+      // Trier les indicateurs
+      final List<String> indicatorStrings =
+          indicators.map((e) => e.toString()).toList();
+
+      if (!isFrenchInterface) {
+        indicatorStrings.sort(_arabicComparatorForHTML);
+      } else {
+        indicatorStrings.sort();
+      }
+
+      // Ligne principale du critère
+      rows += '''
     <tr class="criteria-main-row">
         <td class="criteria-number">${i + 1}</td>
         <td colspan="2">
@@ -130,19 +129,19 @@ static String _buildCriteriaTableHTML({
     </tr>
     ''';
 
-    // Lignes des indicateurs
-    for (int j = 0; j < indicatorStrings.length; j++) {
-      final indicator = indicatorStrings[j];
-      rows += '''
+      // Lignes des indicateurs
+      for (int j = 0; j < indicatorStrings.length; j++) {
+        final indicator = indicatorStrings[j];
+        rows += '''
       <tr class="indicator-row">
           <td class="indicator-number">${i + 1}.${j + 1}</td>
           <td colspan="2">$indicator</td>
       </tr>
       ''';
+      }
     }
-  }
 
-  return '''
+    return '''
     <div style="margin-top: 20px;">
       <div style="margin-bottom: 10px; color: #666; font-size: 14px;">
         ${isFrenchInterface ? 'Total des critères' : 'مجموع المعايير'}: ${sortedCriteria.length} | 
@@ -162,79 +161,83 @@ static String _buildCriteriaTableHTML({
       </table>
     </div>
   ''';
-}
-// NOUVELLE MÉTHODE: Page combinée des données de période et des critères
-static String _buildCombinedPeriodAndCriteriaPageHTML({
-  required String trimestre,
-  required String periode,
-  required String evaluationType,
-  required Map<String, String> t,
-  required bool isFrenchInterface,
-  required String matiereName,
-  required String className,
-  required String profName,
-  required String performanceAttendue,
-  required List<Map<String, dynamic>> criteria,
-}) {
-  // Générer le contenu HTML des critères
-  final criteriaHTML = _buildCriteriaTableHTML(
-    criteria: criteria,
-    isFrenchInterface: isFrenchInterface,
-  );
+  }
 
-  return '''
+// NOUVELLE MÉTHODE: Page combinée des données de période et des critères
+  static String _buildCombinedPeriodAndCriteriaPageHTML({
+    required String trimestre,
+    required String periode,
+    required String evaluationType,
+    required Map<String, String> t,
+    required bool isFrenchInterface,
+    required String matiereName,
+    required String className,
+    required String profName,
+    required String performanceAttendue,
+    required List<Map<String, dynamic>> criteria,
+  }) {
+    // Générer le contenu HTML des critères
+    final criteriaHTML = _buildCriteriaTableHTML(
+      criteria: criteria,
+      isFrenchInterface: isFrenchInterface,
+    );
+
+    return '''
     <div class="combined-page">
         <div class="section-header">
             <h2 class="section-title">
-                ${isFrenchInterface ? 'Informations de la période et Critères d\'évaluation' : 'معلومات الفترة ومعايير التقييم'}
-            </h2>
-            <div class="section-subtitle">
                 $matiereName - $className
-            </div>
+            </h2>
         </div>
         
         <!-- Section des données de période -->
         <div class="period-section">
-            <h3 style="color: var(--primary-color); margin-bottom: 20px; font-size: 20px;">
-                ${isFrenchInterface ? 'Détails de la période' : 'تفاصيل الفترة'}
-            </h3>
-            
-            <div class="period-grid">
-                <div class="period-card">
-                    <div class="period-icon" style="background: var(--primary-color);">
-                        📅
-                    </div>
-                    <div>
-                        <div class="period-label">${t['trimestre']}</div>
-                        <div class="period-value">${_getTrimestreDisplay(trimestre, isFrenchInterface)}</div>
-                    </div>
+    <h3 style="color: var(--primary-color); margin-bottom: 20px; font-size: 20px;">
+        ${isFrenchInterface ? 'Détails de la période' : 'تفاصيل الفترة'}
+    </h3>
+    
+    <div class="period-grid" style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 20px;">
+        <div class="period-card" style="flex: 1; min-width: 200px;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="period-icon" style="background: var(--primary-color); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                    📅
                 </div>
-                
-                <div class="period-card">
-                    <div class="period-icon" style="background: var(--secondary-color);">
-                        📚
-                    </div>
-                    <div>
-                        <div class="period-label">${t['periode']}</div>
-                        <div class="period-value">
-                            ${periode.isNotEmpty ? periode : (isFrenchInterface ? 'Non spécifié' : 'غير محدد')}
-                        </div>
-                    </div>
+                <div>
+                    <div class="period-label">${t['trimestre']}</div>
+                    <div class="period-value">${_getTrimestreDisplay(trimestre, isFrenchInterface)}</div>
                 </div>
-                
-                <div class="period-card">
-                    <div class="period-icon" style="background: var(--accent-color);">
-                        📝
-                    </div>
-                    <div>
-                        <div class="period-label">${t['evaluation_type']}</div>
-                        <div class="period-value">
-                            ${_getEvaluationTypeDisplay(evaluationType, isFrenchInterface)}
-                        </div>
+            </div>
+        </div>
+        
+        <div class="period-card" style="flex: 1; min-width: 200px;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="period-icon" style="background: var(--secondary-color); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                    📚
+                </div>
+                <div>
+                    <div class="period-label">${t['periode']}</div>
+                    <div class="period-value">
+                        ${periode.isNotEmpty ? periode : (isFrenchInterface ? 'Non spécifié' : 'غير محدد')}
                     </div>
                 </div>
             </div>
-            
+        </div>
+        
+        <div class="period-card" style="flex: 1; min-width: 200px;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="period-icon" style="background: var(--accent-color); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px;">
+                    📝
+                </div>
+                <div>
+                    <div class="period-label">${t['evaluation_type']}</div>
+                    <div class="period-value">
+                        ${_getEvaluationTypeDisplay(evaluationType, isFrenchInterface)}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
             <!-- Section Performance Attendue -->
             ${performanceAttendue.isNotEmpty ? '''
             <div class="performance-section">
@@ -266,103 +269,104 @@ static String _buildCombinedPeriodAndCriteriaPageHTML({
         </div>
     </div>
   ''';
-}
+  }
 
-static String _buildCompleteHTMLContent({
-  required String profName,
-  required String matiereName,
-  required String className,
-  required String schoolName,
-  required List<dynamic> baremes,
-  required List<dynamic> students,
-  required Map<String, int> sumCriteriaMaxPerBareme,
-  required int totalStudents,
-  required bool isFrenchInterface,
-  required String logoBase64,
-  required String trimestre,
-  required String periode,
-  required String evaluationType,
-  // Nouveau paramètre optionnel
-  required List<Map<String, dynamic>> criteria,
-  required String performanceAttendue, // NOUVEAU
-}) {
-  final direction = isFrenchInterface ? 'ltr' : 'rtl';
-  final textAlign = isFrenchInterface ? 'left' : 'right';
+  static String _buildCompleteHTMLContent({
+    required String profName,
+    required String matiereName,
+    required String className,
+    required String schoolName,
+    required List<dynamic> baremes,
+    required List<dynamic> students,
+    required Map<String, int> sumCriteriaMaxPerBareme,
+    required int totalStudents,
+    required bool isFrenchInterface,
+    required String logoBase64,
+    required String trimestre,
+    required String periode,
+    required String evaluationType,
+    // Nouveau paramètre optionnel
+    required List<Map<String, dynamic>> criteria,
+    required String performanceAttendue, // NOUVEAU
+  }) {
+    final direction = isFrenchInterface ? 'ltr' : 'rtl';
+    final textAlign = isFrenchInterface ? 'left' : 'right';
 
-  // Traductions existantes
-  final t = {
-    'title': isFrenchInterface ? 'Rapport des Résultats' : 'تقرير النتائج',
-    'cover_title': isFrenchInterface
-        ? 'République Tunisienne\nMinistère de l\'Éducation'
-        : 'الجمهورية التونسية\nوزارة التربية',
-    'regional_delegation': isFrenchInterface
-        ? 'Délégation Régionale de l\'Éducation à ...................'
-        : 'المندوبية الجهوية للتربية ب..............',
-    'school': isFrenchInterface ? 'Établissement' : 'المدرسة الابتدائية',
-    'subject': isFrenchInterface ? 'Matière' : 'المادة',
-    'class': isFrenchInterface ? 'Classe' : 'القسم',
-    'academic_year': isFrenchInterface ? 'Année scolaire' : 'السنة الدراسية',
-    'professor': isFrenchInterface ? 'Professeur' : 'الأستاذ',
-    'main_title': isFrenchInterface
-        ? 'Tableau Global des Résultats'
-        : 'الجدول الجامع للنتائج',
-    'student_name': isFrenchInterface ? 'Nom et Prénom' : 'الاسم واللقب',
-    'achieved_students': isFrenchInterface
-        ? "Nombre d'élèves ayant atteint"
-        : 'عدد التلاميذ المحققين',
-    'percentage': isFrenchInterface ? 'Pourcentage' : 'النسبة المئوية',
-    'total_students':
-        isFrenchInterface ? 'Total des élèves' : 'مجموع التلاميذ',
-    'trimestre': isFrenchInterface ? 'Trimestre' : 'الثلاثي',
-    'periode': isFrenchInterface ? 'Unité/Période' : 'الوحدة/الفترة',
-    'evaluation_type':
-        isFrenchInterface ? 'Type d\'évaluation' : 'نوع التقييم',
-    'generated_on': isFrenchInterface ? 'Généré le' : 'تم الإنشاء في',
-    // Nouvelles traductions pour les critères
-    'evaluation_criteria':
-        isFrenchInterface ? 'Critères d\'évaluation' : 'معايير التقييم',
-    'criteria': isFrenchInterface ? 'Critères' : 'المعايير',
-    'indicators': isFrenchInterface ? 'Indicateurs' : 'المؤشرات',
-    'domain': isFrenchInterface ? 'Domaine' : 'المجال',
-    'total_criteria':
-        isFrenchInterface ? 'Total des critères' : 'مجموع المعايير',
-    'total_indicators':
-        isFrenchInterface ? 'Total des indicateurs' : 'مجموع المؤشرات',
-  };
+    // Traductions existantes
+    final t = {
+      'title': isFrenchInterface ? 'Rapport des Résultats' : 'تقرير النتائج',
+      'cover_title': isFrenchInterface
+          ? 'République Tunisienne\nMinistère de l\'Éducation'
+          : 'الجمهورية التونسية\nوزارة التربية',
+      'regional_delegation': isFrenchInterface
+          ? 'Délégation Régionale de l\'Éducation à ...................'
+          : 'المندوبية الجهوية للتربية ب..............',
+      'school': isFrenchInterface ? 'Établissement' : 'المدرسة الابتدائية',
+      'subject': isFrenchInterface ? 'Matière' : 'المادة',
+      'class': isFrenchInterface ? 'Classe' : 'القسم',
+      'academic_year': isFrenchInterface ? 'Année scolaire' : 'السنة الدراسية',
+      'professor': isFrenchInterface ? 'Professeur' : 'الأستاذ',
+      'main_title': isFrenchInterface
+          ? 'Tableau Global des Résultats'
+          : 'الجدول الجامع للنتائج',
+      'student_name': isFrenchInterface ? 'Nom et Prénom' : 'الاسم واللقب',
+      'achieved_students': isFrenchInterface
+          ? "Nombre d'élèves ayant atteint"
+          : 'عدد التلاميذ المحققين',
+      'percentage': isFrenchInterface ? 'Pourcentage' : 'النسبة المئوية',
+      'total_students':
+          isFrenchInterface ? 'Total des élèves' : 'مجموع التلاميذ',
+      'trimestre': isFrenchInterface ? 'Trimestre' : 'الثلاثي',
+      'periode': isFrenchInterface ? 'Unité/Période' : 'الوحدة/الفترة',
+      'evaluation_type':
+          isFrenchInterface ? 'Type d\'évaluation' : 'نوع التقييم',
+      'generated_on': isFrenchInterface ? 'Généré le' : 'تم الإنشاء في',
+      // Nouvelles traductions pour les critères
+      'evaluation_criteria':
+          isFrenchInterface ? 'Critères d\'évaluation' : 'معايير التقييم',
+      'criteria': isFrenchInterface ? 'Critères' : 'المعايير',
+      'indicators': isFrenchInterface ? 'Indicateurs' : 'المؤشرات',
+      'domain': isFrenchInterface ? 'Domaine' : 'المجال',
+      'total_criteria':
+          isFrenchInterface ? 'Total des critères' : 'مجموع المعايير',
+      'total_indicators':
+          isFrenchInterface ? 'Total des indicateurs' : 'مجموع المؤشرات',
+    };
 
-  // Date et année scolaire (existant)
-  final now = DateTime.now();
-  final currentDate = '${now.day}/${now.month}/${now.year}';
-  final academicYear = '${now.year}/${now.year + 1}';
+    // Date et année scolaire (existant)
+    final now = DateTime.now();
+    final currentDate = '${now.day}/${now.month}/${now.year}';
+    final academicYear = '${now.year}/${now.year + 1}';
 
-  // Déterminer le domaine de la matière (existant)
-  final domaine = _getDomaineForMatiere(matiereName, isFrenchInterface);
+    // Déterminer le domaine de la matière (existant)
+    final domaine = _getDomaineForMatiere(matiereName, isFrenchInterface);
 
-  // Générer le tableau principal (existant)
-  final tableHTML = _buildTableHTML(
-    baremes: baremes,
-    students: students,
-    sumCriteriaMaxPerBareme: sumCriteriaMaxPerBareme,
-    totalStudents: totalStudents,
-    isFrenchInterface: isFrenchInterface,
-    t: t,
-  );
+    // Générer le tableau principal (existant)
+    final tableHTML = _buildTableHTML(
+      baremes: baremes,
+      students: students,
+      sumCriteriaMaxPerBareme: sumCriteriaMaxPerBareme,
+      totalStudents: totalStudents,
+      isFrenchInterface: isFrenchInterface,
+      t: t,
+    );
 
-  // MODIFICATION: Combiner les données de période et les critères sur une seule page
-  final combinedPeriodAndCriteriaHTML = _buildCombinedPeriodAndCriteriaPageHTML(
-    trimestre: trimestre,
-    periode: periode,
-    evaluationType: evaluationType,
-    t: t,
-    isFrenchInterface: isFrenchInterface,
-    matiereName: matiereName,
-    className: className,
-    profName: profName,
-    performanceAttendue: performanceAttendue,
-    criteria: criteria,
-  );
+    // MODIFICATION: Combiner les données de période et les critères sur une seule page
+    final combinedPeriodAndCriteriaHTML =
+        _buildCombinedPeriodAndCriteriaPageHTML(
+      trimestre: trimestre,
+      periode: periode,
+      evaluationType: evaluationType,
+      t: t,
+      isFrenchInterface: isFrenchInterface,
+      matiereName: matiereName,
+      className: className,
+      profName: profName,
+      performanceAttendue: performanceAttendue,
+      criteria: criteria,
+    );
 
-  return '''
+    return '''
 <!DOCTYPE html>
 <html lang="${isFrenchInterface ? 'fr' : 'ar'}" dir="$direction">
 <head>
@@ -859,7 +863,33 @@ static String _buildCompleteHTMLContent({
             background: #e3f2fd !important;
             font-weight: bold;
         }
-        
+        /* Styles pour la hiérarchie des barèmes */
+.main-bareme-header {
+  background: #075260 !important;
+  color: white !important;
+  font-weight: bold !important;
+  text-align: center !important;
+  border-bottom: 2px solid #0a6b7e !important;
+}
+
+.sub-bareme-header {
+  background: #0a6b7e !important;
+  color: white !important;
+  font-weight: normal !important;
+  font-size: 12px !important;
+  border-top: none !important;
+}
+
+/* Bordures pour séparer les groupes de barèmes */
+.results-table th:not(.student-name-cell) {
+  border-right: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.results-table th:last-child {
+  border-right: none !important;
+}
+
+/
         .percentage-row {
             background: #f3e5f5 !important;
             font-weight: bold;
@@ -918,529 +948,7 @@ static String _buildCompleteHTMLContent({
         }
         
         /* STYLES D'IMPRESSION EXISTANTS */
-        @media print {
-            * {
-                box-shadow: none !important;
-                text-shadow: none !important;
-            }
-            
-            body {
-                background: white !important;
-                color: black !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                font-size: 12pt !important;
-                line-height: 1.4 !important;
-            }
-            
-            .report-container {
-                max-width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-            
-            /* Page de garde pour impression */
-            .cover-page {
-                box-shadow: none !important;
-                border: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                min-height: auto !important;
-                page-break-after: always;
-                display: block !important;
-            }
-            
-            .cover-page::before {
-                display: none !important;
-            }
-            
-            .cover-header {
-                text-align: center !important;
-                margin: 50px 0 40px 0 !important;
-                border-bottom: 3px solid black !important;
-                padding-bottom: 20px !important;
-            }
-            
-            .ministry-title {
-                color: black !important;
-                font-size: 28pt !important;
-                font-weight: bold !important;
-                margin-bottom: 15px !important;
-                line-height: 1.2 !important;
-            }
-            
-            .delegation-title {
-                color: black !important;
-                font-size: 16pt !important;
-                font-weight: bold !important;
-                margin-bottom: 20px !important;
-            }
-            
-            .logo-container {
-                display: block !important;
-                text-align: center !important;
-                margin: 30px 0 40px 0 !important;
-            }
-            
-            .logo {
-                height: 120px !important;
-                max-width: 250px !important;
-                filter: grayscale(100%) !important;
-            }
-            
-            .school-info {
-                background: white !important;
-                border: 2px solid black !important;
-                border-radius: 0 !important;
-                padding: 25px !important;
-                margin: 40px 0 !important;
-                text-align: center !important;
-            }
-            
-            .school-info::before {
-                display: none !important;
-            }
-            
-            .info-grid {
-                display: block !important;
-                margin: 40px 0 !important;
-            }
-            
-            .info-card {
-                background: white !important;
-                border: 1px solid #ddd !important;
-                border-radius: 0 !important;
-                padding: 15px !important;
-                margin-bottom: 15px !important;
-                page-break-inside: avoid;
-                display: block !important;
-                text-align: ${isFrenchInterface ? 'left' : 'right'} !important;
-            }
-            
-            .info-card:hover {
-                transform: none !important;
-                box-shadow: none !important;
-                border-color: #ddd !important;
-            }
-            
-            .info-icon {
-                display: none !important;
-            }
-            
-            .info-content {
-                display: block !important;
-                text-align: ${isFrenchInterface ? 'left' : 'right'} !important;
-            }
-            
-            .info-label {
-                color: black !important;
-                font-size: 12pt !important;
-                font-weight: bold !important;
-                margin-bottom: 5px !important;
-                display: inline-block !important;
-                width: 120px !important;
-            }
-            
-            .info-value {
-                color: black !important;
-                font-size: 14pt !important;
-                font-weight: normal !important;
-                display: inline !important;
-                margin-${isFrenchInterface ? 'left' : 'right'}: 10px !important;
-            }
-            
-            .domaine-section {
-                background: white !important;
-                color: black !important;
-                border: 2px solid black !important;
-                border-radius: 0 !important;
-                padding: 20px !important;
-                margin: 40px 0 !important;
-                text-align: center !important;
-            }
-            
-            .domaine-section::before {
-                display: none !important;
-            }
-            
-            .domaine-title {
-                font-size: 18pt !important;
-                font-weight: bold !important;
-                margin-bottom: 15px !important;
-                color: black !important;
-                text-decoration: underline !important;
-            }
-            
-            .domaine-content {
-                font-size: 16pt !important;
-                font-weight: bold !important;
-                color: black !important;
-            }
-            
-            .footer-cover {
-                text-align: center !important;
-                margin-top: 60px !important;
-                padding-top: 20px !important;
-                border-top: 1px solid black !important;
-                color: black !important;
-                font-size: 10pt !important;
-                font-style: italic !important;
-            }
-            
-            /* Page combinée pour impression */
-            .combined-page {
-                box-shadow: none !important;
-                border: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                page-break-before: always !important;
-            }
-            
-            .section-header {
-                background: white !important;
-                color: black !important;
-                border-bottom: 3px solid black !important;
-                padding: 20px 0 !important;
-                margin-bottom: 20px !important;
-                text-align: center !important;
-            }
-            
-            .section-title {
-                font-size: 22pt !important;
-                font-weight: bold !important;
-                color: black !important;
-                margin-bottom: 10px !important;
-                text-decoration: underline !important;
-            }
-            
-            .section-subtitle {
-                color: black !important;
-                font-size: 14pt !important;
-                font-weight: normal !important;
-            }
-            
-            .period-grid {
-                display: block !important;
-                margin: 40px 0 !important;
-            }
-            
-            .period-card {
-                background: white !important;
-                border: 1px solid #999 !important;
-                border-radius: 0 !important;
-                padding: 20px !important;
-                margin-bottom: 20px !important;
-                page-break-inside: avoid;
-            }
-            
-            .period-icon {
-                display: none !important;
-            }
-            
-            .period-label {
-                color: black !important;
-                font-size: 12pt !important;
-                font-weight: bold !important;
-                display: inline-block !important;
-                width: 150px !important;
-            }
-            
-            .period-value {
-                color: black !important;
-                font-size: 14pt !important;
-                font-weight: normal !important;
-                display: inline !important;
-                margin-${isFrenchInterface ? 'left' : 'right'}: 10px !important;
-            }
-            
-            .performance-section {
-                background: white !important;
-                border: 1px solid #999 !important;
-                border-radius: 0 !important;
-                padding: 20px !important;
-                margin: 40px 0 !important;
-            }
-            
-            .performance-title {
-                color: black !important;
-                font-size: 16pt !important;
-                font-weight: bold !important;
-                text-decoration: underline !important;
-            }
-            
-            .performance-content {
-                color: black !important;
-                font-size: 14pt !important;
-            }
-            
-            .criteria-section {
-                margin-top: 40px !important;
-                padding-top: 20px !important;
-                border-top: 3px solid black !important;
-            }
-            
-            .criteria-table {
-                width: 100% !important;
-                border-collapse: collapse !important;
-                font-size: 10pt !important;
-                page-break-inside: auto !important;
-            }
-            
-            .criteria-table th {
-                background: white !important;
-                color: black !important;
-                border: 1px solid #999 !important;
-                padding: 8px 4px !important;
-                font-weight: bold !important;
-                text-align: center !important;
-            }
-            
-            .criteria-table td {
-                border: 1px solid #999 !important;
-                padding: 6px 4px !important;
-                page-break-inside: avoid !important;
-            }
-            
-            .criteria-main-row {
-                background: #f5f5f5 !important;
-                font-weight: bold !important;
-            }
-            
-            .indicator-row {
-                background: white !important;
-            }
-            
-            .criteria-number, .indicator-number {
-                background: white !important;
-                color: black !important;
-            }
-            
-            .domain-badge {
-                background: white !important;
-                color: black !important;
-                border: 1px solid #999 !important;
-            }
-            
-            /* Page du tableau principal pour impression */
-            .table-page {
-                box-shadow: none !important;
-                border: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                page-break-before: always !important;
-            }
-            
-            .table-header {
-                background: white !important;
-                color: black !important;
-                border-bottom: 3px solid black !important;
-                padding: 20px 0 !important;
-                margin-bottom: 20px !important;
-                text-align: center !important;
-            }
-            
-            .table-main-title {
-                font-size: 22pt !important;
-                font-weight: bold !important;
-                color: black !important;
-                margin-bottom: 10px !important;
-                text-decoration: underline !important;
-            }
-            
-            .table-subtitle {
-                color: black !important;
-                font-size: 14pt !important;
-                font-weight: normal !important;
-            }
-            
-            .table-container {
-                overflow: visible !important;
-                border: 1px solid #999 !important;
-                margin: 20px 0 !important;
-            }
-            
-            .results-table {
-                width: 100% !important;
-                border-collapse: collapse !important;
-                font-size: 10pt !important;
-                page-break-inside: auto !important;
-            }
-            
-            .results-table th {
-                background: white !important;
-                color: black !important;
-                border: 1px solid #999 !important;
-                padding: 8px 4px !important;
-                font-weight: bold !important;
-                text-align: center !important;
-                page-break-inside: avoid !important;
-            }
-            
-            .results-table td {
-                border: 1px solid #999 !important;
-                padding: 6px 4px !important;
-                text-align: center !important;
-                vertical-align: middle !important;
-                page-break-inside: avoid !important;
-            }
-            
-            .student-name-cell {
-                background: white !important;
-                font-weight: bold !important;
-                text-align: ${isFrenchInterface ? 'left' : 'right'} !important;
-                border: 1px solid #999 !important;
-            }
-            
-            .mark-excellent { background-color: #f0f0f0 !important; color: black !important; font-weight: bold !important; }
-            .mark-good { background-color: #f8f8f8 !important; color: black !important; font-weight: bold !important; }
-            .mark-average { background-color: #f8f8f8 !important; color: black !important; }
-            .mark-poor { background-color: #f0f0f0 !important; color: black !important; }
-            
-            .stats-row {
-                background: #f5f5f5 !important;
-                font-weight: bold !important;
-            }
-            
-            .percentage-row {
-                background: #f0f0f0 !important;
-                font-weight: bold !important;
-            }
-            
-            .percentage-high, .percentage-medium, .percentage-low {
-                color: black !important;
-            }
-            
-            .summary-section {
-                background: white !important;
-                border: 1px solid #999 !important;
-                padding: 15px !important;
-                margin-top: 30px !important;
-                page-break-inside: avoid !important;
-            }
-            
-            .summary-title {
-                color: black !important;
-                font-size: 14pt !important;
-                font-weight: bold !important;
-                margin-bottom: 10px !important;
-                text-decoration: underline !important;
-            }
-            
-            .summary-grid {
-                display: block !important;
-            }
-            
-            .summary-item {
-                background: white !important;
-                border: none !important;
-                border-left: 3px solid black !important;
-                padding: 10px !important;
-                margin-bottom: 10px !important;
-                page-break-inside: avoid !important;
-                display: inline-block !important;
-                width: 48% !important;
-                vertical-align: top !important;
-                margin-${isFrenchInterface ? 'right' : 'left'}: 2% !important;
-            }
-            
-            .summary-label {
-                color: black !important;
-                font-size: 10pt !important;
-                font-weight: bold !important;
-                margin-bottom: 5px !important;
-            }
-            
-            .summary-value {
-                color: black !important;
-                font-size: 12pt !important;
-                font-weight: bold !important;
-            }
-            
-            .report-footer {
-                text-align: center !important;
-                margin-top: 40px !important;
-                padding-top: 15px !important;
-                border-top: 1px solid black !important;
-                color: black !important;
-                font-size: 9pt !important;
-                font-style: italic !important;
-            }
-            
-            /* Masquer les éléments non nécessaires à l'impression */
-            .no-print,
-            .info-card:hover,
-            .domaine-section::before,
-            .school-info::before {
-                display: none !important;
-            }
-            
-            /* Paramètres de page */
-            @page {
-                margin: 15mm !important;
-                size: A4 portrait !important;
-            }
-            
-            /* Numérotation des pages */
-            body {
-                counter-reset: page;
-            }
-            
-            .combined-page, .table-page {
-                counter-increment: page;
-            }
-            
-            /* Éviter les coupures dans les lignes */
-            tr {
-                page-break-inside: avoid !important;
-                page-break-after: auto !important;
-            }
-            
-            thead {
-                display: table-header-group !important;
-            }
-            
-            tfoot {
-                display: table-footer-group !important;
-            }
-        }
         
-        /* Responsive pour écran uniquement */
-        @media screen and (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-            
-            .cover-page, .combined-page, .table-page {
-                padding: 20px;
-            }
-            
-            .ministry-title {
-                font-size: 20px;
-            }
-            
-            .logo-container {
-                flex-direction: column;
-            }
-            
-            .info-grid, .period-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .section-title, .table-main-title {
-                font-size: 20px;
-            }
-            
-            .results-table, .criteria-table {
-                font-size: 12px;
-            }
-            
-            .results-table th,
-            .results-table td,
-            .criteria-table th,
-            .criteria-table td {
-                padding: 8px 6px;
-            }
-        }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -1492,24 +1000,24 @@ static String _buildCompleteHTMLContent({
 </body>
 </html>
     ''';
-}
+  }
 
   // ============ NOUVELLES MÉTHODES POUR LA RÉORGANISATION ============
 
   // Page des données de période
 
-static String _buildPeriodDataPageHTML(
-  String trimestre,
-  String periode,
-  String evaluationType,
-  Map<String, String> t,
-  bool isFrenchInterface,
-  String matiereName,
-  String className,
-  String profName,
-  String performanceAttendue, // NOUVEAU
-) {
-  return '''
+  static String _buildPeriodDataPageHTML(
+    String trimestre,
+    String periode,
+    String evaluationType,
+    Map<String, String> t,
+    bool isFrenchInterface,
+    String matiereName,
+    String className,
+    String profName,
+    String performanceAttendue, // NOUVEAU
+  ) {
+    return '''
     <div class="period-page">
         <!-- ... contenu existant ... -->
         
@@ -1532,8 +1040,7 @@ static String _buildPeriodDataPageHTML(
         </div>
     </div>
   ''';
-}
-
+  }
 
   // Page du tableau d'évaluation
   static String _buildEvaluationTablePageHTML(
@@ -1562,27 +1069,6 @@ static String _buildPeriodDataPageHTML(
         
         $tableHTML
         
-        <div class="summary-section">
-            <div class="summary-title">
-                ${isFrenchInterface ? 'Résumé statistique' : 'ملخص إحصائي'}
-            </div>
-            <div class="summary-grid">
-                <div class="summary-item">
-                    <div class="summary-label">${isFrenchInterface ? 'Type d\'évaluation' : 'نوع التقييم'}</div>
-                    <div class="summary-value">${_getEvaluationTypeDisplay(evaluationType, isFrenchInterface)}</div>
-                </div>
-                
-                <div class="summary-item">
-                    <div class="summary-label">${isFrenchInterface ? 'Total des élèves' : 'مجموع التلاميذ'}</div>
-                    <div class="summary-value">$totalStudents</div>
-                </div>
-                
-                <div class="summary-item">
-                    <div class="summary-label">${isFrenchInterface ? 'Date de génération' : 'تاريخ الإنشاء'}</div>
-                    <div class="summary-value">${now.day}/${now.month}/${now.year}</div>
-                </div>
-            </div>
-        </div>
         
         <div class="report-footer">
             <p>${isFrenchInterface ? 'Établissement' : 'المدرسة'}: $schoolName</p>
@@ -1641,7 +1127,7 @@ static String _buildPeriodDataPageHTML(
                 <div class="info-icon">📚</div>
                 <div class="info-content">
                     <div class="info-label">${t['subject']}</div>
-                    <div class="info-value">$matiereName</div>
+                    <div class="info-value">$domaine</div>
                 </div>
             </div>
             
@@ -1662,14 +1148,7 @@ static String _buildPeriodDataPageHTML(
             </div>
         </div>
         
-        <div class="domaine-section">
-            <div class="domaine-title">
-                ${isFrenchInterface ? 'DOMAINE' : 'المجال'}
-            </div>
-            <div class="domaine-content">
-                $domaine
-            </div>
-        </div>
+       
     </div>
     ''';
   }
@@ -1854,128 +1333,395 @@ static String _buildPeriodDataPageHTML(
     return normalized;
   }
 
-  static String _buildTableHTML({
-    required List<dynamic> baremes,
-    required List<dynamic> students,
-    required Map<String, int> sumCriteriaMaxPerBareme,
-    required int totalStudents,
-    required bool isFrenchInterface,
-    required Map<String, String> t,
-  }) {
-    final baremesHeaders = baremes.map((bareme) {
-      return '<th>${bareme['value']}</th>';
-    }).join('');
-
-    String studentsRows = '';
-    for (var student in students) {
-      final cells = baremes.map((bareme) {
-        final mark =
-            student['baremes'][bareme['id']]?.toString() ?? '( - - - )';
-        return '<td class="mark-cell">$mark</td>';
-      }).join('');
-
-      studentsRows += '''
-        <tr>
-          <td class="student-name-cell">${student['name']}</td>
-          $cells
-        </tr>
-      ''';
+static String _buildTableHTML({
+  required List<dynamic> baremes,
+  required List<dynamic> students,
+  required Map<String, int> sumCriteriaMaxPerBareme,
+  required int totalStudents,
+  required bool isFrenchInterface,
+  required Map<String, String> t,
+}) {
+  // Étape 1: Organiser les barèmes par hiérarchie
+  final List<Map<String, dynamic>> mainBaremes = [];
+  
+  // D'abord, extraire tous les barèmes parents potentiels des noms des sous-barèmes
+  final Map<String, String> parentNamesFromSubBaremes = {};
+  
+  for (var bareme in baremes) {
+    final baremeId = bareme['id'].toString();
+    final baremeValue = bareme['value']?.toString() ?? '';
+    final parentBaremeId = bareme['parentBaremeId']?.toString();
+    
+    if (parentBaremeId != null && parentBaremeId.isNotEmpty) {
+      // C'est un sous-barème - extraire le nom du parent
+      // Rechercher le nom du parent dans le nom du sous-barème
+      // Exemple: "مع 3.ا" -> parent = "مع 3"
+      String parentName = _extractParentNameFromSubBareme(baremeValue);
+      if (parentName.isNotEmpty) {
+        parentNamesFromSubBaremes[parentBaremeId] = parentName;
+      }
     }
-
-    final sumCells = baremes.map((bareme) {
-      final baremeId = bareme['id'].toString();
-      int count = 0;
-
-      // CORRECTION: Chercher d'abord la clé exacte
-      if (sumCriteriaMaxPerBareme.containsKey(baremeId)) {
-        count = sumCriteriaMaxPerBareme[baremeId]!;
-      } else {
-        // Pour les sous-barèmes, chercher avec la clé "parent-enfant"
-        // La clé dans sumCriteriaMaxPerBareme est au format "baremeId-sousBaremeId"
-        // mais bareme['id'] peut être "sousBaremeId" seul
-
-        // Si c'est un sous-barème, il a un parentBaremeId
-        final parentBaremeId = bareme['parentBaremeId']?.toString();
-        if (parentBaremeId != null && parentBaremeId.isNotEmpty) {
-          // Construire la clé complète
-          final fullKey = '$parentBaremeId-$baremeId';
-          count = sumCriteriaMaxPerBareme[fullKey] ?? 0;
-        } else {
-          // Pour les barèmes principaux, chercher toutes les clés qui commencent par ce baremeId
-          for (var key in sumCriteriaMaxPerBareme.keys) {
-            if (key.startsWith('$baremeId-')) {
-              count = sumCriteriaMaxPerBareme[key]!;
-              break;
-            }
-          }
+  }
+  
+  // Maintenant organiser les barèmes
+  for (var bareme in baremes) {
+    final baremeId = bareme['id'].toString();
+    final baremeValue = bareme['value']?.toString() ?? '';
+    final parentBaremeId = bareme['parentBaremeId']?.toString();
+    
+    if (parentBaremeId == null || parentBaremeId.isEmpty) {
+      // Barème principal
+      final existingIndex = mainBaremes.indexWhere((b) => b['id'] == baremeId);
+      if (existingIndex == -1) {
+        mainBaremes.add({
+          'id': baremeId,
+          'value': baremeValue,
+          'hasSubBaremes': false,
+          'subBaremes': [],
+          'isVirtual': false,
+        });
+      }
+    } else {
+      // Sous-barème - trouver ou créer son parent
+      final parentIndex = mainBaremes.indexWhere((b) => b['id'] == parentBaremeId);
+      
+      String parentName = baremeValue;
+      // Essayer d'extraire le nom du parent
+      parentName = _extractParentNameFromSubBareme(baremeValue);
+      if (parentName.isEmpty) {
+        // Si impossible à extraire, utiliser le nom du sous-barème sans la lettre
+        parentName = _removeSubBaremeLetter(baremeValue);
+      }
+      
+      // Utiliser le nom extrait des sous-barèmes s'il existe
+      if (parentNamesFromSubBaremes.containsKey(parentBaremeId)) {
+        parentName = parentNamesFromSubBaremes[parentBaremeId]!;
+      }
+      
+      if (parentIndex != -1) {
+        // Parent existe déjà
+        mainBaremes[parentIndex]['hasSubBaremes'] = true;
+        if (!mainBaremes[parentIndex].containsKey('subBaremes')) {
+          mainBaremes[parentIndex]['subBaremes'] = [];
         }
-      }
-
-      return '<td><strong>$count</strong></td>';
-    }).join('');
-
-    final percentageCells = baremes.map((bareme) {
-      final baremeId = bareme['id'].toString();
-      int count = 0;
-
-      // Même logique que pour sumCells
-      if (sumCriteriaMaxPerBareme.containsKey(baremeId)) {
-        count = sumCriteriaMaxPerBareme[baremeId]!;
+        
+        (mainBaremes[parentIndex]['subBaremes'] as List).add({
+          'id': baremeId,
+          'value': baremeValue,
+        });
       } else {
-        final parentBaremeId = bareme['parentBaremeId']?.toString();
-        if (parentBaremeId != null && parentBaremeId.isNotEmpty) {
-          final fullKey = '$parentBaremeId-$baremeId';
-          count = sumCriteriaMaxPerBareme[fullKey] ?? 0;
-        } else {
-          for (var key in sumCriteriaMaxPerBareme.keys) {
-            if (key.startsWith('$baremeId-')) {
-              count = sumCriteriaMaxPerBareme[key]!;
-              break;
-            }
-          }
-        }
+        // Créer un nouveau parent
+        mainBaremes.add({
+          'id': parentBaremeId,
+          'value': parentName,
+          'hasSubBaremes': true,
+          'subBaremes': [{
+            'id': baremeId,
+            'value': baremeValue,
+          }],
+          'isVirtual': true,
+        });
       }
+    }
+  }
 
-      if (totalStudents > 0) {
-        final percentage = (count / totalStudents * 100).toStringAsFixed(2);
-        return '<td class="percentage-cell"><strong>${percentage}%</strong></td>';
-      } else {
-        return '<td class="percentage-cell"><strong>0.00%</strong></td>';
+  // Étape 2: Construire l'en-tête hiérarchique
+  String headerHTML = '';
+  String mainHeaderRow = '';
+  String subHeaderRow = '';
+  
+  // Colonne pour les noms des étudiants
+  mainHeaderRow += '<th rowspan="2" class="student-name-cell">${t['student_name']}</th>';
+  
+  for (var mainBareme in mainBaremes) {
+    final mainBaremeId = mainBareme['id'] as String;
+    final mainBaremeValue = mainBareme['value'] as String;
+    final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
+    final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
+    final isVirtual = mainBareme['isVirtual'] as bool? ?? false;
+    
+    // DEBUG: Afficher les informations du barème
+    print('Barème principal: $mainBaremeValue (ID: $mainBaremeId, Virtuel: $isVirtual)');
+    if (hasSubBaremes) {
+      print('  Sous-barèmes:');
+      for (var sub in subBaremes) {
+        print('    - ${sub['value']} (ID: ${sub['id']})');
       }
-    }).join('');
+    }
+    
+    if (hasSubBaremes && subBaremes.isNotEmpty) {
+      // Barème avec sous-barèmes
+      final colspan = subBaremes.length;
+      mainHeaderRow += '''
+        <th colspan="$colspan" style="text-align: center; vertical-align: bottom;" class="main-bareme-header">
+          $mainBaremeValue
+        </th>
+      ''';
+      
+      // Ajouter les sous-en-têtes
+      for (var subBareme in subBaremes) {
+        final subValue = subBareme['value'] as String;
+        final cleanSubValue = _cleanSubBaremeName(subValue, mainBaremeValue);
+        subHeaderRow += '''
+          <th style="font-size: 12px; font-weight: normal; vertical-align: bottom;" class="sub-bareme-header">
+            $cleanSubValue
+          </th>
+        ''';
+      }
+    } else {
+      // Barème sans sous-barèmes
+      mainHeaderRow += '''
+        <th colspan="1" style="vertical-align: bottom;" class="main-bareme-header">
+          $mainBaremeValue
+        </th>
+      ''';
+      // Ajouter une colonne vide dans la ligne des sous-en-têtes
+      subHeaderRow += '<th></th>';
+    }
+  }
 
-    return '''
-    <div class="table-container">
-      <table class="results-table">
-        <thead>
-          <tr>
-            <th class="student-name-cell">${t['student_name']}</th>
-            $baremesHeaders
-          </tr>
-        </thead>
-        <tbody>
-          ${studentsRows.isNotEmpty ? studentsRows : '''
-          <tr>
-            <td colspan="${baremes.length + 1}" style="text-align:center; padding:30px; color:#666;">
-              ${isFrenchInterface ? 'Aucune donnée disponible' : 'لا توجد بيانات متاحة'}
-            </td>
-          </tr>
-          '''}
-          
-          <tr class="stats-row">
-            <td class="student-name-cell"><strong>${t['achieved_students']}</strong></td>
-            $sumCells
-          </tr>
-          
-          <tr class="percentage-row">
-            <td class="student-name-cell"><strong>${t['percentage']}</strong></td>
-            $percentageCells
-          </tr>
-        </tbody>
-      </table>
-    </div>
+  // Construire l'en-tête HTML complet
+  if (subHeaderRow.contains('sub-bareme-header')) {
+    // Avec sous-barèmes - deux lignes d'en-tête
+    headerHTML = '''
+      <thead>
+        <tr>
+          $mainHeaderRow
+        </tr>
+        <tr>
+          $subHeaderRow
+        </tr>
+      </thead>
+    ''';
+  } else {
+    // Sans sous-barèmes - une seule ligne d'en-tête
+    headerHTML = '''
+      <thead>
+        <tr>
+          <th class="student-name-cell">${t['student_name']}</th>
+          ${mainBaremes.map((b) => '''
+            <th class="main-bareme-header">${b['value']}</th>
+          ''').join('')}
+        </tr>
+      </thead>
     ''';
   }
+
+  // Étape 3: Construire les lignes des étudiants
+  String studentsRows = '';
+  
+  for (var student in students) {
+    String studentRow = '<tr>';
+    
+    // Colonne nom de l'étudiant
+    studentRow += '<td class="student-name-cell">${student['name']}</td>';
+    
+    // Cellules des notes
+    for (var mainBareme in mainBaremes) {
+      final mainBaremeId = mainBareme['id'] as String;
+      final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
+      final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
+      
+      if (hasSubBaremes && subBaremes.isNotEmpty) {
+        // Barème avec sous-barèmes
+        for (var subBareme in subBaremes) {
+          final subBaremeId = subBareme['id'] as String;
+          final fullKey = '$mainBaremeId-$subBaremeId';
+          
+          // Chercher la note dans différentes clés possibles
+          String mark = '( - - - )';
+          final studentBaremes = student['baremes'] as Map<String, dynamic>? ?? {};
+          
+          if (studentBaremes.containsKey(fullKey)) {
+            mark = studentBaremes[fullKey]?.toString() ?? '( - - - )';
+          } else if (studentBaremes.containsKey(subBaremeId)) {
+            mark = studentBaremes[subBaremeId]?.toString() ?? '( - - - )';
+          } else if (studentBaremes.containsKey(mainBaremeId)) {
+            mark = studentBaremes[mainBaremeId]?.toString() ?? '( - - - )';
+          }
+          
+          studentRow += '<td class="mark-cell">$mark</td>';
+        }
+      } else {
+        // Barème principal simple
+        final studentBaremes = student['baremes'] as Map<String, dynamic>? ?? {};
+        final mark = studentBaremes[mainBaremeId]?.toString() ?? '( - - - )';
+        studentRow += '<td class="mark-cell">$mark</td>';
+      }
+    }
+    
+    studentRow += '</tr>';
+    studentsRows += studentRow;
+  }
+
+  // Étape 4: Construire les lignes de statistiques
+  String statsRow = '';
+  String percentageRow = '';
+  
+  // Colonne label
+  statsRow += '<td class="student-name-cell"><strong>${t['achieved_students']}</strong></td>';
+  percentageRow += '<td class="student-name-cell"><strong>${t['percentage']}</strong></td>';
+  
+  for (var mainBareme in mainBaremes) {
+    final mainBaremeId = mainBareme['id'] as String;
+    final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
+    final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
+    
+    if (hasSubBaremes && subBaremes.isNotEmpty) {
+      // Barème avec sous-barèmes
+      for (var subBareme in subBaremes) {
+        final subBaremeId = subBareme['id'] as String;
+        final fullKey = '$mainBaremeId-$subBaremeId';
+        
+        // Chercher le compteur
+        int count = sumCriteriaMaxPerBareme[fullKey] ?? 
+                    sumCriteriaMaxPerBareme[subBaremeId] ?? 
+                    sumCriteriaMaxPerBareme[mainBaremeId] ?? 0;
+        
+        statsRow += '<td><strong>$count</strong></td>';
+        
+        if (totalStudents > 0) {
+          final percentage = (count / totalStudents * 100).toStringAsFixed(2);
+          percentageRow += '<td class="percentage-cell"><strong>${percentage}%</strong></td>';
+        } else {
+          percentageRow += '<td class="percentage-cell"><strong>0.00%</strong></td>';
+        }
+      }
+    } else {
+      // Barème principal simple
+      int count = sumCriteriaMaxPerBareme[mainBaremeId] ?? 0;
+      statsRow += '<td><strong>$count</strong></td>';
+      
+      if (totalStudents > 0) {
+        final percentage = (count / totalStudents * 100).toStringAsFixed(2);
+        percentageRow += '<td class="percentage-cell"><strong>${percentage}%</strong></td>';
+      } else {
+        percentageRow += '<td class="percentage-cell"><strong>0.00%</strong></td>';
+      }
+    }
+  }
+
+  // Étape 5: Calculer le nombre total de colonnes
+  int totalColumns = 1; // Pour la colonne des noms
+  for (var mainBareme in mainBaremes) {
+    final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
+    final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
+    
+    if (hasSubBaremes && subBaremes.isNotEmpty) {
+      totalColumns += subBaremes.length;
+    } else {
+      totalColumns += 1;
+    }
+  }
+
+  return '''
+  <div class="table-container">
+    <table class="results-table">
+      $headerHTML
+      <tbody>
+        ${studentsRows.isNotEmpty ? studentsRows : '''
+        <tr>
+          <td colspan="$totalColumns" style="text-align:center; padding:30px; color:#666;">
+            ${isFrenchInterface ? 'Aucune donnée disponible' : 'لا توجد بيانات متاحة'}
+          </td>
+        </tr>
+        '''}
+        
+        <tr class="stats-row">
+          $statsRow
+        </tr>
+        
+        <tr class="percentage-row">
+          $percentageRow
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  ''';
+}
+
+// Nouvelles fonctions d'aide
+static String _extractParentNameFromSubBareme(String subBaremeName) {
+  if (subBaremeName.isEmpty) return '';
+  
+  // Patterns pour extraire le nom du parent
+  // Exemples: "مع 3.ا" -> "مع 3", "C3.a" -> "C3"
+  
+  // Pattern 1: Nom avec point et lettre arabe
+  final arabicPattern = RegExp(r'^(.+)\.([\u0621-\u064A])$');
+  final matchArabic = arabicPattern.firstMatch(subBaremeName);
+  if (matchArabic != null) {
+    return matchArabic.group(1)!.trim();
+  }
+  
+  // Pattern 2: Nom avec point et lettre latine
+  final latinPattern = RegExp(r'^(.+)\.([a-zA-Z])$');
+  final matchLatin = latinPattern.firstMatch(subBaremeName);
+  if (matchLatin != null) {
+    return matchLatin.group(1)!.trim();
+  }
+  
+  // Pattern 3: Nom avec espace et lettre
+  final spacePattern = RegExp(r'^(.+)\s+([\u0621-\u064A]|[a-zA-Z])$');
+  final matchSpace = spacePattern.firstMatch(subBaremeName);
+  if (matchSpace != null) {
+    return matchSpace.group(1)!.trim();
+  }
+  
+  return '';
+}
+
+static String _removeSubBaremeLetter(String subBaremeName) {
+  if (subBaremeName.isEmpty) return '';
+  
+  // Supprimer la dernière lettre (arabe ou latine)
+  // Exemples: "مع 3.ا" -> "مع 3.", puis enlever le point
+  // "C3.a" -> "C3.", puis enlever le point
+  
+  String result = subBaremeName;
+  
+  // Enlever la dernière lettre arabe
+  if (result.isNotEmpty && _isArabicLetter(result[result.length - 1])) {
+    result = result.substring(0, result.length - 1);
+  }
+  
+  // Enlever la dernière lettre latine
+  if (result.isNotEmpty && _isLatinLetter(result[result.length - 1])) {
+    result = result.substring(0, result.length - 1);
+  }
+  
+  // Nettoyer les caractères de ponctuation à la fin
+  result = result.replaceAll(RegExp(r'[.\s]+$'), '');
+  
+  return result.trim();
+}
+
+static bool _isArabicLetter(String char) {
+  return char.codeUnitAt(0) >= 0x0621 && char.codeUnitAt(0) <= 0x064A;
+}
+
+static bool _isLatinLetter(String char) {
+  return (char.codeUnitAt(0) >= 65 && char.codeUnitAt(0) <= 90) || 
+         (char.codeUnitAt(0) >= 97 && char.codeUnitAt(0) <= 122);
+}
+
+static String _cleanSubBaremeName(String subName, String parentName) {
+  // Nettoyer le nom du sous-barème pour n'afficher que la partie distinctive
+  // Exemple: si parent = "مع 3" et sub = "مع 3.ا", afficher seulement "ا"
+  
+  if (subName.startsWith(parentName)) {
+    String remaining = subName.substring(parentName.length).trim();
+    
+    // Enlever les séparateurs au début
+    remaining = remaining.replaceAll(RegExp(r'^[.\s]+'), '');
+    
+    if (remaining.isNotEmpty) {
+      return remaining;
+    }
+  }
+  
+  return subName;
+}
 
   static String _getDomaineForMatiere(
       String matiereName, bool isFrenchInterface) {

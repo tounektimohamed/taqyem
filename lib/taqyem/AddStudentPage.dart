@@ -89,221 +89,296 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     'لغة انقليزية': 'assets/images/english.png',
   };
 
- 
-@override
-void initState() {
-  super.initState();
-  if (currentUser != null) {
-    _fetchClasses().then((_) {
-      // Après avoir chargé les classes, pré-sélectionner si nécessaire
-      if (widget.preSelectedClassId != null && 
-          widget.preSelectedMatiereId != null &&
-          _classes.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _preSelectClassAndMatiere();
-        });
-      }
-    });
-  }
-}
-
-
-Future<void> _addDefaultStudentsIfEmpty(Map<String, dynamic> classData) async {
-  if (_students.isEmpty && widget.showStudentsForMatiere == true) {
-    // Demander à l'utilisateur s'il veut ajouter des étudiants
-    bool? shouldAdd = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('لا يوجد تلاميذ'),
-        content: Text('هل تريد إضافة تلاميذ لهذا القسم؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('لاحقاً'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('نعم'),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldAdd == true) {
-      await _addStudent(classData);
+  @override
+  void initState() {
+    super.initState();
+    if (currentUser != null) {
+      _fetchClasses().then((_) {
+        // Après avoir chargé les classes, pré-sélectionner si nécessaire
+        if (widget.preSelectedClassId != null &&
+            widget.preSelectedMatiereId != null &&
+            _classes.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _preSelectClassAndMatiere();
+          });
+        }
+      });
     }
   }
-}
 
+  Future<void> _navigateAfterSelection(String classId, String matiereId) async {
+    try {
+      // Attendre un peu pour laisser le temps de sauvegarder
+      await Future.delayed(Duration(milliseconds: 500));
 
-Future<void> _preSelectClassAndMatiere() async {
-  if (!mounted) return;
-  
-  // Afficher un indicateur de chargement
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => Center(
-      child: CircularProgressIndicator(),
-    ),
-  );
+      // Naviguer directement vers la sélection des barèmes
+      final matiereDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(classId)
+          .collection('matieres')
+          .doc(matiereId)
+          .get();
 
-  await Future.delayed(Duration(milliseconds: 500));
-  
-  try {
-    // Vérifier si des classes sont disponibles
-    if (_classes.isEmpty) {
-      print("Aucune classe disponible pour la pré-sélection");
+      final matiereName = matiereDoc.exists ? matiereDoc['name'] : matiereId;
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BaremesPage(
+              selectedClass: classId,
+              selectedMatiere: matiereId,
+              matiereName: matiereName,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Erreur lors de la navigation après sélection: $e');
+    }
+  }
+
+  void _navigateDirectlyToBaremesSelection() async {
+    if (selectedClassId == null || selectedSubjectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('يرجى اختيار قسم ومادة أولاً'),
+          duration: Duration(seconds: 2),
+        ),
+      );
       return;
     }
 
-    print("Pré-sélection - Classes disponibles: ${_classes.length}");
-    print("Recherche de la classe: ${widget.preSelectedClassId}");
-    print("Recherche de la matière: ${widget.preSelectedMatiereId}");
+    try {
+      // Récupérer le nom de la matière
+      final matiereDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(selectedClassId!)
+          .collection('matieres')
+          .doc(selectedSubjectId!)
+          .get();
 
-    // ÉVITER firstWhere - Utiliser une boucle for
-    Map<String, dynamic>? targetClass;
-    
-    for (var classItem in _classes) {
-      final classId = classItem['class_id']?.toString();
-      final targetClassId = widget.preSelectedClassId?.toString();
-      
-      if (classId == targetClassId) {
-        targetClass = classItem;
-        print("Classe trouvée: ${classItem['class_name']}");
-        break;
-      }
-    }
+      final matiereName =
+          matiereDoc.exists ? matiereDoc['name'] : selectedSubjectId!;
 
-    // Si non trouvée, prendre la première classe
-    if (targetClass == null && _classes.isNotEmpty) {
-      targetClass = _classes[0];
-      print("Classe non trouvée, utilisation de la première: ${targetClass['class_name']}");
-    }
-
-    if (targetClass != null) {
-      print("Sélection de la classe: ${targetClass['class_name']}");
-      
-      // Sélectionner la classe
-      setState(() {
-        _selectedClass = targetClass;
-        selectedClassId = targetClass?['class_id']?.toString();
-      });
-
-      // Charger les matières pour cette classe
-      await fetchMatieresForPreSelection(widget.preSelectedClassId!);
-
-      // Chercher la matière
-      if (targetClass.containsKey('subjects')) {
-        final subjects = targetClass['subjects'];
-        
-        if (subjects is List && subjects.isNotEmpty) {
-          print("Sujets disponibles: ${subjects.length}");
-          
-          // ÉVITER firstWhere pour les matières aussi
-          Map<String, dynamic>? targetSubject;
-          
-          for (var subject in subjects) {
-            if (subject is Map<String, dynamic>) {
-              final subjectId = subject['id']?.toString();
-              final targetSubjectId = widget.preSelectedMatiereId?.toString();
-              
-              if (subjectId == targetSubjectId) {
-                targetSubject = subject;
-                print("Matière trouvée: ${subject['name']}");
-                break;
-              }
-            }
-          }
-
-          // Prendre la première matière si non trouvée
-          if (targetSubject == null && subjects.isNotEmpty) {
-            final firstSubject = subjects[0];
-            if (firstSubject is Map<String, dynamic>) {
-              targetSubject = firstSubject;
-              print("Matière non trouvée, utilisation de la première: ${targetSubject['name']}");
-            }
-          }
-
-          if (targetSubject != null) {
-            print("Sélection de la matière: ${targetSubject['name']}");
-            
-            setState(() {
-              selectedSubjectId = targetSubject!['id']?.toString();
-              if (widget.showStudentsForMatiere == true) {
-                _showStudentsList = true;
-              }
-            });
-
-            // Charger les étudiants
-            await _loadStudentsForClass();
-          } else {
-            print("Aucune matière trouvée dans la classe");
-          }
-        } else {
-          print("La classe n'a pas de sujets ou la liste est vide");
-        }
-      } else {
-        print("La classe ne contient pas de clé 'subjects'");
-      }
-    }
-  } catch (e, stackTrace) {
-    print('Erreur lors de la pré-sélection: $e');
-    print('Stack trace: $stackTrace');
-    
-    if (mounted) {
+      // Naviguer directement vers BaremesPage
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => BaremesPage(
+            selectedClass: selectedClassId!,
+            selectedMatiere: selectedSubjectId!,
+            matiereName: matiereName,
+          ),
+        ),
+      );
+    } catch (e) {
+      print('Erreur lors de la navigation: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erreur lors de la pré-sélection des données'),
-          backgroundColor: Colors.red,
+          content: Text('حدث خطأ أثناء التنقل: $e'),
           duration: Duration(seconds: 3),
         ),
       );
     }
-  } finally {
-    // Fermer l'indicateur de chargement
-    if (mounted) {
-      Navigator.of(context).pop();
+  }
+
+  Future<void> _addDefaultStudentsIfEmpty(
+      Map<String, dynamic> classData) async {
+    if (_students.isEmpty && widget.showStudentsForMatiere == true) {
+      // Demander à l'utilisateur s'il veut ajouter des étudiants
+      bool? shouldAdd = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('لا يوجد تلاميذ'),
+          content: Text('هل تريد إضافة تلاميذ لهذا القسم؟'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('لاحقاً'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text('نعم'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldAdd == true) {
+        await _addStudent(classData);
+      }
     }
   }
-}
 
+  Future<void> _preSelectClassAndMatiere() async {
+    if (!mounted) return;
 
+    // Afficher un indicateur de chargement
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    await Future.delayed(Duration(milliseconds: 500));
+
+    try {
+      // Vérifier si des classes sont disponibles
+      if (_classes.isEmpty) {
+        print("Aucune classe disponible pour la pré-sélection");
+        return;
+      }
+
+      print("Pré-sélection - Classes disponibles: ${_classes.length}");
+      print("Recherche de la classe: ${widget.preSelectedClassId}");
+      print("Recherche de la matière: ${widget.preSelectedMatiereId}");
+
+      // ÉVITER firstWhere - Utiliser une boucle for
+      Map<String, dynamic>? targetClass;
+
+      for (var classItem in _classes) {
+        final classId = classItem['class_id']?.toString();
+        final targetClassId = widget.preSelectedClassId?.toString();
+
+        if (classId == targetClassId) {
+          targetClass = classItem;
+          print("Classe trouvée: ${classItem['class_name']}");
+          break;
+        }
+      }
+
+      // Si non trouvée, prendre la première classe
+      if (targetClass == null && _classes.isNotEmpty) {
+        targetClass = _classes[0];
+        print(
+            "Classe non trouvée, utilisation de la première: ${targetClass['class_name']}");
+      }
+
+      if (targetClass != null) {
+        print("Sélection de la classe: ${targetClass['class_name']}");
+
+        // Sélectionner la classe
+        setState(() {
+          _selectedClass = targetClass;
+          selectedClassId = targetClass?['class_id']?.toString();
+        });
+
+        // Charger les matières pour cette classe
+        await fetchMatieresForPreSelection(widget.preSelectedClassId!);
+
+        // Chercher la matière
+        if (targetClass.containsKey('subjects')) {
+          final subjects = targetClass['subjects'];
+
+          if (subjects is List && subjects.isNotEmpty) {
+            print("Sujets disponibles: ${subjects.length}");
+
+            // ÉVITER firstWhere pour les matières aussi
+            Map<String, dynamic>? targetSubject;
+
+            for (var subject in subjects) {
+              if (subject is Map<String, dynamic>) {
+                final subjectId = subject['id']?.toString();
+                final targetSubjectId = widget.preSelectedMatiereId?.toString();
+
+                if (subjectId == targetSubjectId) {
+                  targetSubject = subject;
+                  print("Matière trouvée: ${subject['name']}");
+                  break;
+                }
+              }
+            }
+
+            // Prendre la première matière si non trouvée
+            if (targetSubject == null && subjects.isNotEmpty) {
+              final firstSubject = subjects[0];
+              if (firstSubject is Map<String, dynamic>) {
+                targetSubject = firstSubject;
+                print(
+                    "Matière non trouvée, utilisation de la première: ${targetSubject['name']}");
+              }
+            }
+
+            if (targetSubject != null) {
+              print("Sélection de la matière: ${targetSubject['name']}");
+
+              setState(() {
+                selectedSubjectId = targetSubject!['id']?.toString();
+                if (widget.showStudentsForMatiere == true) {
+                  _showStudentsList = true;
+                }
+              });
+
+              // Charger les étudiants
+              await _loadStudentsForClass();
+            } else {
+              print("Aucune matière trouvée dans la classe");
+            }
+          } else {
+            print("La classe n'a pas de sujets ou la liste est vide");
+          }
+        } else {
+          print("La classe ne contient pas de clé 'subjects'");
+        }
+      }
+    } catch (e, stackTrace) {
+      print('Erreur lors de la pré-sélection: $e');
+      print('Stack trace: $stackTrace');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la pré-sélection des données'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      // Fermer l'indicateur de chargement
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
+  }
 
 // Nouvelle méthode pour charger les matières spécifiquement
-Future<void> fetchMatieresForPreSelection(String classId) async {
-  try {
-    final classDoc = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(classId)
-        .collection('matieres')
-        .get();
+  Future<void> fetchMatieresForPreSelection(String classId) async {
+    try {
+      final classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(classId)
+          .collection('matieres')
+          .get();
 
-    if (classDoc.docs.isNotEmpty) {
-      List<Map<String, dynamic>> newSubjects = [];
-      
-      for (var doc in classDoc.docs) {
-        newSubjects.add({
-          'id': doc.id,
-          'name': doc['name'] as String,
+      if (classDoc.docs.isNotEmpty) {
+        List<Map<String, dynamic>> newSubjects = [];
+
+        for (var doc in classDoc.docs) {
+          newSubjects.add({
+            'id': doc.id,
+            'name': doc['name'] as String,
+          });
+        }
+
+        setState(() {
+          _subjects = newSubjects;
+        });
+      } else {
+        setState(() {
+          _subjects = [];
         });
       }
-      
-      setState(() {
-        _subjects = newSubjects;
-      });
-    } else {
+    } catch (e) {
+      print("Erreur lors de la récupération des matières: $e");
       setState(() {
         _subjects = [];
       });
     }
-  } catch (e) {
-    print("Erreur lors de la récupération des matières: $e");
-    setState(() {
-      _subjects = [];
-    });
   }
-}
 
   void _buildHelpSection(BuildContext context) {
     showDialog(
@@ -1146,12 +1221,8 @@ Future<void> fetchMatieresForPreSelection(String classId) async {
               ),
               ElevatedButton(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => SelectionPage(),
-                    ),
-                  );
+                  Navigator.pop(context);
+                  _navigateToDirectEvaluation('');
                 },
                 child: Text('اذهب إلى صفحة الاختيار'),
               ),
@@ -1488,18 +1559,20 @@ Future<void> fetchMatieresForPreSelection(String classId) async {
       ),
     );
   }
-void _selectClass(Map<String, dynamic> classData, {bool autoLoadStudents = false}) {
-  setState(() {
-    _selectedClass = classData;
-    selectedClassId = classData['class_id']?.toString();
-    _showStudentsList = false;
-    _students = []; // Réinitialiser la liste des étudiants
-  });
-  
-  if (autoLoadStudents) {
-    _loadStudentsForClass();
+
+  void _selectClass(Map<String, dynamic> classData,
+      {bool autoLoadStudents = false}) {
+    setState(() {
+      _selectedClass = classData;
+      selectedClassId = classData['class_id']?.toString();
+      _showStudentsList = false;
+      _students = []; // Réinitialiser la liste des étudiants
+    });
+
+    if (autoLoadStudents) {
+      _loadStudentsForClass();
+    }
   }
-}
 
   Widget _buildClassDetailsView() {
     return Column(
@@ -1654,45 +1727,44 @@ void _selectClass(Map<String, dynamic> classData, {bool autoLoadStudents = false
       ),
     );
   }
-Future<void> _loadStudentsForClass() async {
-  try {
-    final students = _selectedClass!['students'];
-    List<Map<String, dynamic>> studentsData = [];
 
-    for (var studentId in students) {
-      final studentDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser!.uid)
-          .collection('user_classes')
-          .doc(_selectedClass!['id'])
-          .collection('students')
-          .doc(studentId)
-          .get();
+  Future<void> _loadStudentsForClass() async {
+    try {
+      final students = _selectedClass!['students'];
+      List<Map<String, dynamic>> studentsData = [];
 
-      if (studentDoc.exists) {
-        studentsData.add({
-          'id': studentId, 
-          ...studentDoc.data() as Map<String, dynamic>
-        });
+      for (var studentId in students) {
+        final studentDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('user_classes')
+            .doc(_selectedClass!['id'])
+            .collection('students')
+            .doc(studentId)
+            .get();
+
+        if (studentDoc.exists) {
+          studentsData.add(
+              {'id': studentId, ...studentDoc.data() as Map<String, dynamic>});
+        }
       }
+
+      studentsData.sort((a, b) => a['name'].compareTo(b['name']));
+
+      setState(() {
+        _students = studentsData;
+      });
+
+      // Vérifier si on doit proposer d'ajouter des étudiants
+      if (widget.showStudentsForMatiere == true) {
+        await _addDefaultStudentsIfEmpty(_selectedClass!);
+      }
+    } catch (e) {
+      print("Erreur lors du chargement des élèves : $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erreur lors du chargement des élèves')));
     }
-
-    studentsData.sort((a, b) => a['name'].compareTo(b['name']));
-
-    setState(() {
-      _students = studentsData;
-    });
-
-    // Vérifier si on doit proposer d'ajouter des étudiants
-    if (widget.showStudentsForMatiere == true) {
-      await _addDefaultStudentsIfEmpty(_selectedClass!);
-    }
-  } catch (e) {
-    print("Erreur lors du chargement des élèves : $e");
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erreur lors du chargement des élèves')));
   }
-}
 
   Widget _buildStudentsList() {
     return _students.isEmpty
@@ -1841,6 +1913,18 @@ Future<void> _loadStudentsForClass() async {
                         ),
                       ),
                       IconButton(
+                        icon: Icon(Icons.tune_rounded, color: Colors.blue),
+                        onPressed: () => _navigateDirectlyToBaremesSelection(),
+                        tooltip: 'برمجة المعايير',
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.assessment, color: Colors.purple),
+                        onPressed: () =>
+                            _navigateToDirectEvaluation(student['id']),
+                        tooltip: 'تقييم مباشر',
+                      ),
+
+                      IconButton(
                         icon: Icon(Icons.info_outline, color: Colors.blue),
                         onPressed: () =>
                             _showStudentDetails(_selectedClass!, student['id']),
@@ -1862,27 +1946,36 @@ Future<void> _loadStudentsForClass() async {
     );
   }
 
-  // Méthodes de navigation uniques (pas de doublons)
-  void _navigateToDynamicTable(String classId, String matiereId) async {
+  Future<void> _navigateToDirectEvaluation(String studentId) async {
+    if (selectedClassId == null || selectedSubjectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('يرجى اختيار قسم ومادة أولاً'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     try {
-      // Vérifier si l'utilisateur a déjà fait les sélections pour cette classe et matière
+      // Vérifier d'abord si les sélections existent
       final selectionsRef = FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
           .collection('selections')
-          .doc(classId)
-          .collection(matiereId);
+          .doc(selectedClassId!)
+          .collection(selectedSubjectId!);
 
       final selectionsSnapshot = await selectionsRef.get();
 
       if (selectionsSnapshot.docs.isEmpty) {
-        // Si aucune sélection n'existe, naviguer d'abord vers SelectionPage
+        // Si aucune sélection, d'abord aller à SelectionPage
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
             title: Text('عملية التقييم', textDirection: TextDirection.rtl),
             content: Text(
-              'يجب عليك أولاً تحديد المعايير للتقييم قبل الانتقال إلى الجدول.',
+              'يجب عليك أولاً تحديد المعايير للتقييم قبل تقييم التلميذ.',
               textDirection: TextDirection.rtl,
             ),
             actions: [
@@ -1897,13 +1990,19 @@ Future<void> _loadStudentsForClass() async {
                     context,
                     MaterialPageRoute(
                       builder: (context) => SelectionPage(
-                        preSelectedClassId: classId,
-                        preSelectedMatiereId: matiereId,
+                        preSelectedClassId: selectedClassId,
+                        preSelectedMatiereId: selectedSubjectId,
                       ),
                     ),
                   ).then((_) {
-                    // Après avoir fait les sélections, naviguer vers DynamicTablePage
-                    _goToDynamicTablePage(classId, matiereId);
+                    // Après sélection, revenir et évaluer l'étudiant
+                    if (mounted) {
+                      _showSelectionsDialog(
+                        selectedClassId!,
+                        selectedSubjectId!,
+                        studentId,
+                      );
+                    }
                   });
                 },
                 child: Text('تحديد المعايير', textDirection: TextDirection.rtl),
@@ -1912,8 +2011,70 @@ Future<void> _loadStudentsForClass() async {
           ),
         );
       } else {
+        // Si les sélections existent, évaluer directement
+        await _showSelectionsDialog(
+          selectedClassId!,
+          selectedSubjectId!,
+          studentId,
+        );
+      }
+    } catch (e) {
+      print('Erreur lors de la navigation: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('حدث خطأ أثناء التنقل: $e'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+  // Méthodes de navigation uniques (pas de doublons)
+
+  void _navigateToDynamicTable(String classId, String matiereId) async {
+    try {
+      // Utiliser les IDs déjà sélectionnés
+      final currentClassId = selectedClassId ?? classId;
+      final currentMatiereId = selectedSubjectId ?? matiereId;
+
+      if (currentClassId == null || currentMatiereId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('يرجى اختيار قسم ومادة أولاً'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+
+      // Vérifier si l'utilisateur a déjà fait les sélections pour cette classe et matière
+      final selectionsRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(currentClassId)
+          .collection(currentMatiereId);
+
+      final selectionsSnapshot = await selectionsRef.get();
+
+      if (selectionsSnapshot.docs.isEmpty) {
+        // Si aucune sélection n'existe, naviguer vers SelectionPage AVEC les IDs présélectionnés
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SelectionPage(
+              preSelectedClassId: currentClassId,
+              preSelectedMatiereId: currentMatiereId,
+            ),
+          ),
+        ).then((_) {
+          // Après avoir fait les sélections, naviguer automatiquement vers la sélection des barèmes
+          if (mounted) {
+            _navigateDirectlyToBaremesSelection();
+          }
+        });
+      } else {
         // Si les sélections existent déjà, naviguer directement vers DynamicTablePage
-        _goToDynamicTablePage(classId, matiereId);
+        _goToDynamicTablePage(currentClassId, currentMatiereId);
       }
     } catch (e) {
       print('Erreur lors de la navigation: $e');
@@ -2200,19 +2361,24 @@ Future<void> _loadStudentsForClass() async {
         actions: [
           // NOUVEAU BOUTON: Navigation vers le tableau (version améliorée)
           if (_selectedClass != null && selectedSubjectId != null)
-            Container(
-              margin: EdgeInsets.symmetric(horizontal: 4),
-              child: ElevatedButton.icon(
-                icon: Icon(Icons.table_chart, size: 18),
-                label: Text('جدول النتائج'),
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Colors.green,
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                onPressed: () => _navigateToDynamicTableFromAppBar(),
-              ),
+            IconButton(
+              icon: Icon(Icons.tune_rounded),
+              tooltip: 'برمجة المعايير',
+              onPressed: _navigateDirectlyToBaremesSelection,
             ),
+          Container(
+            margin: EdgeInsets.symmetric(horizontal: 4),
+            child: ElevatedButton.icon(
+              icon: Icon(Icons.table_chart, size: 18),
+              label: Text('جدول النتائج'),
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.green,
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              onPressed: () => _navigateToDynamicTableFromAppBar(),
+            ),
+          ),
           IconButton(
             icon: Icon(Icons.help_outline, color: Colors.white),
             onPressed: () => _buildHelpSection(context),

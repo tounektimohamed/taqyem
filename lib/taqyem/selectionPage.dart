@@ -145,11 +145,15 @@ class BaremesPage extends StatefulWidget {
   final String selectedClass;
   final String selectedMatiere;
   final String matiereName;
+    final bool autoNavigateToStudentList; // Nouveau paramètre
+
 
   BaremesPage({
     required this.selectedClass,
     required this.selectedMatiere,
     required this.matiereName,
+        this.autoNavigateToStudentList = false, // Valeur par défaut
+
   });
 
   @override
@@ -161,14 +165,20 @@ class _BaremesPageState extends State<BaremesPage> {
   Map<String, Map<String, bool>> _selectedSousBaremes = {};
   bool _isLoading = true;
   bool _isFrenchInterface = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _detectLanguage();
-    _loadExistingSelections();
-    _showUtilityDialog();
+@override
+void initState() {
+  super.initState();
+  _detectLanguage();
+  _loadExistingSelections();
+  _showUtilityDialog();
+  
+  // Navigation automatique si demandée
+  if (widget.autoNavigateToStudentList) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _navigateToStudentList();
+    });
   }
+}
 
   void _detectLanguage() {
     setState(() {
@@ -1041,7 +1051,76 @@ class _SelectionPageState extends State<SelectionPage> {
   @override
   void initState() {
     super.initState();
-    _initializeData();
+
+    // Initialiser avec les valeurs présélectionnées si fournies
+    if (widget.preSelectedClassId != null &&
+        widget.preSelectedMatiereId != null) {
+      selectedClassId = widget.preSelectedClassId;
+      selectedMatiereId = widget.preSelectedMatiereId;
+
+      // Charger les données initiales
+      _initializeDataWithPreselection();
+    } else {
+      _initializeData();
+    }
+  }
+
+  Future<void> _initializeDataWithPreselection() async {
+    try {
+      // 1. Charger les classes
+      await fetchClasses();
+
+      // 2. Trouver la classe correspondante
+      if (selectedClassId != null) {
+        final classDoc = await FirebaseFirestore.instance
+            .collection('classes')
+            .doc(selectedClassId!)
+            .get();
+
+        if (classDoc.exists) {
+          selectedClassName = classDoc['name'];
+
+          // 3. Charger les matières pour cette classe
+          await fetchMatieres(selectedClassId!);
+
+          // 4. Trouver la matière correspondante
+          if (selectedMatiereId != null) {
+            final matiereDoc = await FirebaseFirestore.instance
+                .collection('classes')
+                .doc(selectedClassId!)
+                .collection('matieres')
+                .doc(selectedMatiereId!)
+                .get();
+
+            if (matiereDoc.exists) {
+              selectedMatiereName = matiereDoc['name'];
+            }
+          }
+        }
+      }
+
+      // 5. Charger l'historique
+      await _loadLastAccessList();
+
+      // 6. Ajouter à l'historique si ce n'est pas déjà fait
+      if (selectedClassId != null && selectedMatiereId != null) {
+        final exists = lastAccessList.any((access) =>
+            access['classId'] == selectedClassId &&
+            access['matiereId'] == selectedMatiereId);
+
+        if (!exists) {
+          await _saveLastAccess();
+        }
+      }
+
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Erreur lors de l\'initialisation avec présélection: $e');
+      // Retourner à l'initialisation normale
+      await _initializeData();
+    }
   }
 
   Future<void> _initializeData() async {
@@ -2128,6 +2207,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
       );
     }
   }
+
   Widget _buildContent(String userId) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance

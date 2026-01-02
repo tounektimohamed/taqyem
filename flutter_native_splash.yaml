@@ -1,0 +1,21 @@
+flutter_native_splash:
+  color: "#FFFFFF"  # Fond blanc
+  
+  # Image de base
+  image: assets/logo.png
+  
+  # Configuration web spécifique
+  web: true
+  web_image_mode: contain  # ou "center" selon votre préférence
+  
+  # Paramètres pour toutes les plateformes
+  android: true
+  ios: true
+  
+  # Optionnel: personnalisation avancée
+  android_12:
+    image: assets/logo.png
+    color: "#FFFFFF"
+  
+  # Pour éviter les problèmes de cache (optionnel)
+  disable_cache: true

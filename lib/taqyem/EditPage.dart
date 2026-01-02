@@ -26,224 +26,284 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
   }
 
   // Fonction pour vérifier si une classe existe déjà
-  Future<bool> classExists(String className) async {
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
+ 
+// Fonction pour ajouter toutes les données automatiquement
+Future<void> addAllDataAutomatically() async {
+  setState(() {
+    _isLoading = true;
+  });
+
+  try {
+    // Liste des classes (inchangée)
+    List<String> classes = [
+      "السنة الأولى ابتدائي",
+      "السنة الأولى ابتدائي أ",
+      "السنة الأولى ابتدائي ب", 
+      "السنة الأولى ابتدائي ج",
+      "السنة الأولى ابتدائي د",
+      "السنة الثانية ابتدائي",
+      "السنة الثانية ابتدائي أ",
+      "السنة الثانية ابتدائي ب",
+      "السنة الثانية ابتدائي ج",
+      "السنة الثانية ابتدائي د",
+      "السنة الثالثة ابتدائي",
+      "السنة الثالثة ابتدائي أ",
+      "السنة الثالثة ابتدائي ب",
+      "السنة الثالثة ابتدائي ج",
+      "السنة الثالثة ابتدائي د",
+      "السنة الرابعة ابتدائي",
+      "السنة الرابعة ابتدائي أ",
+      "السنة الرابعة ابتدائي ب",
+      "السنة الرابعة ابتدائي ج",
+      "السنة الرابعة ابتدائي د",
+      "السنة الخامسة ابتدائي",
+      "السنة الخامسة ابتدائي أ",
+      "السنة الخامسة ابتدائي ب",
+      "السنة الخامسة ابتدائي ج",
+      "السنة الخامسة ابتدائي د",
+      "السنة السادسة ابتدائي",
+      "السنة السادسة ابتدائي أ",
+      "السنة السادسة ابتدائي ب",
+      "السنة السادسة ابتدائي ج",
+      "السنة السادسة ابتدائي د"
+    ];
+
+    // Liste des matières (inchangée)
+    List<String> matieres = [
+      "التواصل الشفوي", "قراءة", "انتاج كتابي", "رياضيات", "ايقاظ علمي",
+      "تربية اسلامية", "تربية تكنولوجية", "تربية موسيقية", "تربية تشكيلية", 
+      "تربية بدنية", "قواعد لغة", "Expression orale et récitation", "Lecture",
+      "Production écrite", "écriture", "dictée", "langue", "لغة انقليزية",
+      "التاريخ", "الجغرافيا", "التربية المدنية"
+    ];
+
+    // Définir les lettres arabes pour les sous-barèmes
+    List<String> arabicLetters = ["ا", "ب", "ج"]; // Au lieu de 1, 2, 3
+
+    int totalClasses = 0;
+    int totalMatieres = 0;
+    int totalBaremes = 0;
+    int totalSousBaremes = 0;
+    int skippedClasses = 0;
+    int skippedMatieres = 0;
+    int skippedBaremes = 0;
+    int skippedSousBaremes = 0;
+
+    // Récupérer toutes les classes existantes d'abord pour optimiser
+    Map<String, DocumentReference> existingClasses = {};
+    QuerySnapshot classesSnapshot = await FirebaseFirestore.instance
         .collection('classes')
-        .where('name', isEqualTo: className)
         .get();
-    return snapshot.docs.isNotEmpty;
-  }
+    
+    for (var doc in classesSnapshot.docs) {
+      existingClasses[doc['name']] = doc.reference;
+    }
 
-  // Fonction pour vérifier si une matière existe déjà dans une classe
-  Future<bool> matiereExists(String classId, String matiereName) async {
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(classId)
-        .collection('matieres')
-        .where('name', isEqualTo: matiereName)
-        .get();
-    return snapshot.docs.isNotEmpty;
-  }
-
-  // Fonction pour vérifier si un barème existe déjà dans une matière
-  Future<bool> baremeExists(String classId, String matiereId, String baremeValue) async {
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(classId)
-        .collection('matieres')
-        .doc(matiereId)
-        .collection('baremes')
-        .where('value', isEqualTo: baremeValue)
-        .get();
-    return snapshot.docs.isNotEmpty;
-  }
-
-  // Fonction pour vérifier si un sous-barème existe déjà dans un barème
-  Future<bool> sousBaremeExists(String classId, String matiereId, String baremeId, String sousBaremeName) async {
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(classId)
-        .collection('matieres')
-        .doc(matiereId)
-        .collection('baremes')
-        .doc(baremeId)
-        .collection('sousBaremes')
-        .where('name', isEqualTo: sousBaremeName)
-        .get();
-    return snapshot.docs.isNotEmpty;
-  }
-
-  // Fonction pour ajouter toutes les données automatiquement
-  Future<void> addAllDataAutomatically() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // Liste des classes
-      List<String> classes = [
-        "السنة الأولى ابتدائي",
-        "السنة الأولى ابتدائي أ",
-        "السنة الأولى ابتدائي ب", 
-        "السنة الأولى ابتدائي ج",
-        "السنة الأولى ابتدائي د",
-        "السنة الثانية ابتدائي",
-        "السنة الثانية ابتدائي أ",
-        "السنة الثانية ابتدائي ب",
-        "السنة الثانية ابتدائي ج",
-        "السنة الثانية ابتدائي د",
-        "السنة الثالثة ابتدائي",
-        "السنة الثالثة ابتدائي أ",
-        "السنة الثالثة ابتدائي ب",
-        "السنة الثالثة ابتدائي ج",
-        "السنة الثالثة ابتدائي د",
-        "السنة الرابعة ابتدائي",
-        "السنة الرابعة ابتدائي أ",
-        "السنة الرابعة ابتدائي ب",
-        "السنة الرابعة ابتدائي ج",
-        "السنة الرابعة ابتدائي د",
-        "السنة الخامسة ابتدائي",
-        "السنة الخامسة ابتدائي أ",
-        "السنة الخامسة ابتدائي ب",
-        "السنة الخامسة ابتدائي ج",
-        "السنة الخامسة ابتدائي د",
-        "السنة السادسة ابتدائي",
-        "السنة السادسة ابتدائي أ",
-        "السنة السادسة ابتدائي ب",
-        "السنة السادسة ابتدائي ج",
-        "السنة السادسة ابتدائي د"
-      ];
-
-      // Liste des matières
-      List<String> matieres = [
-        "التواصل الشفوي", "قراءة", "انتاج كتابي", "رياضيات", "ايقاظ علمي",
-        "تربية اسلامية", "تربية تكنولوجية", "تربية موسيقية", "تربية تشكيلية", 
-        "تربية بدنية", "قواعد لغة", "Expression orale et récitation", "Lecture",
-        "Production écrite", "écriture", "dictée", "langue", "لغة انقليزية",
-        "التاريخ", "الجغرافيا", "التربية المدنية"
-      ];
-
-      int totalClasses = 0;
-      int totalMatieres = 0;
-      int totalBaremes = 0;
-      int totalSousBaremes = 0;
-      int skippedClasses = 0;
-      int skippedMatieres = 0;
-      int skippedBaremes = 0;
-      int skippedSousBaremes = 0;
-
-      // Ajouter chaque classe
-      for (String className in classes) {
-        // Vérifier si la classe existe déjà
-        if (await classExists(className)) {
-          print('Classe déjà existante: $className');
-          skippedClasses++;
-          continue;
-        }
-
-        DocumentReference classRef = await FirebaseFirestore.instance
+    // Ajouter chaque classe
+    for (String className in classes) {
+      DocumentReference classRef;
+      
+      // Vérifier si la classe existe déjà
+      if (existingClasses.containsKey(className)) {
+        print('Classe déjà existante: $className');
+        skippedClasses++;
+        classRef = existingClasses[className]!;
+      } else {
+        // Créer la classe si elle n'existe pas
+        classRef = await FirebaseFirestore.instance
             .collection('classes')
             .add({
               'name': className,
               'createdAt': FieldValue.serverTimestamp()
             });
         totalClasses++;
+        existingClasses[className] = classRef;
+      }
 
-        // Ajouter chaque matière pour cette classe
-        for (String matiereName in matieres) {
-          // Vérifier si la matière existe déjà dans cette classe
-          if (await matiereExists(classRef.id, matiereName)) {
-            print('Matière déjà existante: $matiereName dans $className');
-            skippedMatieres++;
-            continue;
-          }
+      // Récupérer toutes les matières existantes pour cette classe
+      Map<String, DocumentReference> existingMatieres = {};
+      QuerySnapshot matieresSnapshot = await classRef
+          .collection('matieres')
+          .get();
+      
+      for (var doc in matieresSnapshot.docs) {
+        existingMatieres[doc['name']] = doc.reference;
+      }
 
-          DocumentReference matiereRef = await classRef
+      // Ajouter chaque matière pour cette classe
+      for (String matiereName in matieres) {
+        DocumentReference matiereRef;
+        
+        // Vérifier si la matière existe déjà dans cette classe
+        if (existingMatieres.containsKey(matiereName)) {
+          print('Matière déjà existante: $matiereName dans $className');
+          skippedMatieres++;
+          matiereRef = existingMatieres[matiereName]!;
+        } else {
+          // Créer la matière si elle n'existe pas
+          matiereRef = await classRef
               .collection('matieres')
               .add({
                 'name': matiereName,
                 'createdAt': FieldValue.serverTimestamp()
               });
           totalMatieres++;
+          existingMatieres[matiereName] = matiereRef;
+        }
 
-          // Ajouter 5 barèmes pour chaque matière
-          for (int baremeNum = 1; baremeNum <= 5; baremeNum++) {
-            String baremeValue = "مع $baremeNum";
-            
-            // Vérifier si le barème existe déjà
-            if (await baremeExists(classRef.id, matiereRef.id, baremeValue)) {
-              print('Barème déjà existant: $baremeValue dans $matiereName');
-              skippedBaremes++;
-              continue;
-            }
+        // Récupérer tous les barèmes existants pour cette matière
+        Map<String, DocumentReference> existingBaremes = {};
+        QuerySnapshot baremesSnapshot = await matiereRef
+            .collection('baremes')
+            .get();
+        
+        for (var doc in baremesSnapshot.docs) {
+          existingBaremes[doc['value']] = doc.reference;
+        }
 
-            DocumentReference baremeRef = await matiereRef
+        // Ajouter 5 barèmes pour chaque matière
+        for (int baremeNum = 1; baremeNum <= 5; baremeNum++) {
+          String baremeValue = "مع $baremeNum";
+          DocumentReference baremeRef;
+          
+          // Vérifier si le barème existe déjà
+          if (existingBaremes.containsKey(baremeValue)) {
+            print('Barème déjà existant: $baremeValue dans $matiereName');
+            skippedBaremes++;
+            baremeRef = existingBaremes[baremeValue]!;
+          } else {
+            // Créer le barème s'il n'existe pas
+            baremeRef = await matiereRef
                 .collection('baremes')
                 .add({
                   'value': baremeValue,
                   'createdAt': FieldValue.serverTimestamp()
                 });
             totalBaremes++;
+            existingBaremes[baremeValue] = baremeRef;
+          }
 
-            // Ajouter 3 sous-barèmes pour chaque barème
-            for (int sousBaremeNum = 1; sousBaremeNum <= 3; sousBaremeNum++) {
-              String sousBaremeName = "مع $baremeNum.$sousBaremeNum";
-              String sousBaremeValue = "valeur $baremeNum.$sousBaremeNum";
-              
-              // Vérifier si le sous-barème existe déjà
-              if (await sousBaremeExists(classRef.id, matiereRef.id, baremeRef.id, sousBaremeName)) {
-                print('Sous-barème déjà existant: $sousBaremeName');
-                skippedSousBaremes++;
-                continue;
-              }
-              
-              await baremeRef
-                  .collection('sousBaremes')
-                  .add({
-                    'name': sousBaremeName,
-                    'value': sousBaremeValue,
-                    'createdAt': FieldValue.serverTimestamp()
-                  });
-              totalSousBaremes++;
+          // Récupérer tous les sous-barèmes existants pour ce barème
+          Map<String, bool> existingSousBaremes = {};
+          QuerySnapshot sousBaremesSnapshot = await baremeRef
+              .collection('sousBaremes')
+              .get();
+          
+          for (var doc in sousBaremesSnapshot.docs) {
+            existingSousBaremes[doc['name']] = true;
+          }
+
+          // MODIFICATION ICI: Ajouter 3 sous-barèmes avec lettres arabes
+          for (int index = 0; index < arabicLetters.length; index++) {
+            String arabicLetter = arabicLetters[index];
+            String sousBaremeName = "مع $baremeNum.$arabicLetter";  // ex: "مع 1.ا"
+            String sousBaremeValue = "valeur $baremeNum.$arabicLetter";  // ex: "valeur 1.ا"
+            
+            // Vérifier si le sous-barème existe déjà
+            if (existingSousBaremes.containsKey(sousBaremeName)) {
+              print('Sous-barème déjà existant: $sousBaremeName');
+              skippedSousBaremes++;
+              continue;
             }
+            
+            // Créer le sous-barème s'il n'existe pas
+            await baremeRef
+                .collection('sousBaremes')
+                .add({
+                  'name': sousBaremeName,
+                  'value': sousBaremeValue,
+                  'createdAt': FieldValue.serverTimestamp()
+                });
+            totalSousBaremes++;
+            existingSousBaremes[sousBaremeName] = true;
           }
         }
       }
-
-      String message = 'Données ajoutées avec succès!\n'
-          'Nouvelles classes: $totalClasses\n'
-          'Nouvelles matières: $totalMatieres\n'
-          'Nouveaux barèmes: $totalBaremes\n'
-          'Nouveaux sous-barèmes: $totalSousBaremes';
-
-      if (skippedClasses > 0 || skippedMatieres > 0 || skippedBaremes > 0 || skippedSousBaremes > 0) {
-        message += '\n\nÉléments ignorés (déjà existants):\n'
-            'Classes: $skippedClasses\n'
-            'Matières: $skippedMatieres\n'
-            'Barèmes: $skippedBaremes\n'
-            'Sous-barèmes: $skippedSousBaremes';
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(
-          message,
-          style: TextStyle(fontSize: 14),
-        ),
-        backgroundColor: Colors.green,
-        duration: Duration(seconds: 8),
-      ));
-
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Erreur lors de l\'ajout automatique: $e'),
-        backgroundColor: Colors.red,
-      ));
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
+
+    String message = 'Données ajoutées avec succès!\n'
+        'Nouvelles classes: $totalClasses\n'
+        'Nouvelles matières: $totalMatieres\n'
+        'Nouveaux barèmes: $totalBaremes\n'
+        'Nouveaux sous-barèmes: $totalSousBaremes';
+
+    if (skippedClasses > 0 || skippedMatieres > 0 || skippedBaremes > 0 || skippedSousBaremes > 0) {
+      message += '\n\nÉléments ignorés (déjà existants):\n'
+          'Classes: $skippedClasses\n'
+          'Matières: $skippedMatieres\n'
+          'Barèmes: $skippedBaremes\n'
+          'Sous-barèmes: $skippedSousBaremes';
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+        message,
+        style: TextStyle(fontSize: 14),
+      ),
+      backgroundColor: Colors.green,
+      duration: Duration(seconds: 8),
+    ));
+
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('Erreur lors de l\'ajout automatique: $e'),
+      backgroundColor: Colors.red,
+    ));
+  } finally {
+    setState(() {
+      _isLoading = false;
+    });
   }
+}
+
+// Fonctions d'aide pour vérifier l'existence
+Future<bool> classExists(String className) async {
+  QuerySnapshot snapshot = await FirebaseFirestore.instance
+      .collection('classes')
+      .where('name', isEqualTo: className)
+      .limit(1)
+      .get();
+  return snapshot.docs.isNotEmpty;
+}
+
+Future<bool> matiereExists(String classId, String matiereName) async {
+  QuerySnapshot snapshot = await FirebaseFirestore.instance
+      .collection('classes')
+      .doc(classId)
+      .collection('matieres')
+      .where('name', isEqualTo: matiereName)
+      .limit(1)
+      .get();
+  return snapshot.docs.isNotEmpty;
+}
+
+Future<bool> baremeExists(String classId, String matiereId, String baremeValue) async {
+  QuerySnapshot snapshot = await FirebaseFirestore.instance
+      .collection('classes')
+      .doc(classId)
+      .collection('matieres')
+      .doc(matiereId)
+      .collection('baremes')
+      .where('value', isEqualTo: baremeValue)
+      .limit(1)
+      .get();
+  return snapshot.docs.isNotEmpty;
+}
+
+Future<bool> sousBaremeExists(String classId, String matiereId, String baremeId, String sousBaremeName) async {
+  QuerySnapshot snapshot = await FirebaseFirestore.instance
+      .collection('classes')
+      .doc(classId)
+      .collection('matieres')
+      .doc(matiereId)
+      .collection('baremes')
+      .doc(baremeId)
+      .collection('sousBaremes')
+      .where('name', isEqualTo: sousBaremeName)
+      .limit(1)
+      .get();
+  return snapshot.docs.isNotEmpty;
+}
 
   // Fonction pour supprimer toutes les données
   Future<void> deleteAllData() async {
