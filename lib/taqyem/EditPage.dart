@@ -28,6 +28,7 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
   // Fonction pour vérifier si une classe existe déjà
  
 // Fonction pour ajouter toutes les données automatiquement
+
 Future<void> addAllDataAutomatically() async {
   setState(() {
     _isLoading = true;
@@ -75,6 +76,17 @@ Future<void> addAllDataAutomatically() async {
       "تربية بدنية", "قواعد لغة", "Expression orale et récitation", "Lecture",
       "Production écrite", "écriture", "dictée", "langue", "لغة انقليزية",
       "التاريخ", "الجغرافيا", "التربية المدنية"
+    ];
+
+    // MODIFICATION: Définir les matières françaises qui auront 7 barèmes
+    List<String> matieresFrancaises = [
+    
+      "Expression orale et récitation", // Expression orale et récitation (français)
+      "Lecture",              // Lecture (français)
+      "Production écrite",    // Production écrite (français)
+      "écriture",             // Écriture
+      "dictée",               // Dictée
+      "langue"                // Langue (français)
     ];
 
     // Définir les lettres arabes pour les sous-barèmes
@@ -161,8 +173,16 @@ Future<void> addAllDataAutomatically() async {
           existingBaremes[doc['value']] = doc.reference;
         }
 
-        // Ajouter 5 barèmes pour chaque matière
-        for (int baremeNum = 1; baremeNum <= 5; baremeNum++) {
+        // MODIFICATION ICI: Ajouter 5 barèmes pour les matières normales, 7 pour les matières françaises
+        int nombreBaremes = 5; // Valeur par défaut
+        
+        // Vérifier si c'est une matière française
+        if (matieresFrancaises.contains(matiereName)) {
+          nombreBaremes = 7; // Ajouter 7 barèmes pour les matières françaises
+          print('Ajout de 7 barèmes pour la matière française: $matiereName');
+        }
+        
+        for (int baremeNum = 1; baremeNum <= nombreBaremes; baremeNum++) {
           String baremeValue = "مع $baremeNum";
           DocumentReference baremeRef;
           
@@ -226,6 +246,10 @@ Future<void> addAllDataAutomatically() async {
         'Nouvelles matières: $totalMatieres\n'
         'Nouveaux barèmes: $totalBaremes\n'
         'Nouveaux sous-barèmes: $totalSousBaremes';
+
+    // Ajouter une note sur les matières françaises
+    message += '\n\nMatériels françaises avec 7 barèmes: ${matieresFrancaises.length} matières';
+    message += '\nAutres matières avec 5 barèmes: ${matieres.length - matieresFrancaises.length} matières';
 
     if (skippedClasses > 0 || skippedMatieres > 0 || skippedBaremes > 0 || skippedSousBaremes > 0) {
       message += '\n\nÉléments ignorés (déjà existants):\n'

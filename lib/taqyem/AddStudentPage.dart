@@ -2363,6 +2363,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           if (_selectedClass != null && selectedSubjectId != null)
             IconButton(
               icon: Icon(Icons.tune_rounded),
+              color: const Color.fromARGB(255, 255, 153, 0),
               tooltip: 'برمجة المعايير',
               onPressed: _navigateDirectlyToBaremesSelection,
             ),

@@ -1004,6 +1004,12 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "lottie",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/lottie-3.3.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
       "name": "maps_launcher",
       "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/maps_launcher-3.0.0+1",
       "packageUri": "lib/",

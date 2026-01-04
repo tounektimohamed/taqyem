@@ -496,39 +496,70 @@ Widget build(BuildContext context) {
 }
 
 
+class CarouselSection extends StatefulWidget {
+  @override
+  _CarouselSectionState createState() => _CarouselSectionState();
+}
 
+class _CarouselSectionState extends State<CarouselSection> {
+  int _currentIndex = 0; // Pour suivre l'index actif du carousel
 
-class CarouselSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
       child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('carouselItems').snapshots(),
+        stream: FirebaseFirestore.instance
+            .collection('carouselItems')
+            .orderBy('order', descending: false) // Optionnel : tri par ordre
+            .snapshots(),
         builder: (context, snapshot) {
+          // États de chargement
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(),
+            );
           }
 
+          // Gestion des erreurs
           if (snapshot.hasError) {
             return Center(
-              child: Text(
-                "Erreur de chargement",
-                style: TextStyle(color: Colors.red, fontSize: 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red, size: 50),
+                  SizedBox(height: 10),
+                  Text(
+                    "Erreur de chargement",
+                    style: TextStyle(color: Colors.red, fontSize: 16),
+                  ),
+                ],
               ),
             );
           }
 
+          // Vérification des données
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return Center(
-              child: Text(
-                "Aucun élément disponible",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.image_not_supported, size: 50, color: Colors.grey),
+                  SizedBox(height: 10),
+                  Text(
+                    "Aucun élément disponible",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
               ),
             );
           }
 
-          var carouselItems = snapshot.data!.docs;
+          final carouselItems = snapshot.data!.docs;
 
           return Column(
             children: [
@@ -537,70 +568,147 @@ class CarouselSection extends StatelessWidget {
                   height: 200,
                   autoPlay: true,
                   autoPlayInterval: Duration(seconds: 3),
+                  autoPlayAnimationDuration: Duration(milliseconds: 800),
                   enlargeCenterPage: true,
                   aspectRatio: 16 / 9,
-                  viewportFraction: 0.8,
+                  viewportFraction: 0.85,
+                  onPageChanged: (index, reason) {
+                    setState(() {
+                      _currentIndex = index;
+                    });
+                  },
                 ),
                 items: carouselItems.map((item) {
-                  var data = item.data() as Map<String, dynamic>;
-                  var url = data['url'] ?? '';
+                  final data = item.data() as Map<String, dynamic>;
+                  final imageUrl = data['url']?.toString() ?? '';
+                  final title = data['title']?.toString() ?? ''; // Optionnel : pour un titre
 
-                  return ClipRRect(
-                    borderRadius: BorderRadius.circular(15),
-                    child: Container(
-                      margin: EdgeInsets.symmetric(horizontal: 5.0),
-                      decoration: BoxDecoration(
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 5,
-                            spreadRadius: 2,
-                          ),
+                  return Container(
+                    margin: EdgeInsets.symmetric(horizontal: 5),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 5,
+                          spreadRadius: 2,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // Image principale
+                          _buildImageWidget(imageUrl),
+                          
+                          // Overlay de titre (optionnel)
+                          if (title.isNotEmpty)
+                            Positioned(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              child: Container(
+                                padding: EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.bottomCenter,
+                                    end: Alignment.topCenter,
+                                    colors: [
+                                      Colors.black.withOpacity(0.7),
+                                      Colors.transparent,
+                                    ],
+                                  ),
+                                ),
+                                child: Text(
+                                  title,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
-                      child: url.isNotEmpty
-                          ? Image.network(
-                              url,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Center(
-                                  child: CircularProgressIndicator(
-                                    value: loadingProgress.expectedTotalBytes != null
-                                        ? loadingProgress.cumulativeBytesLoaded / (loadingProgress.expectedTotalBytes ?? 1)
-                                        : null,
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) {
-                                return Center(
-                                  child: Icon(Icons.broken_image, size: 50, color: Colors.grey),
-                                );
-                              },
-                            )
-                          : Center(
-                              child: Icon(Icons.image, size: 50, color: Colors.grey),
-                            ),
                     ),
                   );
                 }).toList(),
               ),
-              const SizedBox(height: 10),
+              
+              const SizedBox(height: 15),
+              
+              // Indicateur de page
               AnimatedSmoothIndicator(
-                activeIndex: 0, // Remplacez par un state pour un vrai suivi
+                activeIndex: _currentIndex,
                 count: carouselItems.length,
                 effect: WormEffect(
-                  dotHeight: 8,
-                  dotWidth: 8,
-                  activeDotColor: Colors.blue,
-                  dotColor: Colors.grey,
+                  dotHeight: 10,
+                  dotWidth: 10,
+                  activeDotColor: Theme.of(context).primaryColor,
+                  dotColor: Colors.grey.shade300,
+                  spacing: 8,
                 ),
               ),
             ],
           );
         },
       ),
+    );
+  }
+
+  // Widget pour construire l'image avec gestion d'erreur et chargement
+  Widget _buildImageWidget(String imageUrl) {
+    if (imageUrl.isEmpty) {
+      return Container(
+        color: Colors.grey.shade200,
+        child: Center(
+          child: Icon(
+            Icons.image,
+            size: 60,
+            color: Colors.grey.shade400,
+          ),
+        ),
+      );
+    }
+
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Center(
+          child: CircularProgressIndicator(
+            value: loadingProgress.expectedTotalBytes != null
+                ? loadingProgress.cumulativeBytesLoaded /
+                    loadingProgress.expectedTotalBytes!
+                : null,
+          ),
+        );
+      },
+      errorBuilder: (context, error, stackTrace) {
+        return Container(
+          color: Colors.grey.shade200,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.broken_image, size: 50, color: Colors.grey.shade400),
+                SizedBox(height: 8),
+                Text(
+                  "Image non disponible",
+                  style: TextStyle(color: Colors.grey.shade500),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

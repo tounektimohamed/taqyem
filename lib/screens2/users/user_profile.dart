@@ -18,9 +18,10 @@ enum Genders { male, female, other }
 class _UserProfileState extends State<UserProfile> {
   final currentUser = FirebaseAuth.instance.currentUser;
   bool isLoading = false;
+  bool isEditing = false;
 
   final _nameController = TextEditingController();
-  var _dobController = TextEditingController();
+  final _dobController = TextEditingController();
   final _genderController = TextEditingController();
   final _nicController = TextEditingController();
   final _addressController = TextEditingController();
@@ -31,7 +32,6 @@ class _UserProfileState extends State<UserProfile> {
   @override
   void initState() {
     super.initState();
-    // Fetch user profile data when widget initializes
     fetchUserProfile();
   }
 
@@ -53,26 +53,15 @@ class _UserProfileState extends State<UserProfile> {
           _addressController.text = userData['address'] ?? '';
           _mobileController.text = userData['mobile'] ?? '';
         });
-      } else {
-        // Handle case where document doesn't exist
-        print('Document does not exist');
-        // Optionally, you can initialize the text controllers with default values
-        setState(() {
-          _nameController.text = '';
-          _dobController.text = '';
-          _genderController.text = '';
-          _nicController.text = '';
-          _addressController.text = '';
-          _mobileController.text = '';
-        });
       }
     } catch (e) {
-      print('Error fetching user profile: $e');
-      // Handle error fetching user profile data
+      print('خطأ في جلب بيانات المستخدم: $e');
     }
   }
 
-  Future<void> update() async {
+  Future<void> updateProfile() async {
+    if (!_validateForm()) return;
+
     setState(() {
       isLoading = true;
     });
@@ -88,26 +77,593 @@ class _UserProfileState extends State<UserProfile> {
         'nic': _nicController.text,
         'address': _addressController.text,
         'mobile': _mobileController.text,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      setState(() {
+        isEditing = false;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          backgroundColor: Color.fromARGB(255, 7, 83, 96),
+        SnackBar(
+          backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 2),
-          content: Text(
-            'Your data updated successfully',
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: Duration(seconds: 3),
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'تم تحديث بياناتك بنجاح',
+                  style: TextStyle(fontSize: 14),
+                ),
+              ),
+            ],
           ),
         ),
       );
     } catch (e) {
-      print('Error updating user profile: $e');
-      // Handle error updating user profile data
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          content: Text('خطأ في تحديث البيانات: $e'),
+        ),
+      );
     } finally {
       setState(() {
         isLoading = false;
       });
     }
+  }
+
+  bool _validateForm() {
+    if (_nameController.text.isEmpty) {
+      _showError('الرجاء إدخال الاسم الكامل');
+      return false;
+    }
+    if (_mobileController.text.isEmpty) {
+      _showError('الرجاء إدخال رقم الهاتف');
+      return false;
+    }
+    return true;
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.orange,
+        behavior: SnackBarBehavior.floating,
+        content: Text(message),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'الملف الشخصي',
+          style: GoogleFonts.cairo(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        foregroundColor: isDarkMode ? Colors.white : primaryColor,
+        centerTitle: true,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(isEditing ? Icons.close_rounded : Icons.edit_rounded),
+            onPressed: () {
+              setState(() {
+                isEditing = !isEditing;
+              });
+            },
+            tooltip: isEditing ? 'إلغاء التعديل' : 'تعديل',
+          ),
+        ],
+      ),
+      body: Container(
+        color: isDarkMode ? Colors.grey[900] : Color(0xFFF8FAFD),
+        child: Column(
+          children: [
+            // Header Section
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    primaryColor.withOpacity(0.1),
+                    primaryColor.withOpacity(0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(30),
+                  bottomRight: Radius.circular(30),
+                ),
+              ),
+              padding: EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundColor: primaryColor.withOpacity(0.2),
+                        child: currentUser?.photoURL?.isEmpty ?? true
+                            ? Icon(
+                                Icons.person_rounded,
+                                size: 60,
+                                color: primaryColor,
+                              )
+                            : ClipRRect(
+                                borderRadius: BorderRadius.circular(50),
+                                child: Image.network(
+                                  currentUser!.photoURL!,
+                                  width: 100,
+                                  height: 100,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                      ),
+                      if (isEditing)
+                        Container(
+                          decoration: BoxDecoration(
+                            color: primaryColor,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: primaryColor.withOpacity(0.3),
+                                blurRadius: 5,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            icon: Icon(Icons.camera_alt_rounded,
+                                color: Colors.white, size: 20),
+                            onPressed: () {
+                              // Add camera/photo picker logic
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                  SizedBox(height: 15),
+                  Text(
+                    currentUser?.displayName ?? _nameController.text,
+                    style: GoogleFonts.cairo(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                  SizedBox(height: 5),
+                  Text(
+                    currentUser?.email ?? '',
+                    style: GoogleFonts.cairo(
+                      fontSize: 14,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                  if (!isEditing)
+                    Container(
+                      margin: EdgeInsets.only(top: 15),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'معلومات للقراءة فقط',
+                        style: GoogleFonts.cairo(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // Form Section
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Basic Information Section
+                    _buildSectionTitle('المعلومات الأساسية'),
+                    SizedBox(height: 15),
+
+                    // Name Field
+                    _buildEditableField(
+                      label: 'الاسم الكامل',
+                      controller: _nameController,
+                      icon: Icons.person_outline_rounded,
+                      isEditing: isEditing,
+                      keyboardType: TextInputType.text,
+                    ),
+                    SizedBox(height: 15),
+
+                    // Date of Birth Field
+                    _buildDateField(),
+                    SizedBox(height: 15),
+
+                    // Gender Field
+                    _buildGenderField(),
+                    SizedBox(height: 15),
+
+                    // NIC Field
+                    _buildEditableField(
+                      label: 'رقم البطاقة الوطنية',
+                      controller: _nicController,
+                      icon: Icons.credit_card_rounded,
+                      isEditing: isEditing,
+                      keyboardType: TextInputType.text,
+                    ),
+                    SizedBox(height: 25),
+
+                    // Contact Information Section
+                    _buildSectionTitle('معلومات الاتصال'),
+                    SizedBox(height: 15),
+
+                    // Address Field
+                    _buildEditableField(
+                      label: 'العنوان',
+                      controller: _addressController,
+                      icon: Icons.location_on_rounded,
+                      isEditing: isEditing,
+                      keyboardType: TextInputType.streetAddress,
+                      maxLines: 2,
+                    ),
+                    SizedBox(height: 15),
+
+                    // Mobile Number Field
+                    _buildEditableField(
+                      label: 'رقم الهاتف',
+                      controller: _mobileController,
+                      icon: Icons.phone_rounded,
+                      isEditing: isEditing,
+                      keyboardType: TextInputType.phone,
+                    ),
+                    SizedBox(height: 30),
+
+                    // Save Button (only shown when editing)
+                    if (isEditing) _buildSaveButton(),
+                    SizedBox(height: 20),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Row(
+      children: [
+        Container(
+          width: 3,
+          height: 18,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primary,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        SizedBox(width: 10),
+        Text(
+          title,
+          style: GoogleFonts.cairo(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEditableField({
+    required String label,
+    required TextEditingController controller,
+    required IconData icon,
+    required bool isEditing,
+    required TextInputType keyboardType,
+    int maxLines = 1,
+  }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey[800] : Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: isEditing
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      child: TextField(
+        controller: controller,
+        enabled: isEditing,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        style: GoogleFonts.cairo(
+          fontSize: 15,
+          color: isDarkMode ? Colors.white : Colors.black87,
+        ),
+        decoration: InputDecoration(
+          labelText: label,
+          labelStyle: GoogleFonts.cairo(
+            color: isEditing
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey[600],
+          ),
+          prefixIcon: Icon(
+            icon,
+            color: isEditing
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey[600],
+          ),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          filled: false,
+          suffixIcon: !isEditing
+              ? null
+              : controller.text.isNotEmpty
+                  ? IconButton(
+                      icon: Icon(Icons.clear_rounded, size: 20),
+                      onPressed: () => controller.clear(),
+                    )
+                  : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateField() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey[800] : Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: isEditing
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      child: TextField(
+        controller: _dobController,
+        readOnly: true,
+        enabled: isEditing,
+        onTap: isEditing
+            ? () async {
+                var datePicked = await DatePicker.showSimpleDatePicker(
+                  context,
+                  titleText: 'اختر تاريخ الميلاد',
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime(1900),
+                  lastDate: DateTime(2099),
+                  dateFormat: "dd-MMMM-yyyy",
+                  locale: DateTimePickerLocale.ar,
+                  looping: true,
+                );
+                if (datePicked != null) {
+                  String date =
+                      '${datePicked.day}-${datePicked.month}-${datePicked.year}';
+                  setState(() {
+                    _dobController.text = date;
+                  });
+                }
+              }
+            : null,
+        style: GoogleFonts.cairo(
+          fontSize: 15,
+          color: isDarkMode ? Colors.white : Colors.black87,
+        ),
+        decoration: InputDecoration(
+          labelText: 'تاريخ الميلاد',
+          labelStyle: GoogleFonts.cairo(
+            color: isEditing
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey[600],
+          ),
+          prefixIcon: Icon(
+            Icons.calendar_today_rounded,
+            color: isEditing
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey[600],
+          ),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          suffixText: isEditing ? 'انقر للاختيار' : null,
+          suffixStyle: GoogleFonts.cairo(
+            fontSize: 12,
+            color: Colors.grey[500],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenderField() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey[800] : Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: isEditing
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      child: TextField(
+        controller: _genderController,
+        readOnly: true,
+        enabled: isEditing,
+        onTap: isEditing
+            ? () => showDialog(
+                  context: context,
+                  builder: (context) => Directionality(
+                    textDirection: TextDirection.rtl,
+                    child: AlertDialog(
+                      title: Text(
+                        'اختر الجنس',
+                        style: GoogleFonts.cairo(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      content: StatefulBuilder(
+                        builder: (BuildContext context, StateSetter setState) {
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              RadioListTile(
+                                value: Genders.male,
+                                title: Text('ذكر'),
+                                groupValue: _genderSelected,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _genderSelected = value as Genders;
+                                    _genderController.text = 'ذكر';
+                                    Navigator.of(context).pop();
+                                  });
+                                },
+                                activeColor: Theme.of(context).colorScheme.primary,
+                              ),
+                              RadioListTile(
+                                value: Genders.female,
+                                title: Text('أنثى'),
+                                groupValue: _genderSelected,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _genderSelected = value as Genders;
+                                    _genderController.text = 'أنثى';
+                                    Navigator.of(context).pop();
+                                  });
+                                },
+                                activeColor: Theme.of(context).colorScheme.primary,
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                )
+            : null,
+        style: GoogleFonts.cairo(
+          fontSize: 15,
+          color: isDarkMode ? Colors.white : Colors.black87,
+        ),
+        decoration: InputDecoration(
+          labelText: 'الجنس',
+          labelStyle: GoogleFonts.cairo(
+            color: isEditing
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey[600],
+          ),
+          prefixIcon: Icon(
+            Icons.person_outline_rounded,
+            color: isEditing
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey[600],
+          ),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          suffixText: isEditing ? 'انقر للاختيار' : null,
+          suffixStyle: GoogleFonts.cairo(
+            fontSize: 12,
+            color: Colors.grey[500],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 55,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : updateProfile,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Colors.white,
+          elevation: 3,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          padding: EdgeInsets.symmetric(vertical: 15),
+        ),
+        child: isLoading
+            ? SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.save_rounded, size: 22),
+                  SizedBox(width: 10),
+                  Text(
+                    'حفظ التغييرات',
+                    style: GoogleFonts.cairo(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+      ),
+    );
   }
 
   @override
@@ -119,292 +675,5 @@ class _UserProfileState extends State<UserProfile> {
     _addressController.dispose();
     _mobileController.dispose();
     super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Your Profile',
-          style: GoogleFonts.roboto(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        elevation: 5,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(35, 0, 35, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 10),
-            // Profile picture (you can customize this as per your needs)
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Theme.of(context).colorScheme.surface,
-              child: currentUser?.photoURL?.isEmpty ?? true
-                  ? const Icon(Icons.person_outline)
-                  : Image.network(currentUser!.photoURL!),
-            ),
-            const SizedBox(height: 10),
-            // Email (assuming this is displayed)
-            Text(
-              '${currentUser!.email}',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.roboto(
-                fontSize: 15,
-                color: const Color.fromARGB(255, 16, 15, 15),
-              ),
-            ),
-            const SizedBox(height: 20),
-            // Basic Info section
-            Text(
-              'Basic Info',
-              style: GoogleFonts.roboto(
-                fontSize: 15,
-                color: const Color.fromARGB(255, 16, 15, 15),
-              ),
-            ),
-            const SizedBox(height: 10),
-            // Name TextField
-            Text_Field(
-              label: 'Name',
-              hint: 'FirstName LastName',
-              isPassword: false,
-              keyboard: TextInputType.text,
-              txtEditController: _nameController,
-              focusNode: FocusNode(),
-            ),
-            const SizedBox(height: 15),
-            // Date of Birth TextField
-            TextField(
-              onTap: () async {
-                var datePicked = await DatePicker.showSimpleDatePicker(
-                  context,
-                  titleText: 'Select your birthday',
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(1900),
-                  lastDate: DateTime(2099),
-                  dateFormat: "dd-MMMM-yyyy",
-                  locale: DateTimePickerLocale.en_us,
-                  looping: true,
-                );
-                if (datePicked != null) {
-                  String date =
-                      '${datePicked.day}-${datePicked.month}-${datePicked.year}';
-                  setState(() {
-                    _dobController.text = date;
-                  });
-                }
-              },
-              controller: _dobController,
-              readOnly: true,
-              style: GoogleFonts.roboto(
-                height: 2,
-                color: const Color.fromARGB(255, 16, 15, 15),
-              ),
-              cursorColor: const Color.fromARGB(255, 7, 82, 96),
-              decoration: InputDecoration(
-                hintText: 'DD-MM-YYYY',
-                labelText: 'Date of Birth',
-                labelStyle: GoogleFonts.roboto(
-                  color: const Color.fromARGB(255, 16, 15, 15),
-                ),
-                filled: true,
-                floatingLabelBehavior: FloatingLabelBehavior.auto,
-                focusedBorder: const OutlineInputBorder(
-                  borderRadius: BorderRadius.all(
-                    Radius.circular(20),
-                  ),
-                  borderSide: BorderSide(
-                    color: Color.fromARGB(255, 7, 82, 96),
-                  ),
-                ),
-                enabledBorder: const OutlineInputBorder(
-                  borderRadius: BorderRadius.all(
-                    Radius.circular(20),
-                  ),
-                  borderSide: BorderSide(
-                    color: Colors.transparent,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 15),
-            // Gender TextField (using a dialog for selection)
-            TextField(
-              onTap: () => showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text(
-                    'Select your gender',
-                    style: GoogleFonts.roboto(
-                      color: const Color.fromARGB(255, 16, 15, 15),
-                    ),
-                  ),
-                  content: StatefulBuilder(
-                    builder: (BuildContext context, StateSetter setState) {
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          RadioListTile(
-                            value: Genders.male,
-                            title: const Text('Male'),
-                            groupValue: _genderSelected,
-                            onChanged: (value) {
-                              setState(() {
-                                _genderSelected = value as Genders;
-                                _genderController.text = 'Male';
-                                Navigator.of(context).pop();
-                              });
-                            },
-                          ),
-                          RadioListTile(
-                            value: Genders.female,
-                            title: const Text('Female'),
-                            groupValue: _genderSelected,
-                            onChanged: (value) {
-                              setState(() {
-                                _genderSelected = value as Genders;
-                                _genderController.text = 'Female';
-                                Navigator.of(context).pop();
-                              });
-                            },
-                          ),
-                          RadioListTile(
-                            value: Genders.other,
-                            title: const Text('Other'),
-                            groupValue: _genderSelected,
-                            onChanged: (value) {
-                              setState(() {
-                                _genderSelected = value as Genders;
-                                _genderController.text = 'Other';
-                                Navigator.of(context).pop();
-                              });
-                            },
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ),
-              controller: _genderController,
-              readOnly: true,
-              style: GoogleFonts.roboto(
-                height: 2,
-                color: const Color.fromARGB(255, 16, 15, 15),
-              ),
-              cursorColor: const Color.fromARGB(255, 7, 82, 96),
-              decoration: InputDecoration(
-                labelText: 'Gender',
-                labelStyle: GoogleFonts.roboto(
-                  color: const Color.fromARGB(255, 16, 15, 15),
-                ),
-                hintText: 'Gender',
-                filled: true,
-                floatingLabelBehavior: FloatingLabelBehavior.auto,
-                focusedBorder: const OutlineInputBorder(
-                  borderRadius: BorderRadius.all(
-                    Radius.circular(20),
-                  ),
-                  borderSide: BorderSide(
-                    color: Color.fromARGB(255, 7, 82, 96),
-                  ),
-                ),
-                enabledBorder: const OutlineInputBorder(
-                  borderRadius: BorderRadius.all(
-                    Radius.circular(20),
-                  ),
-                  borderSide: BorderSide(
-                    color: Colors.transparent,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 15),
-            // NIC TextField
-            Text_Field(
-              label: 'NIC',
-              hint: '123456789V',
-              isPassword: false,
-              keyboard: TextInputType.text,
-              txtEditController: _nicController,
-              focusNode: FocusNode(),
-            ),
-            const SizedBox(height: 15),
-            // Contact Info section
-            Text(
-              'Contact Info',
-              style: GoogleFonts.roboto(
-                fontSize: 15,
-                color: const Color.fromARGB(255, 16, 15, 15),
-              ),
-            ),
-            const SizedBox(height: 10),
-            // Address TextField
-            Text_Field(
-              label: 'Address',
-              hint: 'No, Street, City',
-              isPassword: false,
-              keyboard: TextInputType.text,
-              txtEditController: _addressController,
-              focusNode: FocusNode(),
-            ),
-            const SizedBox(height: 15),
-            // Mobile Number TextField
-            Text_Field(
-              label: 'Mobile Number',
-              hint: '07XXXXXXXX',
-              isPassword: false,
-              keyboard: TextInputType.text,
-              txtEditController: _mobileController,
-              focusNode: FocusNode(),
-            ),
-            const SizedBox(height: 30),
-            // Save Button
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                onPressed: update,
-                style: ButtonStyle(
-                  elevation: MaterialStateProperty.all(2),
-                  shape: MaterialStateProperty.all(
-                    RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  backgroundColor: MaterialStateProperty.resolveWith<Color>(
-                    (Set<MaterialState> states) {
-                      return isLoading
-                          ? Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.5)
-                          : Theme.of(context).colorScheme.primary;
-                    },
-                  ),
-                ),
-                child: !isLoading
-                    ? Text(
-                        'Save',
-                        style: GoogleFonts.roboto(
-                          fontSize: 25,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      )
-                    : CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-              ),
-            ),
-            const SizedBox(height: 10),
-          ],
-        ),
-      ),
-    );
   }
 }
