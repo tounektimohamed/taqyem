@@ -1146,66 +1146,76 @@ Future<void> _generateCompleteReport(
     }
   }
 
-// Méthode pour récupérer les étudiants POUR LE RAPPORT COMPLET
-  Future<List<dynamic>> _getStudentsForCompleteReport(
-      String classId, String matiereId) async {
-    try {
-      final studentsSnapshot = await FirebaseFirestore.instance
+Future<List<dynamic>> _getStudentsForCompleteReport(
+    String classId, String matiereId) async {
+  try {
+    final studentsSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser!.uid)
+        .collection('user_classes')
+        .doc(classId)
+        .collection('students')
+        .get();
+
+    final List<dynamic> students = [];
+    for (final studentDoc in studentsSnapshot.docs) {
+      final studentId = studentDoc.id;
+      final studentName = _getFieldSafe(studentDoc, 'name',
+          _isFrenchInterface ? 'Élève inconnu' : 'تلميذ غير معروف');
+
+      final baremesSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
           .collection('user_classes')
           .doc(classId)
           .collection('students')
+          .doc(studentId)
+          .collection('baremes')
           .get();
 
-      final List<dynamic> students = [];
-      for (final studentDoc in studentsSnapshot.docs) {
-        final studentId = studentDoc.id;
-        final studentName = _getFieldSafe(studentDoc, 'name',
-            _isFrenchInterface ? 'Élève inconnu' : 'تلميذ غير معروف');
+      final Map<String, String> baremes = {};
+      for (final baremeDoc in baremesSnapshot.docs) {
+        final baremeId = baremeDoc.id;
+        final marks = _getFieldSafe(baremeDoc, 'Marks', '( - - - )');
+        baremes[baremeId] = marks;
 
-        final baremesSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser!.uid)
-            .collection('user_classes')
-            .doc(classId)
-            .collection('students')
-            .doc(studentId)
-            .collection('baremes')
-            .get();
+        // Ajouter les sous-barèmes avec leur clé complète
+        final sousBaremesSnapshot =
+            await baremeDoc.reference.collection('sous_baremes').get();
 
-        final Map<String, String> baremes = {};
-        for (final baremeDoc in baremesSnapshot.docs) {
-          final baremeId = baremeDoc.id;
-          final marks = _getFieldSafe(baremeDoc, 'Marks', '( - - - )');
-          baremes[baremeId] = marks;
-
-          // Ajouter les sous-barèmes avec leur clé complète
-          final sousBaremesSnapshot =
-              await baremeDoc.reference.collection('sous_baremes').get();
-
-          for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-            final sousBaremeId = sousBaremeDoc.id;
-            final sousMarks =
-                _getFieldSafe(sousBaremeDoc, 'Marks', '( - - - )');
-            // IMPORTANT: Créer la clé au format "baremeId-sousBaremeId"
-            baremes['$baremeId-$sousBaremeId'] = sousMarks;
-          }
+        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+          final sousBaremeId = sousBaremeDoc.id;
+          final sousMarks =
+              _getFieldSafe(sousBaremeDoc, 'Marks', '( - - - )');
+          baremes['$baremeId-$sousBaremeId'] = sousMarks;
         }
-
-        students.add({
-          'id': studentId,
-          'name': studentName,
-          'baremes': baremes,
-        });
       }
 
-      return students;
-    } catch (e) {
-      print('Erreur récupération étudiants rapport complet: $e');
-      return [];
+      students.add({
+        'id': studentId,
+        'name': studentName,
+        'baremes': baremes,
+      });
     }
+
+    // Trier les étudiants par ordre alphabétique
+    students.sort((a, b) {
+      String nameA = a['name'] ?? '';
+      String nameB = b['name'] ?? '';
+      
+      if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+        return _arabicStringComparator(nameA, nameB);
+      }
+      
+      return nameA.compareTo(nameB);
+    });
+
+    return students;
+  } catch (e) {
+    print('Erreur récupération étudiants rapport complet: $e');
+    return [];
   }
+}
 
 // Méthodes auxiliaires pour récupérer les données
   Future<Map<String, dynamic>> _getStudentsForReport(
@@ -3274,61 +3284,76 @@ Future<void> _generateCompleteReport(
     }
   }
 
-  Future<List<dynamic>> _getStudents() async {
-    try {
-      final studentsSnapshot = await FirebaseFirestore.instance
+Future<List<dynamic>> _getStudents() async {
+  try {
+    final studentsSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser!.uid)
+        .collection('user_classes')
+        .doc(widget.selectedClass)
+        .collection('students')
+        .get();
+
+    final List<dynamic> students = [];
+    for (final studentDoc in studentsSnapshot.docs) {
+      final studentId = studentDoc.id;
+      final studentName = _getFieldSafe(studentDoc, 'name',
+          _isFrenchInterface ? 'Élève inconnu' : 'تلميذ غير معروف');
+
+      final baremesSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
           .collection('user_classes')
           .doc(widget.selectedClass)
           .collection('students')
+          .doc(studentId)
+          .collection('baremes')
           .get();
 
-      final List<dynamic> students = [];
-      for (final studentDoc in studentsSnapshot.docs) {
-        final studentId = studentDoc.id;
-        final studentName = _getFieldSafe(studentDoc, 'name',
-            _isFrenchInterface ? 'Élève inconnu' : 'تلميذ غير معروف');
+      final Map<String, String> baremes = {};
+      for (final baremeDoc in baremesSnapshot.docs) {
+        final baremeId = baremeDoc.id;
+        final marks = _getFieldSafe(baremeDoc, 'Marks', '( - - - )');
+        baremes[baremeId] = marks;
 
-        final baremesSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser!.uid)
-            .collection('user_classes')
-            .doc(widget.selectedClass)
-            .collection('students')
-            .doc(studentId)
-            .collection('baremes')
-            .get();
+        final sousBaremesSnapshot =
+            await baremeDoc.reference.collection('sous_baremes').get();
 
-        final Map<String, String> baremes = {};
-        for (final baremeDoc in baremesSnapshot.docs) {
-          final baremeId = baremeDoc.id;
-          final marks = _getFieldSafe(baremeDoc, 'Marks', '( - - - )');
-          baremes[baremeId] = marks;
-
-          final sousBaremesSnapshot =
-              await baremeDoc.reference.collection('sous_baremes').get();
-
-          for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-            final sousBaremeId = sousBaremeDoc.id;
-            final sousMarks =
-                _getFieldSafe(sousBaremeDoc, 'Marks', '( - - - )');
-            baremes['$baremeId-$sousBaremeId'] = sousMarks;
-          }
+        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+          final sousBaremeId = sousBaremeDoc.id;
+          final sousMarks =
+              _getFieldSafe(sousBaremeDoc, 'Marks', '( - - - )');
+          baremes['$baremeId-$sousBaremeId'] = sousMarks;
         }
-
-        students.add({
-          'id': studentId,
-          'name': studentName,
-          'baremes': baremes,
-        });
       }
 
-      return students;
-    } catch (e) {
-      return [];
+      students.add({
+        'id': studentId,
+        'name': studentName,
+        'baremes': baremes,
+      });
     }
+
+    // Trier les étudiants par ordre alphabétique
+    students.sort((a, b) {
+      String nameA = a['name'] ?? '';
+      String nameB = b['name'] ?? '';
+      
+      // Pour le tri en arabe
+      if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+        return _arabicStringComparator(nameA, nameB);
+      }
+      
+      // Pour le tri en français
+      return nameA.compareTo(nameB);
+    });
+
+    return students;
+  } catch (e) {
+    return [];
   }
+}
+
 
   void _loadUserData() async {
     if (currentUser != null && _isMounted) {
@@ -4544,7 +4569,60 @@ class _StudentsTableState extends State<StudentsTable> {
     ];
     return predefinedColors[Random().nextInt(predefinedColors.length)];
   }
+// Normalisation du texte arabe pour le tri
+String _normalizeArabicForSort(String text) {
+  // Supprimer les diacritiques
+  String normalized = text.replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '');
 
+  // Normaliser les formes de lettres
+  final Map<String, String> normalizationMap = {
+    'أ': 'ا',
+    'إ': 'ا',
+    'آ': 'ا',
+    'ؤ': 'و',
+    'ئ': 'ي',
+    'ة': 'ه',
+    'ى': 'ي',
+    'ٱ': 'ا',
+    'ٳ': 'ا',
+    'ٲ': 'ا',
+  };
+
+  normalizationMap.forEach((key, value) {
+    normalized = normalized.replaceAll(key, value);
+  });
+
+  return normalized.trim();
+}
+
+// Comparateur pour tri alphabétique arabe
+int _arabicStringComparator(String a, String b) {
+  // Normaliser les chaînes
+  final normalizedA = _normalizeArabicForSort(a);
+  final normalizedB = _normalizeArabicForSort(b);
+
+  // Ordre des lettres arabes
+  const arabicAlphabet = 'اأإآبتثجحخدذرزسشصضطظعغفقكلمنهويىةؤئء';
+
+  for (int i = 0; i < math.min(normalizedA.length, normalizedB.length); i++) {
+    final charA = normalizedA[i];
+    final charB = normalizedB[i];
+
+    final indexA = arabicAlphabet.indexOf(charA);
+    final indexB = arabicAlphabet.indexOf(charB);
+
+    if (indexA != -1 && indexB != -1 && indexA != indexB) {
+      return indexA - indexB;
+    }
+
+    // Comparaison Unicode comme fallback
+    if (charA != charB) {
+      return charA.codeUnitAt(0) - charB.codeUnitAt(0);
+    }
+  }
+
+  return normalizedA.length - normalizedB.length;
+}
   // Fonction pour trier les barèmes par ordre alphabétique
   List<Map<String, dynamic>> _sortBaremesAlphabetically(
       List<Map<String, dynamic>> baremesValues) {
@@ -4555,7 +4633,26 @@ class _StudentsTableState extends State<StudentsTable> {
     });
     return baremesValues;
   }
-
+// Méthode pour trier les étudiants par ordre alphabétique
+List<QueryDocumentSnapshot> _sortStudentsAlphabetically(
+    List<QueryDocumentSnapshot> students) {
+  List<QueryDocumentSnapshot> sortedStudents = List.from(students);
+  
+  sortedStudents.sort((a, b) {
+    String nameA = a['name'] ?? '';
+    String nameB = b['name'] ?? '';
+    
+    // Pour le tri en arabe
+    if (!widget.isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+      return _arabicStringComparator(nameA, nameB);
+    }
+    
+    // Pour le tri en français
+    return nameA.compareTo(nameB);
+  });
+  
+  return sortedStudents;
+}
   // Fonction modifiée pour grouper les barèmes triés
   // CORRECTION : Méthode groupBaremes sécurisée
   Map<String, List<Map<String, dynamic>>> groupBaremes(
@@ -4661,25 +4758,40 @@ class _StudentsTableState extends State<StudentsTable> {
   }
 
   // Méthode pour charger les étudiants une fois
-  Future<void> _loadStudentsOnce() async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.currentUser.uid)
-          .collection('user_classes')
-          .doc(widget.classDocId)
-          .collection('students')
-          .get();
+  
+// Méthode pour charger les étudiants une fois
+Future<void> _loadStudentsOnce() async {
+  try {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.currentUser.uid)
+        .collection('user_classes')
+        .doc(widget.classDocId)
+        .collection('students')
+        .get();
 
-      if (_isMounted) {
-        setState(() {
-          _cachedStudents = snapshot.docs;
-        });
-      }
-    } catch (e) {
-      print('Erreur chargement étudiants: $e');
+    if (_isMounted) {
+      // Trier les étudiants par ordre alphabétique
+      List<QueryDocumentSnapshot> sortedDocs = snapshot.docs.toList();
+      sortedDocs.sort((a, b) {
+        String nameA = a['name'] ?? '';
+        String nameB = b['name'] ?? '';
+        
+        if (!widget.isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+          return _arabicStringComparator(nameA, nameB);
+        }
+        
+        return nameA.compareTo(nameB);
+      });
+      
+      setState(() {
+        _cachedStudents = sortedDocs;
+      });
     }
+  } catch (e) {
+    print('Erreur chargement étudiants: $e');
   }
+}
 
   // Méthode pour charger les sélections une fois
   Future<void> _loadSelectionsOnce() async {
@@ -4931,35 +5043,37 @@ class _StudentsTableState extends State<StudentsTable> {
     );
   }
 
-  Widget _buildSelectionsTable(List<QueryDocumentSnapshot> studentsDocs) {
-    if (_cachedSelections == null) {
-      return _buildLoadingIndicator();
-    }
-
-    if (_cachedSelections!.isEmpty) {
-      return _buildEmptyStateForCriteria();
-    }
-
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _getBaremesValues(_cachedSelections!),
-      builder: (context, baremesValuesSnapshot) {
-        if (baremesValuesSnapshot.connectionState == ConnectionState.waiting) {
-          return _buildLoadingIndicator();
-        }
-        if (baremesValuesSnapshot.hasError) {
-          return _buildErrorWidget(
-              '${_getTranslatedText('خطأ:', 'Erreur:')} ${baremesValuesSnapshot.error}');
-        }
-        if (!baremesValuesSnapshot.hasData ||
-            baremesValuesSnapshot.data!.isEmpty) {
-          return _buildEmptyStateForCriteria();
-        }
-
-        return _buildDataTable(studentsDocs, baremesValuesSnapshot.data!);
-      },
-    );
+Widget _buildSelectionsTable(List<QueryDocumentSnapshot> studentsDocs) {
+  if (_cachedSelections == null) {
+    return _buildLoadingIndicator();
   }
 
+  if (_cachedSelections!.isEmpty) {
+    return _buildEmptyStateForCriteria();
+  }
+
+  // Trier les étudiants par ordre alphabétique
+  List<QueryDocumentSnapshot> sortedStudents = _sortStudentsAlphabetically(studentsDocs);
+
+  return FutureBuilder<List<Map<String, dynamic>>>(
+    future: _getBaremesValues(_cachedSelections!),
+    builder: (context, baremesValuesSnapshot) {
+      if (baremesValuesSnapshot.connectionState == ConnectionState.waiting) {
+        return _buildLoadingIndicator();
+      }
+      if (baremesValuesSnapshot.hasError) {
+        return _buildErrorWidget(
+            '${_getTranslatedText('خطأ:', 'Erreur:')} ${baremesValuesSnapshot.error}');
+      }
+      if (!baremesValuesSnapshot.hasData ||
+          baremesValuesSnapshot.data!.isEmpty) {
+        return _buildEmptyStateForCriteria();
+      }
+
+      return _buildDataTable(sortedStudents, baremesValuesSnapshot.data!);
+    },
+  );
+}
   Widget _buildEmptyStateForCriteria() {
     return Center(
       child: Column(

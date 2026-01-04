@@ -1823,14 +1823,66 @@
           ]
         },
         "قراءة": {
-          "has_criteria": false,
-          "criteria_count": 0,
-          "criteria": []
+          "has_criteria": true,
+          "criteria_count": 4,
+          "criteria": [
+            {
+              "name": "القراءة الجهرية",
+              "indicators_count": 3,
+              "indicators": [
+                "النطق السليم",
+                "الاسترسال",
+                "الأداء المنغّم المناسب للمقام"
+              ]
+            },
+            {
+              "name": "معالجة النص",
+              "indicators_count": 3,
+              "indicators": [
+                "الإجابة كتابيًا عن أسئلة تتعلق بمضمون النص",
+                "استخراج قرائن من النص للاستدلال",
+                "الإجابة عن أسئلة تتعلق ببنية النص"
+              ]
+            },
+            {
+              "name": "التصرف في النص",
+              "indicators_count": 1,
+              "indicators": [
+                "ترتيب جمل ترتيبًا خطيًا"
+              ]
+            },
+            {
+              "name": "إبداء الرأي",
+              "indicators_count": 2,
+              "indicators": [
+                "إبراز قضية من القضايا التي يطرحها النص",
+                "التعبير عن موقف شخصي من القضية"
+              ]
+            }
+          ]
         },
         "قواعد لغة": {
-          "has_criteria": false,
-          "criteria_count": 0,
-          "criteria": []
+          "has_criteria": true,
+          "criteria_count": 2,
+          "criteria": [
+            {
+              "name": "تعرف الظاهرة اللغوية",
+              "indicators_count": 3,
+              "indicators": [
+                "يعين العناصر الأساسية في الجملة",
+                "يحدد نوع المركب",
+                "يصف الفعل"
+              ]
+            },
+            {
+              "name": "توظيف الظاهرة اللغوية",
+              "indicators_count": 2,
+              "indicators": [
+                "يغني الجملة بالمنقصات",
+                "ينتج نصًا يتضمن ظواهر لغوية محددة"
+              ]
+            }
+          ]
         },
         "انتاج كتابي": {
           "has_criteria": true,

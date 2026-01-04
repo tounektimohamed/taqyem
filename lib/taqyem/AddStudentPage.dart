@@ -57,6 +57,10 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   List<Map<String, dynamic>> _subjects = [];
   Uint8List? _imageBytes;
   String? _photoUrl;
+  bool _isLoadingSubjects = false;
+  bool _isRefreshingSubjects = false;
+  bool _isLoadingClasses = false;
+  bool _isRefreshingClasses = false;
   String? _selectedSubject;
   List<Map<String, String>> _selectedSubjects = [];
   String? selectedClassId;
@@ -65,6 +69,9 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   List<Map<String, dynamic>> _students = [];
   bool _showStudentsList = false;
   bool _showHelpSection = true;
+  bool _isLoadingStudents = false;
+  bool _isRefreshing = false;
+
   final Map<String, String> subjectImages = {
     'التواصل الشفوي': 'assets/images/oral.png',
     'قراءة': 'assets/images/reading.png',
@@ -346,7 +353,15 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   }
 
 // Nouvelle méthode pour charger les matières spécifiquement
+
   Future<void> fetchMatieresForPreSelection(String classId) async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingSubjects = true;
+      _subjects = [];
+    });
+
     try {
       final classDoc = await FirebaseFirestore.instance
           .collection('classes')
@@ -364,19 +379,80 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           });
         }
 
+        // Trier les matières par ordre alphabétique
+        newSubjects.sort((a, b) => a['name'].compareTo(b['name']));
+
+        if (mounted) {
+          setState(() {
+            _subjects = newSubjects;
+            _isLoadingSubjects = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _subjects = [];
+            _isLoadingSubjects = false;
+          });
+        }
+      }
+    } catch (e) {
+      print("Erreur lors de la récupération des matières: $e");
+      if (mounted) {
+        setState(() {
+          _subjects = [];
+          _isLoadingSubjects = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _refreshSubjects() async {
+    if (_selectedClass == null) return;
+
+    setState(() {
+      _isRefreshingSubjects = true;
+    });
+
+    try {
+      final classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(_selectedClass!['class_id'])
+          .collection('matieres')
+          .get();
+
+      if (classDoc.docs.isNotEmpty) {
+        List<Map<String, dynamic>> newSubjects = [];
+
+        for (var doc in classDoc.docs) {
+          newSubjects.add({
+            'id': doc.id,
+            'name': doc['name'] as String,
+          });
+        }
+
+        // Trier par ordre alphabétique
+        newSubjects.sort((a, b) => a['name'].compareTo(b['name']));
+
         setState(() {
           _subjects = newSubjects;
+          _isRefreshingSubjects = false;
         });
       } else {
         setState(() {
           _subjects = [];
+          _isRefreshingSubjects = false;
         });
       }
     } catch (e) {
-      print("Erreur lors de la récupération des matières: $e");
+      print("Erreur lors du rafraîchissement des matières: $e");
       setState(() {
-        _subjects = [];
+        _isRefreshingSubjects = false;
       });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors du rafraîchissement des matières')),
+      );
     }
   }
 
@@ -518,67 +594,104 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
           return AlertDialog(
-            title: const Text(
-              'إضافة مادة دراسية',
-              style: TextStyle(fontWeight: FontWeight.bold),
-              textDirection: TextDirection.rtl,
-            ),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment:
-                    CrossAxisAlignment.end, // Alignement à droite
-                children: [
-                  const Text(
-                    'اختر المادة المطلوبة:',
-                    style: TextStyle(color: Colors.grey),
+            title: Row(
+              children: [
+                if (_isLoadingSubjects)
+                  Padding(
+                    padding: EdgeInsets.only(left: 8),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                Expanded(
+                  child: Text(
+                    'إضافة مادة دراسية',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                     textDirection: TextDirection.rtl,
                   ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
-                      borderRadius: BorderRadius.circular(8),
+                ),
+              ],
+            ),
+            content: _isLoadingSubjects
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 16),
+                        Text(
+                          "جاري تحميل قائمة المواد...",
+                          textDirection: TextDirection.rtl,
+                        ),
+                      ],
                     ),
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: _selectedSubject,
-                      underline: const SizedBox(),
-                      icon: const Icon(Icons.arrow_drop_down),
-                      hint: const Text(
-                        'اختر مادة',
-                        textDirection: TextDirection.rtl,
-                      ),
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedSubject = newValue;
-                        });
-                      },
-                      items: _subjects.map<DropdownMenuItem<String>>((subject) {
-                        return DropdownMenuItem<String>(
-                          value: subject['id'],
-                          child: Text(
-                            subject['name'],
-                            overflow: TextOverflow.ellipsis,
+                  )
+                : SizedBox(
+                    width: double.maxFinite,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text(
+                          'اختر المادة المطلوبة:',
+                          style: TextStyle(color: Colors.grey),
+                          textDirection: TextDirection.rtl,
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: DropdownButton<String>(
+                            isExpanded: true,
+                            value: _selectedSubject,
+                            underline: const SizedBox(),
+                            icon: const Icon(Icons.arrow_drop_down),
+                            hint: const Text(
+                              'اختر مادة',
+                              textDirection: TextDirection.rtl,
+                            ),
+                            onChanged: (String? newValue) {
+                              setState(() {
+                                _selectedSubject = newValue;
+                              });
+                            },
+                            items: _subjects
+                                .map<DropdownMenuItem<String>>((subject) {
+                              return DropdownMenuItem<String>(
+                                value: subject['id'],
+                                child: Text(
+                                  subject['name'],
+                                  overflow: TextOverflow.ellipsis,
+                                  textDirection: TextDirection.rtl,
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        if (_subjects.isEmpty) ...[
+                          const SizedBox(height: 16),
+                          const Text(
+                            'لا توجد مواد متاحة',
+                            style: TextStyle(color: Colors.orange),
                             textDirection: TextDirection.rtl,
                           ),
-                        );
-                      }).toList(),
+                          SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            icon: Icon(Icons.refresh),
+                            label: Text('إعادة تحميل'),
+                            onPressed: () {
+                              _loadSubjects(classData['class_id']);
+                            },
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                  if (_subjects.isEmpty) ...[
-                    const SizedBox(height: 16),
-                    const Text(
-                      'لا توجد مواد متاحة',
-                      style: TextStyle(color: Colors.orange),
-                      textDirection: TextDirection.rtl,
-                    ),
-                  ],
-                ],
-              ),
-            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -606,8 +719,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                 child: const Text('إضافة'),
               ),
             ],
-            actionsAlignment:
-                MainAxisAlignment.start, // Alignement des boutons à gauche
+            actionsAlignment: MainAxisAlignment.start,
           );
         },
       ),
@@ -649,6 +761,10 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   }
 
   Future<void> _loadSubjects(String classId) async {
+    setState(() {
+      _isLoadingSubjects = true;
+    });
+
     try {
       final classDoc = await FirebaseFirestore.instance
           .collection('classes')
@@ -665,20 +781,35 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
               'name': doc['name'] as String,
             };
           }).toList());
+
+          // Trier par ordre alphabétique
+          _subjects.sort((a, b) => a['name'].compareTo(b['name']));
+          _isLoadingSubjects = false;
         });
       } else {
         setState(() {
           _subjects.clear();
+          _isLoadingSubjects = false;
         });
       }
     } catch (e) {
       print("Erreur lors de la récupération des matières : $e");
+      setState(() {
+        _isLoadingSubjects = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Erreur lors de la récupération des matières')));
     }
   }
 
   Future<void> _fetchClasses() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingClasses = true;
+      _classes = [];
+    });
+
     try {
       final classDocs = await FirebaseFirestore.instance
           .collection('users')
@@ -686,43 +817,135 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           .collection('user_classes')
           .get();
 
-      setState(() {
-        _classes = classDocs.docs.map((doc) {
-          List<Map<String, String>> subjects = [];
-          if (doc['subjects'] != null) {
-            subjects = (doc['subjects'] as List).map((subject) {
-              return {
-                'id': subject['id'].toString(),
-                'name': subject['name'].toString(),
-              };
-            }).toList();
-          }
+      List<Map<String, dynamic>> loadedClasses = classDocs.docs.map((doc) {
+        List<Map<String, String>> subjects = [];
+        if (doc['subjects'] != null) {
+          subjects = (doc['subjects'] as List).map((subject) {
+            return {
+              'id': subject['id'].toString(),
+              'name': subject['name'].toString(),
+            };
+          }).toList();
+        }
 
-          List<String> students = [];
-          if (doc['students'] != null) {
-            students = (doc['students'] as List).map((student) {
-              return student.toString();
-            }).toList();
-          }
+        List<String> students = [];
+        if (doc['students'] != null) {
+          students = (doc['students'] as List).map((student) {
+            return student.toString();
+          }).toList();
+        }
 
-          return {
-            'id': doc.id,
-            'class_id': doc['class_id'].toString(),
-            'class_name': doc['class_name'].toString(),
-            'subjects': subjects,
-            'students': students,
-          };
-        }).toList();
-      });
+        return {
+          'id': doc.id,
+          'class_id': doc['class_id'].toString(),
+          'class_name': doc['class_name'].toString(),
+          'subjects': subjects,
+          'students': students,
+        };
+      }).toList();
+
+      // Trier les classes par ordre alphabétique
+      loadedClasses.sort((a, b) => a['class_name'].compareTo(b['class_name']));
+
+      if (mounted) {
+        setState(() {
+          _classes = loadedClasses;
+          _isLoadingClasses = false;
+        });
+      }
     } catch (e) {
       print("Erreur lors du chargement des classes : $e");
+      if (mounted) {
+        setState(() {
+          _isLoadingClasses = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Erreur lors du chargement des classes: $e')));
+      }
+    }
+  }
+
+  Future<void> _refreshClasses() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isRefreshingClasses = true;
+    });
+
+    try {
+      final classDocs = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .get();
+
+      List<Map<String, dynamic>> loadedClasses = classDocs.docs.map((doc) {
+        List<Map<String, String>> subjects = [];
+        if (doc['subjects'] != null) {
+          subjects = (doc['subjects'] as List).map((subject) {
+            return {
+              'id': subject['id'].toString(),
+              'name': subject['name'].toString(),
+            };
+          }).toList();
+        }
+
+        List<String> students = [];
+        if (doc['students'] != null) {
+          students = (doc['students'] as List).map((student) {
+            return student.toString();
+          }).toList();
+        }
+
+        return {
+          'id': doc.id,
+          'class_id': doc['class_id'].toString(),
+          'class_name': doc['class_name'].toString(),
+          'subjects': subjects,
+          'students': students,
+        };
+      }).toList();
+
+      // Trier par ordre alphabétique
+      loadedClasses.sort((a, b) => a['class_name'].compareTo(b['class_name']));
+
+      setState(() {
+        _classes = loadedClasses;
+        _isRefreshingClasses = false;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors du chargement des classes: $e')));
+        SnackBar(
+          content: Text('تم تحديث قائمة الأقسام'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } catch (e) {
+      print("Erreur lors du rafraîchissement des classes : $e");
+      setState(() {
+        _isRefreshingClasses = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('حدث خطأ أثناء تحديث الأقسام'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
   Future<void> _deleteClass(String classId) async {
     try {
+      // Afficher un indicateur de chargement
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
       final classDocRef = FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
@@ -741,6 +964,9 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
 
       await classDocRef.delete();
 
+      // Fermer l'indicateur
+      Navigator.pop(context);
+
       setState(() {
         _classes.removeWhere((classData) => classData['id'] == classId);
         if (_selectedClass != null && _selectedClass!['id'] == classId) {
@@ -752,6 +978,11 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('تم حذف القسم وبياناته')));
     } catch (e) {
+      // Fermer l'indicateur en cas d'erreur
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
       print("خطأ أثناء الحذف: $e");
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('حدث خطأ أثناء حذف القسم')));
@@ -938,14 +1169,17 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   Future<void> _addStudent(Map<String, dynamic> classData) async {
     List<TextEditingController> studentControllers = [TextEditingController()];
 
+    // Variable pour suivre les ajouts en cours
+    bool _isAdding = false;
+
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('إضافة تلاميذ', textDirection: TextDirection.rtl),
-          content: StatefulBuilder(
-            builder: (context, setState) {
-              return Column(
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('إضافة تلاميذ', textDirection: TextDirection.rtl),
+              content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
@@ -961,20 +1195,24 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                               IconButton(
                                 icon: Icon(Icons.remove_circle,
                                     color: Colors.red),
-                                onPressed: () {
-                                  setState(() {
-                                    studentControllers.removeAt(index);
-                                  });
-                                },
+                                onPressed: _isAdding
+                                    ? null
+                                    : () {
+                                        setState(() {
+                                          studentControllers.removeAt(index);
+                                        });
+                                      },
                               ),
                             Expanded(
                               child: TextField(
                                 controller: studentControllers[index],
                                 textAlign: TextAlign.right,
+                                enabled: !_isAdding,
                                 decoration: InputDecoration(
                                   labelText: 'اسم التلميذ ${index + 1}',
                                   floatingLabelAlignment:
                                       FloatingLabelAlignment.start,
+                                  border: OutlineInputBorder(),
                                 ),
                               ),
                             ),
@@ -984,77 +1222,165 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                     ),
                   ),
                   SizedBox(height: 10),
-                  ElevatedButton.icon(
-                    icon: Icon(Icons.add),
-                    label: Text('إضافة تلميذ آخر'),
-                    onPressed: () {
-                      setState(() {
-                        studentControllers.add(TextEditingController());
-                      });
-                    },
-                  ),
+                  if (!_isAdding)
+                    ElevatedButton.icon(
+                      icon: Icon(Icons.add),
+                      label: Text('إضافة تلميذ آخر'),
+                      onPressed: () {
+                        setState(() {
+                          studentControllers.add(TextEditingController());
+                        });
+                      },
+                    ),
+                  if (_isAdding)
+                    Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(width: 10),
+                          Text('جاري إضافة التلاميذ...'),
+                        ],
+                      ),
+                    ),
                 ],
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('إلغاء', textDirection: TextDirection.rtl),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  final studentsCollection = FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(currentUser!.uid)
-                      .collection('user_classes')
-                      .doc(classData['id'])
-                      .collection('students');
+              ),
+              actions: [
+                if (!_isAdding)
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('إلغاء', textDirection: TextDirection.rtl),
+                  ),
+                if (!_isAdding)
+                  ElevatedButton(
+                    onPressed: () async {
+                      // Vérifier s'il y a des noms vides
+                      final validNames = studentControllers
+                          .where(
+                              (controller) => controller.text.trim().isNotEmpty)
+                          .toList();
 
-                  List<String> updatedStudents =
-                      List.from(classData['students']);
+                      if (validNames.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text('يرجى إدخال اسم واحد على الأقل')),
+                        );
+                        return;
+                      }
 
-                  for (var controller in studentControllers) {
-                    if (controller.text.isNotEmpty) {
-                      final studentRef = await studentsCollection.add({
-                        'name': controller.text,
-                        'parentName': '',
-                        'parentPhone': '',
-                        'birthDate': '',
-                        'remarks': '',
-                        'photoBase64': '', // Initialiser avec une chaîne vide
+                      setState(() {
+                        _isAdding = true;
                       });
 
-                      updatedStudents.add(studentRef.id);
-                    }
-                  }
+                      try {
+                        final studentsCollection = FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(currentUser!.uid)
+                            .collection('user_classes')
+                            .doc(classData['id'])
+                            .collection('students');
 
-                  await FirebaseFirestore.instance
-                      .collection('users')
-                      .doc(currentUser!.uid)
-                      .collection('user_classes')
-                      .doc(classData['id'])
-                      .update({
-                    'students': updatedStudents,
-                  });
+                        List<String> updatedStudents =
+                            List.from(classData['students']);
+                        int addedCount = 0;
 
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(
-                          'تم إضافة ${studentControllers.length} تلميذ بنجاح',
-                          textDirection: TextDirection.rtl)));
-                  _fetchClasses();
-                } catch (e) {
-                  print("خطأ في إضافة التلاميذ: $e");
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('حدث خطأ أثناء إضافة التلاميذ',
-                          textDirection: TextDirection.rtl)));
-                }
-              },
-              child: Text('إضافة', textDirection: TextDirection.rtl),
-            ),
-          ],
+                        // Ajouter chaque élève individuellement
+                        for (var controller in validNames) {
+                          try {
+                            final studentName = controller.text.trim();
+
+                            // Vérifier si l'élève existe déjà (optionnel)
+                            final existingStudents = await studentsCollection
+                                .where('name', isEqualTo: studentName)
+                                .get();
+
+                            if (existingStudents.docs.isNotEmpty) {
+                              // Élève existe déjà, passer au suivant
+                              continue;
+                            }
+
+                            // Créer le document élève
+                            final studentRef = await studentsCollection.add({
+                              'name': studentName,
+                              'parentName': '',
+                              'parentPhone': '',
+                              'birthDate': '',
+                              'remarks': '',
+                              'photoBase64': '',
+                              'createdAt': FieldValue.serverTimestamp(),
+                            });
+
+                            // Ajouter l'ID à la liste des élèves de la classe
+                            updatedStudents.add(studentRef.id);
+                            addedCount++;
+
+                            // Petite pause pour éviter de surcharger Firebase
+                            await Future.delayed(Duration(milliseconds: 100));
+                          } catch (e) {
+                            print('Erreur lors de l\'ajout d\'un élève: $e');
+                            // Continuer avec les autres élèves même en cas d'erreur
+                          }
+                        }
+
+                        // Mettre à jour la liste des élèves dans le document de classe
+                        if (addedCount > 0) {
+                          await FirebaseFirestore.instance
+                              .collection('users')
+                              .doc(currentUser!.uid)
+                              .collection('user_classes')
+                              .doc(classData['id'])
+                              .update({
+                            'students': updatedStudents,
+                          });
+
+                          // Mettre à jour localement
+                          setState(() {
+                            classData['students'] = updatedStudents;
+                          });
+                        }
+
+                        // Fermer la boîte de dialogue
+                        if (mounted) {
+                          Navigator.pop(context);
+                        }
+
+                        // Recharger les élèves si on est dans la vue des élèves
+                        if (_showStudentsList) {
+                          await _loadStudentsForClass();
+                        }
+
+                        // Afficher le résultat
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              addedCount > 0
+                                  ? 'تم إضافة $addedCount تلميذ بنجاح'
+                                  : 'لم يتم إضافة أي تلاميذ (قد يكونوا موجودين مسبقاً)',
+                              textDirection: TextDirection.rtl,
+                            ),
+                            backgroundColor:
+                                addedCount > 0 ? Colors.green : Colors.orange,
+                          ),
+                        );
+                      } catch (e) {
+                        print("خطأ في إضافة التلاميذ: $e");
+                        if (mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('حدث خطأ أثناء إضافة التلاميذ'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    child: Text('إضافة', textDirection: TextDirection.rtl),
+                  ),
+              ],
+            );
+          },
         );
       },
     );
@@ -1192,6 +1518,10 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           });
         }));
 
+        // TRIER LES SOUS-BARÈMES PAR ORDRE ALPHABÉTIQUE
+        sousBaremes.sort((a, b) =>
+            (a['sousBaremeName'] ?? '').compareTo(b['sousBaremeName'] ?? ''));
+
         String? savedEvaluation = sousBaremes.isEmpty
             ? await _getEvaluation(
                 classId: classId, studentId: studentId, baremeId: doc.id)
@@ -1205,6 +1535,10 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           'sousBaremes': sousBaremes,
         });
       }));
+
+      // TRIER LES BARÈMES PAR ORDRE ALPHABÉTIQUE
+      selections.sort(
+          (a, b) => (a['baremeName'] ?? '').compareTo(b['baremeName'] ?? ''));
 
       Navigator.of(context).pop();
 
@@ -1495,13 +1829,214 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   }
 
   Widget _buildClassListView() {
-    return ListView.builder(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      itemCount: _classes.length,
-      itemBuilder: (context, index) {
-        final classData = _classes[index];
-        return _buildClassListItem(classData);
-      },
+    if (_isLoadingClasses) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text(
+              "جاري تحميل الأقسام...",
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshClasses,
+      color: Theme.of(context).primaryColor,
+      backgroundColor: Colors.white,
+      child: Column(
+        children: [
+          // En-tête des classes
+          if (_classes.isNotEmpty)
+            Container(
+              padding: EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Titre et compteur
+                  Row(
+                    children: [
+                      Icon(Icons.class_, color: Theme.of(context).primaryColor),
+                      SizedBox(width: 8),
+                      Text(
+                        "الأقسام الدراسية",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color:
+                              Theme.of(context).primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          "${_classes.length} قسم",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Boutons d'action
+                  Row(
+                    children: [
+                      // Bouton Rafraîchir
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.blue[50],
+                          border: Border.all(
+                              color: const Color.fromARGB(255, 169, 230, 235)),
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Icons.refresh,
+                                color: _isRefreshingClasses
+                                    ? Colors.grey[400]
+                                    : Colors.blue[700],
+                                size: 22,
+                              ),
+                              onPressed:
+                                  _isRefreshingClasses ? null : _refreshClasses,
+                              tooltip: 'تحديث قائمة الأقسام',
+                              padding: EdgeInsets.all(8),
+                            ),
+                            if (_isRefreshingClasses)
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: Container(
+                                  width: 10,
+                                  height: 10,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.blue),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(width: 8),
+
+                      // Bouton Ajouter une classe
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.green[50],
+                          border: Border.all(
+                              color: const Color.fromARGB(255, 188, 221, 189)),
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.add,
+                            color: Colors.green[700],
+                            size: 22,
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AddClassPage(),
+                              ),
+                            ).then((_) {
+                              // Rafraîchir après ajout
+                              _refreshClasses();
+                            });
+                          },
+                          tooltip: 'إضافة قسم جديد',
+                          padding: EdgeInsets.all(8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+          // Liste des classes
+          Expanded(
+            child: _classes.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.class_,
+                          size: 80,
+                          color: Colors.grey[400],
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          "لا توجد أقسام متاحة",
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 40),
+                          child: Text(
+                            "يجب عليك إضافة قسم من خلال زر 'إضافة قسم جديد'",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[500],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          icon: Icon(Icons.add),
+                          label: Text('إضافة قسم جديد'),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AddClassPage(),
+                              ),
+                            ).then((_) {
+                              // Rafraîchir après ajout
+                              _refreshClasses();
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    itemCount: _classes.length,
+                    itemBuilder: (context, index) {
+                      final classData = _classes[index];
+                      return _buildClassListItem(classData);
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1522,11 +2057,15 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    classData['class_name'],
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: Text(
+                      classData['class_name'],
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   IconButton(
@@ -1539,17 +2078,68 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Élèves: ${classData['students'].length} | Matières: ${classData['subjects'].length}',
-                    style: TextStyle(color: Colors.grey[600]),
+                  Row(
+                    children: [
+                      // Nombre d'élèves
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.people, size: 12, color: Colors.blue),
+                            SizedBox(width: 4),
+                            Text(
+                              "${classData['students'].length}",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      // Nombre de matières
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.subject, size: 12, color: Colors.green),
+                            SizedBox(width: 4),
+                            Text(
+                              "${classData['subjects'].length}",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
+                  // Dans _buildClassListItem, changer le bouton pour appeler la nouvelle méthode
                   TextButton.icon(
                     icon: Icon(Icons.add, size: 16),
                     label: Text('إضافة تلاميذ'),
                     style: TextButton.styleFrom(
                       foregroundColor: Theme.of(context).primaryColor,
                     ),
-                    onPressed: () => _addStudent(classData),
+                    onPressed: () => _addStudent(
+                        classData), // Garder l'ancienne version pour plusieurs
+                    // OU utiliser la version individuelle :
+                    // onPressed: () => _addStudentIndividual(classData),
                   ),
                 ],
               ),
@@ -1566,11 +2156,63 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       _selectedClass = classData;
       selectedClassId = classData['class_id']?.toString();
       _showStudentsList = false;
-      _students = []; // Réinitialiser la liste des étudiants
+      _students = [];
+      _isLoadingStudents = false;
+      _isLoadingSubjects = true; // Commencer le chargement des matières
     });
+
+    // Charger les matières pour cette classe
+    _loadSubjectsForClass(classData);
 
     if (autoLoadStudents) {
       _loadStudentsForClass();
+    }
+  }
+
+// Nouvelle méthode pour charger les matières
+  Future<void> _loadSubjectsForClass(Map<String, dynamic> classData) async {
+    try {
+      final classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(classData['class_id'])
+          .collection('matieres')
+          .get();
+
+      if (classDoc.docs.isNotEmpty) {
+        List<Map<String, dynamic>> availableSubjects = [];
+
+        for (var doc in classDoc.docs) {
+          availableSubjects.add({
+            'id': doc.id,
+            'name': doc['name'] as String,
+          });
+        }
+
+        // Trier par ordre alphabétique
+        availableSubjects.sort((a, b) => a['name'].compareTo(b['name']));
+
+        if (mounted) {
+          setState(() {
+            _subjects = availableSubjects;
+            _isLoadingSubjects = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _subjects = [];
+            _isLoadingSubjects = false;
+          });
+        }
+      }
+    } catch (e) {
+      print("Erreur lors de la récupération des matières : $e");
+      if (mounted) {
+        setState(() {
+          _subjects = [];
+          _isLoadingSubjects = false;
+        });
+      }
     }
   }
 
@@ -1609,28 +2251,208 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   }
 
   Widget _buildSubjectsGrid() {
+    if (_isLoadingSubjects) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text(
+              "جاري تحميل المواد...",
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final subjects = _selectedClass!['subjects'];
     final isSmallScreen = MediaQuery.of(context).size.width < 600;
 
-    return GridView.builder(
-      padding: EdgeInsets.all(16),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: isSmallScreen ? 2 : 3,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-        childAspectRatio: isSmallScreen ? 0.85 : 0.9,
+    return RefreshIndicator(
+      onRefresh: _refreshSubjects,
+      color: Theme.of(context).primaryColor,
+      backgroundColor: Colors.white,
+      child: Column(
+        children: [
+          // En-tête des matières
+          if (subjects.isNotEmpty)
+            Container(
+              padding: EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Titre et compteur
+                  Row(
+                    children: [
+                      Icon(Icons.subject,
+                          color: Theme.of(context).primaryColor),
+                      SizedBox(width: 8),
+                      Text(
+                        "المواد الدراسية",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color:
+                              Theme.of(context).primaryColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          "${subjects.length} مادة",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).primaryColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Boutons d'action
+                  Row(
+                    children: [
+                      // Bouton Rafraîchir
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.blue[50],
+                          border: Border.all(
+                              color: const Color.fromARGB(255, 60, 110, 150)),
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            IconButton(
+                              icon: Icon(
+                                Icons.refresh,
+                                color: _isRefreshingSubjects
+                                    ? Colors.grey[400]
+                                    : Colors.blue[700],
+                                size: 22,
+                              ),
+                              onPressed: _isRefreshingSubjects
+                                  ? null
+                                  : _refreshSubjects,
+                              tooltip: 'تحديث قائمة المواد',
+                              padding: EdgeInsets.all(8),
+                            ),
+                            if (_isRefreshingSubjects)
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: Container(
+                                  width: 10,
+                                  height: 10,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1.5,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.blue),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(width: 8),
+
+                      // Bouton Ajouter une matière
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.green[50],
+                          border: Border.all(
+                              color: const Color.fromARGB(255, 55, 156, 58)),
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.add,
+                            color: Colors.green[700],
+                            size: 22,
+                          ),
+                          onPressed: () => _addSubjectDialog(_selectedClass!),
+                          tooltip: 'إضافة مادة جديدة',
+                          padding: EdgeInsets.all(8),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+          // Liste des matières
+          Expanded(
+            child: subjects.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.subject,
+                          size: 80,
+                          color: Colors.grey[400],
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          "لا توجد مواد دراسية",
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          "انقر على زر 'إضافة مادة' لبدء إضافة المواد",
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[500],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          icon: Icon(Icons.add),
+                          label: Text('إضافة مادة'),
+                          onPressed: () => _addSubjectDialog(_selectedClass!),
+                        ),
+                      ],
+                    ),
+                  )
+                : GridView.builder(
+                    padding: EdgeInsets.all(16),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: isSmallScreen ? 2 : 3,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: isSmallScreen ? 0.85 : 0.9,
+                    ),
+                    itemCount: subjects.length,
+                    itemBuilder: (context, index) {
+                      final subject = subjects[index];
+                      final subjectName = subject['name'];
+                      return _buildSubjectGridItem(
+                        subject,
+                        subjectName,
+                        SubjectHelper.getIconForSubject(subjectName),
+                        SubjectHelper.getSubjectColor(subjectName),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
-      itemCount: subjects.length,
-      itemBuilder: (context, index) {
-        final subject = subjects[index];
-        final subjectName = subject['name'];
-        return _buildSubjectGridItem(
-          subject,
-          subjectName,
-          SubjectHelper.getIconForSubject(subjectName),
-          SubjectHelper.getSubjectColor(subjectName),
-        );
-      },
     );
   }
 
@@ -1729,6 +2551,13 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   }
 
   Future<void> _loadStudentsForClass() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingStudents = true;
+      _students = [];
+    });
+
     try {
       final students = _selectedClass!['students'];
       List<Map<String, dynamic>> studentsData = [];
@@ -1749,66 +2578,338 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
         }
       }
 
-      studentsData.sort((a, b) => a['name'].compareTo(b['name']));
+      // Trier par ordre alphabétique
+      studentsData.sort((a, b) {
+        String nameA = (a['name'] ?? '').trim().toLowerCase();
+        String nameB = (b['name'] ?? '').trim().toLowerCase();
 
-      setState(() {
-        _students = studentsData;
+        // Vérifier les noms vides
+        if (nameA.isEmpty && nameB.isEmpty) return 0;
+        if (nameA.isEmpty) return 1; // Les noms vides à la fin
+        if (nameB.isEmpty) return -1; // Les noms vides à la fin
+
+        return nameA.compareTo(nameB);
       });
 
-      // Vérifier si on doit proposer d'ajouter des étudiants
+      if (mounted) {
+        setState(() {
+          _students = studentsData;
+          _isLoadingStudents = false;
+        });
+      }
+
       if (widget.showStudentsForMatiere == true) {
         await _addDefaultStudentsIfEmpty(_selectedClass!);
       }
     } catch (e) {
       print("Erreur lors du chargement des élèves : $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors du chargement des élèves')));
+      if (mounted) {
+        setState(() {
+          _isLoadingStudents = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur lors du chargement des élèves')));
+      }
+    }
+  }
+
+  void _sortStudentsAlphabetically() {
+    if (_students.isEmpty) return;
+
+    setState(() {
+      _students.sort((a, b) {
+        String nameA = (a['name'] ?? '').trim().toLowerCase();
+        String nameB = (b['name'] ?? '').trim().toLowerCase();
+
+        if (nameA.isEmpty && nameB.isEmpty) return 0;
+        if (nameA.isEmpty) return 1;
+        if (nameB.isEmpty) return -1;
+
+        return nameA.compareTo(nameB);
+      });
+    });
+  }
+
+  Future<void> _editStudentName(Map<String, dynamic> student) async {
+    TextEditingController nameController =
+        TextEditingController(text: student['name'] ?? '');
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('تعديل اسم التلميذ', textDirection: TextDirection.rtl),
+        content: TextField(
+          controller: nameController,
+          textAlign: TextAlign.right,
+          decoration: InputDecoration(
+            labelText: 'الاسم الجديد',
+            hintText: 'أدخل الاسم الجديد',
+            border: OutlineInputBorder(),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('إلغاء', textDirection: TextDirection.rtl),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('الاسم لا يمكن أن يكون فارغاً')),
+                );
+                return;
+              }
+
+              final newName = nameController.text.trim();
+
+              try {
+                // Afficher un indicateur de chargement
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+
+                // Mettre à jour dans Firestore
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser!.uid)
+                    .collection('user_classes')
+                    .doc(_selectedClass!['id'])
+                    .collection('students')
+                    .doc(student['id'])
+                    .update({
+                  'name': newName,
+                });
+
+                // Fermer l'indicateur de chargement
+                Navigator.pop(context);
+
+                // Mettre à jour la liste locale
+                setState(() {
+                  int index =
+                      _students.indexWhere((s) => s['id'] == student['id']);
+                  if (index != -1) {
+                    _students[index]['name'] = newName;
+                  }
+                });
+
+                // Re-trier la liste
+                _sortStudentsAlphabetically();
+
+                Navigator.pop(context); // Fermer la boîte de dialogue
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('تم تحديث اسم التلميذ بنجاح'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } catch (e) {
+                // Fermer l'indicateur de chargement en cas d'erreur
+                if (Navigator.canPop(context)) {
+                  Navigator.pop(context);
+                }
+
+                print('خطأ في تحديث الاسم: $e');
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('حدث خطأ أثناء تحديث الاسم')),
+                );
+              }
+            },
+            child: Text('حفظ', textDirection: TextDirection.rtl),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _refreshStudents() async {
+    if (_selectedClass == null) return;
+
+    setState(() {
+      _isRefreshing = true;
+    });
+
+    await _loadStudentsForClass();
+
+    if (mounted) {
+      setState(() {
+        _isRefreshing = false;
+      });
     }
   }
 
   Widget _buildStudentsList() {
-    return _students.isEmpty
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.people_alt_outlined,
-                    size: 60, color: Colors.grey[400]),
-                SizedBox(height: 16),
-                Text(
-                  "لا يوجد تلاميذ",
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                if (_selectedClass != null)
-                  Padding(
-                    padding: EdgeInsets.only(top: 16),
-                    child: ElevatedButton(
-                      onPressed: () => _addStudent(_selectedClass!),
-                      child: Text("إضافة تلاميذ"),
+    if (_isLoadingStudents) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text(
+              "جاري تحميل قائمة التلاميذ...",
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshStudents,
+      color: Theme.of(context).primaryColor,
+      backgroundColor: Colors.white,
+      child: _students.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.people_alt_outlined,
+                      size: 60, color: Colors.grey[400]),
+                  SizedBox(height: 16),
+                  Text(
+                    "لا يوجد تلاميذ",
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[600],
                     ),
                   ),
-              ],
+                  if (_selectedClass != null)
+                    Padding(
+                      padding: EdgeInsets.only(top: 16),
+                      child: ElevatedButton.icon(
+                        icon: Icon(Icons.person_add),
+                        label: Text("إضافة تلاميذ"),
+                        onPressed: () => _addStudent(_selectedClass!),
+                      ),
+                    ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: EdgeInsets.all(12),
+              itemCount: _students.length + 1, // +1 pour l'en-tête
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  // En-tête avec indicateur alphabétique
+                  return Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: Colors.grey[200] ?? Colors.grey, width: 1),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Indicateur alphabétique
+                        Row(
+                          children: [
+                            Icon(Icons.sort_by_alpha, color: Colors.blue),
+                            SizedBox(width: 8),
+                            Text(
+                              "مرتب أبجدياً",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context)
+                                    .primaryColor
+                                    .withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                "${_students.length} تلميذ",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context).primaryColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // Boutons d'action
+                        Row(
+                          children: [
+                            // Bouton Ajouter un élève
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.green[50],
+                                border: Border.all(
+                                    color: Colors.green[100] ?? Colors.green),
+                              ),
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.person_add_alt_1,
+                                  color: Colors.green[700],
+                                  size: 22,
+                                ),
+                                onPressed: () => _addStudent(_selectedClass!),
+                                tooltip: 'إضافة تلميذ جديد',
+                                padding: EdgeInsets.all(8),
+                              ),
+                            ),
+
+                            SizedBox(width: 8),
+
+                            // Bouton Rafraîchir
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.blue[50],
+                                border: Border.all(
+                                    color: Colors.blue[100] ?? Colors.blue),
+                              ),
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.refresh,
+                                  color: Colors.blue[700],
+                                  size: 22,
+                                ),
+                                onPressed: _refreshStudents,
+                                tooltip: 'تحديث القائمة',
+                                padding: EdgeInsets.all(8),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                final student = _students[index - 1];
+                return Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: _buildStudentCard(student),
+                );
+              },
             ),
-          )
-        : ListView.builder(
-            padding: EdgeInsets.all(12),
-            itemCount: _students.length,
-            itemBuilder: (context, index) {
-              final student = _students[index];
-              return Padding(
-                padding: EdgeInsets.only(bottom: 8),
-                child: _buildStudentCard(student),
-              );
-            },
-          );
+    );
   }
 
   Widget _buildStudentCard(Map<String, dynamic> student) {
     final photoBase64 = student['photoBase64'];
-    final parentName = student['parentName'] ?? 'Non renseigné';
+    final parentName = student['parentName'] ?? 'غير محدد';
     final birthDate = student['birthDate'];
 
     return FutureBuilder<Color>(
@@ -1828,6 +2929,9 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                 await _showSelectionsDialog(
                     selectedClassId!, selectedSubjectId!, student['id']);
               }
+            },
+            onLongPress: () {
+              _showStudentContextMenu(student);
             },
             child: Padding(
               padding: EdgeInsets.all(12),
@@ -1904,25 +3008,39 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // NOUVEAU BOUTON: Naviguer vers SelectionPage et DynamicTablePage
-                      IconButton(
-                        icon: Icon(Icons.table_chart, color: Colors.green),
-                        onPressed: () => _navigateToDynamicTable(
-                          selectedClassId!,
-                          selectedSubjectId!,
-                        ),
+                      // Indicateur d'édition sur l'icône
+                      Stack(
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () => _editStudentName(student),
+                            tooltip: 'تعديل الاسم',
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        icon: Icon(Icons.tune_rounded, color: Colors.blue),
-                        onPressed: () => _navigateDirectlyToBaremesSelection(),
-                        tooltip: 'برمجة المعايير',
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.assessment, color: Colors.purple),
-                        onPressed: () =>
-                            _navigateToDirectEvaluation(student['id']),
-                        tooltip: 'تقييم مباشر',
-                      ),
+
+                      // IconButton(
+                      //   icon: Icon(Icons.assessment, color: Colors.purple),
+                      //   onPressed: () =>
+                      //       _navigateToDirectEvaluation(student['id']),
+                      //   tooltip: 'تقييم مباشر',
+                      // ),
 
                       IconButton(
                         icon: Icon(Icons.info_outline, color: Colors.blue),
@@ -1940,6 +3058,66 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                 ],
               ),
             ),
+          ),
+        );
+      },
+    );
+  }
+
+// Méthode pour afficher le menu contextuel
+  void _showStudentContextMenu(Map<String, dynamic> student) {
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.edit, color: Colors.blue),
+                title: Text('تعديل اسم التلميذ'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _editStudentName(student);
+                },
+              ),
+              // ListTile(
+              //   leading: Icon(Icons.assessment, color: Colors.purple),
+              //   title: Text('تقييم مباشر'),
+              //   onTap: () {
+              //     Navigator.pop(context);
+              //     _navigateToDirectEvaluation(student['id']);
+              //   },
+              // ),
+              ListTile(
+                leading: Icon(Icons.info_outline, color: Colors.blue),
+                title: Text('معلومات التلميذ'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showStudentDetails(_selectedClass!, student['id']);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.delete_outline, color: Colors.red),
+                title: Text('حذف التلميذ'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDeleteStudent(_selectedClass!, student['id']);
+                },
+              ),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('إغلاق'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 50),
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -2347,26 +3525,50 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          _selectedClass == null
-              ? 'إدارة الاقسام'
-              : _selectedClass!['class_name'],
-          style: TextStyle(color: Colors.white),
+        title: Row(
+          children: [
+            // Indicateur de chargement combiné
+            if (_isLoadingClasses || _isLoadingSubjects || _isLoadingStudents)
+              Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            Expanded(
+              child: Text(
+                _selectedClass == null
+                    ? 'إدارة الاقسام'
+                    : '${_selectedClass!['class_name']}',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
         ),
         backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
         elevation: 4,
         actions: [
-          // NOUVEAU BOUTON: Navigation vers le tableau (version améliorée)
           if (_selectedClass != null && selectedSubjectId != null)
-            IconButton(
-              icon: Icon(Icons.tune_rounded),
-              color: const Color.fromARGB(255, 255, 153, 0),
-              tooltip: 'برمجة المعايير',
-              onPressed: _navigateDirectlyToBaremesSelection,
+            ElevatedButton.icon(
+              icon: Icon(Icons.table_chart, size: 18),
+              label: Text('برمجة المعايير'),
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: const Color.fromARGB(255, 248, 151, 25),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              ),
+              onPressed: () => _navigateDirectlyToBaremesSelection(),
             ),
+
           Container(
             margin: EdgeInsets.symmetric(horizontal: 4),
             child: ElevatedButton.icon(
@@ -2380,6 +3582,52 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
               onPressed: () => _navigateToDynamicTableFromAppBar(),
             ),
           ),
+
+          // Bouton Rafraîchir global
+          Container(
+            margin: EdgeInsets.only(left: 4),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.white.withOpacity(0.1),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    Icons.refresh,
+                    color: Colors.white,
+                  ),
+                  onPressed: () {
+                    if (_selectedClass == null) {
+                      _refreshClasses();
+                    } else if (_showStudentsList) {
+                      _refreshStudents();
+                    } else {
+                      _refreshSubjects();
+                    }
+                  },
+                  tooltip: 'تحديث البيانات',
+                ),
+                if (_isRefreshingClasses ||
+                    _isRefreshingSubjects ||
+                    _isRefreshing)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: Colors.yellow,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
           IconButton(
             icon: Icon(Icons.help_outline, color: Colors.white),
             onPressed: () => _buildHelpSection(context),
@@ -2387,7 +3635,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
         ],
       ),
       body: SafeArea(
-        child: _classes.isEmpty
+        child: _classes.isEmpty && !_isLoadingClasses
             ? Center(
                 child: SingleChildScrollView(
                   padding: EdgeInsets.all(16),
@@ -2416,16 +3664,33 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                           ),
                         ),
                         SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => AddClassPage(),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton.icon(
+                              icon: Icon(Icons.add),
+                              label: Text('إضافة قسم جديد'),
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => AddClassPage(),
+                                  ),
+                                ).then((_) {
+                                  _refreshClasses();
+                                });
+                              },
+                            ),
+                            SizedBox(width: 16),
+                            ElevatedButton.icon(
+                              icon: Icon(Icons.refresh),
+                              label: Text('تحديث'),
+                              onPressed: _refreshClasses,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
                               ),
-                            );
-                          },
-                          child: Text('إضافة قسم جديد'),
+                            ),
+                          ],
                         ),
                       ],
                     ),

@@ -29,6 +29,8 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
  
 // Fonction pour ajouter toutes les données automatiquement
 
+
+
 Future<void> addAllDataAutomatically() async {
   setState(() {
     _isLoading = true;
@@ -80,7 +82,6 @@ Future<void> addAllDataAutomatically() async {
 
     // MODIFICATION: Définir les matières françaises qui auront 7 barèmes
     List<String> matieresFrancaises = [
-    
       "Expression orale et récitation", // Expression orale et récitation (français)
       "Lecture",              // Lecture (français)
       "Production écrite",    // Production écrite (français)
@@ -89,8 +90,8 @@ Future<void> addAllDataAutomatically() async {
       "langue"                // Langue (français)
     ];
 
-    // Définir les lettres arabes pour les sous-barèmes
-    List<String> arabicLetters = ["ا", "ب", "ج"]; // Au lieu de 1, 2, 3
+    // MODIFICATION: Changer la liste des lettres arabes pour inclure 4 lettres
+    List<String> arabicLetters = ["أ", "ب", "ج", "د"]; // Changé de 3 à 4 lettres
 
     int totalClasses = 0;
     int totalMatieres = 0;
@@ -213,11 +214,11 @@ Future<void> addAllDataAutomatically() async {
             existingSousBaremes[doc['name']] = true;
           }
 
-          // MODIFICATION ICI: Ajouter 3 sous-barèmes avec lettres arabes
+          // MODIFICATION ICI: Ajouter 4 sous-barèmes avec les 4 lettres arabes
           for (int index = 0; index < arabicLetters.length; index++) {
             String arabicLetter = arabicLetters[index];
-            String sousBaremeName = "مع $baremeNum.$arabicLetter";  // ex: "مع 1.ا"
-            String sousBaremeValue = "valeur $baremeNum.$arabicLetter";  // ex: "valeur 1.ا"
+            String sousBaremeName = "مع $baremeNum.$arabicLetter";  // ex: "مع 1.أ"
+            String sousBaremeValue = "valeur $baremeNum.$arabicLetter";  // ex: "valeur 1.أ"
             
             // Vérifier si le sous-barème existe déjà
             if (existingSousBaremes.containsKey(sousBaremeName)) {
@@ -250,6 +251,9 @@ Future<void> addAllDataAutomatically() async {
     // Ajouter une note sur les matières françaises
     message += '\n\nMatériels françaises avec 7 barèmes: ${matieresFrancaises.length} matières';
     message += '\nAutres matières avec 5 barèmes: ${matieres.length - matieresFrancaises.length} matières';
+
+    // Ajouter une note sur les sous-barèmes
+    message += '\n\nChaque barème a maintenant 4 sous-barèmes avec les lettres: أ, ب, ج, د';
 
     if (skippedClasses > 0 || skippedMatieres > 0 || skippedBaremes > 0 || skippedSousBaremes > 0) {
       message += '\n\nÉléments ignorés (déjà existants):\n'

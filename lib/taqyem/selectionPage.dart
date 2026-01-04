@@ -165,6 +165,31 @@ class _BaremesPageState extends State<BaremesPage> {
   Map<String, Map<String, bool>> _selectedSousBaremes = {};
   bool _isLoading = true;
   bool _isFrenchInterface = false;
+
+  String removeArabicDiacritics(String text) {
+    // Supprimer les diacritiques arabes pour un tri plus précis
+    final Map<String, String> diacriticsMap = {
+      'َ': 'ا',
+      'ُ': 'ا',
+      'ِ': 'ا',
+      'ّ': 'ا',
+      'ً': 'ا',
+      'ٌ': 'ا',
+      'ٍ': 'ا',
+      'ْ': 'ا',
+      'ٰ': 'ا',
+      'ٔ': 'ا',
+      'ٕ': 'ا',
+    };
+    
+    String result = text;
+    diacriticsMap.forEach((key, value) {
+      result = result.replaceAll(key, value);
+    });
+    
+    return result;
+  }
+
 @override
 void initState() {
   super.initState();
@@ -377,26 +402,26 @@ void initState() {
         backgroundColor: Colors.blue.shade700,
         elevation: 4,
         actions: [
-          Container(
-            margin: EdgeInsets.only(right: 8),
-            child: ElevatedButton.icon(
-              onPressed: () => _navigateToStudentList(),
-              icon: Icon(Icons.people_alt, size: 20),
-              label: Text(
-                _isFrenchInterface ? 'Liste Étudiants' : 'قائمة التلاميذ',
-                style: TextStyle(fontSize: 14),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple.shade600, // Couleur différente
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                elevation: 3,
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              ),
-            ),
-          ),
+          // Container(
+          //   margin: EdgeInsets.only(right: 8),
+          //   child: ElevatedButton.icon(
+          //     onPressed: () => _navigateToStudentList(),
+          //     icon: Icon(Icons.people_alt, size: 20),
+          //     label: Text(
+          //       _isFrenchInterface ? 'Liste Étudiants' : 'قائمة التلاميذ',
+          //       style: TextStyle(fontSize: 14),
+          //     ),
+          //     style: ElevatedButton.styleFrom(
+          //       backgroundColor: Colors.purple.shade600, // Couleur différente
+          //       foregroundColor: Colors.white,
+          //       shape: RoundedRectangleBorder(
+          //         borderRadius: BorderRadius.circular(20),
+          //       ),
+          //       elevation: 3,
+          //       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          //     ),
+          //   ),
+          // ),
           Container(
             margin: EdgeInsets.only(right: 8),
             child: ElevatedButton.icon(
@@ -417,34 +442,34 @@ void initState() {
               ),
             ),
           ),
-          Container(
-            margin: EdgeInsets.only(right: 16),
-            child: ElevatedButton.icon(
-              icon: Icon(Icons.table_chart, size: 20),
-              label: Text(
-                _isFrenchInterface ? 'Afficher le tableau' : 'عرض الجدول',
-                style: TextStyle(fontSize: 14),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange.shade600,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                elevation: 3,
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              ),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => DynamicTablePage(
-                    selectedClass: widget.selectedClass,
-                    selectedMatiere: widget.selectedMatiere,
-                  ),
-                ),
-              ),
-            ),
-          ),
+          // Container(
+          //   margin: EdgeInsets.only(right: 16),
+          //   child: ElevatedButton.icon(
+          //     icon: Icon(Icons.table_chart, size: 20),
+          //     label: Text(
+          //       _isFrenchInterface ? 'Afficher le tableau' : 'عرض الجدول',
+          //       style: TextStyle(fontSize: 14),
+          //     ),
+          //     style: ElevatedButton.styleFrom(
+          //       backgroundColor: Colors.orange.shade600,
+          //       foregroundColor: Colors.white,
+          //       shape: RoundedRectangleBorder(
+          //         borderRadius: BorderRadius.circular(20),
+          //       ),
+          //       elevation: 3,
+          //       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          //     ),
+          //     onPressed: () => Navigator.push(
+          //       context,
+          //       MaterialPageRoute(
+          //         builder: (context) => DynamicTablePage(
+          //           selectedClass: widget.selectedClass,
+          //           selectedMatiere: widget.selectedMatiere,
+          //         ),
+          //       ),
+          //     ),
+          //   ),
+          // ),
         ],
       ),
       body: _isLoading
@@ -544,13 +569,28 @@ void initState() {
                 }
 
                 return ListView.builder(
-                  padding: EdgeInsets.all(16),
-                  itemCount: snapshot.data!.docs.length,
-                  itemBuilder: (context, index) {
-                    var bareme = snapshot.data!.docs[index];
-                    var baremeId = bareme.id;
-                    var baremeValue = bareme['value'];
+  padding: EdgeInsets.all(16),
+  itemCount: snapshot.data!.docs.length,
+  itemBuilder: (context, index) {
+    // Récupérer et trier les barèmes
+    var baremesDocs = List.from(snapshot.data!.docs);
+    
+    // Trier les barèmes par nom
+    baremesDocs.sort((a, b) {
+      String nameA = _isFrenchInterface
+          ? DataTranslator.translateBareme(a['value'])
+          : a['value'];
+      String nameB = _isFrenchInterface
+          ? DataTranslator.translateBareme(b['value'])
+          : b['value'];
+      
+      return removeArabicDiacritics(nameA.toLowerCase())
+          .compareTo(removeArabicDiacritics(nameB.toLowerCase()));
+    });
 
+    var bareme = baremesDocs[index];
+    var baremeId = bareme.id;
+    var baremeValue = bareme['value'];
                     // Traduire le nom du critère si l'interface est en français
                     String displayedBareme = _isFrenchInterface
                         ? DataTranslator.translateBareme(baremeValue)
@@ -735,76 +775,242 @@ void initState() {
             ),
     );
   }
+  
 
   Future<void> _saveSelections() async {
-    try {
-      String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+  // Créer et afficher l'indicateur de chargement
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 10,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.blue.shade700),
+                            strokeWidth: 4,
+                          ),
+                          Icon(
+                            Icons.save,
+                            size: 24,
+                            color: Colors.blue.shade700,
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 20),
+                      Text(
+                        _isFrenchInterface
+                            ? 'Enregistrement des barèmes...'
+                            : 'جاري حفظ المعايير...',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey.shade800,
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        _isFrenchInterface
+                            ? 'Veuillez patienter'
+                            : 'يرجى الانتظار',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
 
-      if (userId.isEmpty) {
-        throw Exception('Utilisateur non connecté');
+  try {
+    String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    if (userId.isEmpty) {
+      throw Exception(_isFrenchInterface
+          ? 'Utilisateur non connecté'
+          : 'المستخدم غير مسجل الدخول');
+    }
+
+    CollectionReference selectionsRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('selections')
+        .doc(widget.selectedClass)
+        .collection(widget.selectedMatiere);
+
+    // Compter le nombre de sélections à sauvegarder
+    int totalSelections = _selectedBaremes.values.where((v) => v).length;
+    _selectedSousBaremes.forEach((key, value) {
+      totalSelections += value.values.where((v) => v).length;
+    });
+
+    print('Nombre total de sélections à sauvegarder: $totalSelections');
+
+    // Supprimer les anciennes sélections
+    var oldSelections = await selectionsRef.get();
+    int deletedCount = 0;
+    for (var doc in oldSelections.docs) {
+      var sousBaremesRef = doc.reference.collection('sousBaremes');
+      var sousBaremesSnapshot = await sousBaremesRef.get();
+      for (var sousDoc in sousBaremesSnapshot.docs) {
+        await sousDoc.reference.delete();
+        deletedCount++;
       }
+      await doc.reference.delete();
+      deletedCount++;
+    }
+    print('Anciennes sélections supprimées: $deletedCount');
 
-      CollectionReference selectionsRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('selections')
-          .doc(widget.selectedClass)
-          .collection(widget.selectedMatiere);
-
-      var oldSelections = await selectionsRef.get();
-      for (var doc in oldSelections.docs) {
-        var sousBaremesRef = doc.reference.collection('sousBaremes');
-        var sousBaremesSnapshot = await sousBaremesRef.get();
-        for (var sousDoc in sousBaremesSnapshot.docs) {
-          await sousDoc.reference.delete();
-        }
-        await doc.reference.delete();
+    // Enregistrer les barèmes principaux
+    int savedCount = 0;
+    for (var entry in _selectedBaremes.entries) {
+      if (entry.value) {
+        String baremeName = await _getBaremeName(entry.key);
+        await selectionsRef.doc(entry.key).set({
+          'baremeId': entry.key,
+          'baremeName': baremeName,
+          'classId': widget.selectedClass,
+          'matiereId': widget.selectedMatiere,
+          'selected': true,
+          'selectedAt': DateTime.now(),
+        });
+        savedCount++;
+        print('Barème sauvegardé: $baremeName');
       }
+    }
 
-      _selectedBaremes.forEach((baremeId, isSelected) async {
-        if (isSelected) {
-          String baremeName = await _getBaremeName(baremeId);
-          await selectionsRef.doc(baremeId).set({
-            'baremeId': baremeId,
-            'baremeName': baremeName,
-            'classId': widget.selectedClass,
-            'matiereId': widget.selectedMatiere,
+    // Enregistrer les sous-barèmes
+    for (var entry in _selectedSousBaremes.entries) {
+      for (var sousEntry in entry.value.entries) {
+        if (sousEntry.value) {
+          DocumentReference baremeDocRef = selectionsRef.doc(entry.key);
+          DocumentSnapshot baremeDoc = await baremeDocRef.get();
+
+          if (!baremeDoc.exists) {
+            String baremeName = await _getBaremeName(entry.key);
+            await baremeDocRef.set({
+              'baremeId': entry.key,
+              'baremeName': baremeName,
+              'classId': widget.selectedClass,
+              'matiereId': widget.selectedMatiere,
+              'selected': false,
+              'selectedAt': DateTime.now(),
+            });
+            print('Barème parent créé: $baremeName');
+          }
+
+          String sousBaremeName =
+              await _getSousBaremeName(entry.key, sousEntry.key);
+          await baremeDocRef
+              .collection('sousBaremes')
+              .doc(sousEntry.key)
+              .set({
+            'sousBaremeId': sousEntry.key,
+            'sousBaremeName': sousBaremeName,
             'selected': true,
             'selectedAt': DateTime.now(),
           });
+          savedCount++;
+          print('Sous-barème sauvegardé: $sousBaremeName');
         }
-      });
+      }
+    }
 
-      _selectedSousBaremes.forEach((baremeId, sousBaremesMap) async {
-        sousBaremesMap.forEach((sousBaremeId, isSelected) async {
-          if (isSelected) {
-            DocumentReference baremeDocRef = selectionsRef.doc(baremeId);
-            DocumentSnapshot baremeDoc = await baremeDocRef.get();
+    print('Total sauvegardé: $savedCount');
 
-            if (!baremeDoc.exists) {
-              String baremeName = await _getBaremeName(baremeId);
-              await baremeDocRef.set({
-                'baremeId': baremeId,
-                'baremeName': baremeName,
-                'classId': widget.selectedClass,
-                'matiereId': widget.selectedMatiere,
-                'selected': false,
-                'selectedAt': DateTime.now(),
-              });
-            }
+    // Fermer l'indicateur de chargement
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
 
-            String sousBaremeName =
-                await _getSousBaremeName(baremeId, sousBaremeId);
-            await baremeDocRef.collection('sousBaremes').doc(sousBaremeId).set({
-              'sousBaremeId': sousBaremeId,
-              'sousBaremeName': sousBaremeName,
-              'selected': true,
-              'selectedAt': DateTime.now(),
-            });
-          }
-        });
-      });
+    // Afficher le message de succès
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.check,
+                  size: 18,
+                  color: Colors.green.shade600,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isFrenchInterface
+                          ? 'Sauvegarde réussie !'
+                          : 'تم الحفظ بنجاح!',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      _isFrenchInterface
+                          ? '$savedCount sélections enregistrées'
+                          : 'تم حفظ $savedCount عنصر',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          backgroundColor: Colors.green.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: Duration(seconds: 3),
+        ),
+      );
 
+      // Naviguer vers la page des barèmes sélectionnés
+      await Future.delayed(Duration(milliseconds: 500));
+      
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -815,31 +1021,46 @@ void initState() {
           ),
         ),
       );
+    }
 
+  } catch (e) {
+    print('Erreur lors de la sauvegarde: $e');
+    
+    // Fermer l'indicateur de chargement en cas d'erreur
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+    
+    // Afficher le message d'erreur
+    if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 8),
-              Text('تم حفظ الاختيارات بنجاح!'),
-            ],
-          ),
-          backgroundColor: Colors.green.shade600,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.error_outline, color: Colors.white),
-              SizedBox(width: 8),
-              Text('خطأ في الحفظ: $e'),
+              Icon(Icons.error_outline, color: Colors.white, size: 24),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _isFrenchInterface
+                          ? 'Erreur lors de la sauvegarde'
+                          : 'حدث خطأ أثناء الحفظ',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      e.toString(),
+                      style: TextStyle(fontSize: 12),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
           backgroundColor: Colors.red.shade600,
@@ -847,11 +1068,13 @@ void initState() {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+          duration: Duration(seconds: 4),
         ),
       );
     }
   }
-
+}
+  
   Future<void> _navigateToStudentList() async {
     try {
       String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
@@ -1047,7 +1270,29 @@ class _SelectionPageState extends State<SelectionPage> {
     Colors.deepPurple.shade700,
     Colors.lightGreen.shade700,
   ];
-
+String removeArabicDiacritics(String text) {
+  // Supprimer les diacritiques arabes pour un tri plus précis
+  final Map<String, String> diacriticsMap = {
+    'َ': 'ا',
+    'ُ': 'ا',
+    'ِ': 'ا',
+    'ّ': 'ا',
+    'ً': 'ا',
+    'ٌ': 'ا',
+    'ٍ': 'ا',
+    'ْ': 'ا',
+    'ٰ': 'ا',
+    'ٔ': 'ا',
+    'ٕ': 'ا',
+  };
+  
+  String result = text;
+  diacriticsMap.forEach((key, value) {
+    result = result.replaceAll(key, value);
+  });
+  
+  return result;
+}
   @override
   void initState() {
     super.initState();
@@ -1132,52 +1377,61 @@ class _SelectionPageState extends State<SelectionPage> {
     });
   }
 
-  Future<void> fetchClasses() async {
-    try {
-      QuerySnapshot snapshot =
-          await FirebaseFirestore.instance.collection('classes').get();
-      setState(() {
-        classes = snapshot.docs
-            .map((doc) => {
-                  'id': doc.id,
-                  'name': doc['name'] as String,
-                  'translatedName':
-                      DataTranslator.translateClass(doc['name'] as String)
-                })
-            .toList()
-          ..sort((a, b) => a['name']!
-              .toLowerCase()
-              .compareTo(b['name']!.toLowerCase())); // Trier par nom arabe
-      });
-    } catch (e) {
-      print('Erreur lors de la récupération des classes: $e');
-    }
+Future<void> fetchClasses() async {
+  try {
+    QuerySnapshot snapshot =
+        await FirebaseFirestore.instance.collection('classes').get();
+    
+    List<Map<String, String>> allClasses = snapshot.docs
+        .map((doc) => {
+              'id': doc.id,
+              'name': doc['name'] as String,
+              'translatedName':
+                  DataTranslator.translateClass(doc['name'] as String)
+            })
+        .toList();
+    
+    // Trier alphabétiquement par nom original (arabe)
+    allClasses.sort((a, b) => removeArabicDiacritics(a['name']!.toLowerCase())
+        .compareTo(removeArabicDiacritics(b['name']!.toLowerCase())));
+    
+    setState(() {
+      classes = allClasses;
+    });
+  } catch (e) {
+    print('Erreur lors de la récupération des classes: $e');
   }
+}
 
-  Future<void> fetchMatieres(String classId) async {
-    try {
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(classId)
-          .collection('matieres')
-          .get();
-      setState(() {
-        matieres = snapshot.docs
-            .map((doc) => {
-                  'id': doc.id,
-                  'name': doc['name'] as String,
-                  'translatedName':
-                      DataTranslator.translateMatiere(doc['name'] as String)
-                })
-            .toList()
-          ..sort((a, b) => a['name']!
-              .toLowerCase()
-              .compareTo(b['name']!.toLowerCase())); // Trier par nom arabe
-      });
-    } catch (e) {
-      print('Erreur lors de la récupération des matières: $e');
-    }
+Future<void> fetchMatieres(String classId) async {
+  try {
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('classes')
+        .doc(classId)
+        .collection('matieres')
+        .get();
+    
+    List<Map<String, String>> allMatieres = snapshot.docs
+        .map((doc) => {
+              'id': doc.id,
+              'name': doc['name'] as String,
+              'translatedName':
+                  DataTranslator.translateMatiere(doc['name'] as String)
+            })
+        .toList();
+    
+    // Trier alphabétiquement par nom original (arabe)
+    allMatieres.sort((a, b) => removeArabicDiacritics(a['name']!.toLowerCase())
+        .compareTo(removeArabicDiacritics(b['name']!.toLowerCase())));
+    
+    setState(() {
+      matieres = allMatieres;
+    });
+  } catch (e) {
+    print('Erreur lors de la récupération des matières: $e');
   }
+}
+
 
   Future<void> _saveLastAccess() async {
     if (selectedClassId == null || selectedMatiereId == null) return;
@@ -1791,7 +2045,31 @@ class SelectedBaremesPage extends StatefulWidget {
 class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
   bool _isLoading = true;
   bool _isFrenchInterface = false;
-
+  Map<String, bool> _selectedBaremes = {};
+  Map<String, Map<String, bool>> _selectedSousBaremes = {};
+String removeArabicDiacritics(String text) {
+  // Supprimer les diacritiques arabes pour un tri plus précis
+  final Map<String, String> diacriticsMap = {
+    'َ': 'ا',
+    'ُ': 'ا',
+    'ِ': 'ا',
+    'ّ': 'ا',
+    'ً': 'ا',
+    'ٌ': 'ا',
+    'ٍ': 'ا',
+    'ْ': 'ا',
+    'ٰ': 'ا',
+    'ٔ': 'ا',
+    'ٕ': 'ا',
+  };
+  
+  String result = text;
+  diacriticsMap.forEach((key, value) {
+    result = result.replaceAll(key, value);
+  });
+  
+  return result;
+}
   @override
   void initState() {
     super.initState();
@@ -1919,6 +2197,42 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
         ),
       ],
     );
+  }
+
+  void _toggleBaremeSelection(String baremeId) {
+    setState(() {
+      if (_selectedBaremes[baremeId] ?? false) {
+        _selectedBaremes[baremeId] = false;
+        if (_selectedSousBaremes.containsKey(baremeId)) {
+          _selectedSousBaremes[baremeId]!.forEach((sousBaremeId, isSelected) {
+            _selectedSousBaremes[baremeId]![sousBaremeId] = false;
+          });
+        }
+      } else {
+        _selectedBaremes[baremeId] = true;
+      }
+    });
+  }
+
+  void _toggleSousBaremeSelection(String baremeId, String sousBaremeId) {
+    setState(() {
+      if (!_selectedSousBaremes.containsKey(baremeId)) {
+        _selectedSousBaremes[baremeId] = {};
+      }
+      _selectedSousBaremes[baremeId]![sousBaremeId] =
+          !(_selectedSousBaremes[baremeId]![sousBaremeId] ?? false);
+
+      if (_selectedSousBaremes[baremeId]![sousBaremeId] ?? false) {
+        _selectedBaremes[baremeId] = false;
+      } else {
+        bool allSousBaremesUnselected = _selectedSousBaremes[baremeId]!
+            .values
+            .every((isSelected) => !isSelected);
+        if (allSousBaremesUnselected) {
+          _selectedBaremes[baremeId] = true;
+        }
+      }
+    });
   }
 
   @override
@@ -2207,116 +2521,128 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
       );
     }
   }
-
-  Widget _buildContent(String userId) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('selections')
-          .doc(widget.selectedClass)
-          .collection(widget.selectedMatiere)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
-            ),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline_rounded,
-                    size: 64, color: Colors.red.shade400),
-                SizedBox(height: 16),
-                Text(
-                  _isFrenchInterface
-                      ? 'Erreur de chargement des données'
-                      : 'حدث خطأ في تحميل البيانات',
-                  style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.red.shade700,
-                      fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  '${snapshot.error}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.inbox_outlined,
-                    size: 64, color: Colors.grey.shade400),
-                SizedBox(height: 16),
-                Text(
-                  _isFrenchInterface
-                      ? 'Aucun critère sélectionné pour le moment'
-                      : 'لم يتم تحديد أي معايير بعد',
-                  style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
-                ),
-                SizedBox(height: 24),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade700,
-                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(
-                    _isFrenchInterface
-                        ? 'Sélectionner des critères'
-                        : 'تحديد المعايير',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
-          padding: EdgeInsets.all(16),
-          itemCount: snapshot.data!.docs.length,
-          itemBuilder: (context, index) {
-            var doc = snapshot.data!.docs[index];
-            bool isBaremeSelected = doc['selected'] ?? false;
-            String baremeName = doc['baremeName'] ?? '';
-
-            // Traduire le nom du critère si l'interface est en français
-            String displayedBaremeName = _isFrenchInterface
-                ? DataTranslator.translateBareme(baremeName)
-                : baremeName;
-
-            return Column(
-              children: [
-                if (isBaremeSelected)
-                  _buildBaremeCard(displayedBaremeName, true),
-                _buildSousBaremesList(
-                    doc.reference, displayedBaremeName, isBaremeSelected),
-              ],
-            );
-          },
+Widget _buildContent(String userId) {
+  return StreamBuilder<QuerySnapshot>(
+    stream: FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('selections')
+        .doc(widget.selectedClass)
+        .collection(widget.selectedMatiere)
+        .snapshots(),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
+          ),
         );
-      },
-    );
-  }
+      }
 
+      if (snapshot.hasError) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline_rounded,
+                  size: 64, color: Colors.red.shade400),
+              SizedBox(height: 16),
+              Text(
+                _isFrenchInterface
+                    ? 'Erreur de chargement des données'
+                    : 'حدث خطأ في تحميل البيانات',
+                style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.red.shade700,
+                    fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              Text(
+                '${snapshot.error}',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+        );
+      }
+
+      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.inbox_outlined,
+                  size: 64, color: Colors.grey.shade400),
+              SizedBox(height: 16),
+              Text(
+                _isFrenchInterface
+                    ? 'Aucun critère sélectionné pour le moment'
+                    : 'لم يتم تحديد أي معايير بعد',
+                style: TextStyle(fontSize: 18, color: Colors.grey.shade600),
+              ),
+              SizedBox(height: 24),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue.shade700,
+                  padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  _isFrenchInterface
+                      ? 'Sélectionner des critères'
+                      : 'تحديد المعايير',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      // Trier les barèmes sélectionnés par nom
+      var sortedDocs = List.from(snapshot.data!.docs);
+      sortedDocs.sort((a, b) {
+        String nameA = _isFrenchInterface
+            ? DataTranslator.translateBareme(a['baremeName'] ?? '')
+            : a['baremeName'] ?? '';
+        String nameB = _isFrenchInterface
+            ? DataTranslator.translateBareme(b['baremeName'] ?? '')
+            : b['baremeName'] ?? '';
+        
+        return removeArabicDiacritics(nameA.toLowerCase())
+            .compareTo(removeArabicDiacritics(nameB.toLowerCase()));
+      });
+
+      return ListView.builder(
+        padding: EdgeInsets.all(16),
+        itemCount: sortedDocs.length,
+        itemBuilder: (context, index) {
+          var doc = sortedDocs[index];
+          bool isBaremeSelected = doc['selected'] ?? false;
+          String baremeName = doc['baremeName'] ?? '';
+
+          // Traduire le nom du critère si l'interface est en français
+          String displayedBaremeName = _isFrenchInterface
+              ? DataTranslator.translateBareme(baremeName)
+              : baremeName;
+
+          return Column(
+            children: [
+              if (isBaremeSelected)
+                _buildBaremeCard(displayedBaremeName, true),
+              _buildSousBaremesList(
+                  doc.reference, displayedBaremeName, isBaremeSelected),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
   Widget _buildBaremeCard(String baremeName, bool isSelected) {
     return Container(
       margin: EdgeInsets.only(bottom: 8),
