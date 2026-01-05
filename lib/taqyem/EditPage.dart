@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class AdminCrudPage extends StatefulWidget {
@@ -25,10 +26,153 @@ class _AdminCrudPageState extends State<AdminCrudPage> {
     super.dispose();
   }
 
+  String _getTranslatedText(String arabic, String french) {
+    return arabic; // Return Arabic by default, modify as needed for your language logic
+  }
+
+  void _showSuccessSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.green,
+      duration: Duration(seconds: 4),
+    ));
+  }
+
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: Colors.red,
+      duration: Duration(seconds: 4),
+    ));
+  }
+
   // Fonction pour vérifier si une classe existe déjà
  
 // Fonction pour ajouter toutes les données automatiquement
 
+
+Future<void> _deleteClassesCollection() async {
+  try {
+    final User? user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      _showErrorSnackbar('Utilisateur non connecté');
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text(_getTranslatedText('تأكيد الحذف', 'Confirmation suppression')),
+        content: Text(_getTranslatedText(
+          'هل أنت متأكد من حذف جميع الأقسام؟ هذا الإجراء لا يمكن التراجع عنه.',
+          'Êtes-vous sûr de vouloir supprimer toutes les classes ? Cette action est irréversible.'
+        )),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(_getTranslatedText('إلغاء', 'Annuler')),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _performDeleteClasses();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text(_getTranslatedText('حذف', 'Supprimer')),
+          ),
+        ],
+      ),
+    );
+  } catch (e) {
+    print('Erreur: $e');
+    _showErrorSnackbar('Erreur: $e');
+  }
+}
+
+Future<void> _performDeleteClasses() async {
+  try {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text(_getTranslatedText(
+              'جاري حذف الأقسام...',
+              'Suppression des classes en cours...'
+            )),
+          ],
+        ),
+      ),
+    );
+
+    // 1. Supprimer d'abord tous les documents de la collection classes
+    final classesSnapshot = await FirebaseFirestore.instance
+        .collection('classes')
+        .get();
+
+    // Supprimer chaque document avec ses sous-collections
+    for (final classDoc in classesSnapshot.docs) {
+      await _deleteDocumentWithSubcollections(
+        FirebaseFirestore.instance.collection('classes').doc(classDoc.id)
+      );
+    }
+
+    // 2. Supprimer également les références dans user_classes
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      final userClassesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('user_classes')
+          .get();
+
+      for (final doc in userClassesSnapshot.docs) {
+        await doc.reference.delete();
+      }
+    }
+
+    // Fermer le dialogue de chargement
+    if (context.mounted) Navigator.pop(context);
+
+    _showSuccessSnackbar(_getTranslatedText(
+      'تم حذف جميع الأقسام بنجاح',
+      'Toutes les classes ont été supprimées avec succès'
+    ));
+  } catch (e) {
+    if (context.mounted) Navigator.pop(context);
+    print('Erreur lors de la suppression: $e');
+    _showErrorSnackbar('Erreur: $e');
+  }
+}
+
+// Fonction pour supprimer un document et toutes ses sous-collections
+Future<void> _deleteDocumentWithSubcollections(DocumentReference docRef) async {
+  try {
+    // Supprimer tous les documents dans chaque sous-collection connue
+    final subCollections = ['matieres', 'sousBaremes', 'baremes'];
+    
+    for (final collectionName in subCollections) {
+      try {
+        final snapshot = await docRef.collection(collectionName).get();
+        for (final doc in snapshot.docs) {
+          await _deleteDocumentWithSubcollections(doc.reference);
+        }
+      } catch (e) {
+        // La sous-collection n'existe pas, continuer
+      }
+    }
+    
+    // Supprimer le document principal
+    await docRef.delete();
+  } catch (e) {
+    print('Erreur suppression document $docRef: $e');
+  }
+}
 
 
 Future<void> addAllDataAutomatically() async {
@@ -764,26 +908,31 @@ Future<bool> sousBaremeExists(String classId, String matiereId, String baremeId,
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Gestion des Données',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
-        ),
-        backgroundColor: Colors.teal,
-        elevation: 10,
-        centerTitle: true,
-        actions: [
-          if (_isLoading)
-            Padding(
-              padding: EdgeInsets.only(right: 16.0),
-              child: Center(child: CircularProgressIndicator(color: Colors.white)),
-            ),
-        ],
+  appBar: AppBar(
+    title: Text(
+      'Gestion des Données',
+      style: TextStyle(
+        fontSize: 22,
+        fontWeight: FontWeight.bold,
+        color: Colors.white,
       ),
+    ),
+    backgroundColor: Colors.teal,
+    elevation: 10,
+    centerTitle: true,
+    actions: [
+      IconButton(
+        icon: Icon(Icons.delete, color: Colors.red),
+        onPressed: _deleteClassesCollection,
+        tooltip: _getTranslatedText('حذف جميع الأقسام', 'Supprimer toutes les classes'),
+      ),
+      if (_isLoading)
+        Padding(
+          padding: EdgeInsets.only(right: 16.0),
+          child: Center(child: CircularProgressIndicator(color: Colors.white)),
+        ),
+    ],
+  ),
       
       body: Padding(
         padding: const EdgeInsets.all(16.0),

@@ -113,6 +113,76 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     }
   }
 
+// Mettre à jour _getMappedEvaluation pour inclure le système personnalisé
+  String _getMappedEvaluation(String displayValue, String system,
+      {List<String>? customNotes}) {
+    if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
+      // Pour le système personnalisé, mapper l'affichage vers la valeur stockée
+      // On prend l'indice de la valeur dans la liste personnalisée
+      final index = customNotes.indexOf(displayValue);
+
+      // Si la valeur n'existe pas, utiliser la première
+      if (index == -1) return '( - - - )';
+
+      // Mapper selon la position dans la liste
+      if (index == 0) return '( - - - )';
+      if (index == customNotes.length - 1) return '( + + + )';
+      if (index <= customNotes.length ~/ 2) return '( + - - )';
+      return '( + + - )';
+    }
+
+    switch (system) {
+      case 'character':
+        return displayValue;
+
+      case 'note_0_1_5':
+        switch (displayValue) {
+          case '0':
+            return '( - - - )';
+          case '0.5':
+            return '( + - - )';
+          case '1':
+            return '( + + - )';
+          case '1.5':
+            return '( + + + )';
+          default:
+            return '( - - - )';
+        }
+
+      case 'note_0_3':
+        switch (displayValue) {
+          case '0':
+            return '( - - - )';
+          case '1':
+            return '( + - - )';
+          case '2':
+            return '( + + - )';
+          case '3':
+            return '( + + + )';
+          default:
+            return '( - - - )';
+        }
+
+      case 'note_0_6':
+        switch (displayValue) {
+          case '0':
+            return '( - - - )';
+          case '2':
+            return '( + - - )';
+          case '4':
+            return '( + + - )';
+          case '6':
+            return '( + + + )';
+          default:
+            return '( - - - )';
+        }
+
+      default:
+        return '( - - - )';
+    }
+  }
+  // Fonction pour convertir la valeur stockée en valeur d'affichage selon le système
+
   Future<void> _navigateAfterSelection(String classId, String matiereId) async {
     try {
       // Attendre un peu pour laisser le temps de sauvegarder
@@ -351,8 +421,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       }
     }
   }
-
-// Nouvelle méthode pour charger les matières spécifiquement
 
   Future<void> fetchMatieresForPreSelection(String classId) async {
     if (!mounted) return;
@@ -1474,118 +1542,511 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     );
 
     try {
-      final List<String> evaluationOptions = [
-        '( - - - )',
-        '( + - - )',
-        '( + + - )',
-        '( + + + )'
-      ];
-      final Map<String, Color> evaluationColors = {
-        '( - - - )': Colors.red,
-        '( + - - )': Colors.orange,
-        '( + + - )': Colors.amber,
-        '( + + + )': Colors.green,
-      };
+      // Récupérer le système choisi pour cette matière/classe
+      String selectedSystem = 'character'; // Par défaut
 
-      CollectionReference selectionsRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser!.uid)
-          .collection('selections')
-          .doc(classId)
-          .collection(matiereId);
+      try {
+        final systemDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('evaluation_systems')
+            .doc('$classId-$matiereId')
+            .get();
 
-      var selectionsSnapshot = await selectionsRef.get();
+        if (systemDoc.exists) {
+          selectedSystem = systemDoc['system'] ?? 'character';
+        }
+      } catch (e) {
+        print('Erreur lors de la récupération du système: $e');
+      }
 
-      List<Map<String, dynamic>> selections = [];
-
-      await Future.wait(selectionsSnapshot.docs.map((doc) async {
-        var sousBaremesRef = doc.reference.collection('sousBaremes');
-        var sousBaremesSnapshot = await sousBaremesRef.get();
-        List<Map<String, dynamic>> sousBaremes = [];
-
-        await Future.wait(sousBaremesSnapshot.docs.map((sousDoc) async {
-          String? savedEvaluation = await _getEvaluation(
-            classId: classId,
-            studentId: studentId,
-            baremeId: doc.id,
-            sousBaremeId: sousDoc.id,
-          );
-
-          sousBaremes.add({
-            'id': sousDoc.id,
-            'sousBaremeName': sousDoc['sousBaremeName'],
-            'evaluation': savedEvaluation ?? '( - - - )',
-          });
-        }));
-
-        // TRIER LES SOUS-BARÈMES PAR ORDRE ALPHABÉTIQUE
-        sousBaremes.sort((a, b) =>
-            (a['sousBaremeName'] ?? '').compareTo(b['sousBaremeName'] ?? ''));
-
-        String? savedEvaluation = sousBaremes.isEmpty
-            ? await _getEvaluation(
-                classId: classId, studentId: studentId, baremeId: doc.id)
-            : null;
-
-        selections.add({
-          'id': doc.id,
-          'baremeId': doc['baremeId'],
-          'baremeName': doc['baremeName'],
-          'evaluation': savedEvaluation ?? '( - - - )',
-          'sousBaremes': sousBaremes,
-        });
-      }));
-
-      // TRIER LES BARÈMES PAR ORDRE ALPHABÉTIQUE
-      selections.sort(
-          (a, b) => (a['baremeName'] ?? '').compareTo(b['baremeName'] ?? ''));
-
+      // Maintenant, charger les données avec le système actuel
+      await _showEvaluationDialogWithSystem(
+        context,
+        classId,
+        matiereId,
+        studentId,
+        selectedSystem,
+      );
+    } catch (e) {
       Navigator.of(context).pop();
+      print('Erreur lors du chargement des sélections: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('حدث خطأ أثناء تحميل التقييمات')),
+      );
+    }
+  }
 
-      if (selections.isEmpty) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('لا توجد معايير محددة'),
-            content: Text('لإجراء التقييم، يجب عليك أولاً برمجة معيار للتقييم'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text('إلغاء', style: TextStyle(color: Colors.red)),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _navigateToDirectEvaluation('');
-                },
-                child: Text('اذهب إلى صفحة الاختيار'),
-              ),
-            ],
+// Fonction pour obtenir la couleur du système
+
+// Fonction pour obtenir l'icône du système
+
+// Fonction pour obtenir le libellé du système
+
+// Fonction pour obtenir la description du système
+
+// Widget pour les boutons d'évaluation
+
+  Widget _buildEvaluationButtons(
+    List<String> options,
+    Map<String, Color> colors,
+    String selectedValue,
+    String system,
+    Function(String) onTap, {
+    List<String>? customNotes,
+  }) {
+    return Wrap(
+      spacing: 8,
+      children: options.map((displayValue) {
+        return GestureDetector(
+          onTap: () => onTap(displayValue),
+          child: Chip(
+            label: Text(displayValue,
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
+            backgroundColor: colors[displayValue] ?? Colors.blue,
+            side: BorderSide(
+              color: selectedValue == displayValue
+                  ? Colors.black
+                  : Colors.transparent,
+              width: 2,
+            ),
           ),
         );
-      } else {
-        await showDialog(
-          context: context,
-          builder: (context) => StatefulBuilder(
-            builder: (context, setState) {
-              return Dialog(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16)),
+      }).toList(),
+    );
+  }
+
+// Widget pour les sous-barèmes
+
+// NOUVELLE MÉTHODE : Afficher le dialogue avec un système spécifique
+
+  Future<void> _showEvaluationDialogWithSystem(
+    BuildContext context,
+    String classId,
+    String matiereId,
+    String studentId,
+    String initialSystem,
+  ) async {
+    // Variables locales pour le dialogue
+    String selectedSystem = initialSystem;
+    List<Map<String, dynamic>> selections = [];
+
+    // Déclarer customNotes ici
+    List<String> customNotes = [];
+
+    // Options d'affichage selon le système
+    Map<String, List<String>> displayOptions = {
+      'character': ['( - - - )', '( + - - )', '( + + - )', '( + + + )'],
+      'note_0_1_5': ['0', '0.5', '1', '1.5'],
+      'note_0_3': ['0', '1', '2', '3'],
+      'note_0_6': ['0', '2', '4', '6'],
+      'custom': [], // Sera rempli dynamiquement
+    };
+
+    // Charger les données initiales
+    await _loadSelectionsData(
+      classId,
+      matiereId,
+      studentId,
+      selectedSystem,
+      (loadedSelections) {
+        selections = loadedSelections;
+      },
+    );
+
+    // Charger les notes personnalisées si le système est custom
+    if (selectedSystem == 'custom') {
+      customNotes = await _loadCustomNotes(classId, matiereId);
+      if (customNotes.isNotEmpty) {
+        displayOptions['custom'] = customNotes;
+      }
+    }
+
+    // Fermer l'indicateur de chargement initial
+    if (Navigator.canPop(context)) {
+      Navigator.of(context).pop();
+    }
+
+    if (selections.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('لا توجد معايير محددة'),
+          content: Text('لإجراء التقييم، يجب عليك أولاً برمجة معيار للتقييم'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('إلغاء', style: TextStyle(color: Colors.red)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _navigateToDirectEvaluation('');
+              },
+              child: Text('اذهب إلى صفحة الاختيار'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      await showDialog(
+        context: context,
+        builder: (context) => StatefulBuilder(
+          builder: (context, setStateDialog) {
+            // Utiliser une variable locale pour les notes personnalisées dans ce contexte
+            List<String> localCustomNotes = customNotes;
+
+            final List<String> displayEvaluationOptions =
+                displayOptions[selectedSystem] ?? displayOptions['character']!;
+            final Map<String, Color> evaluationColors = _getEvaluationColors(
+              selectedSystem,
+              customNotes: selectedSystem == 'custom' ? localCustomNotes : null,
+            );
+
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              insetPadding: EdgeInsets.all(20), // Ajoutez cette ligne
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                  maxWidth: MediaQuery.of(context).size.width * 0.95,
+                ),
                 child: Container(
                   padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        'تقييم المعايير',
-                        style: TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.bold),
+                      // En-tête avec choix du système
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'تقييم المعايير',
+                            style: TextStyle(
+                                fontSize: 20, fontWeight: FontWeight.bold),
+                          ),
+                          PopupMenuButton<String>(
+                            onSelected: (String newSystem) async {
+                              try {
+                                List<String> newCustomNotes = localCustomNotes;
+
+                                if (newSystem == 'custom') {
+                                  // Si l'utilisateur choisit "personnalisé"
+                                  final customNotesResult =
+                                      await _showCustomNotesDialog(
+                                    context,
+                                    classId,
+                                    matiereId,
+                                  );
+
+                                  if (customNotesResult == null) {
+                                    // L'utilisateur a annulé
+                                    return;
+                                  }
+
+                                  if (customNotesResult.isEmpty) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                            'يرجى إدخال على الأقل قيمة واحدة'),
+                                        backgroundColor: Colors.orange,
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  // Sauvegarder les notes personnalisées
+                                  await _saveCustomNotes(
+                                    classId,
+                                    matiereId,
+                                    customNotesResult,
+                                  );
+
+                                  // Mettre à jour les options d'affichage
+                                  newCustomNotes = customNotesResult;
+                                  displayOptions['custom'] = newCustomNotes;
+                                }
+
+                                // Sauvegarder le nouveau système
+                                await FirebaseFirestore.instance
+                                    .collection('users')
+                                    .doc(currentUser!.uid)
+                                    .collection('evaluation_systems')
+                                    .doc('$classId-$matiereId')
+                                    .set({
+                                  'system': newSystem,
+                                  'updatedAt': FieldValue.serverTimestamp(),
+                                });
+
+                                // Mettre à jour l'état local
+                                setStateDialog(() {
+                                  selectedSystem = newSystem;
+                                  localCustomNotes = newCustomNotes;
+
+                                  // Mettre à jour toutes les évaluations avec le nouveau système
+                                  selections = selections.map((selection) {
+                                    // Pour les barèmes principaux
+                                    if (selection['sousBaremes'] != null &&
+                                        (selection['sousBaremes'] as List)
+                                            .isNotEmpty) {
+                                      // Mettre à jour les sous-barèmes
+                                      final updatedSousBaremes =
+                                          (selection['sousBaremes'] as List)
+                                              .map<Map<String, dynamic>>(
+                                                  (sousBareme) {
+                                        return {
+                                          ...sousBareme,
+                                          'displayEvaluation':
+                                              _getDisplayEvaluation(
+                                            sousBareme['storedEvaluation'] ??
+                                                '( - - - )',
+                                            newSystem,
+                                            customNotes: newSystem == 'custom'
+                                                ? newCustomNotes
+                                                : null,
+                                          ),
+                                        };
+                                      }).toList();
+
+                                      return {
+                                        ...selection,
+                                        'sousBaremes': updatedSousBaremes,
+                                      };
+                                    } else {
+                                      // Pour les barèmes sans sous-barèmes
+                                      return {
+                                        ...selection,
+                                        'displayEvaluation':
+                                            _getDisplayEvaluation(
+                                          selection['storedEvaluation'] ??
+                                              '( - - - )',
+                                          newSystem,
+                                          customNotes: newSystem == 'custom'
+                                              ? newCustomNotes
+                                              : null,
+                                        ),
+                                      };
+                                    }
+                                  }).toList();
+                                });
+
+                                // Montrer un feedback visuel
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                        'تم تغيير نظام التقييم إلى ${_getSystemLabel(newSystem)}'),
+                                    duration: Duration(seconds: 1),
+                                    backgroundColor: _getSystemColor(newSystem),
+                                  ),
+                                );
+                              } catch (e) {
+                                print(
+                                    'Erreur lors du changement de système: $e');
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content:
+                                          Text('حدث خطأ أثناء تغيير النظام')),
+                                );
+                              }
+                            },
+                            itemBuilder: (BuildContext context) {
+                              return [
+                                PopupMenuItem<String>(
+                                  value: 'character',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.tag, color: Colors.blue),
+                                      SizedBox(width: 8),
+                                      Text('نظام الحروف'),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem<String>(
+                                  value: 'note_0_1_5',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.percent, color: Colors.green),
+                                      SizedBox(width: 8),
+                                      Text('نظام النقاط (0-1.5)'),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem<String>(
+                                  value: 'note_0_3',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.percent, color: Colors.orange),
+                                      SizedBox(width: 8),
+                                      Text('نظام النقاط (0-3)'),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem<String>(
+                                  value: 'note_0_6',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.percent, color: Colors.purple),
+                                      SizedBox(width: 8),
+                                      Text('نظام النقاط (0-6)'),
+                                    ],
+                                  ),
+                                ),
+                                PopupMenuItem<String>(
+                                  value: 'custom',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.edit, color: Colors.pink),
+                                      SizedBox(width: 8),
+                                      Text('نظام مخصص'),
+                                    ],
+                                  ),
+                                ),
+                              ];
+                            },
+                            child: Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: _getSystemColor(selectedSystem)
+                                    .withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: _getSystemColor(selectedSystem),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _getSystemIcon(selectedSystem),
+                                    size: 16,
+                                    color: _getSystemColor(selectedSystem),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    _getSystemLabel(selectedSystem),
+                                    style: TextStyle(
+                                      color: _getSystemColor(selectedSystem),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.arrow_drop_down,
+                                    color: _getSystemColor(selectedSystem),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+
+                      // Indicateur du système actuel
+                      Container(
+                        padding:
+                            EdgeInsets.symmetric(vertical: 6, horizontal: 12),
+                        margin: EdgeInsets.only(bottom: 12, top: 8),
+                        decoration: BoxDecoration(
+                          color:
+                              _getSystemColor(selectedSystem).withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: _getSystemColor(selectedSystem)
+                                .withOpacity(0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 14,
+                              color: _getSystemColor(selectedSystem),
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              _getSystemDescription(selectedSystem),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: _getSystemColor(selectedSystem),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Pour le système personnalisé, afficher les notes
+                      if (selectedSystem == 'custom' &&
+                          localCustomNotes.isNotEmpty)
+                        Container(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
+                            alignment: WrapAlignment.center,
+                            children: localCustomNotes.map((note) {
+                              return Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: Colors.pink.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.pink,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Text(
+                                  note,
+                                  style: TextStyle(
+                                    color: Colors.pink,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ),
+
+                      // Légende des valeurs
+                      Container(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          alignment: WrapAlignment.center,
+                          children: displayEvaluationOptions.map((value) {
+                            return Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color:
+                                    evaluationColors[value]?.withOpacity(0.1) ??
+                                        Colors.grey[100],
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: evaluationColors[value] ?? Colors.grey,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Text(
+                                value,
+                                style: TextStyle(
+                                  color: evaluationColors[value] ?? Colors.grey,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+
                       Divider(),
-                      Flexible(
+
+                      Expanded(
                         child: SingleChildScrollView(
                           child: Column(
                             children: selections.map((selection) {
@@ -1593,24 +2054,33 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                   (selection['sousBaremes'] as List).isNotEmpty;
                               return Card(
                                 shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12)),
-                                elevation: 4,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 2,
                                 margin: EdgeInsets.symmetric(vertical: 8),
                                 child: Padding(
-                                  padding: EdgeInsets.all(8),
+                                  padding: EdgeInsets.all(12),
                                   child: Column(
                                     children: [
                                       ListTile(
                                         title: Text(
-                                          selection['baremeName'] ?? 'بدون اسم',
+                                          selection['baremeName'],
                                           style: TextStyle(
-                                              fontWeight: FontWeight.bold),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
                                         ),
-                                        leading: Icon(Icons.assignment,
-                                            color: Colors.blue),
-                                        trailing: hasSousBaremes
-                                            ? Icon(Icons.expand_more)
-                                            : null,
+                                        leading: Icon(
+                                          Icons.assignment,
+                                          color:
+                                              _getSystemColor(selectedSystem),
+                                        ),
+                                        contentPadding: EdgeInsets.only(
+                                          left: 4,
+                                          right: 4,
+                                          top: 4,
+                                          bottom: 8,
+                                        ),
                                       ),
                                       if (hasSousBaremes)
                                         Column(
@@ -1618,23 +2088,47 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                                   as List<Map<String, dynamic>>)
                                               .map((sousBareme) {
                                             return _buildSousBaremeCard(
-                                                sousBareme,
-                                                setState,
-                                                evaluationOptions,
-                                                evaluationColors);
+                                              sousBareme,
+                                              setStateDialog,
+                                              displayEvaluationOptions,
+                                              evaluationColors,
+                                              selectedSystem,
+                                              customNotes:
+                                                  selectedSystem == 'custom'
+                                                      ? localCustomNotes
+                                                      : null,
+                                            );
                                           }).toList(),
                                         )
                                       else
-                                        _buildEvaluationButtons(
-                                          evaluationOptions,
-                                          evaluationColors,
-                                          selection['evaluation'],
-                                          (newValue) {
-                                            setState(() {
-                                              selection['evaluation'] =
-                                                  newValue;
-                                            });
-                                          },
+                                        Container(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 12),
+                                          child: _buildEvaluationButtons(
+                                            displayEvaluationOptions,
+                                            evaluationColors,
+                                            selection['displayEvaluation'],
+                                            selectedSystem,
+                                            (newDisplayValue) {
+                                              // Convertir pour le stockage
+                                              String storedValue =
+                                                  _getMappedEvaluation(
+                                                newDisplayValue,
+                                                selectedSystem,
+                                                customNotes:
+                                                    selectedSystem == 'custom'
+                                                        ? localCustomNotes
+                                                        : null,
+                                              );
+
+                                              setStateDialog(() {
+                                                selection['displayEvaluation'] =
+                                                    newDisplayValue;
+                                                selection['storedEvaluation'] =
+                                                    storedValue;
+                                              });
+                                            },
+                                          ),
                                         ),
                                     ],
                                   ),
@@ -1644,22 +2138,30 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                           ),
                         ),
                       ),
-                      SizedBox(height: 10),
+
+                      SizedBox(height: 16),
+
+                      // Boutons de sauvegarde
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           TextButton(
                             onPressed: () => Navigator.pop(context),
-                            child: Text('إلغاء',
-                                style:
-                                    TextStyle(color: Colors.red, fontSize: 16)),
+                            child: Text(
+                              'إلغاء',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                           ElevatedButton.icon(
                             onPressed: () async {
                               bool confirm = await showDialog(
                                 context: context,
                                 builder: (context) => AlertDialog(
-                                  title: Text('تأكيد'),
+                                  title: Text('تأكيد الحفظ'),
                                   content: Text(
                                       'هل أنت متأكد أنك تريد حفظ هذه التقييمات؟'),
                                   actions: [
@@ -1677,115 +2179,907 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                 ),
                               );
 
-                              if (confirm) {
+                              if (confirm == true) {
+                                // Afficher un indicateur de chargement
                                 showDialog(
                                   context: context,
                                   barrierDismissible: false,
                                   builder: (context) => Center(
-                                    child: CircularProgressIndicator(),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        CircularProgressIndicator(),
+                                        SizedBox(height: 16),
+                                        Text('جاري حفظ التقييمات...'),
+                                      ],
+                                    ),
                                   ),
                                 );
 
-                                await Future.wait(
-                                    selections.map((selection) async {
-                                  if ((selection['sousBaremes'] as List)
-                                      .isNotEmpty) {
-                                    await Future.wait(
-                                        (selection['sousBaremes'] as List)
-                                            .map((sousBareme) async {
-                                      await _saveEvaluation(
-                                        classId: classId,
-                                        studentId: studentId,
-                                        baremeId: selection['baremeId'],
-                                        sousBaremeId: sousBareme['id'],
-                                        newValue: sousBareme['evaluation'],
-                                      );
-                                    }));
-                                  } else {
-                                    await _saveEvaluation(
-                                      classId: classId,
-                                      studentId: studentId,
-                                      baremeId: selection['baremeId'],
-                                      newValue: selection['evaluation'],
-                                    );
-                                  }
-                                }));
+                                try {
+                                  // Utiliser la fonction de sauvegarde simplifiée
+                                  await _saveEvaluationsSimple(
+                                    classId: classId,
+                                    studentId: studentId,
+                                    selections: selections,
+                                  );
 
-                                Navigator.of(context)
-                                    .pop(); // Fermer l'indicateur
-                                Navigator.of(context)
-                                    .pop(); // Fermer le dialogue
+                                  // Fermer les dialogues
+                                  Navigator.of(context)
+                                      .pop(); // Fermer l'indicateur
+                                  Navigator.of(context)
+                                      .pop(); // Fermer le dialogue principal
 
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text('تم حفظ التقييمات بنجاح!')),
-                                );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('تم حفظ التقييمات بنجاح!'),
+                                      backgroundColor: Colors.green,
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  Navigator.of(context)
+                                      .pop(); // Fermer l'indicateur
+                                  print('Erreur lors de la sauvegarde: $e');
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('حدث خطأ أثناء الحفظ'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
                               }
                             },
-                            icon: Icon(Icons.save),
-                            label: Text('تقييم'),
+                            icon: Icon(Icons.save, size: 20),
+                            label: Text(
+                              'حفظ التقييمات',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 12),
+                              backgroundColor: _getSystemColor(selectedSystem),
+                            ),
                           ),
                         ],
                       ),
                     ],
                   ),
                 ),
-              );
-            },
-          ),
-        );
-      }
-    } catch (e) {
-      Navigator.of(context).pop(); // Fermer le dialogue en cas d'erreur
-      print('Erreur lors du chargement des sélections: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('حدث خطأ أثناء تحميل التقييمات')),
+              ),
+            );
+          },
+        ),
       );
     }
   }
 
-  Widget _buildEvaluationButtons(List<String> options,
-      Map<String, Color> colors, String selectedValue, Function(String) onTap) {
-    return Wrap(
-      spacing: 8,
-      children: options.map((Marks) {
-        return GestureDetector(
-          onTap: () => onTap(Marks),
-          child: Chip(
-            label: Text(Marks,
-                style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold)),
-            backgroundColor: colors[Marks] ?? Colors.blue,
-            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            side: BorderSide(
-              color: selectedValue == Marks ? Colors.black : Colors.transparent,
-              width: 2,
+// Fonction pour afficher le dialogue de configuration des notes personnalisées
+Future<Map<String, List<String>>> _getAllCustomNotes() async {
+  try {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return {};
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('custom_evaluation_systems')
+        .get();
+
+    final Map<String, List<String>> allNotes = {};
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      final notes = List<String>.from(data['notes'] ?? []);
+      final key = data['classId'] + '-' + data['matiereId'];
+      allNotes[key] = notes;
+    }
+
+    return allNotes;
+  } catch (e) {
+    print('Erreur lors de la récupération de toutes les notes: $e');
+    return {};
+  }
+}
+Future<bool> _hasCustomNotes(
+  String classId,
+  String matiereId,
+) async {
+  try {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return false;
+
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('custom_evaluation_systems')
+        .doc('$classId-$matiereId')
+        .get();
+
+    return doc.exists && doc.data()?['notes'] != null;
+  } catch (e) {
+    print('Erreur lors de la vérification des notes personnalisées: $e');
+    return false;
+  }
+}
+Future<void> _deleteCustomNotes(
+  String classId,
+  String matiereId,
+) async {
+  try {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      throw Exception('Utilisateur non connecté');
+    }
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('custom_evaluation_systems')
+        .doc('$classId-$matiereId')
+        .delete();
+
+    print('Notes personnalisées supprimées avec succès');
+  } catch (e) {
+    print('Erreur lors de la suppression des notes personnalisées: $e');
+    rethrow;
+  }
+}
+Future<List<String>?> _showCustomNotesDialog(
+  BuildContext context,
+  String classId,
+  String matiereId,
+) async {
+  // Charger les notes existantes si disponibles
+  List<String> existingNotes = await _loadCustomNotes(classId, matiereId);
+  List<TextEditingController> controllers = existingNotes.isEmpty
+      ? [TextEditingController(), TextEditingController()]
+      : existingNotes.map((note) => TextEditingController(text: note)).toList();
+
+  bool isEditing = existingNotes.isNotEmpty;
+
+  return showDialog<List<String>>(
+    context: context,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return Dialog(
+            insetPadding: EdgeInsets.all(20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-          ),
-        );
-      }).toList(),
-    );
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.7,
+                maxWidth: 500,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          isEditing ? 'تعديل النظام المخصص' : 'تخصيص نظام التقييم',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (isEditing)
+                          IconButton(
+                            icon: Icon(Icons.delete, color: Colors.red),
+                            onPressed: () async {
+                              final confirm = await showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: Text('حذف النظام المخصص'),
+                                  content: Text('هل أنت متأكد من حذف هذا النظام المخصص؟'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context, false),
+                                      child: Text('إلغاء'),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () => Navigator.pop(context, true),
+                                      child: Text('حذف'),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirm == true) {
+                                try {
+                                  await _deleteCustomNotes(classId, matiereId);
+                                  Navigator.pop(context); // Fermer ce dialogue
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('تم حذف النظام المخصص بنجاح'),
+                                      backgroundColor: Colors.green,
+                                    ),
+                                  );
+                                } catch (e) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('حدث خطأ أثناء الحذف'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                          ),
+                      ],
+                    ),
+                    
+                    SizedBox(height: 12),
+                    Text(
+                      'أدخل 2-6 قيم للتقييم (من الأسوأ إلى الأفضل):',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    
+                    SizedBox(height: 16),
+                    
+                    // Liste des champs
+                    Expanded(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: controllers.length,
+                        itemBuilder: (context, index) {
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: 10),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    '${index + 1}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 10),
+                                Expanded(
+                                  child: TextField(
+                                    controller: controllers[index],
+                                    decoration: InputDecoration(
+                                      hintText: 'أدخل القيمة ${index + 1}',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                  ),
+                                ),
+                                if (controllers.length > 2)
+                                  IconButton(
+                                    icon: Icon(Icons.remove_circle, color: Colors.red),
+                                    onPressed: () {
+                                      setState(() {
+                                        controllers.removeAt(index);
+                                      });
+                                    },
+                                  ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    
+                    SizedBox(height: 10),
+                    
+                    if (controllers.length < 6)
+                      Center(
+                        child: ElevatedButton.icon(
+                          icon: Icon(Icons.add, size: 18),
+                          label: Text('إضافة قيمة أخرى'),
+                          onPressed: () {
+                            setState(() {
+                              controllers.add(TextEditingController());
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue[50],
+                            foregroundColor: Colors.blue,
+                          ),
+                        ),
+                      ),
+                    
+                    SizedBox(height: 20),
+                    
+                    // Exemples
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color.fromARGB(255, 224, 224, 224)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'أمثلة:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text('• ضعيف، متوسط، جيد، ممتاز'),
+                          Text('• غير مكتسب، قيد الاكتساب، مكتسب'),
+                          Text('• يحتاج تحسين، مقبول، جيد، ممتاز'),
+                        ],
+                      ),
+                    ),
+                    
+                    SizedBox(height: 20),
+                    
+                    // Boutons d'action
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text('إلغاء'),
+                        ),
+                        SizedBox(width: 10),
+                        ElevatedButton(
+                          onPressed: () async {
+                            // Valider et extraire les valeurs
+                            final validValues = controllers
+                                .map((c) => c.text.trim())
+                                .where((value) => value.isNotEmpty)
+                                .toList();
+
+                            if (validValues.length < 2) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('يجب إدخال على الأقل قيمتين صالحتين'),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (validValues.length > 6) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('الحد الأقصى هو 6 قيم فقط'),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                              return;
+                            }
+
+                            // Vérifier les doublons
+                            final uniqueValues = validValues.toSet().toList();
+                            if (uniqueValues.length != validValues.length) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('يجب أن تكون القيم فريدة (بدون تكرار)'),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                              return;
+                            }
+
+                            try {
+                              // Afficher un indicateur de chargement
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              );
+
+                              // Sauvegarder dans Firestore
+                              await _saveCustomNotes(classId, matiereId, validValues);
+
+                              // Fermer les dialogues
+                              Navigator.pop(context); // Fermer l'indicateur
+                              Navigator.pop(context, validValues); // Fermer ce dialogue
+
+                              // Afficher un message de succès
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    isEditing 
+                                      ? 'تم تحديث النظام المخصص بنجاح' 
+                                      : 'تم حفظ النظام المخصص بنجاح'
+                                  ),
+                                  backgroundColor: Colors.green,
+                                  duration: Duration(seconds: 2),
+                                ),
+                              );
+                            } catch (e) {
+                              // Fermer l'indicateur en cas d'erreur
+                              if (Navigator.canPop(context)) {
+                                Navigator.pop(context);
+                              }
+                              
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('حدث خطأ أثناء الحفظ: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
+                          },
+                          child: Text(isEditing ? 'تحديث' : 'حفظ النظام'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+// Fonction pour sauvegarder les notes personnalisées
+  Future<void> _saveCustomNotes(
+    String classId,
+    String matiereId,
+    List<String> notes,
+  ) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('custom_notes')
+          .doc('$classId-$matiereId')
+          .set({
+        'notes': notes,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Erreur lors de la sauvegarde des notes personnalisées: $e');
+      rethrow;
+    }
   }
 
-  Widget _buildSousBaremeCard(Map<String, dynamic> sousBareme,
-      Function setState, List<String> options, Map<String, Color> colors) {
+// Fonction pour charger les notes personnalisées
+  Future<List<String>> _loadCustomNotes(
+    String classId,
+    String matiereId,
+  ) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('custom_notes')
+          .doc('$classId-$matiereId')
+          .get();
+
+      if (doc.exists && doc.data()?['notes'] != null) {
+        return List<String>.from(doc.data()!['notes']);
+      }
+      return [];
+    } catch (e) {
+      print('Erreur lors du chargement des notes personnalisées: $e');
+      return [];
+    }
+  }
+
+// Mettre à jour _getSystemColor pour inclure le système personnalisé
+  Color _getSystemColor(String system) {
+    switch (system) {
+      case 'character':
+        return Colors.blue;
+      case 'note_0_1_5':
+        return Colors.green;
+      case 'note_0_3':
+        return Colors.orange;
+      case 'note_0_6':
+        return Colors.purple;
+      case 'custom':
+        return Colors.pink;
+      default:
+        return Colors.blue;
+    }
+  }
+
+// Mettre à jour _getSystemIcon pour inclure le système personnalisé
+  IconData _getSystemIcon(String system) {
+    switch (system) {
+      case 'character':
+        return Icons.tag;
+      case 'note_0_1_5':
+        return Icons.percent;
+      case 'note_0_3':
+        return Icons.percent;
+      case 'note_0_6':
+        return Icons.percent;
+      case 'custom':
+        return Icons.edit;
+      default:
+        return Icons.tag;
+    }
+  }
+
+// Mettre à jour _getSystemLabel pour inclure le système personnalisé
+  String _getSystemLabel(String system) {
+    switch (system) {
+      case 'character':
+        return 'نظام الحروف';
+      case 'note_0_1_5':
+        return '0-1.5';
+      case 'note_0_3':
+        return '0-3';
+      case 'note_0_6':
+        return '0-6';
+      case 'custom':
+        return 'مخصص';
+      default:
+        return 'نظام الحروف';
+    }
+  }
+
+// Mettre à jour _getSystemDescription pour inclure le système personnalisé
+  String _getSystemDescription(String system) {
+    switch (system) {
+      case 'character':
+        return 'التقييم باستخدام الرموز: --- / +-- / ++- / +++';
+      case 'note_0_1_5':
+        return 'التقييم باستخدام النقاط: 0 / 0.5 / 1 / 1.5';
+      case 'note_0_3':
+        return 'التقييم باستخدام النقاط: 0 / 1 / 2 / 3';
+      case 'note_0_6':
+        return 'التقييم باستخدام النقاط: 0 / 2 / 4 / 6';
+      case 'custom':
+        return 'نظام تقييم مخصص حسب اختيارك';
+      default:
+        return 'نظام التقييم بالحروف';
+    }
+  }
+
+// Mettre à jour _getEvaluationColors pour inclure le système personnalisé
+  Map<String, Color> _getEvaluationColors(String system,
+      {List<String>? customNotes}) {
+    if (system == 'character') {
+      return {
+        '( - - - )': Colors.red,
+        '( + - - )': Colors.orange,
+        '( + + - )': Colors.amber,
+        '( + + + )': Colors.green,
+      };
+    } else if (system == 'custom' && customNotes != null) {
+      // Pour le système personnalisé, utiliser un dégradé
+      final Map<String, Color> colors = {};
+      final int count = customNotes.length;
+
+      for (int i = 0; i < count; i++) {
+        final note = customNotes[i];
+        final ratio = i / (count - 1);
+
+        if (ratio < 0.25)
+          colors[note] = Colors.red;
+        else if (ratio < 0.5)
+          colors[note] = Colors.orange;
+        else if (ratio < 0.75)
+          colors[note] = Colors.amber;
+        else
+          colors[note] = Colors.green;
+      }
+
+      return colors;
+    } else {
+      // Pour les systèmes de notes
+      return {
+        '0': Colors.red,
+        '0.5': system == 'note_0_1_5' ? Colors.orange : Colors.red,
+        '1': system == 'note_0_1_5'
+            ? Colors.amber
+            : system == 'note_0_3'
+                ? Colors.orange
+                : Colors.red,
+        '1.5': Colors.green,
+        '2': system == 'note_0_3' ? Colors.amber : Colors.orange,
+        '3': Colors.green,
+        '4': Colors.amber,
+        '6': Colors.green,
+      };
+    }
+  }
+
+// Mettre à jour _getDisplayEvaluation pour inclure le système personnalisé
+  String _getDisplayEvaluation(String storedValue, String system,
+      {List<String>? customNotes}) {
+    if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
+      // Pour le système personnalisé, convertir de la valeur stockée
+      // On va mapper les 4 valeurs de base aux notes personnalisées
+      final Map<String, String> mapping = {
+        '( - - - )': customNotes[0],
+        '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
+        '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
+        '( + + + )': customNotes.last,
+      };
+
+      return mapping[storedValue] ?? customNotes[0];
+    }
+
+    switch (system) {
+      case 'character':
+        return storedValue;
+
+      case 'note_0_1_5':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '0.5';
+          case '( + + - )':
+            return '1';
+          case '( + + + )':
+            return '1.5';
+          default:
+            return '0';
+        }
+
+      case 'note_0_3':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '1';
+          case '( + + - )':
+            return '2';
+          case '( + + + )':
+            return '3';
+          default:
+            return '0';
+        }
+
+      case 'note_0_6':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '2';
+          case '( + + - )':
+            return '4';
+          case '( + + + )':
+            return '6';
+          default:
+            return '0';
+        }
+
+      default:
+        return storedValue;
+    }
+  }
+
+// Mettre à jour _getMappedEvaluation pour inclure le système personnalisé
+
+// Mettre à jour _buildSousBaremeCard pour accepter les notes personnalisées
+  Widget _buildSousBaremeCard(
+    Map<String, dynamic> sousBareme,
+    Function setState,
+    List<String> options,
+    Map<String, Color> colors,
+    String system, {
+    List<String>? customNotes,
+  }) {
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       margin: EdgeInsets.symmetric(vertical: 4, horizontal: 10),
       child: ListTile(
         title: Text(sousBareme['sousBaremeName'] ?? 'Sans nom'),
         subtitle: _buildEvaluationButtons(
           options,
           colors,
-          sousBareme['evaluation'],
-          (Marks) {
+          sousBareme['displayEvaluation'],
+          system,
+          (newDisplayValue) {
+            // Convertir pour le stockage
+            String storedValue = _getMappedEvaluation(
+              newDisplayValue,
+              system,
+              customNotes: customNotes,
+            );
+
             setState(() {
-              sousBareme['evaluation'] = Marks;
+              sousBareme['displayEvaluation'] = newDisplayValue;
+              sousBareme['storedEvaluation'] = storedValue;
             });
           },
         ),
       ),
     );
+  }
+
+// Fonction de sauvegarde simplifiée
+  Future<void> _saveEvaluationsSimple({
+    required String classId,
+    required String studentId,
+    required List<Map<String, dynamic>> selections,
+  }) async {
+    try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) throw Exception("Aucun utilisateur connecté");
+
+      // Pour chaque sélection
+      for (var selection in selections) {
+        final String baremeId = selection['baremeId'];
+
+        if ((selection['sousBaremes'] as List).isNotEmpty) {
+          // Pour les barèmes avec sous-barèmes
+          for (var sousBareme
+              in selection['sousBaremes'] as List<Map<String, dynamic>>) {
+            final String sousBaremeId = sousBareme['id'];
+            final String? evaluationValue = sousBareme['storedEvaluation'];
+
+            if (evaluationValue != null) {
+              // Chemin pour le sous-barème direct
+              final directDocRef = FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentUser.uid)
+                  .collection('user_classes')
+                  .doc(classId)
+                  .collection('students')
+                  .doc(studentId)
+                  .collection('baremes')
+                  .doc(sousBaremeId);
+
+              // Chemin pour le sous-barème imbriqué
+              final nestedDocRef = FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentUser.uid)
+                  .collection('user_classes')
+                  .doc(classId)
+                  .collection('students')
+                  .doc(studentId)
+                  .collection('baremes')
+                  .doc(baremeId)
+                  .collection('sous_baremes')
+                  .doc(sousBaremeId);
+
+              // Écrire dans les deux emplacements
+              await Future.wait([
+                directDocRef.set({
+                  'Marks': evaluationValue,
+                  'createdAt': FieldValue.serverTimestamp(),
+                }),
+                nestedDocRef.set({
+                  'Marks': evaluationValue,
+                  'createdAt': FieldValue.serverTimestamp(),
+                }),
+              ]);
+
+              // Mettre à jour le barème principal pour indiquer qu'il a des sous-barèmes
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentUser.uid)
+                  .collection('user_classes')
+                  .doc(classId)
+                  .collection('students')
+                  .doc(studentId)
+                  .collection('baremes')
+                  .doc(baremeId)
+                  .set({
+                'haveSoubarem': true,
+                'createdAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+            }
+          }
+        } else {
+          // Pour les barèmes sans sous-barèmes
+          final String? evaluationValue = selection['storedEvaluation'];
+
+          if (evaluationValue != null) {
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser.uid)
+                .collection('user_classes')
+                .doc(classId)
+                .collection('students')
+                .doc(studentId)
+                .collection('baremes')
+                .doc(baremeId)
+                .set({
+              'Marks': evaluationValue,
+              'createdAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+          }
+        }
+      }
+
+      print('Sauvegarde réussie');
+    } catch (e) {
+      print('Erreur lors de la sauvegarde simplifiée: $e');
+      rethrow;
+    }
+  }
+
+// Fonction pour charger les données de sélection
+  Future<void> _loadSelectionsData(
+    String classId,
+    String matiereId,
+    String studentId,
+    String selectedSystem,
+    Function(List<Map<String, dynamic>>) onDataLoaded,
+  ) async {
+    List<Map<String, dynamic>> selections = [];
+
+    CollectionReference selectionsRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser!.uid)
+        .collection('selections')
+        .doc(classId)
+        .collection(matiereId);
+
+    var selectionsSnapshot = await selectionsRef.get();
+
+    await Future.wait(selectionsSnapshot.docs.map((doc) async {
+      var sousBaremesRef = doc.reference.collection('sousBaremes');
+      var sousBaremesSnapshot = await sousBaremesRef.get();
+      List<Map<String, dynamic>> sousBaremes = [];
+
+      await Future.wait(sousBaremesSnapshot.docs.map((sousDoc) async {
+        // Récupérer la valeur stockée (toujours en caractères)
+        String? storedEvaluation = await _getEvaluation(
+          classId: classId,
+          studentId: studentId,
+          baremeId: doc.id,
+          sousBaremeId: sousDoc.id,
+        );
+
+        // Convertir pour l'affichage
+        String displayValue = _getDisplayEvaluation(
+            storedEvaluation ?? '( - - - )', selectedSystem);
+
+        sousBaremes.add({
+          'id': sousDoc.id,
+          'sousBaremeName': sousDoc['sousBaremeName'],
+          'displayEvaluation': displayValue,
+          'storedEvaluation': storedEvaluation ?? '( - - - )',
+        });
+      }));
+
+      // TRIER LES SOUS-BARÈMES
+      sousBaremes.sort((a, b) =>
+          (a['sousBaremeName'] ?? '').compareTo(b['sousBaremeName'] ?? ''));
+
+      // Pour les barèmes principaux
+      String? storedEvaluation = sousBaremes.isEmpty
+          ? await _getEvaluation(
+              classId: classId, studentId: studentId, baremeId: doc.id)
+          : null;
+
+      String displayValue = _getDisplayEvaluation(
+          storedEvaluation ?? '( - - - )', selectedSystem);
+
+      selections.add({
+        'id': doc.id,
+        'baremeId': doc['baremeId'],
+        'baremeName': doc['baremeName'],
+        'displayEvaluation': displayValue,
+        'storedEvaluation': storedEvaluation ?? '( - - - )',
+        'sousBaremes': sousBaremes,
+      });
+    }));
+
+    // TRIER LES BARÈMES
+    selections.sort(
+        (a, b) => (a['baremeName'] ?? '').compareTo(b['baremeName'] ?? ''));
+
+    onDataLoaded(selections);
   }
 
   Future<Color> _getStudentIndicatorColor(
@@ -3035,13 +4329,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                         ],
                       ),
 
-                      // IconButton(
-                      //   icon: Icon(Icons.assessment, color: Colors.purple),
-                      //   onPressed: () =>
-                      //       _navigateToDirectEvaluation(student['id']),
-                      //   tooltip: 'تقييم مباشر',
-                      // ),
-
                       IconButton(
                         icon: Icon(Icons.info_outline, color: Colors.blue),
                         onPressed: () =>
@@ -3085,14 +4372,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                   _editStudentName(student);
                 },
               ),
-              // ListTile(
-              //   leading: Icon(Icons.assessment, color: Colors.purple),
-              //   title: Text('تقييم مباشر'),
-              //   onTap: () {
-              //     Navigator.pop(context);
-              //     _navigateToDirectEvaluation(student['id']);
-              //   },
-              // ),
               ListTile(
                 leading: Icon(Icons.info_outline, color: Colors.blue),
                 title: Text('معلومات التلميذ'),
