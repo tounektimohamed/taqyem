@@ -114,6 +114,9 @@ dependencies:
   pull_to_refresh: ^2.0.0
   flutter_html_to_pdf: ^0.7.0
   lottie: ^3.3.2
+  google_ml_kit: ^0.20.0
+  image_picker_web: ^4.0.0
+  js: ^0.7.2
 dev_dependencies:
   flutter_test:
     sdk: flutter

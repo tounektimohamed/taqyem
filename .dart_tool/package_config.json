@@ -746,6 +746,96 @@
       "languageVersion": "3.7"
     },
     {
+      "name": "google_ml_kit",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_ml_kit-0.20.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
+      "name": "google_mlkit_barcode_scanning",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_mlkit_barcode_scanning-0.14.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
+      "name": "google_mlkit_commons",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_mlkit_commons-0.11.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
+      "name": "google_mlkit_digital_ink_recognition",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_mlkit_digital_ink_recognition-0.14.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
+      "name": "google_mlkit_entity_extraction",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_mlkit_entity_extraction-0.15.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
+      "name": "google_mlkit_face_detection",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_mlkit_face_detection-0.13.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
+      "name": "google_mlkit_face_mesh_detection",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_mlkit_face_mesh_detection-0.4.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
+      "name": "google_mlkit_image_labeling",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_mlkit_image_labeling-0.14.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
+      "name": "google_mlkit_language_id",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_mlkit_language_id-0.13.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
+      "name": "google_mlkit_object_detection",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_mlkit_object_detection-0.15.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
+      "name": "google_mlkit_pose_detection",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_mlkit_pose_detection-0.14.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
+      "name": "google_mlkit_selfie_segmentation",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_mlkit_selfie_segmentation-0.10.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
+      "name": "google_mlkit_smart_reply",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_mlkit_smart_reply-0.13.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
+      "name": "google_mlkit_text_recognition",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_mlkit_text_recognition-0.15.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
+      "name": "google_mlkit_translation",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_mlkit_translation-0.13.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.16"
+    },
+    {
       "name": "google_places_flutter",
       "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/google_places_flutter-2.1.1",
       "packageUri": "lib/",
@@ -890,6 +980,12 @@
       "languageVersion": "3.6"
     },
     {
+      "name": "image_picker_web",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/image_picker_web-4.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
       "name": "image_picker_windows",
       "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/image_picker_windows-0.2.2",
       "packageUri": "lib/",
@@ -918,6 +1014,12 @@
       "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/io-1.0.5",
       "packageUri": "lib/",
       "languageVersion": "3.4"
+    },
+    {
+      "name": "js",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/js-0.7.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.7"
     },
     {
       "name": "json_annotation",

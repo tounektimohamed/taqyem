@@ -1,0 +1,6 @@
+2026/01/06-14:09:19.773 4cdc Creating DB /tmp/flutter_tools.IEQQIG/flutter_tools_chrome_device.QHEXLD/Default/IndexedDB/https_openrouter.ai_0.indexeddb.leveldb since it was missing.
+2026/01/06-14:09:19.810 4cdc Reusing MANIFEST /tmp/flutter_tools.IEQQIG/flutter_tools_chrome_device.QHEXLD/Default/IndexedDB/https_openrouter.ai_0.indexeddb.leveldb/MANIFEST-000001
+2026/01/06-14:18:25.992 4cdd Level-0 table #5: started
+2026/01/06-14:18:26.030 4cdd Level-0 table #5: 134197 bytes OK
+2026/01/06-14:18:26.038 4cdd Delete type=0 #3
+2026/01/06-14:18:26.039 4cdd Manual compaction at level-0 from (begin) .. (end); will stop at (end)

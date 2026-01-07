@@ -5644,49 +5644,57 @@ class _StudentsTableState extends State<StudentsTable> {
   }
 
 // NOUVELLE MÉTHODE: Cellule de note
-  Widget _buildMarkCell(String studentId, String baremeKey) {
-    return Container(
-      width: 110,
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: FutureBuilder<String>(
-        future: _getSelectedValue(studentId, baremeKey),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
-              ),
-            );
-          }
-          final value = snapshot.data ?? _dropdownValues[0];
-          return Container(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              color: _getValueColor(value).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: _getValueColor(value).withOpacity(0.3),
-              ),
-            ),
-            child: Center(
-              child: Text(
-                value,
-                style: TextStyle(
-                  color: _getValueColor(value),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
-              ),
+Widget _buildMarkCell(String studentId, String baremeKey) {
+  return Container(
+    width: 110,
+    padding: EdgeInsets.symmetric(vertical: 8),
+    child: FutureBuilder<String>(
+      future: _getSelectedValue(studentId, baremeKey),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
             ),
           );
-        },
-      ),
-    );
-  }
-
+        }
+        final value = snapshot.data ?? _dropdownValues[0];
+        
+        // Vérifier si c'est "غائب"
+        final isAbsent = value == 'غائب';
+        
+        return Container(
+          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: isAbsent 
+              ? Colors.grey.withOpacity(0.2)
+              : _getValueColor(value).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: isAbsent 
+                ? Colors.grey
+                : _getValueColor(value).withOpacity(0.3),
+            ),
+          ),
+          child: Center(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: isAbsent ? Colors.grey : _getValueColor(value),
+                fontWeight: FontWeight.bold,
+                fontSize: isAbsent ? 10 : 12,
+                fontStyle: isAbsent ? FontStyle.italic : FontStyle.normal,
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
+}
 // NOUVELLE MÉTHODE: Lignes de boutons
   List<DataRow> _buildButtonRows(
       Map<String, List<Map<String, dynamic>>> groupedBaremes) {
@@ -6012,63 +6020,72 @@ class _StudentsTableState extends State<StudentsTable> {
     return result;
   }
 
-  Future<String> _getSelectedValue(String studentId, String baremeKey) async {
-    try {
-      // Récupérer le système d'évaluation
-      final String evaluationSystem = await _getEvaluationSystem(
-          widget.selectedClass, widget.selectedMatiere);
-      final List<String> customNotes =
-          await _loadCustomNotes(widget.selectedClass, widget.selectedMatiere);
 
-      String storedValue = _dropdownValues[0];
+Future<String> _getSelectedValue(String studentId, String baremeKey) async {
+  try {
+    // Récupérer le système d'évaluation
+    final String evaluationSystem = await _getEvaluationSystem(
+        widget.selectedClass, widget.selectedMatiere);
+    final List<String> customNotes =
+        await _loadCustomNotes(widget.selectedClass, widget.selectedMatiere);
 
-      if (baremeKey.contains('-')) {
-        var parts = baremeKey.split('-');
-        var baremeId = parts[0];
-        var sousBaremeId = parts[1];
+    String storedValue = _dropdownValues[0];
 
-        var sousBaremeDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(widget.currentUser.uid)
-            .collection('user_classes')
-            .doc(widget.classDocId)
-            .collection('students')
-            .doc(studentId)
-            .collection('baremes')
-            .doc(baremeId)
-            .collection('sous_baremes')
-            .doc(sousBaremeId)
-            .get();
+    if (baremeKey.contains('-')) {
+      var parts = baremeKey.split('-');
+      var baremeId = parts[0];
+      var sousBaremeId = parts[1];
 
-        if (sousBaremeDoc.exists) {
-          storedValue =
-              sousBaremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
+      var sousBaremeDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('user_classes')
+          .doc(widget.classDocId)
+          .collection('students')
+          .doc(studentId)
+          .collection('baremes')
+          .doc(baremeId)
+          .collection('sous_baremes')
+          .doc(sousBaremeId)
+          .get();
+
+      if (sousBaremeDoc.exists) {
+        // Vérifier si l'élève est marqué absent
+        if (sousBaremeDoc.data()?['isAbsent'] == true) {
+          return 'غائب';
         }
-      } else {
-        var baremeDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(widget.currentUser.uid)
-            .collection('user_classes')
-            .doc(widget.classDocId)
-            .collection('students')
-            .doc(studentId)
-            .collection('baremes')
-            .doc(baremeKey)
-            .get();
-
-        if (baremeDoc.exists) {
-          storedValue = baremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
-        }
+        storedValue =
+            sousBaremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
       }
+    } else {
+      var baremeDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('user_classes')
+          .doc(widget.classDocId)
+          .collection('students')
+          .doc(studentId)
+          .collection('baremes')
+          .doc(baremeKey)
+          .get();
 
-      // Convertir selon le système
-      return _getDisplayEvaluation(storedValue, evaluationSystem,
-          customNotes: customNotes);
-    } catch (e) {
-      print('Erreur récupération valeur pour $baremeKey: $e');
-      return _dropdownValues[0];
+      if (baremeDoc.exists) {
+        // Vérifier si l'élève est marqué absent
+        if (baremeDoc.data()?['isAbsent'] == true) {
+          return 'غائب';
+        }
+        storedValue = baremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
+      }
     }
+
+    // Convertir selon le système
+    return _getDisplayEvaluation(storedValue, evaluationSystem,
+        customNotes: customNotes);
+  } catch (e) {
+    print('Erreur récupération valeur pour $baremeKey: $e');
+    return _dropdownValues[0];
   }
+}
 
 // Méthodes auxiliaires à ajouter dans _StudentsTableState
   Future<String> _getEvaluationSystem(String classId, String matiereId) async {
@@ -6109,70 +6126,75 @@ class _StudentsTableState extends State<StudentsTable> {
       return [];
     }
   }
-
-  String _getDisplayEvaluation(String storedValue, String system,
-      {List<String>? customNotes}) {
-    if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
-      final Map<String, String> mapping = {
-        '( - - - )': customNotes[0],
-        '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
-        '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
-        '( + + + )': customNotes.last,
-      };
-      return mapping[storedValue] ?? customNotes[0];
-    }
-
-    switch (system) {
-      case 'character':
-        return storedValue;
-
-      case 'note_0_1_5':
-        switch (storedValue) {
-          case '( - - - )':
-            return '0';
-          case '( + - - )':
-            return '0.5';
-          case '( + + - )':
-            return '1';
-          case '( + + + )':
-            return '1.5';
-          default:
-            return '0';
-        }
-
-      case 'note_0_3':
-        switch (storedValue) {
-          case '( - - - )':
-            return '0';
-          case '( + - - )':
-            return '1';
-          case '( + + - )':
-            return '2';
-          case '( + + + )':
-            return '3';
-          default:
-            return '0';
-        }
-
-      case 'note_0_6':
-        switch (storedValue) {
-          case '( - - - )':
-            return '0';
-          case '( + - - )':
-            return '2';
-          case '( + + - )':
-            return '4';
-          case '( + + + )':
-            return '6';
-          default:
-            return '0';
-        }
-
-      default:
-        return storedValue;
-    }
+String _getDisplayEvaluation(String storedValue, String system,
+    {List<String>? customNotes}) {
+  
+  // Vérifier si c'est "غائب"
+  if (storedValue == 'غائب') {
+    return 'غائب';
+  }
+  
+  // Le reste du code existant...
+  if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
+    final Map<String, String> mapping = {
+      '( - - - )': customNotes[0],
+      '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
+      '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
+      '( + + + )': customNotes.last,
+    };
+    return mapping[storedValue] ?? customNotes[0];
   }
 
+  switch (system) {
+    case 'character':
+      return storedValue;
+
+    case 'note_0_1_5':
+      switch (storedValue) {
+        case '( - - - )':
+          return '0';
+        case '( + - - )':
+          return '0.5';
+        case '( + + - )':
+          return '1';
+        case '( + + + )':
+          return '1.5';
+        default:
+          return '0';
+      }
+
+    case 'note_0_3':
+      switch (storedValue) {
+        case '( - - - )':
+          return '0';
+        case '( + - - )':
+          return '1';
+        case '( + + - )':
+          return '2';
+        case '( + + + )':
+          return '3';
+        default:
+          return '0';
+      }
+
+    case 'note_0_6':
+      switch (storedValue) {
+        case '( - - - )':
+          return '0';
+        case '( + - - )':
+          return '2';
+        case '( + + - )':
+          return '4';
+        case '( + + + )':
+          return '6';
+        default:
+          return '0';
+      }
+
+    default:
+      return storedValue;
+  }
+}
   List<String> _getDropdownValues(
       String evaluationSystem, List<String> customNotes) {
     switch (evaluationSystem) {

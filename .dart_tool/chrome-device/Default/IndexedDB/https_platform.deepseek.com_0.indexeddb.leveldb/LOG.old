@@ -1,0 +1,6 @@
+2026/01/06-13:42:58.081 4cdc Creating DB /tmp/flutter_tools.IEQQIG/flutter_tools_chrome_device.QHEXLD/Default/IndexedDB/https_platform.deepseek.com_0.indexeddb.leveldb since it was missing.
+2026/01/06-13:42:58.104 4cdc Reusing MANIFEST /tmp/flutter_tools.IEQQIG/flutter_tools_chrome_device.QHEXLD/Default/IndexedDB/https_platform.deepseek.com_0.indexeddb.leveldb/MANIFEST-000001
+2026/01/06-13:43:01.705 4cdd Level-0 table #5: started
+2026/01/06-13:43:01.711 4cdd Level-0 table #5: 1375 bytes OK
+2026/01/06-13:43:01.719 4cdd Delete type=0 #3
+2026/01/06-13:43:01.719 4cdd Manual compaction at level-0 from (begin) .. (end); will stop at (end)

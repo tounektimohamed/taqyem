@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
 import 'package:Taqyem/taqyem/listedeselection.dart';
+import 'package:Taqyem/taqyem/ocr_assessment_capture_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -208,6 +209,93 @@ class _BaremesPageState extends State<BaremesPage> {
     setState(() {
       _isFrenchInterface = DataTranslator.isForeignMatiere(widget.matiereName);
     });
+  }
+ Future<void> _configureOCRLevels() async {
+    // Liste prédéfinie des niveaux arabes
+    List<String> predefinedLevels = [
+      'انعدام التملك ( - - - )',
+      'دون التملك الأدنى ( + - - )',
+      'التملك الأدنى ( + + - )',
+      'التملك الأقصى ( + + + )'
+    ];
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('تهيئة مستويات التقييم للتعرف البصري'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('تأكد أن المستويات التالية مطابقة للجدول في الصورة:'),
+              SizedBox(height: 16),
+              ...predefinedLevels.map((level) {
+                return ListTile(
+                  leading: Icon(Icons.check_circle, color: Colors.green),
+                  title: Text(level),
+                );
+              }).toList(),
+              SizedBox(height: 16),
+              SwitchListTile(
+                title: Text('تمكين التعرف البصري'),
+                value: true,
+                onChanged: (value) {
+                  // Sauvegarder la configuration OCR
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // Sauvegarder la configuration OCR
+              await _saveOCRConfiguration(predefinedLevels);
+              Navigator.pop(context);
+              // Naviguer vers la capture OCR
+              _navigateToOCRCapture();
+            },
+            child: Text('تأكيد والمتابعة'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveOCRConfiguration(List<String> levels) async {
+    try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('ocr_configurations')
+          .doc('${widget.selectedClass}-${widget.selectedMatiere}')
+          .set({
+        'levels': levels,
+        'mappedToSystem': 'character', // Car vous utilisez le système de caractères
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Erreur lors de la sauvegarde de la configuration OCR: $e');
+    }
+  }
+
+  void _navigateToOCRCapture() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => OCRAssessmentCapturePage(
+          classId: widget.selectedClass,
+          matiereId: widget.selectedMatiere,
+        ),
+      ),
+    );
   }
 
   Future<void> _showUtilityDialog() async {
