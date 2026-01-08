@@ -1893,104 +1893,104 @@ Future<Map<String, List<Map<String, dynamic>>>> _getGroupedStudentsData() async 
     }
   }
 
-  Widget _buildTranslatedHeader() {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [
-            Colors.blue.shade700,
-            Colors.blue.shade800,
-          ],
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _getTranslatedText('المدرسة:', 'École:') +
-                          ' ${widget.schoolName}',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      _getTranslatedText('الأستاذ:', 'Professeur:') +
-                          ' ${widget.profName}',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      _getTranslatedText('القسم:', 'Classe:') +
-                          ' ${widget.className}',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      _getTranslatedText('المادة:', 'Matière:') +
-                          ' ${widget.matiereName}',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12),
-          Container(
-            height: 1,
-            color: Colors.white.withOpacity(0.3),
-          ),
-          SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.assessment, color: Colors.white, size: 20),
-              SizedBox(width: 8),
-              Text(
-                _getTranslatedText(
-                    'معيار: ${widget.sousBaremeName ?? widget.baremeName}',
-                    'Critère: ${widget.sousBaremeName ?? widget.baremeName}'),
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  // Widget _buildTranslatedHeader() {
+  //   return Container(
+  //     padding: EdgeInsets.all(16),
+  //     decoration: BoxDecoration(
+  //       gradient: LinearGradient(
+  //         begin: Alignment.topRight,
+  //         end: Alignment.bottomLeft,
+  //         colors: [
+  //           Colors.blue.shade700,
+  //           Colors.blue.shade800,
+  //         ],
+  //       ),
+  //     ),
+  //     child: Column(
+  //       children: [
+  //         Row(
+  //           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  //           children: [
+  //             Expanded(
+  //               child: Column(
+  //                 crossAxisAlignment: CrossAxisAlignment.start,
+  //                 children: [
+  //                   Text(
+  //                     _getTranslatedText('المدرسة:', 'École:') +
+  //                         ' ${widget.schoolName}',
+  //                     style: TextStyle(
+  //                       color: Colors.white,
+  //                       fontSize: 16,
+  //                       fontWeight: FontWeight.bold,
+  //                     ),
+  //                   ),
+  //                   SizedBox(height: 4),
+  //                   Text(
+  //                     _getTranslatedText('الأستاذ:', 'Professeur:') +
+  //                         ' ${widget.profName}',
+  //                     style: TextStyle(
+  //                       color: Colors.white.withOpacity(0.9),
+  //                       fontSize: 14,
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //             SizedBox(width: 16),
+  //             Expanded(
+  //               child: Column(
+  //                 crossAxisAlignment: CrossAxisAlignment.end,
+  //                 children: [
+  //                   Text(
+  //                     _getTranslatedText('القسم:', 'Classe:') +
+  //                         ' ${widget.className}',
+  //                     style: TextStyle(
+  //                       color: Colors.white,
+  //                       fontSize: 16,
+  //                       fontWeight: FontWeight.bold,
+  //                     ),
+  //                   ),
+  //                   SizedBox(height: 4),
+  //                   Text(
+  //                     _getTranslatedText('المادة:', 'Matière:') +
+  //                         ' ${widget.matiereName}',
+  //                     style: TextStyle(
+  //                       color: Colors.white.withOpacity(0.9),
+  //                       fontSize: 14,
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //         SizedBox(height: 12),
+  //         Container(
+  //           height: 1,
+  //           color: Colors.white.withOpacity(0.3),
+  //         ),
+  //         SizedBox(height: 8),
+  //         Row(
+  //           mainAxisAlignment: MainAxisAlignment.center,
+  //           children: [
+  //             Icon(Icons.assessment, color: Colors.white, size: 20),
+  //             SizedBox(width: 8),
+  //             Text(
+  //               _getTranslatedText(
+  //                   'معيار: ${widget.sousBaremeName ?? widget.baremeName}',
+  //                   'Critère: ${widget.sousBaremeName ?? widget.baremeName}'),
+  //               style: TextStyle(
+  //                 color: Colors.white,
+  //                 fontSize: 14,
+  //                 fontWeight: FontWeight.w500,
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -2128,14 +2128,14 @@ Future<Map<String, List<Map<String, dynamic>>>> _getGroupedStudentsData() async 
                     ),
                     child: Column(
                       children: [
-                        _buildTranslatedHeader(),
+                     //   _buildTranslatedHeader(),
                         Container(
                           padding: EdgeInsets.symmetric(
                               vertical: 16.0, horizontal: 20),
                           child: Column(
                             children: [
                               Text(
-                                _getTranslatedText('خطة العلاج وأصل الخطأ',
+                                _getTranslatedText('تصنيف الأخطاء',
                                     'Plan de traitement et origine de l\'erreur'),
                                 style: TextStyle(
                                   fontSize: 20,

@@ -116,85 +116,101 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
 // Mettre à jour _getMappedEvaluation pour inclure le système personnalisé
 //
 
-  String _getMappedEvaluation(String displayValue, String system,
-      {List<String>? customNotes}) {
-    if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
-      // Pour le système personnalisé, trouver l'index de la valeur affichée
-      // et mapper vers le caractère correspondant
-      int index = customNotes.indexOf(displayValue);
 
-      // Mapper vers les 4 niveaux
-      switch (index) {
-        case 0:
-          return '( - - - )'; // Premier élément = plus bas
-        case 1:
-          // Si seulement 2 éléments, le deuxième = +++
-          if (customNotes.length == 2) return '( + + + )';
-          // Sinon = +--
-          return '( + - - )';
-        case 2:
-          // Si 3 éléments, le troisième = +++
-          if (customNotes.length == 3) return '( + + + )';
-          // Sinon = ++-
-          return '( + + - )';
-        case 3:
-          return '( + + + )'; // Dernier élément = plus haut
-        default:
-          return '( - - - )'; // Par défaut
+String _getMappedEvaluation(String displayValue, String system,
+    {List<String>? customNotes}) {
+  // Vérifier si c'est "غائب"
+  if (displayValue == 'غائب') {
+    return 'غائب';
+  }
+
+  if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
+    // Pour le système personnalisé, trouver l'index de la valeur affichée
+    int index = customNotes.indexOf(displayValue);
+    
+    if (index == -1) {
+      // Si la valeur n'est pas trouvée, chercher une correspondance partielle
+      for (int i = 0; i < customNotes.length; i++) {
+        if (customNotes[i].contains(displayValue) || displayValue.contains(customNotes[i])) {
+          index = i;
+          break;
+        }
       }
     }
+    
+    if (index == -1) {
+      // Si toujours pas trouvé, utiliser la première valeur
+      return '( - - - )';
+    }
 
-    // Le reste du code reste inchangé...
-    switch (system) {
-      case 'character':
-        return displayValue;
-
-      case 'note_0_1_5':
-        switch (displayValue) {
-          case '0':
-            return '( - - - )';
-          case '0.5':
-            return '( + - - )';
-          case '1':
-            return '( + + - )';
-          case '1.5':
-            return '( + + + )';
-          default:
-            return '( - - - )';
-        }
-
-      case 'note_0_3':
-        switch (displayValue) {
-          case '0':
-            return '( - - - )';
-          case '1':
-            return '( + - - )';
-          case '2':
-            return '( + + - )';
-          case '3':
-            return '( + + + )';
-          default:
-            return '( - - - )';
-        }
-
-      case 'note_0_6':
-        switch (displayValue) {
-          case '0':
-            return '( - - - )';
-          case '2':
-            return '( + - - )';
-          case '4':
-            return '( + + - )';
-          case '6':
-            return '( + + + )';
-          default:
-            return '( - - - )';
-        }
-
-      default:
-        return '( - - - )';
+    // Mapper vers les 4 niveaux selon la position dans la liste
+    if (customNotes.length == 2) {
+      // 2 valeurs : bas = ---, haut = +++
+      return index == 0 ? '( - - - )' : '( + + + )';
+    } else if (customNotes.length == 3) {
+      // 3 valeurs : bas = ---, moyen = ++-, haut = +++
+      switch (index) {
+        case 0: return '( - - - )';
+        case 1: return '( + + - )';
+        case 2: return '( + + + )';
+        default: return '( - - - )';
+      }
+    } else if (customNotes.length == 4) {
+      // 4 valeurs : bas = ---, moyen-bas = +--, moyen-haut = ++-, haut = +++
+      switch (index) {
+        case 0: return '( - - - )';
+        case 1: return '( + - - )';
+        case 2: return '( + + - )';
+        case 3: return '( + + + )';
+        default: return '( - - - )';
+      }
+    } else {
+      // Pour plus de 4 valeurs, répartir proportionnellement
+      final ratio = index / (customNotes.length - 1);
+      if (ratio < 0.25) return '( - - - )';
+      if (ratio < 0.5) return '( + - - )';
+      if (ratio < 0.75) return '( + + - )';
+      return '( + + + )';
     }
   }
+
+  // Le reste du code pour les autres systèmes...
+  switch (system) {
+    case 'character':
+      return displayValue;
+
+    case 'note_0_1_5':
+      switch (displayValue) {
+        case '0': return '( - - - )';
+        case '0.5': return '( + - - )';
+        case '1': return '( + + - )';
+        case '1.5': return '( + + + )';
+        default: return '( - - - )';
+      }
+
+    case 'note_0_3':
+      switch (displayValue) {
+        case '0': return '( - - - )';
+        case '1': return '( + - - )';
+        case '2': return '( + + - )';
+        case '3': return '( + + + )';
+        default: return '( - - - )';
+      }
+
+    case 'note_0_6':
+      switch (displayValue) {
+        case '0': return '( - - - )';
+        case '2': return '( + - - )';
+        case '4': return '( + + - )';
+        case '6': return '( + + + )';
+        default: return '( - - - )';
+      }
+
+    default:
+      return displayValue;
+  }
+}
+
 //// Fonction pour convertir la valeur stockée en valeur d'affichage selon le système
 
   Future<void> _navigateAfterSelection(String classId, String matiereId) async {
@@ -2219,27 +2235,27 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                           children:
                                               baremeCustomNotes.map((note) {
                                             return Container(
-                                              // padding: EdgeInsets.symmetric(
-                                              //     horizontal: 12, vertical: 6),
-                                              // decoration: BoxDecoration(
-                                              //   color: Colors.pink
-                                              //       .withOpacity(0.1),
-                                              //   borderRadius:
-                                              //       BorderRadius.circular(8),
-                                              //   border: Border.all(
-                                              //     color: Colors.pink,
-                                              //     width: 1,
-                                              //   ),
-                                              // ),
-                                              // child: Text(
-                                              //   note,
-                                              //   style: TextStyle(
-                                              //     color: Colors.pink,
-                                              //     fontWeight: FontWeight.bold,
-                                              //     fontSize: 14,
-                                              //   ),
-                                              // ),
-                                            );
+                                                // padding: EdgeInsets.symmetric(
+                                                //     horizontal: 12, vertical: 6),
+                                                // decoration: BoxDecoration(
+                                                //   color: Colors.pink
+                                                //       .withOpacity(0.1),
+                                                //   borderRadius:
+                                                //       BorderRadius.circular(8),
+                                                //   border: Border.all(
+                                                //     color: Colors.pink,
+                                                //     width: 1,
+                                                //   ),
+                                                // ),
+                                                // child: Text(
+                                                //   note,
+                                                //   style: TextStyle(
+                                                //     color: Colors.pink,
+                                                //     fontWeight: FontWeight.bold,
+                                                //     fontSize: 14,
+                                                //   ),
+                                                // ),
+                                                );
                                           }).toList(),
                                         ),
                                       ),
@@ -3039,77 +3055,74 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
 
 // Mettre à jour _getDisplayEvaluation pour inclure le système personnalisé
 
+  String _getDisplayEvaluation(String storedValue, String system,
+      {List<String>? customNotes}) {
+    // Vérifier si c'est "غائب"
+    if (storedValue == 'غائب') {
+      return 'غائب';
+    }
 
-String _getDisplayEvaluation(String storedValue, String system,
-    {List<String>? customNotes}) {
-  
-  // Vérifier si c'est "غائب"
-  if (storedValue == 'غائب') {
-    return 'غائب';
+    // Le reste du code existant...
+    if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
+      final Map<String, String> mapping = {
+        '( - - - )': customNotes[0],
+        '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
+        '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
+        '( + + + )': customNotes.last,
+      };
+      return mapping[storedValue] ?? customNotes[0];
+    }
+
+    switch (system) {
+      case 'character':
+        return storedValue;
+
+      case 'note_0_1_5':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '0.5';
+          case '( + + - )':
+            return '1';
+          case '( + + + )':
+            return '1.5';
+          default:
+            return '0';
+        }
+
+      case 'note_0_3':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '1';
+          case '( + + - )':
+            return '2';
+          case '( + + + )':
+            return '3';
+          default:
+            return '0';
+        }
+
+      case 'note_0_6':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '2';
+          case '( + + - )':
+            return '4';
+          case '( + + + )':
+            return '6';
+          default:
+            return '0';
+        }
+
+      default:
+        return storedValue;
+    }
   }
-  
-  // Le reste du code existant...
-  if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
-    final Map<String, String> mapping = {
-      '( - - - )': customNotes[0],
-      '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
-      '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
-      '( + + + )': customNotes.last,
-    };
-    return mapping[storedValue] ?? customNotes[0];
-  }
-
-  switch (system) {
-    case 'character':
-      return storedValue;
-
-    case 'note_0_1_5':
-      switch (storedValue) {
-        case '( - - - )':
-          return '0';
-        case '( + - - )':
-          return '0.5';
-        case '( + + - )':
-          return '1';
-        case '( + + + )':
-          return '1.5';
-        default:
-          return '0';
-      }
-
-    case 'note_0_3':
-      switch (storedValue) {
-        case '( - - - )':
-          return '0';
-        case '( + - - )':
-          return '1';
-        case '( + + - )':
-          return '2';
-        case '( + + + )':
-          return '3';
-        default:
-          return '0';
-      }
-
-    case 'note_0_6':
-      switch (storedValue) {
-        case '( - - - )':
-          return '0';
-        case '( + - - )':
-          return '2';
-        case '( + + - )':
-          return '4';
-        case '( + + + )':
-          return '6';
-        default:
-          return '0';
-      }
-
-    default:
-      return storedValue;
-  }
-}
-
 
 // Mettre à jour _buildSousBaremeCard pour accepter les notes personnalisées
   Widget _buildSousBaremeCard(
@@ -3149,57 +3162,98 @@ String _getDisplayEvaluation(String storedValue, String system,
 
 // Fonction de sauvegarde simplifiée
 
-Future<void> _saveEvaluationsSimple({
-  required String classId,
-  required String studentId,
-  required List<Map<String, dynamic>> selections,
-}) async {
-  try {
-    User? currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) throw Exception("Aucun utilisateur connecté");
+  Future<void> _saveEvaluationsSimple({
+    required String classId,
+    required String studentId,
+    required List<Map<String, dynamic>> selections,
+  }) async {
+    try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) throw Exception("Aucun utilisateur connecté");
 
-    // Pour chaque sélection
-    for (var selection in selections) {
-      final String baremeId = selection['baremeId'];
+      // Pour chaque sélection
+      for (var selection in selections) {
+        final String baremeId = selection['baremeId'];
 
-      if ((selection['sousBaremes'] as List).isNotEmpty) {
-        // Pour les barèmes avec sous-barèmes
-        for (var sousBareme
-            in selection['sousBaremes'] as List<Map<String, dynamic>>) {
-          final String sousBaremeId = sousBareme['id'];
-          final String? evaluationValue = sousBareme['storedEvaluation'];
+        if ((selection['sousBaremes'] as List).isNotEmpty) {
+          // Pour les barèmes avec sous-barèmes
+          for (var sousBareme
+              in selection['sousBaremes'] as List<Map<String, dynamic>>) {
+            final String sousBaremeId = sousBareme['id'];
+            final String? evaluationValue = sousBareme['storedEvaluation'];
+
+            if (evaluationValue != null) {
+              // Chemin pour le sous-barème direct
+              final directDocRef = FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentUser.uid)
+                  .collection('user_classes')
+                  .doc(classId)
+                  .collection('students')
+                  .doc(studentId)
+                  .collection('baremes')
+                  .doc(sousBaremeId);
+
+              // Chemin pour le sous-barème imbriqué
+              final nestedDocRef = FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentUser.uid)
+                  .collection('user_classes')
+                  .doc(classId)
+                  .collection('students')
+                  .doc(studentId)
+                  .collection('baremes')
+                  .doc(baremeId)
+                  .collection('sous_baremes')
+                  .doc(sousBaremeId);
+
+              // Préparer les données
+              Map<String, dynamic> data = {
+                'Marks': evaluationValue,
+                'createdAt': FieldValue.serverTimestamp(),
+              };
+
+              // Ajouter le statut absent si nécessaire
+              if (evaluationValue == 'غائب') {
+                data['isAbsent'] = true;
+                data['absenceDate'] = Timestamp.now();
+              } else {
+                data['isAbsent'] = false;
+                data['absenceDate'] = null;
+              }
+
+              // Écrire dans les deux emplacements
+              await Future.wait([
+                directDocRef.set(data, SetOptions(merge: true)),
+                nestedDocRef.set(data, SetOptions(merge: true)),
+              ]);
+
+              // Mettre à jour le barème principal pour indiquer qu'il a des sous-barèmes
+              await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentUser.uid)
+                  .collection('user_classes')
+                  .doc(classId)
+                  .collection('students')
+                  .doc(studentId)
+                  .collection('baremes')
+                  .doc(baremeId)
+                  .set({
+                'haveSoubarem': true,
+                'createdAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+            }
+          }
+        } else {
+          // Pour les barèmes sans sous-barèmes
+          final String? evaluationValue = selection['storedEvaluation'];
 
           if (evaluationValue != null) {
-            // Chemin pour le sous-barème direct
-            final directDocRef = FirebaseFirestore.instance
-                .collection('users')
-                .doc(currentUser.uid)
-                .collection('user_classes')
-                .doc(classId)
-                .collection('students')
-                .doc(studentId)
-                .collection('baremes')
-                .doc(sousBaremeId);
-
-            // Chemin pour le sous-barème imbriqué
-            final nestedDocRef = FirebaseFirestore.instance
-                .collection('users')
-                .doc(currentUser.uid)
-                .collection('user_classes')
-                .doc(classId)
-                .collection('students')
-                .doc(studentId)
-                .collection('baremes')
-                .doc(baremeId)
-                .collection('sous_baremes')
-                .doc(sousBaremeId);
-
-            // Préparer les données
             Map<String, dynamic> data = {
               'Marks': evaluationValue,
               'createdAt': FieldValue.serverTimestamp(),
             };
-            
+
             // Ajouter le statut absent si nécessaire
             if (evaluationValue == 'غائب') {
               data['isAbsent'] = true;
@@ -3209,13 +3263,6 @@ Future<void> _saveEvaluationsSimple({
               data['absenceDate'] = null;
             }
 
-            // Écrire dans les deux emplacements
-            await Future.wait([
-              directDocRef.set(data, SetOptions(merge: true)),
-              nestedDocRef.set(data, SetOptions(merge: true)),
-            ]);
-
-            // Mettre à jour le barème principal pour indiquer qu'il a des sous-barèmes
             await FirebaseFirestore.instance
                 .collection('users')
                 .doc(currentUser.uid)
@@ -3225,51 +3272,17 @@ Future<void> _saveEvaluationsSimple({
                 .doc(studentId)
                 .collection('baremes')
                 .doc(baremeId)
-                .set({
-              'haveSoubarem': true,
-              'createdAt': FieldValue.serverTimestamp(),
-            }, SetOptions(merge: true));
+                .set(data, SetOptions(merge: true));
           }
-        }
-      } else {
-        // Pour les barèmes sans sous-barèmes
-        final String? evaluationValue = selection['storedEvaluation'];
-
-        if (evaluationValue != null) {
-          Map<String, dynamic> data = {
-            'Marks': evaluationValue,
-            'createdAt': FieldValue.serverTimestamp(),
-          };
-          
-          // Ajouter le statut absent si nécessaire
-          if (evaluationValue == 'غائب') {
-            data['isAbsent'] = true;
-            data['absenceDate'] = Timestamp.now();
-          } else {
-            data['isAbsent'] = false;
-            data['absenceDate'] = null;
-          }
-          
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(currentUser.uid)
-              .collection('user_classes')
-              .doc(classId)
-              .collection('students')
-              .doc(studentId)
-              .collection('baremes')
-              .doc(baremeId)
-              .set(data, SetOptions(merge: true));
         }
       }
-    }
 
-    print('Sauvegarde réussie');
-  } catch (e) {
-    print('Erreur lors de la sauvegarde simplifiée: $e');
-    rethrow;
+      print('Sauvegarde réussie');
+    } catch (e) {
+      print('Erreur lors de la sauvegarde simplifiée: $e');
+      rethrow;
+    }
   }
-}
 
 // Fonction pour charger les données de sélection
 
@@ -3411,139 +3424,140 @@ Future<void> _saveEvaluationsSimple({
       rethrow;
     }
   }
-  
-  
-  
+
   Future<Color> _getStudentIndicatorColor(
-    String classId, String studentId, String? subjectId) async {
-  if (subjectId == null || subjectId.isEmpty) return Colors.red;
+      String classId, String studentId, String? subjectId) async {
+    if (subjectId == null || subjectId.isEmpty) return Colors.red;
 
-  try {
-    // 1. Vérifier s'il y a des sélections pour cette matière
-    final selectionsSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('selections')
-        .doc(classId)
-        .collection(subjectId)
-        .limit(1)
-        .get();
+    try {
+      // 1. Vérifier s'il y a des sélections pour cette matière
+      final selectionsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(classId)
+          .collection(subjectId)
+          .limit(1)
+          .get();
 
-    if (selectionsSnapshot.docs.isEmpty) {
-      return Colors.red; // Pas encore programmé (aucun barème défini)
-    }
+      if (selectionsSnapshot.docs.isEmpty) {
+        return Colors.red; // Pas encore programmé (aucun barème défini)
+      }
 
-    // 2. Récupérer toutes les sélections
-    final allSelections = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('selections')
-        .doc(classId)
-        .collection(subjectId)
-        .get();
+      // 2. Récupérer toutes les sélections
+      final allSelections = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(classId)
+          .collection(subjectId)
+          .get();
 
-    int totalBaremes = 0;
-    int evaluatedBaremes = 0;
+      int totalBaremes = 0;
+      int evaluatedBaremes = 0;
 
-    // 3. Parcourir toutes les sélections
-    for (var selection in allSelections.docs) {
-      final baremeId = selection.id;
-      if (baremeId.isEmpty) continue;
-      
-      if (!selection.exists) continue;
+      // 3. Parcourir toutes les sélections
+      for (var selection in allSelections.docs) {
+        final baremeId = selection.id;
+        if (baremeId.isEmpty) continue;
 
-      final data = selection.data();
-      
-      // Vérifier si ce bareme a des sous-baremes
-      final hasSousBaremes = (data['sousBaremes'] as List<dynamic>?)?.isNotEmpty ?? false;
-      
-      if (hasSousBaremes) {
-        try {
-          // Compter les sous-baremes
-          final sousBaremesSnapshot = await selection.reference
-              .collection('sousBaremes')
-              .get();
-          
-          totalBaremes += sousBaremesSnapshot.docs.length;
-          
-          // Vérifier chaque sous-bareme
-          for (var sousBareme in sousBaremesSnapshot.docs) {
-            final sousBaremeId = sousBareme.id;
-            if (sousBaremeId.isEmpty) continue;
-            
-            try {
-              final evaluation = await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(currentUser!.uid)
-                  .collection('user_classes')
-                  .doc(classId)
-                  .collection('students')
-                  .doc(studentId)
-                  .collection('baremes')
-                  .doc(sousBaremeId)
-                  .get();
-              
-              // MODIFICATION IMPORTANTE : 
-              // Une évaluation existe si le document existe (peu importe la valeur)
-              if (evaluation.exists) {
-                evaluatedBaremes++;
+        if (!selection.exists) continue;
+
+        final data = selection.data();
+
+        // Vérifier si ce bareme a des sous-baremes
+        final hasSousBaremes =
+            (data['sousBaremes'] as List<dynamic>?)?.isNotEmpty ?? false;
+
+        if (hasSousBaremes) {
+          try {
+            // Compter les sous-baremes
+            final sousBaremesSnapshot =
+                await selection.reference.collection('sousBaremes').get();
+
+            totalBaremes += sousBaremesSnapshot.docs.length;
+
+            // Vérifier chaque sous-bareme
+            for (var sousBareme in sousBaremesSnapshot.docs) {
+              final sousBaremeId = sousBareme.id;
+              if (sousBaremeId.isEmpty) continue;
+
+              try {
+                final evaluation = await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser!.uid)
+                    .collection('user_classes')
+                    .doc(classId)
+                    .collection('students')
+                    .doc(studentId)
+                    .collection('baremes')
+                    .doc(sousBaremeId)
+                    .get();
+
+                // MODIFICATION IMPORTANTE :
+                // Une évaluation existe si le document existe (peu importe la valeur)
+                if (evaluation.exists) {
+                  evaluatedBaremes++;
+                }
+              } catch (e) {
+                print(
+                    'Erreur lors de la récupération de l\'évaluation pour sous-bareme $sousBaremeId: $e');
+                continue;
               }
-            } catch (e) {
-              print('Erreur lors de la récupération de l\'évaluation pour sous-bareme $sousBaremeId: $e');
-              continue;
             }
+          } catch (e) {
+            print('Erreur lors de la récupération des sous-baremes: $e');
+            continue;
           }
-        } catch (e) {
-          print('Erreur lors de la récupération des sous-baremes: $e');
-          continue;
-        }
-      } else {
-        // Bareme principal sans sous-baremes
-        totalBaremes++;
-        
-        try {
-          final evaluation = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(currentUser!.uid)
-              .collection('user_classes')
-              .doc(classId)
-              .collection('students')
-              .doc(studentId)
-              .collection('baremes')
-              .doc(baremeId)
-              .get();
-          
-          // MODIFICATION IMPORTANTE :
-          // Une évaluation existe si le document existe (peu importe la valeur)
-          if (evaluation.exists) {
-            evaluatedBaremes++;
+        } else {
+          // Bareme principal sans sous-baremes
+          totalBaremes++;
+
+          try {
+            final evaluation = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser!.uid)
+                .collection('user_classes')
+                .doc(classId)
+                .collection('students')
+                .doc(studentId)
+                .collection('baremes')
+                .doc(baremeId)
+                .get();
+
+            // MODIFICATION IMPORTANTE :
+            // Une évaluation existe si le document existe (peu importe la valeur)
+            if (evaluation.exists) {
+              evaluatedBaremes++;
+            }
+          } catch (e) {
+            print(
+                'Erreur lors de la récupération de l\'évaluation pour bareme $baremeId: $e');
+            continue;
           }
-        } catch (e) {
-          print('Erreur lors de la récupération de l\'évaluation pour bareme $baremeId: $e');
-          continue;
         }
       }
-    }
 
-    // Déterminer la couleur
-    if (totalBaremes == 0) {
-      return Colors.red; // Pas de baremes programmés
-    } else if (evaluatedBaremes == 0) {
-      return Colors.red; // Aucune évaluation (pas de documents)
-    } else if (evaluatedBaremes == totalBaremes) {
-      return Colors.green; // Toutes les évaluations faites (même si certaines sont 0/---)
-    } else if (evaluatedBaremes > 0) {
-      return Colors.orange; // Évaluations partielles
-    } else {
-      return Colors.red;
+      // Déterminer la couleur
+      if (totalBaremes == 0) {
+        return Colors.red; // Pas de baremes programmés
+      } else if (evaluatedBaremes == 0) {
+        return Colors.red; // Aucune évaluation (pas de documents)
+      } else if (evaluatedBaremes == totalBaremes) {
+        return Colors
+            .green; // Toutes les évaluations faites (même si certaines sont 0/---)
+      } else if (evaluatedBaremes > 0) {
+        return Colors.orange; // Évaluations partielles
+      } else {
+        return Colors.red;
+      }
+    } catch (e) {
+      print('Erreur dans _getStudentIndicatorColor: $e');
+      return Colors.grey;
     }
-  } catch (e) {
-    print('Erreur dans _getStudentIndicatorColor: $e');
-    return Colors.grey;
   }
-}
-  
-    Widget _buildClassList() {
+
+  Widget _buildClassList() {
     return _selectedClass == null
         ? _buildClassListView()
         : _buildClassDetailsView();
@@ -3937,22 +3951,23 @@ Future<void> _saveEvaluationsSimple({
     }
   }
 
-  Widget _buildClassDetailsView() {
-    return Column(
-      children: [
-        AppBar(
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back),
-            onPressed: () {
-              setState(() {
-                _selectedClass = null;
-                _showStudentsList = false;
-              });
-            },
-          ),
-          title: Text(_selectedClass!['class_name']),
-          actions: [
-            // Version avec TextButton
+ Widget _buildClassDetailsView() {
+  return Column(
+    children: [
+      AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () {
+            setState(() {
+              _selectedClass = null;
+              _showStudentsList = false;
+            });
+          },
+        ),
+        title: Text(_selectedClass!['class_name']),
+        // SUPPRIMER LE BOUTON "إضافة مادة" QUAND ON EST DANS LA LISTE DES ÉTUDIANTS
+        actions: [
+          if (!_showStudentsList) // <-- AJOUTER CETTE CONDITION
             TextButton.icon(
               icon: Icon(Icons.add, size: 20),
               label: Text('إضافة مادة'),
@@ -3961,16 +3976,15 @@ Future<void> _saveEvaluationsSimple({
               ),
               onPressed: () => _addSubjectDialog(_selectedClass!),
             ),
-          ],
-        ),
-        Expanded(
-          child:
-              _showStudentsList ? _buildStudentsList() : _buildSubjectsGrid(),
-        ),
-      ],
-    );
-  }
-
+        ],
+      ),
+      Expanded(
+        child:
+            _showStudentsList ? _buildStudentsList() : _buildSubjectsGrid(),
+      ),
+    ],
+  );
+}
   Widget _buildSubjectsGrid() {
     if (_isLoadingSubjects) {
       return Center(
@@ -4628,445 +4642,426 @@ Future<void> _saveEvaluationsSimple({
     );
   }
 
-Widget _buildStudentCard(Map<String, dynamic> student) {
-  final photoBase64 = student['photoBase64'];
-  final parentName = student['parentName'] ?? 'غير محدد';
-  final birthDate = student['birthDate'];
+  Widget _buildStudentCard(Map<String, dynamic> student) {
+    final photoBase64 = student['photoBase64'];
+    final parentName = student['parentName'] ?? 'غير محدد';
+    final birthDate = student['birthDate'];
 
-  return FutureBuilder<Color>(
-    future: _getStudentIndicatorColor(
-        _selectedClass!['class_id'], student['id'], selectedSubjectId),
-    builder: (context, snapshot) {
-      final statusColor = snapshot.data ?? Colors.grey;
+    return FutureBuilder<Color>(
+      future: _getStudentIndicatorColor(
+          _selectedClass!['class_id'], student['id'], selectedSubjectId),
+      builder: (context, snapshot) {
+        final statusColor = snapshot.data ?? Colors.grey;
 
-      // Variable pour suivre si l'élève est marqué comme absent
-      bool isAbsent = student['isAbsent'] ?? false;
+        // Variable pour suivre si l'élève est marqué comme absent
+        bool isAbsent = student['isAbsent'] ?? false;
 
-      return Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () async {
-            if (selectedClassId != null && selectedSubjectId != null) {
-              await _showSelectionsDialog(
-                  selectedClassId!, selectedSubjectId!, student['id']);
-            }
-          },
-          onLongPress: () {
-            _showStudentContextMenu(student);
-          },
-          child: Padding(
-            padding: EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.grey[200],
+        return Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () async {
+              if (selectedClassId != null && selectedSubjectId != null) {
+                await _showSelectionsDialog(
+                    selectedClassId!, selectedSubjectId!, student['id']);
+              }
+            },
+            onLongPress: () {
+              _showStudentContextMenu(student);
+            },
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Stack(
+                    alignment: Alignment.bottomRight,
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey[200],
+                        ),
+                        child: photoBase64 != null && photoBase64.isNotEmpty
+                            ? ClipOval(
+                                child: Image.memory(
+                                  base64Decode(photoBase64),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Icon(Icons.person, size: 30),
+                                ),
+                              )
+                            : Icon(Icons.person, size: 30),
                       ),
-                      child: photoBase64 != null && photoBase64.isNotEmpty
-                          ? ClipOval(
-                              child: Image.memory(
-                                base64Decode(photoBase64),
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    Icon(Icons.person, size: 30),
-                              ),
-                            )
-                          : Icon(Icons.person, size: 30),
-                    ),
-                    Container(
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white,
-                          width: 2,
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: statusColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 2,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          if (isAbsent)
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.red.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(
-                                  color: Colors.red,
-                                  width: 1,
+                    ],
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            if (isAbsent)
+                              Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(
+                                    color: Colors.red,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Text(
+                                  'غائب',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
+                            SizedBox(width: 8),
+                            Expanded(
                               child: Text(
-                                'غائب',
+                                student['name'],
                                 style: TextStyle(
-                                  color: Colors.red,
-                                  fontSize: 10,
+                                  fontSize: 16,
                                   fontWeight: FontWeight.bold,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              student['name'],
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        parentName,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[600],
+                          ],
                         ),
-                      ),
-                      if (birthDate != null && birthDate.isNotEmpty)
+                        SizedBox(height: 4),
                         Text(
-                          birthDate,
+                          parentName,
                           style: TextStyle(
                             fontSize: 13,
                             color: Colors.grey[600],
                           ),
                         ),
-                    ],
-                  ),
-                ),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Bouton Marquer comme absent/présent
-                    IconButton(
-                      icon: Icon(
-                        isAbsent ? Icons.person_off : Icons.person_outline,
-                        color: isAbsent ? Colors.red : Colors.blue,
-                      ),
-                      onPressed: () => _toggleAbsentStatus(student),
-                      tooltip: isAbsent ? 'إلغاء الغياب' : 'تسجيل غياب',
-                    ),
-
-                    Stack(
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.edit, color: Colors.blue),
-                          onPressed: () => _editStudentName(student),
-                          tooltip: 'تعديل الاسم',
-                        ),
-                        Positioned(
-                          top: 8,
-                          right: 8,
-                          child: Container(
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: Colors.blue,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 1,
-                              ),
+                        if (birthDate != null && birthDate.isNotEmpty)
+                          Text(
+                            birthDate,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.grey[600],
                             ),
                           ),
-                        ),
                       ],
                     ),
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Bouton Marquer comme absent/présent
+                      IconButton(
+                        icon: Icon(
+                          isAbsent ? Icons.person_off : Icons.person_outline,
+                          color: isAbsent ? Colors.red : Colors.blue,
+                        ),
+                        onPressed: () => _toggleAbsentStatus(student),
+                        tooltip: isAbsent ? 'إلغاء الغياب' : 'تسجيل غياب',
+                      ),
 
-                    IconButton(
-                      icon: Icon(Icons.info_outline, color: Colors.blue),
-                      onPressed: () =>
-                          _showStudentDetails(_selectedClass!, student['id']),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.delete_outline, color: Colors.red[400]),
-                      onPressed: () => _confirmDeleteStudent(
-                          _selectedClass!, student['id']),
-                    ),
-                  ],
-                ),
-              ],
+                      // Le bouton info reste (c'est ici qu'on pourra modifier le nom)
+                      IconButton(
+                        icon: Icon(Icons.info_outline, color: Colors.blue),
+                        onPressed: () =>
+                            _showStudentDetails(_selectedClass!, student['id']),
+                      ),
+
+                      IconButton(
+                        icon:
+                            Icon(Icons.delete_outline, color: Colors.red[400]),
+                        onPressed: () => _confirmDeleteStudent(
+                            _selectedClass!, student['id']),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      );
-    },
-  );
-}
-Future<void> _toggleAbsentStatus(Map<String, dynamic> student) async {
-  try {
-    final isCurrentlyAbsent = student['isAbsent'] ?? false;
-    final newAbsentStatus = !isCurrentlyAbsent;
-
-    // Mettre à jour dans Firestore
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('user_classes')
-        .doc(_selectedClass!['id'])
-        .collection('students')
-        .doc(student['id'])
-        .update({
-      'isAbsent': newAbsentStatus,
-      'absenceDate': newAbsentStatus ? Timestamp.now() : null,
-    });
-
-    // Mettre à jour localement
-    setState(() {
-      int index = _students.indexWhere((s) => s['id'] == student['id']);
-      if (index != -1) {
-        _students[index]['isAbsent'] = newAbsentStatus;
-        if (newAbsentStatus) {
-          _students[index]['absenceDate'] = Timestamp.now();
-        } else {
-          _students[index]['absenceDate'] = null;
-        }
-      }
-    });
-
-    // Si l'élève est marqué comme absent, mettre à jour ses évaluations
-    if (newAbsentStatus && selectedClassId != null && selectedSubjectId != null) {
-      await _markStudentAbsentInAllBaremes(
-        selectedClassId!,
-        selectedSubjectId!,
-        student['id'],
-      );
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          newAbsentStatus 
-            ? 'تم تسجيل التلميذ كغائب' 
-            : 'تم إلغاء حالة الغياب',
-        ),
-        backgroundColor: newAbsentStatus ? Colors.orange : Colors.green,
-      ),
-    );
-  } catch (e) {
-    print('Erreur lors du changement du statut d\'absence: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('حدث خطأ أثناء تغيير حالة الغياب'),
-        backgroundColor: Colors.red,
-      ),
-    );
-  }
-}
-
-Future<void> _markStudentAbsentInAllBaremes(
-  String classId,
-  String matiereId,
-  String studentId,
-) async {
-  try {
-    // Récupérer tous les barèmes et sous-barèmes
-    final selectionsRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('selections')
-        .doc(classId)
-        .collection(matiereId);
-
-    final selectionsSnapshot = await selectionsRef.get();
-
-    for (final baremeDoc in selectionsSnapshot.docs) {
-      final baremeId = baremeDoc.id;
-      final isBaremeSelected = baremeDoc['selected'] ?? false;
-
-      // Marquer comme absent dans le barème principal
-      if (isBaremeSelected) {
-        await _saveAbsentEvaluation(
-          classId: classId,
-          studentId: studentId,
-          baremeId: baremeId,
         );
-      }
-
-      // Marquer comme absent dans les sous-barèmes
-      final sousBaremesSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser!.uid)
-          .collection('selections')
-          .doc(classId)
-          .collection(matiereId)
-          .doc(baremeId)
-          .collection('sousBaremes')
-          .get();
-
-      for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-        final sousBaremeId = sousBaremeDoc.id;
-        final isSousBaremeSelected = sousBaremeDoc['selected'] ?? false;
-
-        if (isSousBaremeSelected) {
-          await _saveAbsentEvaluation(
-            classId: classId,
-            studentId: studentId,
-            baremeId: sousBaremeId,
-            parentBaremeId: baremeId,
-          );
-        }
-      }
-    }
-
-    print('✅ Élève marqué absent dans tous les barèmes');
-  } catch (e) {
-    print('❌ Erreur lors du marquage absent: $e');
+      },
+    );
   }
-}
-Future<void> _saveAbsentEvaluation({
-  required String classId,
-  required String studentId,
-  required String baremeId,
-  String? parentBaremeId,
-}) async {
-  try {
-    if (parentBaremeId != null) {
-      // Pour les sous-barèmes
-      final sousBaremeDirectRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser!.uid)
-          .collection('user_classes')
-          .doc(classId)
-          .collection('students')
-          .doc(studentId)
-          .collection('baremes')
-          .doc(baremeId);
 
-      final sousBaremeNestedRef = FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser!.uid)
-          .collection('user_classes')
-          .doc(classId)
-          .collection('students')
-          .doc(studentId)
-          .collection('baremes')
-          .doc(parentBaremeId)
-          .collection('sous_baremes')
-          .doc(baremeId);
+  Future<void> _toggleAbsentStatus(Map<String, dynamic> student) async {
+    try {
+      final isCurrentlyAbsent = student['isAbsent'] ?? false;
+      final newAbsentStatus = !isCurrentlyAbsent;
 
-      // Sauvegarder dans les deux emplacements
-      await Future.wait([
-        sousBaremeDirectRef.set({
-          'Marks': 'غائب',
-          'isAbsent': true,
-          'absenceDate': Timestamp.now(),
-          'createdAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true)),
-        sousBaremeNestedRef.set({
-          'Marks': 'غائب',
-          'isAbsent': true,
-          'absenceDate': Timestamp.now(),
-          'createdAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true)),
-      ]);
-    } else {
-      // Pour les barèmes principaux
+      // Mettre à jour dans Firestore
       await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
           .collection('user_classes')
-          .doc(classId)
+          .doc(_selectedClass!['id'])
           .collection('students')
-          .doc(studentId)
-          .collection('baremes')
-          .doc(baremeId)
-          .set({
-        'Marks': 'غائب',
-        'isAbsent': true,
-        'absenceDate': Timestamp.now(),
-        'createdAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-    }
-  } catch (e) {
-    print('Erreur lors de la sauvegarde du statut absent: $e');
-  }
-}
-// Méthode pour afficher le menu contextuel
-void _showStudentContextMenu(Map<String, dynamic> student) {
-  final isAbsent = student['isAbsent'] ?? false;
-  
-  showModalBottomSheet(
-    context: context,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
-    builder: (context) {
-      return Container(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(isAbsent ? Icons.person_add : Icons.person_off, 
-                  color: isAbsent ? Colors.green : Colors.orange),
-              title: Text(isAbsent ? 'إلغاء الغياب' : 'تسجيل غياب'),
-              onTap: () {
-                Navigator.pop(context);
-                _toggleAbsentStatus(student);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.edit, color: Colors.blue),
-              title: Text('تعديل اسم التلميذ'),
-              onTap: () {
-                Navigator.pop(context);
-                _editStudentName(student);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.info_outline, color: Colors.blue),
-              title: Text('معلومات التلميذ'),
-              onTap: () {
-                Navigator.pop(context);
-                _showStudentDetails(_selectedClass!, student['id']);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.delete_outline, color: Colors.red),
-              title: Text('حذف التلميذ'),
-              onTap: () {
-                Navigator.pop(context);
-                _confirmDeleteStudent(_selectedClass!, student['id']);
-              },
-            ),
-            SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('إغلاق'),
-              style: ElevatedButton.styleFrom(
-                minimumSize: Size(double.infinity, 50),
-              ),
-            ),
-          ],
+          .doc(student['id'])
+          .update({
+        'isAbsent': newAbsentStatus,
+        'absenceDate': newAbsentStatus ? Timestamp.now() : null,
+      });
+
+      // Mettre à jour localement
+      setState(() {
+        int index = _students.indexWhere((s) => s['id'] == student['id']);
+        if (index != -1) {
+          _students[index]['isAbsent'] = newAbsentStatus;
+          if (newAbsentStatus) {
+            _students[index]['absenceDate'] = Timestamp.now();
+          } else {
+            _students[index]['absenceDate'] = null;
+          }
+        }
+      });
+
+      // Si l'élève est marqué comme absent, mettre à jour ses évaluations
+      if (newAbsentStatus &&
+          selectedClassId != null &&
+          selectedSubjectId != null) {
+        await _markStudentAbsentInAllBaremes(
+          selectedClassId!,
+          selectedSubjectId!,
+          student['id'],
+        );
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            newAbsentStatus ? 'تم تسجيل التلميذ كغائب' : 'تم إلغاء حالة الغياب',
+          ),
+          backgroundColor: newAbsentStatus ? Colors.orange : Colors.green,
         ),
       );
-    },
-  );
-}
+    } catch (e) {
+      print('Erreur lors du changement du statut d\'absence: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('حدث خطأ أثناء تغيير حالة الغياب'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _markStudentAbsentInAllBaremes(
+    String classId,
+    String matiereId,
+    String studentId,
+  ) async {
+    try {
+      // Récupérer tous les barèmes et sous-barèmes
+      final selectionsRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(classId)
+          .collection(matiereId);
+
+      final selectionsSnapshot = await selectionsRef.get();
+
+      for (final baremeDoc in selectionsSnapshot.docs) {
+        final baremeId = baremeDoc.id;
+        final isBaremeSelected = baremeDoc['selected'] ?? false;
+
+        // Marquer comme absent dans le barème principal
+        if (isBaremeSelected) {
+          await _saveAbsentEvaluation(
+            classId: classId,
+            studentId: studentId,
+            baremeId: baremeId,
+          );
+        }
+
+        // Marquer comme absent dans les sous-barèmes
+        final sousBaremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('selections')
+            .doc(classId)
+            .collection(matiereId)
+            .doc(baremeId)
+            .collection('sousBaremes')
+            .get();
+
+        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+          final sousBaremeId = sousBaremeDoc.id;
+          final isSousBaremeSelected = sousBaremeDoc['selected'] ?? false;
+
+          if (isSousBaremeSelected) {
+            await _saveAbsentEvaluation(
+              classId: classId,
+              studentId: studentId,
+              baremeId: sousBaremeId,
+              parentBaremeId: baremeId,
+            );
+          }
+        }
+      }
+
+      print('✅ Élève marqué absent dans tous les barèmes');
+    } catch (e) {
+      print('❌ Erreur lors du marquage absent: $e');
+    }
+  }
+
+  Future<void> _saveAbsentEvaluation({
+    required String classId,
+    required String studentId,
+    required String baremeId,
+    String? parentBaremeId,
+  }) async {
+    try {
+      if (parentBaremeId != null) {
+        // Pour les sous-barèmes
+        final sousBaremeDirectRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('user_classes')
+            .doc(classId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .doc(baremeId);
+
+        final sousBaremeNestedRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('user_classes')
+            .doc(classId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .doc(parentBaremeId)
+            .collection('sous_baremes')
+            .doc(baremeId);
+
+        // Sauvegarder dans les deux emplacements
+        await Future.wait([
+          sousBaremeDirectRef.set({
+            'Marks': 'غائب',
+            'isAbsent': true,
+            'absenceDate': Timestamp.now(),
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true)),
+          sousBaremeNestedRef.set({
+            'Marks': 'غائب',
+            'isAbsent': true,
+            'absenceDate': Timestamp.now(),
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true)),
+        ]);
+      } else {
+        // Pour les barèmes principaux
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('user_classes')
+            .doc(classId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .doc(baremeId)
+            .set({
+          'Marks': 'غائب',
+          'isAbsent': true,
+          'absenceDate': Timestamp.now(),
+          'createdAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+    } catch (e) {
+      print('Erreur lors de la sauvegarde du statut absent: $e');
+    }
+  }
+
+// Méthode pour afficher le menu contextuel
+  void _showStudentContextMenu(Map<String, dynamic> student) {
+    final isAbsent = student['isAbsent'] ?? false;
+
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(isAbsent ? Icons.person_add : Icons.person_off,
+                    color: isAbsent ? Colors.green : Colors.orange),
+                title: Text(isAbsent ? 'إلغاء الغياب' : 'تسجيل غياب'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _toggleAbsentStatus(student);
+                },
+              ),
+              // ListTile(
+              //   leading: Icon(Icons.edit, color: Colors.blue),
+              //   title: Text('تعديل اسم التلميذ'),
+              //   onTap: () {
+              //     Navigator.pop(context);
+              //     _editStudentName(student);
+              //   },
+              // ),
+              ListTile(
+                leading: Icon(Icons.info_outline, color: Colors.blue),
+                title: Text('معلومات التلميذ'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showStudentDetails(_selectedClass!, student['id']);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.delete_outline, color: Colors.red),
+                title: Text('حذف التلميذ'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _confirmDeleteStudent(_selectedClass!, student['id']);
+                },
+              ),
+              SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text('إغلاق'),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 50),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _navigateToDirectEvaluation(String studentId) async {
     if (selectedClassId == null || selectedSubjectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -5222,6 +5217,8 @@ void _showStudentContextMenu(Map<String, dynamic> student) {
 
   Future<void> _showStudentDetails(
       Map<String, dynamic> classData, String studentId) async {
+    // AJOUTER UN CONTRÔLEUR POUR LE NOM
+    TextEditingController nameController = TextEditingController();
     TextEditingController parentNameController = TextEditingController();
     TextEditingController parentPhoneController = TextEditingController();
     TextEditingController birthDateController = TextEditingController();
@@ -5237,10 +5234,13 @@ void _showStudentContextMenu(Map<String, dynamic> student) {
     final studentDoc = await studentsCollection.doc(studentId).get();
 
     if (studentDoc.exists) {
+      // CHARGER LE NOM DE L'ÉLÈVE
+      nameController.text = studentDoc.get('name') ?? '';
       parentNameController.text = studentDoc.get('parentName') ?? '';
       parentPhoneController.text = studentDoc.get('parentPhone') ?? '';
       birthDateController.text = studentDoc.get('birthDate') ?? '';
       remarksController.text = studentDoc.get('remarks') ?? '';
+
       // Charger l'image Base64 si elle existe
       if (studentDoc.data()!.containsKey('photoBase64')) {
         final base64String = studentDoc.get('photoBase64');
@@ -5306,14 +5306,30 @@ void _showStudentContextMenu(Map<String, dynamic> student) {
                 ],
               ),
               SizedBox(height: 20),
+
+              // AJOUTER LE CHAMP POUR MODIFIER LE NOM
+              TextField(
+                controller: nameController,
+                textAlign: TextAlign.right,
+                decoration: InputDecoration(
+                  labelText: 'اسم التلميذ',
+                  floatingLabelAlignment: FloatingLabelAlignment.start,
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 12),
+
               TextField(
                 controller: parentNameController,
                 textAlign: TextAlign.right,
                 decoration: InputDecoration(
                   labelText: 'اسم ولي الأمر',
                   floatingLabelAlignment: FloatingLabelAlignment.start,
+                  border: OutlineInputBorder(),
                 ),
               ),
+              SizedBox(height: 12),
+
               TextField(
                 controller: parentPhoneController,
                 textAlign: TextAlign.right,
@@ -5321,8 +5337,11 @@ void _showStudentContextMenu(Map<String, dynamic> student) {
                 decoration: InputDecoration(
                   labelText: 'رقم هاتف ولي الأمر',
                   floatingLabelAlignment: FloatingLabelAlignment.start,
+                  border: OutlineInputBorder(),
                 ),
               ),
+              SizedBox(height: 12),
+
               GestureDetector(
                 onTap: () => _selectDate(context),
                 child: AbsorbPointer(
@@ -5333,16 +5352,20 @@ void _showStudentContextMenu(Map<String, dynamic> student) {
                       labelText: 'تاريخ الميلاد',
                       floatingLabelAlignment: FloatingLabelAlignment.start,
                       suffixIcon: Icon(Icons.calendar_today),
+                      border: OutlineInputBorder(),
                     ),
                   ),
                 ),
               ),
+              SizedBox(height: 12),
+
               TextField(
                 controller: remarksController,
                 textAlign: TextAlign.right,
                 decoration: InputDecoration(
                   labelText: 'ملاحظات',
                   floatingLabelAlignment: FloatingLabelAlignment.start,
+                  border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
               ),
@@ -5357,31 +5380,59 @@ void _showStudentContextMenu(Map<String, dynamic> student) {
           ElevatedButton(
             onPressed: () async {
               try {
+                // VALIDER LE NOM (ne doit pas être vide)
+                if (nameController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('اسم التلميذ لا يمكن أن يكون فارغاً'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
                 // Convertir l'image en Base64
                 String? base64Image;
                 if (_imageBytes != null) {
                   base64Image = base64Encode(_imageBytes!);
                 }
 
+                // SAUVEGARDER TOUTES LES INFORMATIONS Y COMPRIS LE NOM
                 await studentsCollection.doc(studentId).update({
+                  'name': nameController.text.trim(), // AJOUT DU NOM
                   'parentName': parentNameController.text,
                   'parentPhone': parentPhoneController.text,
                   'birthDate': birthDateController.text,
                   'remarks': remarksController.text,
-                  'photoBase64': base64Image ?? '', // Stocker en Base64
+                  'photoBase64': base64Image ?? '',
                 });
 
                 Navigator.pop(context);
 
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('تم تحديث المعلومات بنجاح')),
-                );
+                // METTRE À JOUR LA LISTE LOCALE
+                setState(() {
+                  int index = _students.indexWhere((s) => s['id'] == studentId);
+                  if (index != -1) {
+                    _students[index]['name'] = nameController.text.trim();
+                  }
+                });
 
-                await _fetchClasses();
+                // RE-TRIER LA LISTE
+                _sortStudentsAlphabetically();
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('تم تحديث المعلومات بنجاح'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
               } catch (e) {
                 print("خطأ في تحديث المعلومات: $e");
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('حدث خطأ أثناء تحديث المعلومات')),
+                  SnackBar(
+                    content: Text('حدث خطأ أثناء تحديث المعلومات'),
+                    backgroundColor: Colors.red,
+                  ),
                 );
               }
             },
@@ -5468,7 +5519,6 @@ void _showStudentContextMenu(Map<String, dynamic> student) {
   }
 
   @override
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -5500,7 +5550,28 @@ void _showStudentContextMenu(Map<String, dynamic> student) {
         backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
         elevation: 4,
         actions: [
-          if (_selectedClass != null && selectedSubjectId != null)
+          // Bouton "جدول النتائج" - UNIQUEMENT quand on est dans la liste des étudiants
+          if (_selectedClass != null &&
+              _showStudentsList &&
+              selectedSubjectId != null)
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 4),
+              child: ElevatedButton.icon(
+                icon: Icon(Icons.table_chart, size: 18),
+                label: Text('جدول النتائج'),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.green,
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                onPressed: () => _navigateToDynamicTableFromAppBar(),
+              ),
+            ),
+
+          // Bouton "برمجة المعايير" - UNIQUEMENT quand on est dans la liste des étudiants avec une matière sélectionnée
+          if (_selectedClass != null &&
+              _showStudentsList &&
+              selectedSubjectId != null)
             ElevatedButton.icon(
               icon: Icon(Icons.table_chart, size: 18),
               label: Text('برمجة المعايير'),
@@ -5512,21 +5583,7 @@ void _showStudentContextMenu(Map<String, dynamic> student) {
               onPressed: () => _navigateDirectlyToBaremesSelection(),
             ),
 
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 4),
-            child: ElevatedButton.icon(
-              icon: Icon(Icons.table_chart, size: 18),
-              label: Text('جدول النتائج'),
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: Colors.green,
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-              onPressed: () => _navigateToDynamicTableFromAppBar(),
-            ),
-          ),
-
-          // Bouton Rafraîchir global
+          // Bouton Rafraîchir global - TOUJOURS VISIBLE
           Container(
             margin: EdgeInsets.only(left: 4),
             decoration: BoxDecoration(
@@ -5571,6 +5628,7 @@ void _showStudentContextMenu(Map<String, dynamic> student) {
             ),
           ),
 
+          // Bouton Aide - TOUJOURS VISIBLE
           IconButton(
             icon: Icon(Icons.help_outline, color: Colors.white),
             onPressed: () => _buildHelpSection(context),
