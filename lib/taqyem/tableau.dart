@@ -8,7 +8,6 @@ import 'dart:typed_data';
 import 'package:Taqyem/taqyem/payment/PaymentPage.dart';
 import 'package:Taqyem/taqyem/pdf_report_generator.dart';
 import 'package:Taqyem/taqyem/tableau_pdf.dart';
-import 'package:Taqyem/taqyem/tableausduident.dart';
 import 'package:Taqyem/taqyem/word_report_generator.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -20,119 +19,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 
-// Cache Manager
-class FirestoreCache {
-  static final FirestoreCache _instance = FirestoreCache._internal();
-  factory FirestoreCache() => _instance;
-  FirestoreCache._internal();
-
-  final Map<String, dynamic> _cache = {};
-  final Map<String, DateTime> _cacheTimestamps = {};
-  final Duration _cacheDuration = Duration(minutes: 10);
-  
-  T? getFromCache<T>(String key) {
-    if (_cache.containsKey(key)) {
-      final timestamp = _cacheTimestamps[key];
-      if (timestamp != null && DateTime.now().difference(timestamp) < _cacheDuration) {
-        return _cache[key] as T;
-      } else {
-        _cache.remove(key);
-        _cacheTimestamps.remove(key);
-      }
-    }
-    return null;
-  }
-  
-  void addToCache(String key, dynamic data) {
-    _cache[key] = data;
-    _cacheTimestamps[key] = DateTime.now();
-  }
-  
-  void clearCache() {
-    _cache.clear();
-    _cacheTimestamps.clear();
-  }
-  
-  void removeFromCache(String key) {
-    _cache.remove(key);
-    _cacheTimestamps.remove(key);
-  }
-}
-
-// Optimized Firestore Helper
-class FirestoreHelper {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static final FirestoreCache _cache = FirestoreCache();
-  
-  static Future<DocumentSnapshot> getUserDocument(String userId, {bool forceRefresh = false}) async {
-    final cacheKey = 'user_$userId';
-    
-    if (!forceRefresh) {
-      final cached = _cache.getFromCache<DocumentSnapshot>(cacheKey);
-      if (cached != null) return cached;
-    }
-    
-    final doc = await _firestore.collection('Users').doc(userId).get();
-    _cache.addToCache(cacheKey, doc);
-    return doc;
-  }
-  
-  static Future<QuerySnapshot> getCollectionWithCache(String collectionPath, 
-      {String? cacheKey, bool forceRefresh = false}) async {
-    final key = cacheKey ?? collectionPath.replaceAll('/', '_');
-    
-    if (!forceRefresh) {
-      final cached = _cache.getFromCache<QuerySnapshot>(key);
-      if (cached != null) return cached;
-    }
-    
-    final snapshot = await _firestore.collection(collectionPath).get();
-    _cache.addToCache(key, snapshot);
-    return snapshot;
-  }
-  
-  static Future<DocumentSnapshot> getDocumentWithCache(String collectionPath, String docId,
-      {String? cacheKey, bool forceRefresh = false}) async {
-    final key = cacheKey ?? '${collectionPath}_$docId';
-    
-    if (!forceRefresh) {
-      final cached = _cache.getFromCache<DocumentSnapshot>(key);
-      if (cached != null) return cached;
-    }
-    
-    final doc = await _firestore.collection(collectionPath).doc(docId).get();
-    _cache.addToCache(key, doc);
-    return doc;
-  }
-  
-  static Future<List<DocumentSnapshot>> getSubcollectionWithCache(String parentPath, String parentId,
-      String subcollection, {String? cacheKey, bool forceRefresh = false}) async {
-    final key = cacheKey ?? '${parentPath}_$parentId$subcollection';
-    
-    if (!forceRefresh) {
-      final cached = _cache.getFromCache<List<DocumentSnapshot>>(key);
-      if (cached != null) return cached;
-    }
-    
-    final snapshot = await _firestore
-        .collection(parentPath)
-        .doc(parentId)
-        .collection(subcollection)
-        .get();
-    
-    _cache.addToCache(key, snapshot.docs);
-    return snapshot.docs;
-  }
-  
-  static void invalidateCache(String key) {
-    _cache.removeFromCache(key);
-  }
-  
-  static void invalidateAllCache() {
-    _cache.clearCache();
-  }
-}
-
+// Classe utilitaire pour la traduction et la détection de langue
 // Classe utilitaire pour la traduction et la détection de langue
 class DataTranslator {
   static final Map<String, String> _classTranslations = {
@@ -168,6 +55,7 @@ class DataTranslator {
     "السنة السادسة ابتدائي د": "6ème année primaire D"
   };
 
+  // Ordre numérique des classes
   static int _getClassOrder(String className) {
     final Map<String, int> classOrder = {
       "السنة الأولى ابتدائي": 1,
@@ -204,6 +92,7 @@ class DataTranslator {
 
     return classOrder[className] ?? 999;
   }
+// Méthode pour mapper les classes avec sections aux classes de base du JSON
 
   static List<String> sortClassesByNumericalOrder(List<String> classes) {
     return List<String>.from(classes)
@@ -215,6 +104,7 @@ class DataTranslator {
           return orderA.compareTo(orderB);
         }
 
+        // Si même année, trier par section
         return _compareClassSections(a, b);
       });
   }
@@ -265,6 +155,7 @@ class DataTranslator {
     "مع 3": "C3",
     "مع 4": "C4",
     "مع 5": "C5",
+    // Ajoutez ces nouvelles traductions pour les sous-barèmes avec lettres arabes
     "مع 1.ا": "C1.a",
     "مع 1.ب": "C1.b",
     "مع 1.ج": "C1.c",
@@ -280,6 +171,8 @@ class DataTranslator {
     "مع 5.ا": "C5.a",
     "مع 5.ب": "C5.b",
     "مع 5.ج": "C5.c",
+
+    // Gardez aussi les anciennes traductions numériques au cas où
     "مع 1.1": "C1.1",
     "مع 1.2": "C1.2",
     "مع 1.3": "C1.3",
@@ -297,6 +190,7 @@ class DataTranslator {
     "مع 5.3": "C5.3"
   };
 
+  // Liste des matières considérées comme étrangères (doivent être en français)
   static final List<String> _foreignMatieres = [
     "Expression orale et récitation",
     "Lecture",
@@ -307,26 +201,32 @@ class DataTranslator {
     "لغة انقليزية"
   ];
 
+  // Détecter si une matière est étrangère
   static bool isForeignMatiere(String matiereName) {
     return _foreignMatieres.contains(matiereName);
   }
 
+  // Traduire le nom d'une classe (uniquement pour l'affichage)
   static String translateClass(String arabicName) {
     return _classTranslations[arabicName] ?? arabicName;
   }
 
+  // Traduire le nom d'une matière (uniquement pour l'affichage)
   static String translateMatiere(String arabicName) {
     return _matiereTranslations[arabicName] ?? arabicName;
   }
 
+  // Traduire un critère/barème (uniquement pour l'affichage)
   static String translateBareme(String arabicName) {
     return _baremeTranslations[arabicName] ?? arabicName;
   }
 
+  // Traduire un sous-critère (uniquement pour l'affichage)
   static String translateSousBareme(String arabicName) {
     return _baremeTranslations[arabicName] ?? arabicName;
   }
 
+  // Obtenir le nom original arabe à partir de la traduction française (pour la recherche)
   static String getArabicClassFromFrench(String frenchName) {
     return _classTranslations.entries
         .firstWhere((entry) => entry.value == frenchName,
@@ -358,7 +258,7 @@ class DynamicTablePage extends StatefulWidget {
 class _DynamicTablePageState extends State<DynamicTablePage> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
   String _profName = '';
-  String _selectedEvaluationDisplay = 'character';
+  String _selectedEvaluationDisplay = 'character'; // Par défaut: caractère
   String _schoolName = '';
   bool _isDialogCompleted = false;
   String? selectedBaremeId;
@@ -379,34 +279,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   String _selectedTrimestre = 'الأول';
   String _selectedPeriode = '';
   String _selectedEvaluationType = 'تقييم';
-  
-  // Cache pour les données fréquemment utilisées
-  Map<String, dynamic> _criteriaCache = {};
-  Map<String, dynamic> _studentsCache = {};
-  Map<String, dynamic> _baremesCache = {};
-  String? _lastClassMatiereKey;
-  
-  @override
-  void initState() {
-    super.initState();
-    _isMounted = true;
-    _loadUserData();
-    fetchMarks();
-    _startTimer();
-    _setupUserListener();
-    _detectLanguage();
-  }
-
-  @override
-  void dispose() {
-    _isMounted = false;
-    _accountStatusTimer?.cancel();
-    _userSubscription?.cancel();
-    FirestoreCache().clearCache();
-    super.dispose();
-  }
-
   String _getDomaineForMatiere(String matiereName, bool isFrenchInterface) {
+    // Définir les domaines en arabe
     final Map<String, String> domainesArabic = {
       'التواصل الشفوي': 'مجال اللغة العربية',
       'قراءة': 'مجال اللغة العربية',
@@ -440,6 +314,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       'langue': 'مجال اللغة العربية',
     };
 
+    // Définir les domaines en français
     final Map<String, String> domainesFrench = {
       'Communication orale': 'Domaine Langue Arabe',
       'Lecture': 'Domaine Langue Arabe',
@@ -463,53 +338,62 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       'Langue anglaise': 'Domaine Langue Anglaise',
       'Expression orale et récitation': 'Domaine Langue Arabe',
     };
-    
+    Map<String, Map<String, String>> _getEvaluationDisplayOptions() {
+      return {
+        'character': {
+          'ar': 'حرفي',
+          'fr': 'Caractère',
+          'description_ar': '( - - - ), ( + - - ), ( + + - ), ( + + + )',
+          'description_fr': '( - - - ), ( + - - ), ( + + - ), ( + + + )'
+        },
+        '1.3': {
+          'ar': 'نظام 0-1.5',
+          'fr': 'Système 0-1.5',
+          'description_ar': '0, 0.5, 1, 1.5',
+          'description_fr': '0, 0.5, 1, 1.5'
+        },
+        '0.6': {
+          'ar': 'نظام 0-6',
+          'fr': 'Système 0-6',
+          'description_ar': '0, 2, 4, 6',
+          'description_fr': '0, 2, 4, 6'
+        },
+        'costum': {
+          'ar': 'مخصص',
+          'fr': 'Personnalisé',
+          'description_ar': 'تقييم مخصص',
+          'description_fr': 'Évaluation personnalisée'
+        },
+        'ext': {
+          'ar': 'مفصل',
+          'fr': 'Détaillé',
+          'description_ar': '( - - - ), ( + - - ), ( + + - ), ( + + + )',
+          'description_fr': '( - - - ), ( + - - ), ( + + - ), ( + + + )'
+        },
+      };
+    }
+
+    // Sélectionner la map appropriée selon la langue
     final domaines = isFrenchInterface ? domainesFrench : domainesArabic;
 
+    // Chercher le domaine correspondant
     for (var key in domaines.keys) {
       if (matiereName.contains(key) || key.contains(matiereName)) {
         return domaines[key]!;
       }
     }
 
+    // Retourner un domaine par défaut
     return isFrenchInterface ? 'Domaine Général' : 'المجال العام';
   }
 
-  Map<String, Map<String, String>> _getEvaluationDisplayOptions() {
-    return {
-      'character': {
-        'ar': 'حرفي',
-        'fr': 'Caractère',
-        'description_ar': '( - - - ), ( + - - ), ( + + - ), ( + + + )',
-        'description_fr': '( - - - ), ( + - - ), ( + + - ), ( + + + )'
-      },
-      '1.3': {
-        'ar': 'نظام 0-1.5',
-        'fr': 'Système 0-1.5',
-        'description_ar': '0, 0.5, 1, 1.5',
-        'description_fr': '0, 0.5, 1, 1.5'
-      },
-      '0.6': {
-        'ar': 'نظام 0-6',
-        'fr': 'Système 0-6',
-        'description_ar': '0, 2, 4, 6',
-        'description_fr': '0, 2, 4, 6'
-      },
-      'costum': {
-        'ar': 'مخصص',
-        'fr': 'Personnalisé',
-        'description_ar': 'تقييم مخصص',
-        'description_fr': 'Évaluation personnalisée'
-      },
-      'ext': {
-        'ar': 'مفصل',
-        'fr': 'Détaillé',
-        'description_ar': '( - - - ), ( + - - ), ( + + - ), ( + + + )',
-        'description_fr': '( - - - ), ( + - - ), ( + + - ), ( + + + )'
-      },
-    };
-  }
+// Nouvelle méthode pour le rapport complet
+// Dans la classe _DynamicTablePageState, ajoutez ces méthodes :
 
+// Fonction pour convertir la valeur d'affichage en valeur stockée selon le système
+// Dans la classe _DynamicTablePageState, ajoutez ces méthodes :
+
+// Fonction pour convertir la valeur d'affichage en valeur stockée selon le système
   String _getMappedEvaluation(String displayValue, String system,
       {List<String>? customNotes}) {
     if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
@@ -572,24 +456,17 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
+// Fonction pour convertir la valeur stockée en valeur d'affichage selon le système
   String _getDisplayEvaluation(String storedValue, String system,
       {List<String>? customNotes}) {
-    if (storedValue == 'غائب') {
-      return 'غائب';
-    }
-
     if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
-      if (storedValue == '( - - - )') return customNotes[0];
-      if (storedValue == '( + - - )') {
-        return customNotes.length > 1 ? customNotes[1] : customNotes[0];
-      }
-      if (storedValue == '( + + - )') {
-        if (customNotes.length == 3) return customNotes[1];
-        if (customNotes.length >= 3) return customNotes[2];
-        return customNotes.isNotEmpty ? customNotes.last : '( + + - )';
-      }
-      if (storedValue == '( + + + )') return customNotes.last;
-      return customNotes[0];
+      final Map<String, String> mapping = {
+        '( - - - )': customNotes[0],
+        '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
+        '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
+        '( + + + )': customNotes.last,
+      };
+      return mapping[storedValue] ?? customNotes[0];
     }
 
     switch (system) {
@@ -643,68 +520,63 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
+// Fonction pour récupérer le système d'évaluation sélectionné
   Future<String> _getEvaluationSystem(String classId, String matiereId) async {
     try {
-      final cacheKey = 'eval_system_$classId-$matiereId';
-      final cached = FirestoreCache().getFromCache<String>(cacheKey);
-      if (cached != null) return cached;
-      
       User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) return 'character';
 
-      final systemDoc = await FirestoreHelper.getDocumentWithCache(
-        'users/${currentUser.uid}/evaluation_systems',
-        '$classId-$matiereId',
-        cacheKey: cacheKey
-      );
+      final systemDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('evaluation_systems')
+          .doc('$classId-$matiereId')
+          .get();
 
-      String system = 'character';
       if (systemDoc.exists) {
-        system = systemDoc['system'] ?? 'character';
+        return systemDoc['system'] ?? 'character';
       }
-      
-      FirestoreCache().addToCache(cacheKey, system);
-      return system;
+      return 'character';
     } catch (e) {
       print('Erreur lors de la récupération du système: $e');
       return 'character';
     }
   }
 
-  Future<List<String>> _loadCustomNotes(String classId, String matiereId) async {
+// Fonction pour charger les notes personnalisées
+  Future<List<String>> _loadCustomNotes(
+      String classId, String matiereId) async {
     try {
-      final cacheKey = 'custom_notes_$classId-$matiereId';
-      final cached = FirestoreCache().getFromCache<List<String>>(cacheKey);
-      if (cached != null) return cached;
-      
       User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) return [];
 
-      final doc = await FirestoreHelper.getDocumentWithCache(
-        'users/${currentUser.uid}/custom_notes',
-        '$classId-$matiereId',
-        cacheKey: cacheKey
-      );
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('custom_notes')
+          .doc('$classId-$matiereId')
+          .get();
 
-      List<String> notes = [];
-      if (doc.exists && (doc.data() as Map<String, dynamic>)['notes'] != null) {
-        notes = List<String>.from((doc.data() as Map<String, dynamic>)['notes']);
+      if (doc.exists && doc.data()?['notes'] != null) {
+        return List<String>.from(doc.data()!['notes']);
       }
-      
-      FirestoreCache().addToCache(cacheKey, notes);
-      return notes;
+      return [];
     } catch (e) {
       print('Erreur lors du chargement des notes personnalisées: $e');
       return [];
     }
   }
+// Fonction pour convertir la valeur stockée en valeur d'affichage selon le système
 
   void _showCompleteReportDialog() {
+    // Contrôleurs pour les champs
     TextEditingController periodeController =
         TextEditingController(text: _selectedPeriode);
+    // NOUVEAU: Contrôleur pour la performance attendue
     TextEditingController performanceAttendueController =
         TextEditingController();
 
+    // Options pour le trimestre
     final trimestreOptions = ['الأول', 'الثاني', 'الثالث'];
     final trimestreTranslations = {
       'الأول': 'Premier',
@@ -712,9 +584,11 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       'الثالث': 'Troisième'
     };
 
+    // Options pour le type d'évaluation
     final evaluationOptions = ['تقييم', 'امتحان'];
     final evaluationTranslations = {'تقييم': 'Évaluation', 'امتحان': 'Examen'};
 
+    // Variables pour stocker les noms de classe et matière
     String className = '';
     String matiereName = '';
 
@@ -724,26 +598,26 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setState) {
+            // Charger les noms de classe et matière
             Future<void> loadClassAndMatiereNames() async {
               try {
-                // Utiliser FirestoreHelper avec cache
-                var classDoc = await FirestoreHelper.getDocumentWithCache(
-                  'classes',
-                  widget.selectedClass,
-                  cacheKey: 'class_${widget.selectedClass}'
-                );
-                
+                // Récupérer le nom de la classe
+                var classDoc = await FirebaseFirestore.instance
+                    .collection('classes')
+                    .doc(widget.selectedClass)
+                    .get();
                 String arabicClassName = classDoc['name'] ?? 'غير معروف';
                 className = _isFrenchInterface
                     ? DataTranslator.translateClass(arabicClassName)
                     : arabicClassName;
 
-                var matiereDoc = await FirestoreHelper.getDocumentWithCache(
-                  'classes/${widget.selectedClass}/matieres',
-                  widget.selectedMatiere,
-                  cacheKey: 'matiere_${widget.selectedClass}_${widget.selectedMatiere}'
-                );
-                
+                // Récupérer le nom de la matière
+                var matiereDoc = await FirebaseFirestore.instance
+                    .collection('classes')
+                    .doc(widget.selectedClass)
+                    .collection('matieres')
+                    .doc(widget.selectedMatiere)
+                    .get();
                 String arabicMatiereName = matiereDoc['name'] ?? 'غير معروف';
                 matiereName = _isFrenchInterface
                     ? DataTranslator.translateMatiere(arabicMatiereName)
@@ -756,13 +630,13 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                 print('Erreur chargement noms: $e');
                 className = _isFrenchInterface ? 'Inconnu' : 'غير معروف';
                 matiereName = _isFrenchInterface ? 'Inconnu' : 'غير معروف';
-
                 if (mounted) {
                   setState(() {});
                 }
               }
             }
 
+            // Charger les données au début
             WidgetsBinding.instance.addPostFrameCallback((_) {
               loadClassAndMatiereNames();
             });
@@ -784,6 +658,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
+                      // Section 1: Sélection du trimestre et période
                       Container(
                         padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -810,6 +685,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                             ),
                             SizedBox(height: 12),
 
+                            // الثلاثي
                             Container(
                               padding: EdgeInsets.symmetric(vertical: 8),
                               child: Column(
@@ -855,6 +731,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                             ),
                             SizedBox(height: 16),
 
+                            // الوحدة / الفترة
                             Container(
                               padding: EdgeInsets.symmetric(vertical: 8),
                               child: Column(
@@ -882,6 +759,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                             ),
                             SizedBox(height: 16),
 
+                            // نوع التقييم
                             Container(
                               padding: EdgeInsets.symmetric(vertical: 8),
                               child: Column(
@@ -926,6 +804,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                               ),
                             ),
 
+                            // NOUVEAU: Champ pour la performance attendue
                             SizedBox(height: 16),
                             Container(
                               padding: EdgeInsets.symmetric(vertical: 8),
@@ -960,6 +839,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
                       SizedBox(height: 16),
 
+                      // Section 2: Affichage de la classe (en lecture seule)
                       Container(
                         padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -1049,6 +929,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
                       SizedBox(height: 16),
 
+                      // Section 3: Affichage de la matière (en lecture seule)
                       Container(
                         padding: EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -1137,6 +1018,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                         ),
                       ),
 
+                      // Résumé de la sélection
                       SizedBox(height: 16),
                       Container(
                         margin: EdgeInsets.only(top: 16),
@@ -1210,6 +1092,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                         ),
                       ),
 
+                      // Aperçu du contenu du rapport
                       if (className.isNotEmpty && matiereName.isNotEmpty)
                         Container(
                           margin: EdgeInsets.only(top: 16),
@@ -1247,6 +1130,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                                   '3. Tableau complet des résultats'),
                               _buildReportContentItem('4. الإحصائيات والنسب',
                                   '4. Statistiques et pourcentages'),
+                              // NOUVEAU: Ajout de la performance attendue dans l'aperçu
                               if (performanceAttendueController.text.isNotEmpty)
                                 _buildReportContentItem('5. الأداء المنتظر',
                                     '5. Performance attendue'),
@@ -1276,7 +1160,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                             matiereName,
                             performanceAttendue: performanceAttendueController
                                 .text
-                                .trim(),
+                                .trim(), // NOUVEAU: Passer la performance attendue
                           );
                         }
                       : null,
@@ -1294,12 +1178,16 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     );
   }
 
+// Méthode pour générer le rapport complet
+
+// Méthode pour générer le rapport complet
+
   Future<void> _generateCompleteReport(
     String classId,
     String matiereId,
     String className,
     String matiereName, {
-    String performanceAttendue = '',
+    String performanceAttendue = '', // NOUVEAU: paramètre optionnel
   }) async {
     if (!await _checkAndUpdatePrintCredit()) {
       _showCreditErrorDialog();
@@ -1317,18 +1205,11 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         builder: (BuildContext context) => _buildLoadingDialog(isPDF: true),
       );
 
-      // Vérifier le cache pour les critères
-      final cacheKey = 'criteria_${classId}_$matiereId';
-      List<Map<String, dynamic>> criteria;
-      
-      if (_criteriaCache.containsKey(cacheKey)) {
-        criteria = List<Map<String, dynamic>>.from(_criteriaCache[cacheKey]);
-      } else {
-        criteria = await _getCriteriaFromJson(
-            classId, matiereId, className, matiereName);
-        _criteriaCache[cacheKey] = criteria;
-      }
+      // 1. Récupérer les critères (barèmes) depuis le JSON
+      final criteria = await _getCriteriaFromJson(
+          classId, matiereId, className, matiereName);
 
+      // 2. Récupérer les données COMPLÈTES comme dans le tableau normal
       final matiereDisplayName = _isFrenchInterface
           ? DataTranslator.translateMatiere(matiereName)
           : matiereName;
@@ -1336,81 +1217,46 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           ? DataTranslator.translateClass(className)
           : className;
 
-      final String evaluationSystem =
-          await _getEvaluationSystem(classId, matiereId);
-      final List<String> customNotes =
-          await _loadCustomNotes(classId, matiereId);
+      // RÉCUPÉRER LES MÊMES DONNÉES QUE POUR L'IMPRESSION NORMALE
+      final baremes = await _getBaremesForCompleteReport(classId, matiereId);
+      final students = await _getStudentsForCompleteReport(classId, matiereId);
 
-      // Utiliser cache pour les barèmes
-      final baremesCacheKey = 'baremes_report_${classId}_$matiereId';
-      List<dynamic> baremes;
-      
-      if (_baremesCache.containsKey(baremesCacheKey)) {
-        baremes = List<dynamic>.from(_baremesCache[baremesCacheKey]!);
-      } else {
-        baremes = await _getBaremesForCompleteReport(classId, matiereId);
-        _baremesCache[baremesCacheKey] = baremes;
-      }
-
-      // Utiliser cache pour les étudiants
-      final studentsCacheKey = 'students_report_${classId}_$matiereId';
-      List<dynamic> students;
-      
-      if (_studentsCache.containsKey(studentsCacheKey)) {
-        students = List<dynamic>.from(_studentsCache[studentsCacheKey]!);
-      } else {
-        students = await _getStudentsForCompleteReport(
-          classId,
-          matiereId,
-          evaluationSystem: evaluationSystem,
-          customNotes: customNotes,
-        );
-        _studentsCache[studentsCacheKey] = students;
-      }
-
+      // CALCULER LES STATISTIQUES CORRECTEMENT
       final Map<String, int> sumCriteriaMaxPerBareme = {};
       int totalStudents = students.length;
 
+      // Initialiser les compteurs
       for (var bareme in baremes) {
         final baremeId = bareme['id'].toString();
         sumCriteriaMaxPerBareme[baremeId] = 0;
       }
 
+      // Compter les étudiants qui ont atteint chaque critère
       for (var student in students) {
         final studentBaremes = student['baremes'] as Map<String, dynamic>;
 
         for (var bareme in baremes) {
           final baremeId = bareme['id'].toString();
-          final storedValue =
-              studentBaremes[baremeId]?.toString() ?? '( - - - )';
+          final mark = studentBaremes[baremeId]?.toString() ?? '( - - - )';
 
-          bool isAchieved = _isValueAchieved(
-            storedValue,
-            evaluationSystem,
-            customNotes: customNotes,
-          );
-
-          if (isAchieved) {
+          if (mark == '( + + + )' || mark == '( + + - )') {
             sumCriteriaMaxPerBareme[baremeId] =
                 (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
           }
         }
       }
 
-      if (baremes.isEmpty) {
-        _showErrorSnackbar(_getTranslatedText(
-            'Aucun barème sélectionné pour cette évaluation.',
-            'No criteria selected for this evaluation.'));
-        return;
-      }
+      // DEBUG: Afficher les statistiques
+      print('=== STATISTIQUES RAPPORT COMPLET ===');
+      print('Total étudiants: $totalStudents');
+      sumCriteriaMaxPerBareme.forEach((key, value) {
+        if (totalStudents > 0) {
+          final percentage = (value / totalStudents * 100).toStringAsFixed(2);
+          print('$key: $value/$totalStudents = $percentage%');
+        }
+      });
 
-      if (students.isEmpty) {
-        _showErrorSnackbar(_getTranslatedText(
-            'Aucun élève trouvé pour cette classe.',
-            'No students found for this class.'));
-        return;
-      }
-
+      // 3. Générer le rapport HTML complet avec la performance attendue
       await HTMLReportGenerator.generateAndDownloadReport(
         profName: _profName,
         matiereName: matiereDisplayName,
@@ -1427,48 +1273,41 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         evaluationType: _selectedEvaluationType,
         selectedClass: classId,
         criteria: criteria,
-        performanceAttendue: performanceAttendue,
+        performanceAttendue:
+            performanceAttendue, // NOUVEAU: Ajouter le paramètre
       );
 
+      // Dédure le crédit
       await _deductPrintCredit();
 
       _showSuccessSnackbar(_getTranslatedText('تم إنشاء التقرير الكامل بنجاح',
-          'Complete report generated successfully'));
-    } catch (e, stackTrace) {
-      print('❌ ERREUR FATALE dans _generateCompleteReport: $e');
-      print('Stack trace: $stackTrace');
-
+          'Rapport complet généré avec succès'));
+    } catch (e) {
       _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء التقرير الكامل',
-              'Error generating complete report') +
-          ': ${e.toString()}');
+              'Erreur lors de la génération du rapport complet') +
+          ': $e');
     } finally {
       setState(() {
         _isGeneratingReport = false;
       });
-
-      if (Navigator.of(context, rootNavigator: true).canPop()) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
+      Navigator.of(context).pop();
     }
   }
 
+// Méthode pour récupérer les barèmes POUR LE RAPPORT COMPLET
   Future<List<dynamic>> _getBaremesForCompleteReport(
       String classId, String matiereId) async {
     try {
-      final cacheKey = 'baremes_complete_${classId}_$matiereId';
-      final cached = FirestoreCache().getFromCache<List<dynamic>>(cacheKey);
-      if (cached != null) return cached;
-      
-      final baremesSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-        'users/${currentUser!.uid}/selections',
-        classId,
-        matiereId,
-        cacheKey: cacheKey
-      );
+      final baremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(classId)
+          .collection(matiereId)
+          .get();
 
       final List<dynamic> baremes = [];
-
-      for (final baremeDoc in baremesSnapshot) {
+      for (final baremeDoc in baremesSnapshot.docs) {
         final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
         final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
         final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
@@ -1483,18 +1322,21 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             'value': displayedBaremeName,
             'originalValue': baremeName,
             'type': 'bareme',
-            'parentBaremeId': null,
+            'parentBaremeId': null, // Barème principal
           });
         }
 
-        final sousBaremesSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-          'users/${currentUser!.uid}/selections/${classId}/${matiereId}',
-          baremeId,
-          'sousBaremes',
-          cacheKey: 'sousBaremes_${baremeId}'
-        );
+        final sousBaremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('selections')
+            .doc(classId)
+            .collection(matiereId)
+            .doc(baremeId)
+            .collection('sousBaremes')
+            .get();
 
-        for (final sousBaremeDoc in sousBaremesSnapshot) {
+        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
           final sousBaremeId = sousBaremeDoc.id;
           final sousBaremeName =
               _getFieldSafe(sousBaremeDoc, 'sousBaremeName', 'غير معروف');
@@ -1517,190 +1359,52 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         }
       }
 
-      FirestoreCache().addToCache(cacheKey, baremes);
       return baremes;
     } catch (e) {
-      print('❌ Erreur récupération barèmes rapport complet: $e');
+      print('Erreur récupération barèmes rapport complet: $e');
       return [];
-    }
-  }
-
-  bool _isValueAchieved(String storedValue, String evaluationSystem,
-      {List<String>? customNotes}) {
-    if (storedValue == 'غائب') {
-      return false;
-    }
-
-    switch (evaluationSystem) {
-      case 'character':
-        return storedValue == '( + + + )' || storedValue == '( + + - )';
-
-      case 'note_0_1_5':
-        try {
-          final displayValue =
-              _getDisplayEvaluation(storedValue, evaluationSystem);
-          final doubleValue = double.tryParse(displayValue) ?? 0;
-          return doubleValue >= 1.0;
-        } catch (e) {
-          return false;
-        }
-
-      case 'note_0_3':
-        try {
-          final displayValue =
-              _getDisplayEvaluation(storedValue, evaluationSystem);
-          final doubleValue = double.tryParse(displayValue) ?? 0;
-          return doubleValue >= 2;
-        } catch (e) {
-          return false;
-        }
-
-      case 'note_0_6':
-        try {
-          final displayValue =
-              _getDisplayEvaluation(storedValue, evaluationSystem);
-          final doubleValue = double.tryParse(displayValue) ?? 0;
-          return doubleValue >= 4;
-        } catch (e) {
-          return false;
-        }
-
-      case 'custom':
-        if (customNotes != null && customNotes.isNotEmpty) {
-          final Map<String, String> mapping = {
-            '( - - - )': customNotes[0],
-            '( + - - )':
-                customNotes.length > 1 ? customNotes[1] : customNotes[0],
-            '( + + - )':
-                customNotes.length > 2 ? customNotes[2] : customNotes.last,
-            '( + + + )': customNotes.last,
-          };
-
-          final String correspondingNote =
-              mapping[storedValue] ?? customNotes[0];
-          final int noteIndex = customNotes.indexOf(correspondingNote);
-
-          return noteIndex >= customNotes.length - 2;
-        }
-        return storedValue == '( + + + )' || storedValue == '( + + - )';
-
-      default:
-        return storedValue == '( + + + )' || storedValue == '( + + - )';
     }
   }
 
   Future<List<dynamic>> _getStudentsForCompleteReport(
-    String classId,
-    String matiereId, {
-    required String evaluationSystem,
-    required List<String> customNotes,
-  }) async {
-    try {
-      final cacheKey = 'students_complete_${classId}_$matiereId';
-      final cached = FirestoreCache().getFromCache<List<dynamic>>(cacheKey);
-      if (cached != null) return cached;
-      
-      final studentsSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-        'users/${currentUser!.uid}/user_classes',
-        classId,
-        'students',
-        cacheKey: 'students_$classId'
-      );
-
-      final List<dynamic> students = [];
-
-      for (final studentDoc in studentsSnapshot) {
-        final studentId = studentDoc.id;
-        final studentName = _getFieldSafe(studentDoc, 'name',
-            _isFrenchInterface ? 'Élève inconnu' : 'تلميذ غير معروف');
-
-        final baremesSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-          'users/${currentUser!.uid}/user_classes/$classId/students',
-          studentId,
-          'baremes',
-          cacheKey: 'student_baremes_${studentId}'
-        );
-
-        final Map<String, String> baremes = {};
-
-        for (final baremeDoc in baremesSnapshot) {
-          final baremeId = baremeDoc.id;
-          final storedValue = _getFieldSafe(baremeDoc, 'Marks', '( - - - )');
-
-          final String displayValue = storedValue;
-          baremes[baremeId] = displayValue;
-
-          final sousBaremesSnapshot = await baremeDoc.reference.collection('sous_baremes').get();
-
-          for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-            final sousBaremeId = sousBaremeDoc.id;
-            final sousStoredValue =
-                _getFieldSafe(sousBaremeDoc, 'Marks', '( - - - )');
-
-            final String sousDisplayValue = sousStoredValue;
-            baremes['$baremeId-$sousBaremeId'] = sousDisplayValue;
-          }
-        }
-
-        students.add({
-          'id': studentId,
-          'name': studentName,
-          'baremes': baremes,
-        });
-      }
-
-      students.sort((a, b) {
-        String nameA = a['name'] ?? '';
-        String nameB = b['name'] ?? '';
-
-        if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
-          return _arabicStringComparator(nameA, nameB);
-        }
-
-        return nameA.compareTo(nameB);
-      });
-
-      FirestoreCache().addToCache(cacheKey, students);
-      return students;
-    } catch (e) {
-      print('❌ Erreur récupération étudiants rapport complet: $e');
-      return [];
-    }
-  }
-
-  Future<List<dynamic>> _getStudentsForReport(
       String classId, String matiereId) async {
     try {
+      // Récupérer le système d'évaluation
       final String evaluationSystem =
           await _getEvaluationSystem(classId, matiereId);
       final List<String> customNotes =
           await _loadCustomNotes(classId, matiereId);
 
-      final studentsSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-        'users/${currentUser!.uid}/user_classes',
-        classId,
-        'students',
-        cacheKey: 'students_report_$classId'
-      );
+      final studentsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(classId)
+          .collection('students')
+          .get();
 
       final List<dynamic> students = [];
-      for (final studentDoc in studentsSnapshot) {
+      for (final studentDoc in studentsSnapshot.docs) {
         final studentId = studentDoc.id;
         final studentName = _getFieldSafe(studentDoc, 'name',
             _isFrenchInterface ? 'Élève inconnu' : 'تلميذ غير معروف');
 
-        final baremesSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-          'users/${currentUser!.uid}/user_classes/$classId/students',
-          studentId,
-          'baremes',
-          cacheKey: 'student_baremes_${studentId}'
-        );
+        final baremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('user_classes')
+            .doc(classId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .get();
 
         final Map<String, String> baremes = {};
-        for (final baremeDoc in baremesSnapshot) {
+        for (final baremeDoc in baremesSnapshot.docs) {
           final baremeId = baremeDoc.id;
           final storedValue = _getFieldSafe(baremeDoc, 'Marks', '( - - - )');
 
+          // Convertir selon le système
           final displayValue = _getDisplayEvaluation(
             storedValue,
             evaluationSystem,
@@ -1734,6 +1438,99 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         });
       }
 
+      // Trier les étudiants par ordre alphabétique
+      students.sort((a, b) {
+        String nameA = a['name'] ?? '';
+        String nameB = b['name'] ?? '';
+
+        if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+          return _arabicStringComparator(nameA, nameB);
+        }
+
+        return nameA.compareTo(nameB);
+      });
+
+      return students;
+    } catch (e) {
+      print('Erreur récupération étudiants rapport complet: $e');
+      return [];
+    }
+  }
+
+// Méthodes auxiliaires pour récupérer les données
+  Future<List<dynamic>> _getStudentsForReport(
+      String classId, String matiereId) async {
+    try {
+      // Récupérer le système d'évaluation
+      final String evaluationSystem =
+          await _getEvaluationSystem(classId, matiereId);
+      final List<String> customNotes =
+          await _loadCustomNotes(classId, matiereId);
+
+      final studentsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(classId)
+          .collection('students')
+          .get();
+
+      final List<dynamic> students = [];
+      for (final studentDoc in studentsSnapshot.docs) {
+        final studentId = studentDoc.id;
+        final studentName = _getFieldSafe(studentDoc, 'name',
+            _isFrenchInterface ? 'Élève inconnu' : 'تلميذ غير معروف');
+
+        final baremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('user_classes')
+            .doc(classId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .get();
+
+        final Map<String, String> baremes = {};
+        for (final baremeDoc in baremesSnapshot.docs) {
+          final baremeId = baremeDoc.id;
+          final storedValue = _getFieldSafe(baremeDoc, 'Marks', '( - - - )');
+
+          // Convertir selon le système
+          final displayValue = _getDisplayEvaluation(
+            storedValue,
+            evaluationSystem,
+            customNotes: customNotes,
+          );
+
+          baremes[baremeId] = displayValue;
+
+          final sousBaremesSnapshot =
+              await baremeDoc.reference.collection('sous_baremes').get();
+
+          for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+            final sousBaremeId = sousBaremeDoc.id;
+            final sousStoredValue =
+                _getFieldSafe(sousBaremeDoc, 'Marks', '( - - - )');
+
+            final sousDisplayValue = _getDisplayEvaluation(
+              sousStoredValue,
+              evaluationSystem,
+              customNotes: customNotes,
+            );
+
+            baremes['$baremeId-$sousBaremeId'] = sousDisplayValue;
+          }
+        }
+
+        students.add({
+          'id': studentId,
+          'name': studentName,
+          'baremes': baremes,
+        });
+      }
+
+      // Trier les étudiants par ordre alphabétique
       students.sort((a, b) {
         String nameA = a['name'] ?? '';
         String nameB = b['name'] ?? '';
@@ -1755,20 +1552,22 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   Future<List<dynamic>> _getBaremesForReport(
       String classId, String matiereId) async {
     try {
+      // Récupérer le système et les notes personnalisées
       final String evaluationSystem =
           await _getEvaluationSystem(classId, matiereId);
       final List<String> customNotes =
           await _loadCustomNotes(classId, matiereId);
 
-      final baremesSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-        'users/${currentUser!.uid}/selections',
-        classId,
-        matiereId,
-        cacheKey: 'baremes_report_${classId}_$matiereId'
-      );
+      final baremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(classId)
+          .collection(matiereId)
+          .get();
 
       final List<dynamic> baremes = [];
-      for (final baremeDoc in baremesSnapshot) {
+      for (final baremeDoc in baremesSnapshot.docs) {
         final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
         final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
         final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
@@ -1788,14 +1587,17 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           });
         }
 
-        final sousBaremesSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-          'users/${currentUser!.uid}/selections/${classId}/${matiereId}',
-          baremeId,
-          'sousBaremes',
-          cacheKey: 'sousBaremes_${baremeId}'
-        );
+        final sousBaremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('selections')
+            .doc(classId)
+            .collection(matiereId)
+            .doc(baremeId)
+            .collection('sousBaremes')
+            .get();
 
-        for (final sousBaremeDoc in sousBaremesSnapshot) {
+        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
           final sousBaremeId = sousBaremeDoc.id;
           final sousBaremeName =
               _getFieldSafe(sousBaremeDoc, 'sousBaremeName', 'غير معروف');
@@ -1830,15 +1632,19 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   Future<Map<String, dynamic>> _getSummaryForReport(
       String classId, String matiereId) async {
     try {
-      final studentsSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-        'users/${currentUser!.uid}/user_classes',
-        classId,
-        'students',
-        cacheKey: 'students_summary_$classId'
-      );
+      final studentsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(classId)
+          .collection('students')
+          .get();
 
-      final totalStudents = studentsSnapshot.length;
+      final totalStudents = studentsSnapshot.docs.length;
       final Map<String, int> sumCriteriaMaxPerBareme = {};
+
+      // Logique pour calculer les statistiques (similaire à fetchMarks)
+      // ... (vous pouvez adapter la logique de fetchMarks ici)
 
       return {
         'totalStudents': totalStudents,
@@ -1853,6 +1659,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
+// Widget pour afficher un élément du contenu du rapport
   Widget _buildReportContentItem(String arabicText, String frenchText) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1869,6 +1676,931 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+    _isMounted = true;
+    _loadUserData();
+    fetchMarks();
+    _startTimer();
+    _setupUserListener();
+    _detectLanguage();
+  }
+
+  void _showClassAndMatiereSelectionDialog() {
+    // Contrôleurs pour les champs de recherche
+    TextEditingController classSearchController = TextEditingController();
+    TextEditingController matiereSearchController = TextEditingController();
+
+    // États pour les listes filtrées
+    List<Map<String, dynamic>> filteredClasses = [];
+    List<Map<String, dynamic>> filteredMatieres = [];
+
+    // États pour les sélections
+    Map<String, dynamic>? selectedClass;
+    Map<String, dynamic>? selectedMatiere;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // Charger les classes depuis Firestore
+            Future<void> loadClasses() async {
+              try {
+                final classesSnapshot = await FirebaseFirestore.instance
+                    .collection('classes')
+                    .get();
+
+                List<Map<String, dynamic>> classes = [];
+                for (var classDoc in classesSnapshot.docs) {
+                  classes.add({
+                    'id': classDoc.id,
+                    'name': classDoc['name'] ?? 'غير معروف',
+                    'frenchName': DataTranslator.translateClass(
+                        classDoc['name'] ?? 'غير معروف'),
+                    'order': _getClassOrder(classDoc['name'] ?? 'غير معروف'),
+                  });
+                }
+
+                // Trier par ordre numérique
+                classes.sort((a, b) {
+                  final orderA = a['order'] as int;
+                  final orderB = b['order'] as int;
+                  return orderA.compareTo(orderB);
+                });
+
+                setState(() {
+                  filteredClasses = classes;
+                });
+              } catch (e) {
+                print('Erreur chargement classes: $e');
+              }
+            }
+
+            // Charger les matières pour une classe
+            Future<void> loadMatieres(String classId) async {
+              try {
+                final matieresSnapshot = await FirebaseFirestore.instance
+                    .collection('classes')
+                    .doc(classId)
+                    .collection('matieres')
+                    .get();
+
+                List<Map<String, dynamic>> matieres = [];
+                for (var matiereDoc in matieresSnapshot.docs) {
+                  matieres.add({
+                    'id': matiereDoc.id,
+                    'name': matiereDoc['name'] ?? 'غير معروف',
+                    'frenchName': DataTranslator.translateMatiere(
+                        matiereDoc['name'] ?? 'غير معروف'),
+                  });
+                }
+
+                setState(() {
+                  filteredMatieres = matieres;
+                });
+              } catch (e) {
+                print('Erreur chargement matières: $e');
+              }
+            }
+
+            // Initialisation
+            if (filteredClasses.isEmpty) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                loadClasses();
+              });
+            }
+
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.table_chart, color: Colors.blue),
+                  SizedBox(width: 8),
+                  Text(
+                    _getTranslatedText(
+                        'طباعة جدول المعايير', 'Imprimer tableau des critères'),
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: Container(
+                width: double.maxFinite,
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: Column(
+                  children: [
+                    // Recherche de classe
+                    Container(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _getTranslatedText(
+                                'اختر القسم:', 'Sélectionnez la classe:'),
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          SizedBox(height: 8),
+                          TextField(
+                            controller: classSearchController,
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(),
+                              hintText: _getTranslatedText(
+                                  'بحث عن قسم...', 'Rechercher une classe...'),
+                              prefixIcon: Icon(Icons.search),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                // Filtrer les classes selon la recherche
+                                // Cette fonctionnalité nécessiterait une liste complète des classes
+                              });
+                            },
+                          ),
+                          SizedBox(height: 8),
+                          Container(
+                            height: 120,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey[300]!),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: filteredClasses.isEmpty
+                                ? Center(
+                                    child: CircularProgressIndicator(),
+                                  )
+                                : ListView.builder(
+                                    itemCount: filteredClasses.length,
+                                    itemBuilder: (context, index) {
+                                      final classe = filteredClasses[index];
+                                      return ListTile(
+                                        leading: Icon(Icons.class_,
+                                            color: selectedClass?['id'] ==
+                                                    classe['id']
+                                                ? Colors.blue
+                                                : Colors.grey),
+                                        title: Text(
+                                          _isFrenchInterface
+                                              ? classe['frenchName']
+                                              : classe['name'],
+                                        ),
+                                        trailing:
+                                            selectedClass?['id'] == classe['id']
+                                                ? Icon(Icons.check,
+                                                    color: Colors.green)
+                                                : null,
+                                        onTap: () {
+                                          setState(() {
+                                            selectedClass = classe;
+                                            selectedMatiere = null;
+                                            filteredMatieres.clear();
+                                            loadMatieres(classe['id']);
+                                          });
+                                        },
+                                      );
+                                    },
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: 16),
+
+                    // Recherche de matière
+                    Container(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _getTranslatedText(
+                                'اختر المادة:', 'Sélectionnez la matière:'),
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          SizedBox(height: 8),
+                          TextField(
+                            controller: matiereSearchController,
+                            decoration: InputDecoration(
+                              border: OutlineInputBorder(),
+                              hintText: _getTranslatedText('بحث عن مادة...',
+                                  'Rechercher une matière...'),
+                              prefixIcon: Icon(Icons.search),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                              enabled: selectedClass != null,
+                            ),
+                            enabled: selectedClass != null,
+                            onChanged: (value) {
+                              setState(() {
+                                // Filtrer les matières selon la recherche
+                              });
+                            },
+                          ),
+                          SizedBox(height: 8),
+                          Container(
+                            height: 120,
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.grey[300]!),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: selectedClass == null
+                                ? Center(
+                                    child: Text(
+                                      _getTranslatedText('اختر قسمًا أولاً',
+                                          'Sélectionnez d\'abord une classe'),
+                                      style: TextStyle(color: Colors.grey),
+                                    ),
+                                  )
+                                : filteredMatieres.isEmpty
+                                    ? Center(
+                                        child: CircularProgressIndicator(),
+                                      )
+                                    : ListView.builder(
+                                        itemCount: filteredMatieres.length,
+                                        itemBuilder: (context, index) {
+                                          final matiere =
+                                              filteredMatieres[index];
+                                          return ListTile(
+                                            leading: Icon(Icons.book,
+                                                color: selectedMatiere?['id'] ==
+                                                        matiere['id']
+                                                    ? Colors.blue
+                                                    : Colors.grey),
+                                            title: Text(
+                                              _isFrenchInterface
+                                                  ? matiere['frenchName']
+                                                  : matiere['name'],
+                                            ),
+                                            trailing: selectedMatiere?['id'] ==
+                                                    matiere['id']
+                                                ? Icon(Icons.check,
+                                                    color: Colors.green)
+                                                : null,
+                                            onTap: () {
+                                              setState(() {
+                                                selectedMatiere = matiere;
+                                              });
+                                            },
+                                          );
+                                        },
+                                      ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Résumé de la sélection
+                    if (selectedClass != null && selectedMatiere != null)
+                      Container(
+                        margin: EdgeInsets.only(top: 16),
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.green[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle, color: Colors.green),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _getTranslatedText(
+                                        'تم الاختيار:', 'Sélection:'),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green[800],
+                                    ),
+                                  ),
+                                  Text(
+                                    '${_isFrenchInterface ? selectedClass!['frenchName'] : selectedClass!['name']} - '
+                                    '${_isFrenchInterface ? selectedMatiere!['frenchName'] : selectedMatiere!['name']}',
+                                    style: TextStyle(color: Colors.green[800]),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(_getTranslatedText('إلغاء', 'Annuler')),
+                ),
+                ElevatedButton(
+                  onPressed: selectedClass != null && selectedMatiere != null
+                      ? () {
+                          Navigator.pop(context);
+                          _generateBaremesTableReport(
+                            selectedClass!['id'],
+                            selectedMatiere!['id'],
+                            selectedClass!['name'],
+                            selectedMatiere!['name'],
+                          );
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                  ),
+                  child: Text(_getTranslatedText(
+                      'طباعة الجدول', 'Imprimer le tableau')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  int _getClassOrder(String className) {
+    if (className.contains('الأولى')) return 1;
+    if (className.contains('الثانية')) return 2;
+    if (className.contains('الثالثة')) return 3;
+    if (className.contains('الرابعة')) return 4;
+    if (className.contains('الخامسة')) return 5;
+    if (className.contains('السادسة')) return 6;
+    return 999;
+  }
+
+// Nouvelle méthode pour générer le rapport de barèmes
+  Future<void> _generateBaremesTableReport(
+    String classId,
+    String matiereId,
+    String className,
+    String matiereName,
+  ) async {
+    // Normaliser le nom de la classe
+    final normalizedClassName = _mapClassToJsonBase(className);
+
+    // Récupérer les critères depuis le JSON avec la classe normalisée
+    final criteria = await _getCriteriaFromJson(
+        classId, matiereId, normalizedClassName, matiereName);
+
+    if (!await _checkAndUpdatePrintCredit()) {
+      _showCreditErrorDialog();
+      return;
+    }
+
+    setState(() {
+      _isGeneratingReport = true;
+    });
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) => _buildLoadingDialog(isPDF: true),
+      );
+
+      // Récupérer les critères depuis le code 3
+      final criteria = await _getCriteriaFromJson(
+          classId, matiereId, className, matiereName);
+
+      // Générer le rapport HTML
+      await HTMLReportGenerator.generateAndDownloadReport(
+        profName: _profName,
+        matiereName: matiereName,
+        className: className,
+        schoolName: _schoolName,
+        baremes: [], // Vide car on affiche seulement les critères
+        students: [], // Vide
+        sumCriteriaMaxPerBareme: {},
+        totalStudents: 0,
+        isFrenchInterface: _isFrenchInterface,
+        downloadAsPDF: true,
+        trimestre: _selectedTrimestre,
+        periode: _selectedPeriode,
+        evaluationType: _selectedEvaluationType,
+        selectedClass: classId,
+        criteria: criteria, // Nouveau paramètre pour les critères
+      );
+
+      // Dédure le crédit
+      await _deductPrintCredit();
+
+      _showSuccessSnackbar(_getTranslatedText('تم إنشاء جدول المعايير بنجاح',
+          'Tableau des critères généré avec succès'));
+    } catch (e) {
+      _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء جدول المعايير',
+              'Erreur lors de la génération du tableau des critères') +
+          ': $e');
+    } finally {
+      setState(() {
+        _isGeneratingReport = false;
+      });
+      Navigator.of(context).pop();
+    }
+  }
+
+// Méthode pour récupérer les critères depuis le JSON
+// Méthode pour normaliser le nom de classe
+
+// Méthode pour mapper les classes avec sections aux classes de base du JSON
+  String _mapClassToJsonBase(String classNameWithSection) {
+    // Dictionnaire de mapping complet
+    final Map<String, String> classMapping = {
+      // Première année
+      'السنة الأولى ابتدائي': 'السنة الأولى ابتدائي',
+      'السنة الأولى ابتدائي أ': 'السنة الأولى ابتدائي',
+      'السنة الأولى ابتدائي ب': 'السنة الأولى ابتدائي',
+      'السنة الأولى ابتدائي ج': 'السنة الأولى ابتدائي',
+      'السنة الأولى ابتدائي د': 'السنة الأولى ابتدائي',
+
+      // Deuxième année
+      'السنة الثانية ابتدائي': 'السنة الثانية ابتدائي',
+      'السنة الثانية ابتدائي أ': 'السنة الثانية ابتدائي',
+      'السنة الثانية ابتدائي ب': 'السنة الثانية ابتدائي',
+      'السنة الثانية ابتدائي ج': 'السنة الثانية ابتدائي',
+      'السنة الثانية ابتدائي د': 'السنة الثانية ابتدائي',
+
+      // Troisième année
+      'السنة الثالثة ابتدائي': 'السنة الثالثة ابتدائي',
+      'السنة الثالثة ابتدائي أ': 'السنة الثالثة ابتدائي',
+      'السنة الثالثة ابتدائي ب': 'السنة الثالثة ابتدائي',
+      'السنة الثالثة ابتدائي ج': 'السنة الثالثة ابتدائي',
+      'السنة الثالثة ابتدائي د': 'السنة الثالثة ابتدائي',
+
+      // Quatrième année
+      'السنة الرابعة ابتدائي': 'السنة الرابعة ابتدائي',
+      'السنة الرابعة ابتدائي أ': 'السنة الرابعة ابتدائي',
+      'السنة الرابعة ابتدائي ب': 'السنة الرابعة ابتدائي',
+      'السنة الرابعة ابتدائي ج': 'السنة الرابعة ابتدائي',
+      'السنة الرابعة ابتدائي د': 'السنة الرابعة ابتدائي',
+
+      // Cinquième année
+      'السنة الخامسة ابتدائي': 'السنة الخامسة ابتدائي',
+      'السنة الخامسة ابتدائي أ': 'السنة الخامسة ابتدائي',
+      'السنة الخامسة ابتدائي ب': 'السنة الخامسة ابتدائي',
+      'السنة الخامسة ابتدائي ج': 'السنة الخامسة ابتدائي',
+      'السنة الخامسة ابتدائي د': 'السنة الخامسة ابتدائي',
+
+      // Sixième année
+      'السنة السادسة ابتدائي': 'السنة السادسة ابتدائي',
+      'السنة السادسة ابتدائي أ': 'السنة السادسة ابتدائي',
+      'السنة السادسة ابتدائي ب': 'السنة السادسة ابتدائي',
+      'السنة السادسة ابتدائي ج': 'السنة السادسة ابتدائي',
+      'السنة السادسة ابتدائي د': 'السنة السادسة ابتدائي',
+    };
+
+    // Retourner la classe de base ou la classe originale si non trouvée
+    return classMapping[classNameWithSection] ?? classNameWithSection;
+  }
+
+// Utilisez cette méthode dans _getCriteriaFromJson
+
+  Future<List<Map<String, dynamic>>> _getCriteriaFromJson(
+    String classId,
+    String matiereId,
+    String className,
+    String matiereName,
+  ) async {
+    try {
+      print('🎯 ===== DEBUT RECHERCHE CRITERES JSON =====');
+      print('📌 Paramètres d\'entrée:');
+      print('   • Classe originale: "$className"');
+      print('   • Matière: "$matiereName"');
+
+      // 1. Mapper la classe avec section vers la classe de base du JSON
+      final String jsonClassName = _mapClassToJsonBase(className);
+      print('🔄 Classe mappée pour JSON: "$jsonClassName"');
+
+      // 2. Charger le JSON
+      final jsonString =
+          await rootBundle.loadString('assets/evaluation_excel.json');
+      final jsonData = json.decode(jsonString);
+
+      // 3. Vérifier la structure
+      if (!jsonData.containsKey('classes')) {
+        print('❌ ERREUR: Clé "classes" non trouvée dans JSON');
+        return [];
+      }
+
+      final classes = jsonData['classes'] as Map<String, dynamic>;
+      print('📚 Classes disponibles dans JSON: ${classes.keys.length}');
+
+      // Afficher toutes les classes disponibles pour le débogage
+      print('   Liste des classes JSON:');
+      classes.keys.toList().sort();
+      for (final key in classes.keys) {
+        print('   • $key');
+      }
+
+      // 4. Chercher la classe dans le JSON
+      if (!classes.containsKey(jsonClassName)) {
+        print('❌ ERREUR: Classe "$jsonClassName" non trouvée dans JSON');
+
+        // Chercher des correspondances partielles
+        for (final key in classes.keys) {
+          if (key.contains(jsonClassName) || jsonClassName.contains(key)) {
+            print('   🔍 Correspondance trouvée: "$key"');
+            return _extractCriteriaForClass(classes[key], matiereName);
+          }
+        }
+
+        print('   ❌ Aucune correspondance trouvée');
+        return [];
+      }
+
+      print('✅ SUCCES: Classe "$jsonClassName" trouvée dans JSON');
+
+      // 5. Extraire les critères
+      final classData = classes[jsonClassName];
+      return _extractCriteriaForClass(classData, matiereName);
+    } catch (e) {
+      print('💥 ERREUR FATALE dans _getCriteriaFromJson: $e');
+      return [];
+    } finally {
+      print('===== FIN RECHERCHE CRITERES JSON =====\n');
+    }
+  }
+
+  List<Map<String, dynamic>> _extractCriteriaForClass(
+      dynamic classData, String matiereName) {
+    try {
+      print('🔍 Extraction critères pour matière: "$matiereName"');
+
+      if (classData is! Map<String, dynamic>) {
+        print('❌ Données de classe invalides');
+        return [];
+      }
+
+      // Vérifier la structure subjects
+      if (!classData.containsKey('subjects') ||
+          classData['subjects'] is! Map<String, dynamic>) {
+        print('❌ Clé "subjects" non trouvée ou invalide');
+        return [];
+      }
+
+      final subjects = classData['subjects'] as Map<String, dynamic>;
+      print('📖 Matières disponibles dans la classe: ${subjects.keys.length}');
+
+      // Afficher toutes les matières pour le débogage
+      print('   Liste des matières:');
+      for (final key in subjects.keys) {
+        print('   • $key');
+      }
+
+      // Chercher la matière exacte
+      if (!subjects.containsKey(matiereName)) {
+        print('❌ Matière "$matiereName" non trouvée');
+        print('   Chercher des correspondances...');
+
+        // Chercher par nom partiel
+        for (final key in subjects.keys) {
+          if (key.contains(matiereName) || matiereName.contains(key)) {
+            print('   ✅ Matière trouvée par correspondance: "$key"');
+            return _processSubjectData(subjects[key], key);
+          }
+        }
+
+        // Chercher par traduction
+        if (_isFrenchInterface) {
+          final arabicMatiereName =
+              DataTranslator.getArabicMatiereFromFrench(matiereName);
+          print('   🔍 Chercher version arabe: "$arabicMatiereName"');
+
+          if (subjects.containsKey(arabicMatiereName)) {
+            print('   ✅ Matière trouvée par traduction: "$arabicMatiereName"');
+            return _processSubjectData(
+                subjects[arabicMatiereName], arabicMatiereName);
+          }
+        }
+
+        print('❌ Matière non trouvée après toutes les recherches');
+        return [];
+      }
+
+      print('✅ Matière trouvée: "$matiereName"');
+      return _processSubjectData(subjects[matiereName], matiereName);
+    } catch (e) {
+      print('❌ Erreur extraction critères: $e');
+      return [];
+    }
+  }
+
+  List<Map<String, dynamic>> _processSubjectData(
+      dynamic subjectData, String originalMatiereName) {
+    try {
+      if (subjectData is! Map<String, dynamic>) {
+        print('❌ Données matière invalides');
+        return [];
+      }
+
+      print('📊 Vérification données matière:');
+      print('   • has_criteria: ${subjectData['has_criteria']}');
+      print('   • criteria_count: ${subjectData['criteria_count']}');
+
+      if (subjectData['has_criteria'] != true) {
+        print('⚠️ Matière sans critères (has_criteria = false)');
+        return [];
+      }
+
+      final criteriaList = subjectData['criteria'] as List<dynamic>?;
+      if (criteriaList == null || criteriaList.isEmpty) {
+        print('⚠️ Liste de critères vide ou null');
+        return [];
+      }
+
+      print('✅ ${criteriaList.length} critères trouvés');
+
+      // Afficher les noms des critères pour le débogage
+      for (int i = 0; i < criteriaList.length; i++) {
+        final criterion = criteriaList[i] as Map<String, dynamic>;
+        print(
+            '   ${i + 1}. ${criterion['name']} (${criterion['indicators_count'] ?? 0} indicateurs)');
+      }
+
+      // Traiter et trier les critères
+      return _createCriteriaList(criteriaList, originalMatiereName);
+    } catch (e) {
+      print('❌ Erreur traitement données matière: $e');
+      return [];
+    }
+  }
+
+  List<Map<String, dynamic>> _createCriteriaList(
+      List<dynamic> criteriaList, String matiereName) {
+    final List<Map<String, dynamic>> criteria = [];
+
+    for (int i = 0; i < criteriaList.length; i++) {
+      final criterion = criteriaList[i] as Map<String, dynamic>;
+      final criteriaName = criterion['name']?.toString() ?? 'معيار ${i + 1}';
+
+      // Récupérer les indicateurs
+      final indicators = criterion['indicators'] as List<dynamic>? ?? [];
+
+      // Filtrer les indicateurs non vides
+      final List<String> indicatorStrings = indicators
+          .map((indicator) => indicator.toString())
+          .where((indicator) => indicator.trim().isNotEmpty)
+          .toList();
+
+      // Trier les indicateurs
+      indicatorStrings.sort(_arabicStringComparator);
+
+      // Créer l'entrée du critère
+      criteria.add({
+        'id': i + 1,
+        'name': _isFrenchInterface
+            ? DataTranslator.translateMatiere(criteriaName)
+            : criteriaName,
+        'originalName': criteriaName,
+        'frenchName': DataTranslator.translateMatiere(criteriaName),
+        'arabicName': criteriaName,
+        'domaine': _getDomaineForMatiere(matiereName, _isFrenchInterface),
+        'indicators': indicatorStrings,
+        'indicators_count': indicatorStrings.length,
+        'displayNumber': i + 1,
+        'sortKey': _generateArabicSortKey(criteriaName),
+      });
+    }
+
+    // Trier les critères selon la langue
+    if (_isFrenchInterface) {
+      criteria
+          .sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
+    } else {
+      criteria.sort((a, b) => _arabicStringComparator(
+            a['originalName'] as String,
+            b['originalName'] as String,
+          ));
+    }
+
+    // Mettre à jour les numéros d'affichage après tri
+    for (int i = 0; i < criteria.length; i++) {
+      criteria[i]['displayNumber'] = i + 1;
+    }
+
+    print('✅ ${criteria.length} critères traités avec succès');
+    return criteria;
+  }
+
+// Méthode auxiliaire pour extraire les critères d'une classe
+  List<Map<String, dynamic>> _extractCriteriaFromClassData(
+      dynamic classData, String matiereName) {
+    if (classData is Map<String, dynamic> &&
+        classData.containsKey('subjects') &&
+        classData['subjects'] is Map<String, dynamic>) {
+      final subjects = classData['subjects'] as Map<String, dynamic>;
+
+      if (subjects.containsKey(matiereName)) {
+        final subjectData = subjects[matiereName];
+        final bool hasCriteria = subjectData['has_criteria'] ?? false;
+
+        if (hasCriteria && subjectData['criteria'] != null) {
+          final criteriaList = subjectData['criteria'] as List<dynamic>;
+          print('✅ Critères trouvés pour $matiereName: ${criteriaList.length}');
+
+          return _processCriteriaList(criteriaList, matiereName);
+        } else {
+          print('⚠️ Pas de critères pour $matiereName ou has_criteria=false');
+        }
+      } else {
+        print('❌ Matière non trouvée dans la classe: $matiereName');
+        print('Matières disponibles: ${subjects.keys.join(', ')}');
+      }
+    }
+
+    return [];
+  }
+
+// Méthode auxiliaire pour traiter la liste des critères
+  List<Map<String, dynamic>> _processCriteriaList(
+      List<dynamic> criteriaList, String matiereName) {
+    List<Map<String, dynamic>> criteria = [];
+
+    for (int i = 0; i < criteriaList.length; i++) {
+      final criteriaData = criteriaList[i] as Map<String, dynamic>;
+      final criteriaName = criteriaData['name']?.toString() ?? 'معيار ${i + 1}';
+      final indicators = criteriaData['indicators'] as List<dynamic>? ?? [];
+
+      // Trier les indicateurs par ordre alphabétique arabe
+      final List<String> indicatorStrings = indicators
+          .map((indicator) => indicator.toString())
+          .where(
+              (indicator) => indicator.isNotEmpty) // Exclure les chaînes vides
+          .toList();
+
+      // Trier les indicateurs
+      indicatorStrings.sort(_arabicStringComparator);
+
+      criteria.add({
+        'name': _isFrenchInterface
+            ? DataTranslator.translateMatiere(criteriaName)
+            : criteriaName,
+        'originalName': criteriaName,
+        'domaine': _getDomaineForMatiere(matiereName, _isFrenchInterface),
+        'indicators': indicatorStrings.map((indicator) {
+          return _isFrenchInterface
+              ? DataTranslator.translateMatiere(indicator)
+              : indicator;
+        }).toList(),
+        'sortKey': _generateArabicSortKey(criteriaName),
+      });
+    }
+
+    // Trier les critères
+    criteria.sort((a, b) {
+      if (_isFrenchInterface) {
+        return (a['name'] as String).compareTo(b['name'] as String);
+      } else {
+        return _arabicStringComparator(
+          a['originalName'] as String,
+          b['originalName'] as String,
+        );
+      }
+    });
+
+    // Réassigner les numéros après le tri
+    for (int i = 0; i < criteria.length; i++) {
+      criteria[i]['displayNumber'] = i + 1;
+    }
+
+    return criteria;
+  }
+
+// Méthode pour extraire l'année arabe d'un nom de classe
+  String _extractArabicYear(String className) {
+    // Extrait "الأولى", "الثانية", etc.
+    final patterns = [
+      'الأولى',
+      'الثانية',
+      'الثالثة',
+      'الرابعة',
+      'الخامسة',
+      'السادسة'
+    ];
+
+    for (final pattern in patterns) {
+      if (className.contains(pattern)) {
+        return pattern;
+      }
+    }
+
+    return className;
+  }
+
+// Comparateur pour tri alphabétique arabe
+  int _arabicStringComparator(String a, String b) {
+    // Normaliser les chaînes
+    final normalizedA = _normalizeArabicForSort(a);
+    final normalizedB = _normalizeArabicForSort(b);
+
+    // Ordre des lettres arabes
+    const arabicAlphabet = 'اأإآبتثجحخدذرزسشصضطظعغفقكلمنهويىةؤئء';
+
+    for (int i = 0; i < math.min(normalizedA.length, normalizedB.length); i++) {
+      final charA = normalizedA[i];
+      final charB = normalizedB[i];
+
+      final indexA = arabicAlphabet.indexOf(charA);
+      final indexB = arabicAlphabet.indexOf(charB);
+
+      if (indexA != -1 && indexB != -1 && indexA != indexB) {
+        return indexA - indexB;
+      }
+
+      // Comparaison Unicode comme fallback
+      if (charA != charB) {
+        return charA.codeUnitAt(0) - charB.codeUnitAt(0);
+      }
+    }
+
+    return normalizedA.length - normalizedB.length;
+  }
+
+// Normalisation du texte arabe pour le tri
+  String _normalizeArabicForSort(String text) {
+    // Supprimer les diacritiques
+    String normalized = text.replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '');
+
+    // Normaliser les formes de lettres
+    final Map<String, String> normalizationMap = {
+      'أ': 'ا',
+      'إ': 'ا',
+      'آ': 'ا',
+      'ؤ': 'و',
+      'ئ': 'ي',
+      'ة': 'ه',
+      'ى': 'ي',
+      'ٱ': 'ا',
+      'ٳ': 'ا',
+      'ٲ': 'ا',
+    };
+
+    normalizationMap.forEach((key, value) {
+      normalized = normalized.replaceAll(key, value);
+    });
+
+    return normalized.trim();
+  }
+
+// Générer une clé de tri pour l'arabe
+  String _generateArabicSortKey(String text) {
+    final normalized = _normalizeArabicForSort(text);
+    final withoutSpaces = normalized.replaceAll(' ', '');
+    return withoutSpaces.toLowerCase();
+  }
+
+  void _detectLanguage() async {
+    try {
+      var matiereDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .collection('matieres')
+          .doc(widget.selectedMatiere)
+          .get();
+
+      String matiereName = matiereDoc['name'] ?? '';
+
+      // Vérifier si c'est une matière en français
+      bool isFrenchInterface;
+
+      if (DataTranslator.isForeignMatiere(matiereName)) {
+        isFrenchInterface = true;
+      } else {
+        // Vérifier le contenu de la matière
+        final containsFrench =
+            matiereName.contains(RegExp(r'[a-zA-Zéèêëàâäôöûüç]'));
+        final containsArabic = matiereName.contains(RegExp(r'[\u0600-\u06FF]'));
+
+        // Si contient du français mais pas d'arabe
+        isFrenchInterface = containsFrench && !containsArabic;
+      }
+
+      setState(() {
+        _matiereName = matiereName;
+        _isFrenchInterface = isFrenchInterface;
+        print('Détection langue - Matière: "$matiereName", '
+            'Interface française: $isFrenchInterface');
+      });
+    } catch (e) {
+      print('Erreur détection langue: $e');
+      setState(() {
+        _isFrenchInterface = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _isMounted = false;
+    _accountStatusTimer?.cancel();
+    _userSubscription?.cancel();
+    super.dispose();
+  }
+
+  // CORRECTION : Méthode sécurisée pour lire les champs Firestore
   dynamic _getFieldSafe(
       DocumentSnapshot doc, String field, dynamic defaultValue) {
     try {
@@ -1912,6 +2644,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     TextEditingController periodeController =
         TextEditingController(text: _selectedPeriode);
 
+    // Options pour le trimestre
     final trimestreOptions = ['الأول', 'الثاني', 'الثالث'];
     final trimestreTranslations = {
       'الأول': 'Premier',
@@ -1919,6 +2652,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       'الثالث': 'Troisième'
     };
 
+    // Options pour le type d'évaluation
     final evaluationOptions = ['تقييم', 'امتحان'];
     final evaluationTranslations = {'تقييم': 'Évaluation', 'امتحان': 'Examen'};
 
@@ -1941,6 +2675,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // الثلاثي
               Container(
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: Column(
@@ -1982,6 +2717,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               ),
               SizedBox(height: 16),
 
+              // الوحدة / الفترة
               Container(
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: Column(
@@ -2008,6 +2744,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               ),
               SizedBox(height: 16),
 
+              // نوع التقييم
               Container(
                 padding: EdgeInsets.symmetric(vertical: 8),
                 child: Column(
@@ -2061,7 +2798,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                 _selectedPeriode = periodeController.text.trim();
               });
               Navigator.pop(context);
-              onConfirm();
+              onConfirm(); // Appeler la fonction de callback
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.blue,
@@ -2077,7 +2814,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     if (currentUser == null) return;
 
     try {
-      final userDoc = await FirestoreHelper.getUserDocument(currentUser!.uid);
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser!.uid)
+          .get();
 
       if (userDoc.exists && _isMounted) {
         setState(() {
@@ -2106,7 +2846,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     if (currentUser == null || !_isMounted) return;
 
     try {
-      final userDoc = await FirestoreHelper.getUserDocument(currentUser!.uid);
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser!.uid)
+          .get();
 
       if (_isMounted && userDoc.exists) {
         final isActive = _getFieldSafe(userDoc, 'isActive', false);
@@ -2129,7 +2872,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     if (currentUser == null) return false;
 
     try {
-      final userDoc = await FirestoreHelper.getUserDocument(currentUser!.uid);
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser!.uid)
+          .get();
 
       if (!userDoc.exists) return false;
 
@@ -2156,6 +2902,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
+  // MODIFICATION : Traduction des textes selon la langue
   String _getTranslatedText(String arabicText, String frenchText) {
     return _isFrenchInterface ? frenchText : arabicText;
   }
@@ -2163,6 +2910,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   Future<void> _saveAndOpenPDF(Uint8List pdfBytes) async {
     try {
       if (kIsWeb) {
+        // Pour le web
         final blob = html.Blob([pdfBytes], 'application/pdf');
         final url = html.Url.createObjectUrlFromBlob(blob);
         final anchor = html.AnchorElement(href: url)
@@ -2170,6 +2918,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           ..click();
         html.Url.revokeObjectUrl(url);
       } else {
+        // Pour mobile/desktop
         final directory = await getTemporaryDirectory();
         final file = File('${directory.path}/tableau_resultats.pdf');
         await file.writeAsBytes(pdfBytes);
@@ -2199,9 +2948,11 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             _buildLoadingDialog(isPDF: downloadAsPDF),
       );
 
+      // Récupérer les données CORRECTEMENT
       final matiereName = await _getMatiereName();
       final className = await _getClassName();
 
+      // DEBUG: Afficher les données avant envoi
       print('=== DONNÉES POUR RAPPORT HTML ===');
       print('Total étudiants: $totalStudents');
       print('Statistiques sumCriteriaMaxPerBareme:');
@@ -2225,6 +2976,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         'evaluationType': _selectedEvaluationType,
       };
 
+      // Générer le rapport (HTML ou PDF)
       await HTMLReportGenerator.generateAndDownloadReport(
         profName: _profName,
         matiereName: matiereName,
@@ -2232,7 +2984,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         schoolName: _schoolName,
         baremes: data['baremes'] as List<dynamic>,
         students: data['students'] as List<dynamic>,
-        sumCriteriaMaxPerBareme: sumCriteriaMaxPerBareme,
+        sumCriteriaMaxPerBareme:
+            sumCriteriaMaxPerBareme, // IMPORTANT: envoyer les bonnes données
         totalStudents: totalStudents,
         isFrenchInterface: _isFrenchInterface,
         downloadAsPDF: downloadAsPDF,
@@ -2241,6 +2994,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         evaluationType: _selectedEvaluationType,
       );
 
+      // Dédure le crédit
       await _deductPrintCredit();
 
       _showSuccessSnackbar(downloadAsPDF
@@ -2432,6 +3186,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         'baremeName': baremeName,
         'sousBaremeName': sousBaremeName,
         'selectedSousBaremeId': selectedSousBaremeId,
+        // Ajouter les informations du dialogue
         'trimestre': _selectedTrimestre,
         'periode': _selectedPeriode,
         'evaluationType': _selectedEvaluationType,
@@ -2443,6 +3198,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         success = await _sendHTMLDataToFlask(data);
       }
 
+      // DÉDUCTION UNIQUEMENT SI RÉUSSITE
       if (success) {
         await _deductPrintCredit();
       }
@@ -2514,12 +3270,16 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
   Future<bool> _sendDataToFlask(Map<String, dynamic> data) async {
     try {
+      // IMPORTANT: S'assurer que les données envoyées au serveur sont en arabe
+      // Créer une copie des données avec les valeurs originales arabes
       Map<String, dynamic> dataForServer = Map.from(data);
 
+      // Remplacer les valeurs affichées par les valeurs originales arabes
       if (data['baremes'] != null) {
         List<dynamic> originalBaremes = [];
         for (var bareme in data['baremes']) {
           Map<String, dynamic> originalBareme = Map.from(bareme);
+          // Utiliser la valeur originale arabe pour le serveur
           if (bareme['originalValue'] != null) {
             originalBareme['value'] = bareme['originalValue'];
           }
@@ -2528,6 +3288,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         dataForServer['baremes'] = originalBaremes;
       }
 
+      // Ajouter les informations du dialogue (elles sont déjà en arabe)
       dataForServer['trimestre'] = _selectedTrimestre;
       dataForServer['periode'] = _selectedPeriode;
       dataForServer['evaluationType'] = _selectedEvaluationType;
@@ -2580,6 +3341,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
   Future<bool> _sendHTMLDataToFlask(Map<String, dynamic> data) async {
     try {
+      // Ajouter les informations du dialogue
       data['trimestre'] = _selectedTrimestre;
       data['periode'] = _selectedPeriode;
       data['evaluationType'] = _selectedEvaluationType;
@@ -2606,12 +3368,12 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
         _showSuccessSnackbar(_getTranslatedText(
             'تم إنشاء التقرير بنجاح', 'Rapport généré avec succès'));
-        return true;
+        return true; // SUCCÈS
       } else {
         _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء التقرير HTML:',
                 'Erreur lors de la génération du rapport HTML:') +
             ' ${response.statusCode}');
-        return false;
+        return false; // ÉCHEC
       }
     } on TimeoutException {
       _showErrorSnackbar(_getTranslatedText(
@@ -2668,13 +3430,17 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     if (currentUser == null) return;
 
     try {
-      final userDoc = await FirestoreHelper.getUserDocument(currentUser!.uid);
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser!.uid)
+          .get();
 
       if (!userDoc.exists) return;
 
       final bool isActive = _getFieldSafe(userDoc, 'isActive', false);
       final int remainingPrints = _getFieldSafe(userDoc, 'remainingPrints', 5);
 
+      // Ne déduire que si le compte est inactif et qu'il reste des crédits
       if (!isActive && remainingPrints > 0) {
         await FirebaseFirestore.instance
             .collection('Users')
@@ -2692,15 +3458,19 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
+  // MODIFICATION : Traduction des noms pour l'interface
+  // MODIFICATION : Garder les noms arabes dans la BD, traduire uniquement pour l'affichage
   Future<String> _getMatiereName() async {
     try {
-      var matiereDoc = await FirestoreHelper.getDocumentWithCache(
-        'classes/${widget.selectedClass}/matieres',
-        widget.selectedMatiere,
-        cacheKey: 'matiere_${widget.selectedClass}_${widget.selectedMatiere}'
-      );
+      var matiereDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .collection('matieres')
+          .doc(widget.selectedMatiere)
+          .get();
 
       String arabicName = _getFieldSafe(matiereDoc, 'name', 'غير معروف');
+      // L'enregistrement en BD reste en arabe, on traduit uniquement pour l'affichage
       return _isFrenchInterface
           ? DataTranslator.translateMatiere(arabicName)
           : arabicName;
@@ -2711,13 +3481,13 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
   Future<String> _getClassName() async {
     try {
-      var classDoc = await FirestoreHelper.getDocumentWithCache(
-        'classes',
-        widget.selectedClass,
-        cacheKey: 'class_${widget.selectedClass}'
-      );
+      var classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .get();
 
       String arabicName = _getFieldSafe(classDoc, 'name', 'غير معروف');
+      // L'enregistrement en BD reste en arabe, on traduit uniquement pour l'affichage
       return _isFrenchInterface
           ? DataTranslator.translateClass(arabicName)
           : arabicName;
@@ -2728,23 +3498,21 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
   Future<List<dynamic>> _getBaremes() async {
     try {
-      final cacheKey = 'baremes_${widget.selectedClass}_${widget.selectedMatiere}';
-      final cached = FirestoreCache().getFromCache<List<dynamic>>(cacheKey);
-      if (cached != null) return cached;
-      
-      final baremesSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-        'users/${currentUser!.uid}/selections',
-        widget.selectedClass,
-        widget.selectedMatiere,
-        cacheKey: cacheKey
-      );
+      final baremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .get();
 
       final List<dynamic> baremes = [];
-      for (final baremeDoc in baremesSnapshot) {
+      for (final baremeDoc in baremesSnapshot.docs) {
         final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
         final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
         final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
+        // IMPORTANT: Garder le nom arabe dans la BD, traduire uniquement pour l'affichage
         final displayedBaremeName = _isFrenchInterface
             ? DataTranslator.translateBareme(baremeName)
             : baremeName;
@@ -2752,26 +3520,30 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         if (isBaremeSelected) {
           baremes.add({
             'id': baremeId,
-            'value': displayedBaremeName,
-            'originalValue': baremeName,
+            'value': displayedBaremeName, // Affichage traduit
+            'originalValue': baremeName, // Valeur originale arabe pour la BD
             'type': 'bareme',
           });
         }
 
-        final sousBaremesSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-          'users/${currentUser!.uid}/selections/${widget.selectedClass}/${widget.selectedMatiere}',
-          baremeId,
-          'sousBaremes',
-          cacheKey: 'sousBaremes_${baremeId}'
-        );
+        final sousBaremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('selections')
+            .doc(widget.selectedClass)
+            .collection(widget.selectedMatiere)
+            .doc(baremeId)
+            .collection('sousBaremes')
+            .get();
 
-        for (final sousBaremeDoc in sousBaremesSnapshot) {
+        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
           final sousBaremeId = sousBaremeDoc.id;
           final sousBaremeName =
               _getFieldSafe(sousBaremeDoc, 'sousBaremeName', 'غير معروف');
           final isSousBaremeSelected =
               _getFieldSafe(sousBaremeDoc, 'selected', false);
 
+          // IMPORTANT: Garder le nom arabe dans la BD, traduire uniquement pour l'affichage
           final displayedSousBaremeName = _isFrenchInterface
               ? DataTranslator.translateSousBareme(sousBaremeName)
               : sousBaremeName;
@@ -2779,8 +3551,9 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           if (isSousBaremeSelected) {
             baremes.add({
               'id': sousBaremeId,
-              'value': displayedSousBaremeName,
-              'originalValue': sousBaremeName,
+              'value': displayedSousBaremeName, // Affichage traduit
+              'originalValue':
+                  sousBaremeName, // Valeur originale arabe pour la BD
               'type': 'sousBareme',
               'parentBaremeId': baremeId,
             });
@@ -2788,7 +3561,6 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         }
       }
 
-      FirestoreCache().addToCache(cacheKey, baremes);
       return baremes;
     } catch (e) {
       return [];
@@ -2797,32 +3569,32 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
   Future<List<dynamic>> _getStudents() async {
     try {
-      final cacheKey = 'students_${widget.selectedClass}';
-      final cached = FirestoreCache().getFromCache<List<dynamic>>(cacheKey);
-      if (cached != null) return cached;
-      
-      final studentsSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-        'users/${currentUser!.uid}/user_classes',
-        widget.selectedClass,
-        'students',
-        cacheKey: cacheKey
-      );
+      final studentsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(widget.selectedClass)
+          .collection('students')
+          .get();
 
       final List<dynamic> students = [];
-      for (final studentDoc in studentsSnapshot) {
+      for (final studentDoc in studentsSnapshot.docs) {
         final studentId = studentDoc.id;
         final studentName = _getFieldSafe(studentDoc, 'name',
             _isFrenchInterface ? 'Élève inconnu' : 'تلميذ غير معروف');
 
-        final baremesSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-          'users/${currentUser!.uid}/user_classes/${widget.selectedClass}/students',
-          studentId,
-          'baremes',
-          cacheKey: 'student_baremes_${studentId}'
-        );
+        final baremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('user_classes')
+            .doc(widget.selectedClass)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .get();
 
         final Map<String, String> baremes = {};
-        for (final baremeDoc in baremesSnapshot) {
+        for (final baremeDoc in baremesSnapshot.docs) {
           final baremeId = baremeDoc.id;
           final marks = _getFieldSafe(baremeDoc, 'Marks', '( - - - )');
           baremes[baremeId] = marks;
@@ -2845,18 +3617,20 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         });
       }
 
+      // Trier les étudiants par ordre alphabétique
       students.sort((a, b) {
         String nameA = a['name'] ?? '';
         String nameB = b['name'] ?? '';
 
+        // Pour le tri en arabe
         if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
           return _arabicStringComparator(nameA, nameB);
         }
 
+        // Pour le tri en français
         return nameA.compareTo(nameB);
       });
 
-      FirestoreCache().addToCache(cacheKey, students);
       return students;
     } catch (e) {
       return [];
@@ -2866,7 +3640,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   void _loadUserData() async {
     if (currentUser != null && _isMounted) {
       try {
-        var userDoc = await FirestoreHelper.getUserDocument(currentUser!.uid);
+        var userDoc = await FirebaseFirestore.instance
+            .collection('Users')
+            .doc(currentUser!.uid)
+            .get();
 
         if (_isMounted && userDoc.exists) {
           setState(() {
@@ -2891,6 +3668,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
+  // MODIFICATION : Dialogues traduits
   void _showEditDialog() {
     TextEditingController profController =
         TextEditingController(text: _profName);
@@ -3068,246 +3846,150 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) return;
 
-      // Vérifier le cache pour les étudiants
-      final studentsCacheKey = 'students_marks_${widget.selectedClass}';
-      List<DocumentSnapshot> studentsSnapshot;
-      
-      final cachedStudents = FirestoreCache().getFromCache<List<DocumentSnapshot>>(studentsCacheKey);
-      if (cachedStudents != null) {
-        studentsSnapshot = cachedStudents;
-      } else {
-        final snapshot = await FirestoreHelper.getSubcollectionWithCache(
-          'users/${currentUser.uid}/user_classes',
-          widget.selectedClass,
-          'students',
-          cacheKey: studentsCacheKey
-        );
-        studentsSnapshot = snapshot;
-      }
+      var studentsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('user_classes')
+          .doc(widget.selectedClass)
+          .collection('students')
+          .get();
 
       if (_isMounted) {
         setState(() {
-          totalStudents = studentsSnapshot.length;
+          totalStudents = studentsSnapshot.docs.length;
         });
       }
 
-      // Vérifier le cache pour les barèmes sélectionnés
-      final baremesCacheKey = 'selected_baremes_${widget.selectedClass}_${widget.selectedMatiere}';
-      List<DocumentSnapshot> selectedBaremes;
-      
-      final cachedBaremes = FirestoreCache().getFromCache<List<DocumentSnapshot>>(baremesCacheKey);
-      if (cachedBaremes != null) {
-        selectedBaremes = cachedBaremes;
-      } else {
-        final snapshot = await FirestoreHelper.getSubcollectionWithCache(
-          'users/${currentUser.uid}/selections',
-          widget.selectedClass,
-          widget.selectedMatiere,
-          cacheKey: baremesCacheKey
-        );
-        selectedBaremes = snapshot;
-      }
+      var selectedBaremes = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .get();
 
+      // Réinitialiser les compteurs
       sumCriteriaMaxPerBareme.clear();
 
+      // DEBUG: Afficher les barèmes sélectionnés
       print('=== DEBUG fetchMarks ===');
       print('Total étudiants: $totalStudents');
-      print('Barèmes sélectionnés: ${selectedBaremes.length}');
+      print('Barèmes sélectionnés: ${selectedBaremes.docs.length}');
 
-      for (var baremeDoc in selectedBaremes) {
+      for (var baremeDoc in selectedBaremes.docs) {
         var baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
         var isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
+        // DEBUG
+        print('Barème $baremeId - sélectionné: $isBaremeSelected');
+
+        // Initialiser le compteur pour le barème principal si sélectionné
         if (isBaremeSelected) {
           sumCriteriaMaxPerBareme[baremeId] = 0;
+          print('  -> Compteur initialisé pour barème principal: $baremeId');
         }
 
-        var sousBaremesSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-          'users/${currentUser.uid}/selections/${widget.selectedClass}/${widget.selectedMatiere}',
-          baremeId,
-          'sousBaremes',
-          cacheKey: 'sousBaremes_marks_${baremeId}'
-        );
-        
-        for (var sousBaremeDoc in sousBaremesSnapshot) {
+        // Vérifier les sous-barèmes
+        var sousBaremesSnapshot =
+            await baremeDoc.reference.collection('sousBaremes').get();
+        for (var sousBaremeDoc in sousBaremesSnapshot.docs) {
           var isSousBaremeSelected =
               _getFieldSafe(sousBaremeDoc, 'selected', false);
           if (isSousBaremeSelected) {
             var sousBaremeId = sousBaremeDoc.id;
+            // Créer une clé unique pour le sous-barème
             var sousBaremeKey = '$baremeId-$sousBaremeId';
             sumCriteriaMaxPerBareme[sousBaremeKey] = 0;
+            print('  -> Compteur initialisé pour sous-barème: $sousBaremeKey');
           }
         }
       }
 
-      final String evaluationSystem = await _getEvaluationSystem(
-          widget.selectedClass, widget.selectedMatiere);
-      final List<String> customNotes =
-          await _loadCustomNotes(widget.selectedClass, widget.selectedMatiere);
-
-      print('Système d\'évaluation: $evaluationSystem');
-      print('Notes personnalisées: $customNotes');
-
-      // Utiliser des requêtes batch pour récupérer les notes
-      for (var studentDoc in studentsSnapshot) {
+      // Compter les élèves qui ont atteint chaque critère
+      for (var studentDoc in studentsSnapshot.docs) {
         var studentId = studentDoc.id;
 
-        for (var baremeDoc in selectedBaremes) {
+        for (var baremeDoc in selectedBaremes.docs) {
           var baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
           var isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
           if (isBaremeSelected) {
-            final baremeCacheKey = 'student_marks_${studentId}_$baremeId';
-            final cachedMarks = FirestoreCache().getFromCache<DocumentSnapshot>(baremeCacheKey);
-            
-            DocumentSnapshot baremeSnapshot;
-            if (cachedMarks != null) {
-              baremeSnapshot = cachedMarks;
-            } else {
-              baremeSnapshot = await FirestoreHelper.getDocumentWithCache(
-                'users/${currentUser.uid}/user_classes/${widget.selectedClass}/students/${studentId}/baremes',
-                baremeId,
-                cacheKey: baremeCacheKey
-              );
-            }
+            // Vérifier le barème principal
+            var baremeSnapshot = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser.uid)
+                .collection('user_classes')
+                .doc(widget.selectedClass)
+                .collection('students')
+                .doc(studentId)
+                .collection('baremes')
+                .doc(baremeId)
+                .get();
 
             if (baremeSnapshot.exists) {
-              var storedValue =
-                  _getFieldSafe(baremeSnapshot, 'Marks', '( - - - )');
-
-              final displayValue = _getDisplayEvaluation(
-                storedValue,
-                evaluationSystem,
-                customNotes: customNotes,
-              );
-
-              if (evaluationSystem.startsWith('note_')) {
-                try {
-                  final doubleValue = double.tryParse(displayValue) ?? 0;
-                  if (doubleValue > 0) {
-                    sumCriteriaMaxPerBareme[baremeId] =
-                        (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
-                  }
-                } catch (e) {
-                  print('  ❌ ERREUR conversion note: $e');
-                }
-              } else if (evaluationSystem == 'character') {
-                if (storedValue == '( + + + )' || storedValue == '( + + - )') {
-                  sumCriteriaMaxPerBareme[baremeId] =
-                      (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
-                }
-              } else if (evaluationSystem == 'custom' && customNotes.isNotEmpty) {
-                final Map<String, String> mapping = {
-                  '( - - - )': customNotes[0],
-                  '( + - - )':
-                      customNotes.length > 1 ? customNotes[1] : customNotes[0],
-                  '( + + - )': customNotes.length > 2
-                      ? customNotes[2]
-                      : customNotes.last,
-                  '( + + + )': customNotes.last,
-                };
-
-                final String correspondingNote =
-                    mapping[storedValue] ?? customNotes[0];
-                final int noteIndex = customNotes.indexOf(correspondingNote);
-
-                if (noteIndex > 0) {
-                  sumCriteriaMaxPerBareme[baremeId] =
-                      (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
-                }
+              var value = _getFieldSafe(baremeSnapshot, 'Marks', '');
+              if (value == '( + + + )' || value == '( + + - )') {
+                sumCriteriaMaxPerBareme[baremeId] =
+                    (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
+                print(
+                    '  ✅ Étudiant $studentId - Barème $baremeId: $value -> COMPTÉ');
+              } else {
+                print(
+                    '  ❌ Étudiant $studentId - Barème $baremeId: $value -> NON COMPTÉ');
               }
+            } else {
+              print('  📭 Étudiant $studentId - Barème $baremeId: NON TROUVÉ');
             }
           }
 
-          var sousBaremesSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-            'users/${currentUser.uid}/selections/${widget.selectedClass}/${widget.selectedMatiere}',
-            baremeId,
-            'sousBaremes',
-            cacheKey: 'sousBaremes_list_${baremeId}'
-          );
-          
-          for (var sousBaremeDoc in sousBaremesSnapshot) {
+          // Vérifier les sous-barèmes
+          var sousBaremesSnapshot =
+              await baremeDoc.reference.collection('sousBaremes').get();
+          for (var sousBaremeDoc in sousBaremesSnapshot.docs) {
             var isSousBaremeSelected =
                 _getFieldSafe(sousBaremeDoc, 'selected', false);
             if (isSousBaremeSelected) {
               var sousBaremeId = sousBaremeDoc.id;
               var sousBaremeKey = '$baremeId-$sousBaremeId';
 
-              final sousBaremeCacheKey = 'student_sous_marks_${studentId}_${sousBaremeId}';
-              final cachedSousMarks = FirestoreCache().getFromCache<DocumentSnapshot>(sousBaremeCacheKey);
-              
-              DocumentSnapshot sousBaremeSnapshot;
-              if (cachedSousMarks != null) {
-                sousBaremeSnapshot = cachedSousMarks;
-              } else {
-                sousBaremeSnapshot = await FirestoreHelper.getDocumentWithCache(
-                  'users/${currentUser.uid}/user_classes/${widget.selectedClass}/students/${studentId}/baremes/${baremeId}/sous_baremes',
-                  sousBaremeId,
-                  cacheKey: sousBaremeCacheKey
-                );
-              }
+              // Vérifier la valeur du sous-barème
+              var sousBaremeSnapshot = await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentUser.uid)
+                  .collection('user_classes')
+                  .doc(widget.selectedClass)
+                  .collection('students')
+                  .doc(studentId)
+                  .collection('baremes')
+                  .doc(baremeId)
+                  .collection('sous_baremes')
+                  .doc(sousBaremeId)
+                  .get();
 
               if (sousBaremeSnapshot.exists) {
-                var storedValue =
-                    _getFieldSafe(sousBaremeSnapshot, 'Marks', '( - - - )');
-
-                final displayValue = _getDisplayEvaluation(
-                  storedValue,
-                  evaluationSystem,
-                  customNotes: customNotes,
-                );
-
-                if (evaluationSystem.startsWith('note_')) {
-                  try {
-                    final doubleValue = double.tryParse(displayValue) ?? 0;
-                    if (doubleValue > 0) {
-                      sumCriteriaMaxPerBareme[sousBaremeKey] =
-                          (sumCriteriaMaxPerBareme[sousBaremeKey] ?? 0) + 1;
-                    }
-                  } catch (e) {
-                    print('  ❌ ERREUR conversion note sous-barème: $e');
-                  }
-                } else if (evaluationSystem == 'character') {
-                  if (storedValue == '( + + + )' ||
-                      storedValue == '( + + - )') {
-                    sumCriteriaMaxPerBareme[sousBaremeKey] =
-                        (sumCriteriaMaxPerBareme[sousBaremeKey] ?? 0) + 1;
-                  }
-                } else if (evaluationSystem == 'custom' &&
-                    customNotes.isNotEmpty) {
-                  final Map<String, String> mapping = {
-                    '( - - - )': customNotes[0],
-                    '( + - - )': customNotes.length > 1
-                        ? customNotes[1]
-                        : customNotes[0],
-                    '( + + - )': customNotes.length > 2
-                        ? customNotes[2]
-                        : customNotes.last,
-                    '( + + + )': customNotes.last,
-                  };
-
-                  final String correspondingNote =
-                      mapping[storedValue] ?? customNotes[0];
-                  final int noteIndex = customNotes.indexOf(correspondingNote);
-
-                  if (noteIndex > 0) {
-                    sumCriteriaMaxPerBareme[sousBaremeKey] =
-                        (sumCriteriaMaxPerBareme[sousBaremeKey] ?? 0) + 1;
-                  }
+                var value = _getFieldSafe(sousBaremeSnapshot, 'Marks', '');
+                if (value == '( + + + )' || value == '( + + - )') {
+                  sumCriteriaMaxPerBareme[sousBaremeKey] =
+                      (sumCriteriaMaxPerBareme[sousBaremeKey] ?? 0) + 1;
+                  print(
+                      '  ✅ Étudiant $studentId - Sous-barème $sousBaremeKey: $value -> COMPTÉ');
+                } else {
+                  print(
+                      '  ❌ Étudiant $studentId - Sous-barème $sousBaremeKey: $value -> NON COMPTÉ');
                 }
+              } else {
+                print(
+                    '  📭 Étudiant $studentId - Sous-barème $sousBaremeKey: NON TROUVÉ');
               }
             }
           }
         }
       }
 
+      // DEBUG: Afficher les résultats finaux
+      print('=== RÉSULTATS FINAUX ===');
       sumCriteriaMaxPerBareme.forEach((key, value) {
-        if (totalStudents > 0) {
-          final percentage = (value / totalStudents * 100).toStringAsFixed(2);
-          print('$key: $value/$totalStudents = $percentage%');
-        } else {
-          print('$key: $value/0 = N/A%');
-        }
+        print('$key: $value étudiants');
       });
 
       if (_isMounted) {
@@ -3318,6 +4000,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
+  // MODIFICATION : Widgets avec textes traduits
   Widget _buildPrintCreditWidget() {
     Color backgroundColor;
     if (_remainingPrints == 0) {
@@ -3481,10 +4164,13 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           ? null
           : (value) {
               if (value == 'complete_report') {
+                // NOUVELLE OPTION: Rapport complet
                 _showCompleteReportDialog();
               } else if (value == 'baremes_table') {
+                // Option existante: Tableau des barèmes
                 _showClassAndMatiereSelectionDialog();
               } else {
+                // Options existantes
                 _showEvaluationInfoDialog(() {
                   if (value == 'html') {
                     _generateHTMLReport(downloadAsPDF: false);
@@ -3530,6 +4216,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           ),
         ),
         PopupMenuDivider(),
+        // NOUVELLE OPTION: Rapport complet
         PopupMenuItem<String>(
           value: 'complete_report',
           child: Row(
@@ -3649,6 +4336,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               _isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
           child: Column(
             children: [
+              // Header amélioré
               Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -3671,10 +4359,12 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                 ),
               ),
 
+              // Contenu principal
               Expanded(
                 child: _buildMainContent(),
               ),
 
+              // Footer amélioré
               Container(
                 padding: EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -3824,22 +4514,23 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
   Future<Map<String, String>> _getClassAndMatiereNames() async {
     try {
-      var classDoc = await FirestoreHelper.getDocumentWithCache(
-        'classes',
-        widget.selectedClass,
-        cacheKey: 'class_name_${widget.selectedClass}'
-      );
-      
+      // Récupérer le nom de la classe
+      var classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .get();
       var className = classDoc['name'] ?? 'غير معروف';
 
-      var matiereDoc = await FirestoreHelper.getDocumentWithCache(
-        'classes/${widget.selectedClass}/matieres',
-        widget.selectedMatiere,
-        cacheKey: 'matiere_name_${widget.selectedClass}_${widget.selectedMatiere}'
-      );
-      
+      // Récupérer le nom de la matière
+      var matiereDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .collection('matieres')
+          .doc(widget.selectedMatiere)
+          .get();
       var matiereName = matiereDoc['name'] ?? 'غير معروف';
 
+      // Traduire si l'interface est en français
       if (_isFrenchInterface) {
         className = DataTranslator.translateClass(className);
         matiereName = DataTranslator.translateMatiere(matiereName);
@@ -3919,6 +4610,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           );
         }
 
+        // Recherche de la classe correspondante
         for (var classDoc in userClassesSnapshot.data!.docs) {
           var classData = classDoc.data() as Map<String, dynamic>;
           var classIdFromFirestore = _getFieldSafe(classDoc, 'class_id', '');
@@ -3959,20 +4651,22 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     );
   }
 
+  // MODIFICATION : Navigation avec détection de langue
   void _navigateToClassificationPage(String baremeId,
       {String? sousBaremeId}) async {
     try {
       var classAndMatiereNames = await _getClassAndMatiereNames();
 
-      var selectedBaremes = await FirestoreHelper.getSubcollectionWithCache(
-        'users/${currentUser!.uid}/selections',
-        widget.selectedClass,
-        widget.selectedMatiere,
-        cacheKey: 'baremes_nav_${widget.selectedClass}_${widget.selectedMatiere}'
-      );
+      var selectedBaremes = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .get();
 
       List<Map<String, dynamic>> baremesValues =
-          await _getBaremesValues(selectedBaremes);
+          await _getBaremesValues(selectedBaremes.docs);
 
       var selectedBareme = baremesValues.firstWhere(
         (bareme) => bareme['id'] == baremeId,
@@ -4028,7 +4722,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   }
 
   Future<List<Map<String, dynamic>>> _getBaremesValues(
-      List<DocumentSnapshot> selectedBaremes) async {
+      List<QueryDocumentSnapshot> selectedBaremes) async {
     final List<Map<String, dynamic>> result = [];
     final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
@@ -4036,16 +4730,21 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       final baremeId = baremeDoc.id;
       final baremeData = baremeDoc.data() as Map<String, dynamic>;
 
+      // CORRECTION : Récupérer correctement le nom du barème
       final baremeName =
           baremeData['baremeName'] ?? baremeData['value'] ?? 'غير معروف';
       final isBaremeSelected = baremeData['selected'] ?? false;
 
-      final sousBaremesSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-        'users/${userId}/selections/${widget.selectedClass}/${widget.selectedMatiere}',
-        baremeId,
-        'sousBaremes',
-        cacheKey: 'sousBaremes_values_${baremeId}'
-      );
+      // CORRECTION : Récupérer les sous-barèmes
+      final sousBaremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .doc(baremeId)
+          .collection('sousBaremes')
+          .get();
 
       if (isBaremeSelected) {
         result.add({
@@ -4058,7 +4757,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         });
       }
 
-      for (final sousBaremeDoc in sousBaremesSnapshot) {
+      // CORRECTION : Traiter les sous-barèmes
+      for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
         final sousBaremeData = sousBaremeDoc.data() as Map<String, dynamic>;
         final isSousBaremeSelected = sousBaremeData['selected'] ?? false;
         final sousBaremeName = sousBaremeData['sousBaremeName'] ?? 'غير معروف';
@@ -4078,823 +4778,86 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
     return result;
   }
+}
 
-  void _detectLanguage() async {
-    try {
-      var matiereDoc = await FirestoreHelper.getDocumentWithCache(
-        'classes/${widget.selectedClass}/matieres',
-        widget.selectedMatiere,
-        cacheKey: 'matiere_lang_${widget.selectedClass}_${widget.selectedMatiere}'
-      );
+// MODIFICATION : Ajouter le paramètre isFrenchInterface à StudentsTable
+class StudentsTable extends StatefulWidget {
+  final String classDocId;
+  final String selectedClass;
+  final String selectedMatiere;
+  final User currentUser;
+  final Map<String, int> sumCriteriaMaxPerBareme;
+  final int totalStudents;
+  final Function(String, {String? sousBaremeId}) navigateToClassificationPage;
+  final bool isFrenchInterface; // Nouveau paramètre
 
-      String matiereName = matiereDoc['name'] ?? '';
+  const StudentsTable({
+    Key? key,
+    required this.classDocId,
+    required this.selectedClass,
+    required this.selectedMatiere,
+    required this.currentUser,
+    required this.sumCriteriaMaxPerBareme,
+    required this.totalStudents,
+    required this.navigateToClassificationPage,
+    required this.isFrenchInterface, // Nouveau paramètre
+  }) : super(key: key);
 
-      bool isFrenchInterface;
+  @override
+  _StudentsTableState createState() => _StudentsTableState();
+}
 
-      if (DataTranslator.isForeignMatiere(matiereName)) {
-        isFrenchInterface = true;
-      } else {
-        final containsFrench =
-            matiereName.contains(RegExp(r'[a-zA-Zéèêëàâäôöûüç]'));
-        final containsArabic = matiereName.contains(RegExp(r'[\u0600-\u06FF]'));
+class _StudentsTableState extends State<StudentsTable> {
+  final List<String> _dropdownValues = [
+    '( - - - )',
+    '( + - - )',
+    '( + + - )',
+    '( + + + )'
+  ];
+  final Map<String, Map<String, String>> _selectedValues = {};
+  final Map<String, Color> _headerColors = {};
 
-        isFrenchInterface = containsFrench && !containsArabic;
-      }
+  // États pour gérer le loading des boutons
+  final Map<String, bool> _classificationLoadingStates = {};
+  final Map<String, bool> _treatmentPlanLoadingStates = {};
 
-      setState(() {
-        _matiereName = matiereName;
-        _isFrenchInterface = isFrenchInterface;
-        print('Détection langue - Matière: "$matiereName", '
-            'Interface française: $isFrenchInterface');
-      });
-    } catch (e) {
-      print('Erreur détection langue: $e');
-      setState(() {
-        _isFrenchInterface = false;
-      });
-    }
+  // Variables pour le cache des données
+  List<QueryDocumentSnapshot>? _cachedStudents;
+  List<QueryDocumentSnapshot>? _cachedSelections;
+  bool _isMounted = false;
+
+  // Couleurs modernes pour l'UI
+  final Color _primaryColor = const Color(0xFF2E7D32);
+  final Color _secondaryColor = const Color(0xFF4CAF50);
+  final Color _accentColor = const Color(0xFF8BC34A);
+  final Color _backgroundColor = const Color(0xFFF5F5F5);
+  final Color _cardColor = Colors.white;
+  final Color _textColor = Color(0xFF333333);
+  final Color _borderColor = const Color(0xFFE0E0E0);
+
+  // MODIFICATION : Méthode de traduction
+  String _getTranslatedText(String arabicText, String frenchText) {
+    return widget.isFrenchInterface ? frenchText : arabicText;
   }
 
-  void _showClassAndMatiereSelectionDialog() {
-    TextEditingController classSearchController = TextEditingController();
-    TextEditingController matiereSearchController = TextEditingController();
-
-    List<Map<String, dynamic>> filteredClasses = [];
-    List<Map<String, dynamic>> filteredMatieres = [];
-
-    Map<String, dynamic>? selectedClass;
-    Map<String, dynamic>? selectedMatiere;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            Future<void> loadClasses() async {
-              try {
-                final classesSnapshot = await FirestoreHelper.getCollectionWithCache(
-                  'classes',
-                  cacheKey: 'all_classes'
-                );
-
-                List<Map<String, dynamic>> classes = [];
-                for (var classDoc in classesSnapshot.docs) {
-                  classes.add({
-                    'id': classDoc.id,
-                    'name': classDoc['name'] ?? 'غير معروف',
-                    'frenchName': DataTranslator.translateClass(
-                        classDoc['name'] ?? 'غير معروف'),
-                    'order': _getClassOrder(classDoc['name'] ?? 'غير معروف'),
-                  });
-                }
-
-                classes.sort((a, b) {
-                  final orderA = a['order'] as int;
-                  final orderB = b['order'] as int;
-                  return orderA.compareTo(orderB);
-                });
-
-                setState(() {
-                  filteredClasses = classes;
-                });
-              } catch (e) {
-                print('Erreur chargement classes: $e');
-              }
-            }
-
-            Future<void> loadMatieres(String classId) async {
-              try {
-                final matieresSnapshot = await FirestoreHelper.getSubcollectionWithCache(
-                  'classes',
-                  classId,
-                  'matieres',
-                  cacheKey: 'matieres_$classId'
-                );
-
-                List<Map<String, dynamic>> matieres = [];
-                for (var matiereDoc in matieresSnapshot) {
-                  matieres.add({
-                    'id': matiereDoc.id,
-                    'name': matiereDoc['name'] ?? 'غير معروف',
-                    'frenchName': DataTranslator.translateMatiere(
-                        matiereDoc['name'] ?? 'غير معروف'),
-                  });
-                }
-
-                setState(() {
-                  filteredMatieres = matieres;
-                });
-              } catch (e) {
-                print('Erreur chargement matières: $e');
-              }
-            }
-
-            if (filteredClasses.isEmpty) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                loadClasses();
-              });
-            }
-
-            return AlertDialog(
-              title: Row(
-                children: [
-                  Icon(Icons.table_chart, color: Colors.blue),
-                  SizedBox(width: 8),
-                  Text(
-                    _getTranslatedText(
-                        'طباعة جدول المعايير', 'Imprimer tableau des critères'),
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              content: Container(
-                width: double.maxFinite,
-                height: MediaQuery.of(context).size.height * 0.6,
-                child: Column(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _getTranslatedText(
-                                'اختر القسم:', 'Sélectionnez la classe:'),
-                            style: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          SizedBox(height: 8),
-                          TextField(
-                            controller: classSearchController,
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(),
-                              hintText: _getTranslatedText(
-                                  'بحث عن قسم...', 'Rechercher une classe...'),
-                              prefixIcon: Icon(Icons.search),
-                              contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 10),
-                            ),
-                            onChanged: (value) {
-                              setState(() {
-                              });
-                            },
-                          ),
-                          SizedBox(height: 8),
-                          Container(
-                            height: 120,
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey[300]!),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: filteredClasses.isEmpty
-                                ? Center(
-                                    child: CircularProgressIndicator(),
-                                  )
-                                : ListView.builder(
-                                    itemCount: filteredClasses.length,
-                                    itemBuilder: (context, index) {
-                                      final classe = filteredClasses[index];
-                                      return ListTile(
-                                        leading: Icon(Icons.class_,
-                                            color: selectedClass?['id'] ==
-                                                    classe['id']
-                                                ? Colors.blue
-                                                : Colors.grey),
-                                        title: Text(
-                                          _isFrenchInterface
-                                              ? classe['frenchName']
-                                              : classe['name'],
-                                        ),
-                                        trailing:
-                                            selectedClass?['id'] == classe['id']
-                                                ? Icon(Icons.check,
-                                                    color: Colors.green)
-                                                : null,
-                                        onTap: () {
-                                          setState(() {
-                                            selectedClass = classe;
-                                            selectedMatiere = null;
-                                            filteredMatieres.clear();
-                                            loadMatieres(classe['id']);
-                                          });
-                                        },
-                                      );
-                                    },
-                                  ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    SizedBox(height: 16),
-
-                    Container(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _getTranslatedText(
-                                'اختر المادة:', 'Sélectionnez la matière:'),
-                            style: TextStyle(fontWeight: FontWeight.w500),
-                          ),
-                          SizedBox(height: 8),
-                          TextField(
-                            controller: matiereSearchController,
-                            decoration: InputDecoration(
-                              border: OutlineInputBorder(),
-                              hintText: _getTranslatedText('بحث عن مادة...',
-                                  'Rechercher une matière...'),
-                              prefixIcon: Icon(Icons.search),
-                              contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 10),
-                              enabled: selectedClass != null,
-                            ),
-                            enabled: selectedClass != null,
-                            onChanged: (value) {
-                              setState(() {
-                              });
-                            },
-                          ),
-                          SizedBox(height: 8),
-                          Container(
-                            height: 120,
-                            decoration: BoxDecoration(
-                              border: Border.all(color: Colors.grey[300]!),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: selectedClass == null
-                                ? Center(
-                                    child: Text(
-                                      _getTranslatedText('اختر قسمًا أولاً',
-                                          'Sélectionnez d\'abord une classe'),
-                                      style: TextStyle(color: Colors.grey),
-                                    ),
-                                  )
-                                : filteredMatieres.isEmpty
-                                    ? Center(
-                                        child: CircularProgressIndicator(),
-                                      )
-                                    : ListView.builder(
-                                        itemCount: filteredMatieres.length,
-                                        itemBuilder: (context, index) {
-                                          final matiere =
-                                              filteredMatieres[index];
-                                          return ListTile(
-                                            leading: Icon(Icons.book,
-                                                color: selectedMatiere?['id'] ==
-                                                        matiere['id']
-                                                    ? Colors.blue
-                                                    : Colors.grey),
-                                            title: Text(
-                                              _isFrenchInterface
-                                                  ? matiere['frenchName']
-                                                  : matiere['name'],
-                                            ),
-                                            trailing: selectedMatiere?['id'] ==
-                                                    matiere['id']
-                                                ? Icon(Icons.check,
-                                                    color: Colors.green)
-                                                : null,
-                                            onTap: () {
-                                              setState(() {
-                                                selectedMatiere = matiere;
-                                              });
-                                            },
-                                          );
-                                        },
-                                      ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    if (selectedClass != null && selectedMatiere != null)
-                      Container(
-                        margin: EdgeInsets.only(top: 16),
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.green[50],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.green),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.check_circle, color: Colors.green),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _getTranslatedText(
-                                        'تم الاختيار:', 'Sélection:'),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green[800],
-                                    ),
-                                  ),
-                                  Text(
-                                    '${_isFrenchInterface ? selectedClass!['frenchName'] : selectedClass!['name']} - '
-                                    '${_isFrenchInterface ? selectedMatiere!['frenchName'] : selectedMatiere!['name']}',
-                                    style: TextStyle(color: Colors.green[800]),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(_getTranslatedText('إلغاء', 'Annuler')),
-                ),
-                ElevatedButton(
-                  onPressed: selectedClass != null && selectedMatiere != null
-                      ? () {
-                          Navigator.pop(context);
-                          _generateBaremesTableReport(
-                            selectedClass!['id'],
-                            selectedMatiere!['id'],
-                            selectedClass!['name'],
-                            selectedMatiere!['name'],
-                          );
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                  ),
-                  child: Text(_getTranslatedText(
-                      'طباعة الجدول', 'Imprimer le tableau')),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  int _getClassOrder(String className) {
-    if (className.contains('الأولى')) return 1;
-    if (className.contains('الثانية')) return 2;
-    if (className.contains('الثالثة')) return 3;
-    if (className.contains('الرابعة')) return 4;
-    if (className.contains('الخامسة')) return 5;
-    if (className.contains('السادسة')) return 6;
-    return 999;
-  }
-
-  Future<void> _generateBaremesTableReport(
-    String classId,
-    String matiereId,
-    String className,
-    String matiereName,
-  ) async {
-    final normalizedClassName = _mapClassToJsonBase(className);
-
-    final criteria = await _getCriteriaFromJson(
-        classId, matiereId, normalizedClassName, matiereName);
-
-    if (!await _checkAndUpdatePrintCredit()) {
-      _showCreditErrorDialog();
-      return;
-    }
-
-    setState(() {
-      _isGeneratingReport = true;
-    });
-
-    try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) => _buildLoadingDialog(isPDF: true),
-      );
-
-      final criteria = await _getCriteriaFromJson(
-          classId, matiereId, className, matiereName);
-
-      await HTMLReportGenerator.generateAndDownloadReport(
-        profName: _profName,
-        matiereName: matiereName,
-        className: className,
-        schoolName: _schoolName,
-        baremes: [],
-        students: [],
-        sumCriteriaMaxPerBareme: {},
-        totalStudents: 0,
-        isFrenchInterface: _isFrenchInterface,
-        downloadAsPDF: true,
-        trimestre: _selectedTrimestre,
-        periode: _selectedPeriode,
-        evaluationType: _selectedEvaluationType,
-        selectedClass: classId,
-        criteria: criteria,
-      );
-
-      await _deductPrintCredit();
-
-      _showSuccessSnackbar(_getTranslatedText('تم إنشاء جدول المعايير بنجاح',
-          'Tableau des critères généré avec succès'));
-    } catch (e) {
-      _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء جدول المعايير',
-              'Erreur lors de la génération du tableau des critères') +
-          ': $e');
-    } finally {
-      setState(() {
-        _isGeneratingReport = false;
-      });
-      Navigator.of(context).pop();
-    }
-  }
-
-  String _mapClassToJsonBase(String classNameWithSection) {
-    final Map<String, String> classMapping = {
-      'السنة الأولى ابتدائي': 'السنة الأولى ابتدائي',
-      'السنة الأولى ابتدائي أ': 'السنة الأولى ابتدائي',
-      'السنة الأولى ابتدائي ب': 'السنة الأولى ابتدائي',
-      'السنة الأولى ابتدائي ج': 'السنة الأولى ابتدائي',
-      'السنة الأولى ابتدائي د': 'السنة الأولى ابتدائي',
-
-      'السنة الثانية ابتدائي': 'السنة الثانية ابتدائي',
-      'السنة الثانية ابتدائي أ': 'السنة الثانية ابتدائي',
-      'السنة الثانية ابتدائي ب': 'السنة الثانية ابتدائي',
-      'السنة الثانية ابتدائي ج': 'السنة الثانية ابتدائي',
-      'السنة الثانية ابتدائي د': 'السنة الثانية ابتدائي',
-
-      'السنة الثالثة ابتدائي': 'السنة الثالثة ابتدائي',
-      'السنة الثالثة ابتدائي أ': 'السنة الثالثة ابتدائي',
-      'السنة الثالثة ابتدائي ب': 'السنة الثالثة ابتدائي',
-      'السنة الثالثة ابتدائي ج': 'السنة الثالثة ابتدائي',
-      'السنة الثالثة ابتدائي د': 'السنة الثالثة ابتدائي',
-
-      'السنة الرابعة ابتدائي': 'السنة الرابعة ابتدائي',
-      'السنة الرابعة ابتدائي أ': 'السنة الرابعة ابتدائي',
-      'السنة الرابعة ابتدائي ب': 'السنة الرابعة ابتدائي',
-      'السنة الرابعة ابتدائي ج': 'السنة الرابعة ابتدائي',
-      'السنة الرابعة ابتدائي د': 'السنة الرابعة ابتدائي',
-
-      'السنة الخامسة ابتدائي': 'السنة الخامسة ابتدائي',
-      'السنة الخامسة ابتدائي أ': 'السنة الخامسة ابتدائي',
-      'السنة الخامسة ابتدائي ب': 'السنة الخامسة ابتدائي',
-      'السنة الخامسة ابتدائي ج': 'السنة الخامسة ابتدائي',
-      'السنة الخامسة ابتدائي د': 'السنة الخامسة ابتدائي',
-
-      'السنة السادسة ابتدائي': 'السنة السادسة ابتدائي',
-      'السنة السادسة ابتدائي أ': 'السنة السادسة ابتدائي',
-      'السنة السادسة ابتدائي ب': 'السنة السادسة ابتدائي',
-      'السنة السادسة ابتدائي ج': 'السنة السادسة ابتدائي',
-      'السنة السادسة ابتدائي د': 'السنة السادسة ابتدائي',
-    };
-
-    return classMapping[classNameWithSection] ?? classNameWithSection;
-  }
-
-  Future<List<Map<String, dynamic>>> _getCriteriaFromJson(
-    String classId,
-    String matiereId,
-    String className,
-    String matiereName,
-  ) async {
-    try {
-      final cacheKey = 'criteria_json_${classId}_$matiereId';
-      final cached = _criteriaCache[cacheKey];
-      if (cached != null) return List<Map<String, dynamic>>.from(cached);
-      
-      print('🎯 ===== DEBUT RECHERCHE CRITERES JSON =====');
-      print('📌 Paramètres d\'entrée:');
-      print('   • Classe originale: "$className"');
-      print('   • Matière: "$matiereName"');
-
-      final String jsonClassName = _mapClassToJsonBase(className);
-      print('🔄 Classe mappée pour JSON: "$jsonClassName"');
-
-      final jsonString =
-          await rootBundle.loadString('assets/evaluation_excel.json');
-      final jsonData = json.decode(jsonString);
-
-      if (!jsonData.containsKey('classes')) {
-        print('❌ ERREUR: Clé "classes" non trouvée dans JSON');
-        return [];
-      }
-
-      final classes = jsonData['classes'] as Map<String, dynamic>;
-      print('📚 Classes disponibles dans JSON: ${classes.keys.length}');
-
-      print('   Liste des classes JSON:');
-      classes.keys.toList().sort();
-      for (final key in classes.keys) {
-        print('   • $key');
-      }
-
-      if (!classes.containsKey(jsonClassName)) {
-        print('❌ ERREUR: Classe "$jsonClassName" non trouvée dans JSON');
-
-        for (final key in classes.keys) {
-          if (key.contains(jsonClassName) || jsonClassName.contains(key)) {
-            print('   🔍 Correspondance trouvée: "$key"');
-            final result = _extractCriteriaForClass(classes[key], matiereName);
-            _criteriaCache[cacheKey] = result;
-            return result;
-          }
-        }
-
-        print('   ❌ Aucune correspondance trouvée');
-        return [];
-      }
-
-      print('✅ SUCCES: Classe "$jsonClassName" trouvée dans JSON');
-
-      final classData = classes[jsonClassName];
-      final result = _extractCriteriaForClass(classData, matiereName);
-      _criteriaCache[cacheKey] = result;
-      return result;
-    } catch (e) {
-      print('💥 ERREUR FATALE dans _getCriteriaFromJson: $e');
-      return [];
-    } finally {
-      print('===== FIN RECHERCHE CRITERES JSON =====\n');
-    }
-  }
-
-  List<Map<String, dynamic>> _extractCriteriaForClass(
-      dynamic classData, String matiereName) {
-    try {
-      print('🔍 Extraction critères pour matière: "$matiereName"');
-
-      if (classData is! Map<String, dynamic>) {
-        print('❌ Données de classe invalides');
-        return [];
-      }
-
-      if (!classData.containsKey('subjects') ||
-          classData['subjects'] is! Map<String, dynamic>) {
-        print('❌ Clé "subjects" non trouvée ou invalide');
-        return [];
-      }
-
-      final subjects = classData['subjects'] as Map<String, dynamic>;
-      print('📖 Matières disponibles dans la classe: ${subjects.keys.length}');
-
-      print('   Liste des matières:');
-      for (final key in subjects.keys) {
-        print('   • $key');
-      }
-
-      if (!subjects.containsKey(matiereName)) {
-        print('❌ Matière "$matiereName" non trouvée');
-        print('   Chercher des correspondances...');
-
-        for (final key in subjects.keys) {
-          if (key.contains(matiereName) || matiereName.contains(key)) {
-            print('   ✅ Matière trouvée par correspondance: "$key"');
-            return _processSubjectData(subjects[key], key);
-          }
-        }
-
-        if (_isFrenchInterface) {
-          final arabicMatiereName =
-              DataTranslator.getArabicMatiereFromFrench(matiereName);
-          print('   🔍 Chercher version arabe: "$arabicMatiereName"');
-
-          if (subjects.containsKey(arabicMatiereName)) {
-            print('   ✅ Matière trouvée par traduction: "$arabicMatiereName"');
-            return _processSubjectData(
-                subjects[arabicMatiereName], arabicMatiereName);
-          }
-        }
-
-        print('❌ Matière non trouvée après toutes les recherches');
-        return [];
-      }
-
-      print('✅ Matière trouvée: "$matiereName"');
-      return _processSubjectData(subjects[matiereName], matiereName);
-    } catch (e) {
-      print('❌ Erreur extraction critères: $e');
-      return [];
-    }
-  }
-
-  List<Map<String, dynamic>> _processSubjectData(
-      dynamic subjectData, String originalMatiereName) {
-    try {
-      if (subjectData is! Map<String, dynamic>) {
-        print('❌ Données matière invalides');
-        return [];
-      }
-
-      print('📊 Vérification données matière:');
-      print('   • has_criteria: ${subjectData['has_criteria']}');
-      print('   • criteria_count: ${subjectData['criteria_count']}');
-
-      if (subjectData['has_criteria'] != true) {
-        print('⚠️ Matière sans critères (has_criteria = false)');
-        return [];
-      }
-
-      final criteriaList = subjectData['criteria'] as List<dynamic>?;
-      if (criteriaList == null || criteriaList.isEmpty) {
-        print('⚠️ Liste de critères vide ou null');
-        return [];
-      }
-
-      print('✅ ${criteriaList.length} critères trouvés');
-
-      for (int i = 0; i < criteriaList.length; i++) {
-        final criterion = criteriaList[i] as Map<String, dynamic>;
-        print(
-            '   ${i + 1}. ${criterion['name']} (${criterion['indicators_count'] ?? 0} indicateurs)');
-      }
-
-      return _createCriteriaList(criteriaList, originalMatiereName);
-    } catch (e) {
-      print('❌ Erreur traitement données matière: $e');
-      return [];
-    }
-  }
-
-  List<Map<String, dynamic>> _createCriteriaList(
-      List<dynamic> criteriaList, String matiereName) {
-    final List<Map<String, dynamic>> criteria = [];
-
-    for (int i = 0; i < criteriaList.length; i++) {
-      final criterion = criteriaList[i] as Map<String, dynamic>;
-      final criteriaName = criterion['name']?.toString() ?? 'معيار ${i + 1}';
-
-      final indicators = criterion['indicators'] as List<dynamic>? ?? [];
-
-      final List<String> indicatorStrings = indicators
-          .map((indicator) => indicator.toString())
-          .where((indicator) => indicator.trim().isNotEmpty)
-          .toList();
-
-      indicatorStrings.sort(_arabicStringComparator);
-
-      criteria.add({
-        'id': i + 1,
-        'name': _isFrenchInterface
-            ? DataTranslator.translateMatiere(criteriaName)
-            : criteriaName,
-        'originalName': criteriaName,
-        'frenchName': DataTranslator.translateMatiere(criteriaName),
-        'arabicName': criteriaName,
-        'domaine': _getDomaineForMatiere(matiereName, _isFrenchInterface),
-        'indicators': indicatorStrings,
-        'indicators_count': indicatorStrings.length,
-        'displayNumber': i + 1,
-        'sortKey': _generateArabicSortKey(criteriaName),
-      });
-    }
-
-    if (_isFrenchInterface) {
-      criteria
-          .sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
-    } else {
-      criteria.sort((a, b) => _arabicStringComparator(
-            a['originalName'] as String,
-            b['originalName'] as String,
-          ));
-    }
-
-    for (int i = 0; i < criteria.length; i++) {
-      criteria[i]['displayNumber'] = i + 1;
-    }
-
-    print('✅ ${criteria.length} critères traités avec succès');
-    return criteria;
-  }
-
-  List<Map<String, dynamic>> _extractCriteriaFromClassData(
-      dynamic classData, String matiereName) {
-    if (classData is Map<String, dynamic> &&
-        classData.containsKey('subjects') &&
-        classData['subjects'] is Map<String, dynamic>) {
-      final subjects = classData['subjects'] as Map<String, dynamic>;
-
-      if (subjects.containsKey(matiereName)) {
-        final subjectData = subjects[matiereName];
-        final bool hasCriteria = subjectData['has_criteria'] ?? false;
-
-        if (hasCriteria && subjectData['criteria'] != null) {
-          final criteriaList = subjectData['criteria'] as List<dynamic>;
-          print('✅ Critères trouvés pour $matiereName: ${criteriaList.length}');
-
-          return _processCriteriaList(criteriaList, matiereName);
-        } else {
-          print('⚠️ Pas de critères pour $matiereName ou has_criteria=false');
-        }
-      } else {
-        print('❌ Matière non trouvée dans la classe: $matiereName');
-        print('Matières disponibles: ${subjects.keys.join(', ')}');
-      }
-    }
-
-    return [];
-  }
-
-  List<Map<String, dynamic>> _processCriteriaList(
-      List<dynamic> criteriaList, String matiereName) {
-    List<Map<String, dynamic>> criteria = [];
-
-    for (int i = 0; i < criteriaList.length; i++) {
-      final criteriaData = criteriaList[i] as Map<String, dynamic>;
-      final criteriaName = criteriaData['name']?.toString() ?? 'معيار ${i + 1}';
-      final indicators = criteriaData['indicators'] as List<dynamic>? ?? [];
-
-      final List<String> indicatorStrings = indicators
-          .map((indicator) => indicator.toString())
-          .where(
-              (indicator) => indicator.isNotEmpty)
-          .toList();
-
-      indicatorStrings.sort(_arabicStringComparator);
-
-      criteria.add({
-        'name': _isFrenchInterface
-            ? DataTranslator.translateMatiere(criteriaName)
-            : criteriaName,
-        'originalName': criteriaName,
-        'domaine': _getDomaineForMatiere(matiereName, _isFrenchInterface),
-        'indicators': indicatorStrings.map((indicator) {
-          return _isFrenchInterface
-              ? DataTranslator.translateMatiere(indicator)
-              : indicator;
-        }).toList(),
-        'sortKey': _generateArabicSortKey(criteriaName),
-      });
-    }
-
-    criteria.sort((a, b) {
-      if (_isFrenchInterface) {
-        return (a['name'] as String).compareTo(b['name'] as String);
-      } else {
-        return _arabicStringComparator(
-          a['originalName'] as String,
-          b['originalName'] as String,
-        );
-      }
-    });
-
-    for (int i = 0; i < criteria.length; i++) {
-      criteria[i]['displayNumber'] = i + 1;
-    }
-
-    return criteria;
-  }
-
-  String _extractArabicYear(String className) {
-    final patterns = [
-      'الأولى',
-      'الثانية',
-      'الثالثة',
-      'الرابعة',
-      'الخامسة',
-      'السادسة'
+  Color _getRandomColor() {
+    final List<Color> predefinedColors = [
+      Color(0xFF2196F3),
+      Color(0xFFFF9800),
+      Color(0xFF9C27B0),
+      Color(0xFF009688),
+      Color(0xFF795548),
+      Color(0xFF607D8B),
     ];
-
-    for (final pattern in patterns) {
-      if (className.contains(pattern)) {
-        return pattern;
-      }
-    }
-
-    return className;
+    return predefinedColors[Random().nextInt(predefinedColors.length)];
   }
 
-  int _arabicStringComparator(String a, String b) {
-    final normalizedA = _normalizeArabicForSort(a);
-    final normalizedB = _normalizeArabicForSort(b);
-
-    const arabicAlphabet = 'اأإآبتثجحخدذرزسشصضطظعغفقكلمنهويىةؤئء';
-
-    for (int i = 0; i < math.min(normalizedA.length, normalizedB.length); i++) {
-      final charA = normalizedA[i];
-      final charB = normalizedB[i];
-
-      final indexA = arabicAlphabet.indexOf(charA);
-      final indexB = arabicAlphabet.indexOf(charB);
-
-      if (indexA != -1 && indexB != -1 && indexA != indexB) {
-        return indexA - indexB;
-      }
-
-      if (charA != charB) {
-        return charA.codeUnitAt(0) - charB.codeUnitAt(0);
-      }
-    }
-
-    return normalizedA.length - normalizedB.length;
-  }
-
+// Normalisation du texte arabe pour le tri
   String _normalizeArabicForSort(String text) {
+    // Supprimer les diacritiques
     String normalized = text.replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '');
 
+    // Normaliser les formes de lettres
     final Map<String, String> normalizationMap = {
       'أ': 'ا',
       'إ': 'ا',
@@ -4915,9 +4878,1683 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     return normalized.trim();
   }
 
-  String _generateArabicSortKey(String text) {
-    final normalized = _normalizeArabicForSort(text);
-    final withoutSpaces = normalized.replaceAll(' ', '');
-    return withoutSpaces.toLowerCase();
+// Comparateur pour tri alphabétique arabe
+  int _arabicStringComparator(String a, String b) {
+    // Normaliser les chaînes
+    final normalizedA = _normalizeArabicForSort(a);
+    final normalizedB = _normalizeArabicForSort(b);
+
+    // Ordre des lettres arabes
+    const arabicAlphabet = 'اأإآبتثجحخدذرزسشصضطظعغفقكلمنهويىةؤئء';
+
+    for (int i = 0; i < math.min(normalizedA.length, normalizedB.length); i++) {
+      final charA = normalizedA[i];
+      final charB = normalizedB[i];
+
+      final indexA = arabicAlphabet.indexOf(charA);
+      final indexB = arabicAlphabet.indexOf(charB);
+
+      if (indexA != -1 && indexB != -1 && indexA != indexB) {
+        return indexA - indexB;
+      }
+
+      // Comparaison Unicode comme fallback
+      if (charA != charB) {
+        return charA.codeUnitAt(0) - charB.codeUnitAt(0);
+      }
+    }
+
+    return normalizedA.length - normalizedB.length;
+  }
+
+  // Fonction pour trier les barèmes par ordre alphabétique
+  List<Map<String, dynamic>> _sortBaremesAlphabetically(
+      List<Map<String, dynamic>> baremesValues) {
+    baremesValues.sort((a, b) {
+      String nameA = a['value'] ?? '';
+      String nameB = b['value'] ?? '';
+      return nameA.compareTo(nameB);
+    });
+    return baremesValues;
+  }
+
+// Méthode pour trier les étudiants par ordre alphabétique
+  List<QueryDocumentSnapshot> _sortStudentsAlphabetically(
+      List<QueryDocumentSnapshot> students) {
+    List<QueryDocumentSnapshot> sortedStudents = List.from(students);
+
+    sortedStudents.sort((a, b) {
+      String nameA = a['name'] ?? '';
+      String nameB = b['name'] ?? '';
+
+      // Pour le tri en arabe
+      if (!widget.isFrenchInterface &&
+          nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+        return _arabicStringComparator(nameA, nameB);
+      }
+
+      // Pour le tri en français
+      return nameA.compareTo(nameB);
+    });
+
+    return sortedStudents;
+  }
+
+  // Fonction modifiée pour grouper les barèmes triés
+  // CORRECTION : Méthode groupBaremes sécurisée
+  Map<String, List<Map<String, dynamic>>> groupBaremes(
+      List<Map<String, dynamic>> baremesValues) {
+    List<Map<String, dynamic>> sortedBaremes =
+        _sortBaremesAlphabetically(baremesValues);
+    Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
+
+    for (var bareme in sortedBaremes) {
+      String baremeValue = bareme['value'] ?? '';
+      String type = bareme['type'] ?? 'bareme';
+
+      String key;
+      if (type == 'sousBareme') {
+        // Pour les sous-barèmes, utiliser le parent comme clé de groupe
+        String parentId = bareme['parentBaremeId'] ?? '';
+        key = parentId.isNotEmpty ? parentId : 'sousBaremes';
+      } else {
+        // Pour les barèmes principaux, utiliser les premiers caractères
+        if (baremeValue.length >= 2) {
+          key = baremeValue.substring(0, 2);
+        } else if (baremeValue.isNotEmpty) {
+          key = baremeValue;
+        } else {
+          key = 'autre';
+        }
+      }
+
+      if (!groupedBaremes.containsKey(key)) {
+        groupedBaremes[key] = [];
+      }
+
+      // CORRECTION: S'assurer qu'on n'ajoute pas les mêmes barèmes plusieurs fois
+      bool alreadyExists = groupedBaremes[key]!
+          .any((existingBareme) => existingBareme['id'] == bareme['id']);
+
+      if (!alreadyExists) {
+        groupedBaremes[key]!.add(bareme);
+      }
+    }
+
+    return groupedBaremes;
+  }
+
+  // Fonction pour déterminer si c'est un barème principal ou sous-barème
+  String _getBaremeDisplayName(
+      Map<String, dynamic> bareme, Map<String, dynamic> subEntry) {
+    String type = subEntry['type'] ?? 'bareme';
+
+    if (type == 'sousBareme') {
+      // Pour les sous-barèmes, afficher seulement le nom du sous-barème
+      return subEntry['value'];
+    } else {
+      // Pour les barèmes principaux
+      return bareme['value'];
+    }
+  }
+
+  // Générer une clé unique pour chaque bouton
+  String _getButtonKey(
+      String baremeId, String? sousBaremeId, bool isClassification) {
+    return '${baremeId}_${sousBaremeId ?? 'main'}_${isClassification ? 'classification' : 'treatment'}';
+  }
+
+  // Fonction pour démarrer le loading d'un bouton
+  void _startLoading(String buttonKey, bool isClassification) {
+    if (_isMounted) {
+      setState(() {
+        if (isClassification) {
+          _classificationLoadingStates[buttonKey] = true;
+        } else {
+          _treatmentPlanLoadingStates[buttonKey] = true;
+        }
+      });
+    }
+  }
+
+  // Fonction pour arrêter le loading d'un bouton
+  void _stopLoading(String buttonKey, bool isClassification) {
+    if (_isMounted) {
+      setState(() {
+        if (isClassification) {
+          _classificationLoadingStates[buttonKey] = false;
+        } else {
+          _treatmentPlanLoadingStates[buttonKey] = false;
+        }
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _isMounted = true;
+    _loadStudentsOnce();
+    _loadSelectionsOnce();
+  }
+
+  @override
+  void dispose() {
+    _isMounted = false;
+    super.dispose();
+  }
+
+  // Méthode pour charger les étudiants une fois
+
+// Méthode pour charger les étudiants une fois
+  Future<void> _loadStudentsOnce() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('user_classes')
+          .doc(widget.classDocId)
+          .collection('students')
+          .get();
+
+      if (_isMounted) {
+        // Trier les étudiants par ordre alphabétique
+        List<QueryDocumentSnapshot> sortedDocs = snapshot.docs.toList();
+        sortedDocs.sort((a, b) {
+          String nameA = a['name'] ?? '';
+          String nameB = b['name'] ?? '';
+
+          if (!widget.isFrenchInterface &&
+              nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+            return _arabicStringComparator(nameA, nameB);
+          }
+
+          return nameA.compareTo(nameB);
+        });
+
+        setState(() {
+          _cachedStudents = sortedDocs;
+        });
+      }
+    } catch (e) {
+      print('Erreur chargement étudiants: $e');
+    }
+  }
+
+  // Méthode pour charger les sélections une fois
+  Future<void> _loadSelectionsOnce() async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .get();
+
+      if (_isMounted) {
+        setState(() {
+          _cachedSelections = snapshot.docs;
+        });
+      }
+    } catch (e) {
+      print('Erreur chargement sélections: $e');
+    }
+  }
+
+  // Méthode pour rafraîchir les données manuellement
+  Future<void> _refreshData() async {
+    await _loadStudentsOnce();
+    await _loadSelectionsOnce();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [_backgroundColor, Colors.white],
+        ),
+      ),
+      child: Column(
+        children: [
+          _buildHeader(),
+          SizedBox(height: 16),
+          Expanded(
+            child: _buildContentWithCachedData(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Nouvelle méthode pour utiliser les données en cache
+  Widget _buildContentWithCachedData() {
+    if (_cachedStudents == null) {
+      return _buildLoadingIndicator();
+    }
+
+    if (_cachedStudents!.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return _buildSelectionsTable(_cachedStudents!);
+  }
+
+  Widget _buildHeader() {
+    return FutureBuilder<Map<String, String>>(
+      future: _getClassAndMatiereNames(),
+      builder: (context, snapshot) {
+        String className = widget.isFrenchInterface ? 'Inconnu' : 'غير معروف';
+        String matiereName = widget.isFrenchInterface ? 'Inconnu' : 'غير معروف';
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          className =
+              widget.isFrenchInterface ? 'Chargement...' : 'جاري التحميل...';
+          matiereName =
+              widget.isFrenchInterface ? 'Chargement...' : 'جاري التحميل...';
+        } else if (snapshot.hasData) {
+          className = snapshot.data!['className'] ??
+              (widget.isFrenchInterface ? 'Inconnu' : 'غير معروف');
+          matiereName = snapshot.data!['matiereName'] ??
+              (widget.isFrenchInterface ? 'Inconnu' : 'غير معروف');
+        }
+
+        return Card(
+          elevation: 3,
+          margin: EdgeInsets.all(16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [_primaryColor, _secondaryColor],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                IconButton(
+                  icon: Icon(Icons.refresh, color: Colors.white),
+                  onPressed: _refreshData,
+                  tooltip: _getTranslatedText(
+                      'تحديث البيانات', 'Rafraîchir les données'),
+                ),
+                SizedBox(width: 12),
+                Icon(Icons.school, color: Colors.white, size: 32),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _getTranslatedText(
+                            'جدول التقييم', 'Tableau d\'évaluation'),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '$className - $matiereName',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${widget.totalStudents} ' +
+                        _getTranslatedText('تلميذ', 'élèves'),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<Map<String, String>> _getClassAndMatiereNames() async {
+    try {
+      // Récupérer le nom de la classe
+      var classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .get();
+      var className = classDoc['name'] ?? 'غير معروف';
+
+      // Récupérer le nom de la matière
+      var matiereDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .collection('matieres')
+          .doc(widget.selectedMatiere)
+          .get();
+      var matiereName = matiereDoc['name'] ?? 'غير معروف';
+
+      // Traduire si l'interface est en français
+      if (widget.isFrenchInterface) {
+        className = DataTranslator.translateClass(className);
+        matiereName = DataTranslator.translateMatiere(matiereName);
+      }
+
+      return {
+        'className': className,
+        'matiereName': matiereName,
+      };
+    } catch (e) {
+      return {
+        'className': widget.isFrenchInterface ? 'Inconnu' : 'غير معروف',
+        'matiereName': widget.isFrenchInterface ? 'Inconnu' : 'غير معروف',
+      };
+    }
+  }
+
+  Widget _buildLoadingIndicator() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+          ),
+          SizedBox(height: 16),
+          Text(
+            _getTranslatedText(
+                'جاري تحميل البيانات...', 'Chargement des données...'),
+            style: TextStyle(
+              color: _textColor,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorWidget(String error) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.error_outline, color: Colors.red, size: 64),
+          SizedBox(height: 16),
+          Text(
+            error,
+            textDirection: widget.isFrenchInterface
+                ? TextDirection.ltr
+                : TextDirection.rtl,
+            style: TextStyle(color: Colors.red, fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.people_outline, color: Colors.grey, size: 64),
+          SizedBox(height: 16),
+          Text(
+            _getTranslatedText(
+                'لم يتم العثور على أي تلميذ.', 'Aucun élève trouvé.'),
+            textDirection: widget.isFrenchInterface
+                ? TextDirection.ltr
+                : TextDirection.rtl,
+            style: TextStyle(color: Colors.grey, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelectionsTable(List<QueryDocumentSnapshot> studentsDocs) {
+    if (_cachedSelections == null) {
+      return _buildLoadingIndicator();
+    }
+
+    if (_cachedSelections!.isEmpty) {
+      return _buildEmptyStateForCriteria();
+    }
+
+    // Trier les étudiants par ordre alphabétique
+    List<QueryDocumentSnapshot> sortedStudents =
+        _sortStudentsAlphabetically(studentsDocs);
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _getBaremesValues(_cachedSelections!),
+      builder: (context, baremesValuesSnapshot) {
+        if (baremesValuesSnapshot.connectionState == ConnectionState.waiting) {
+          return _buildLoadingIndicator();
+        }
+        if (baremesValuesSnapshot.hasError) {
+          return _buildErrorWidget(
+              '${_getTranslatedText('خطأ:', 'Erreur:')} ${baremesValuesSnapshot.error}');
+        }
+        if (!baremesValuesSnapshot.hasData ||
+            baremesValuesSnapshot.data!.isEmpty) {
+          return _buildEmptyStateForCriteria();
+        }
+
+        return _buildDataTable(sortedStudents, baremesValuesSnapshot.data!);
+      },
+    );
+  }
+
+  Widget _buildEmptyStateForCriteria() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.assessment_outlined, color: Colors.grey, size: 64),
+          SizedBox(height: 16),
+          Text(
+            _getTranslatedText(
+                'لم يتم العثور على أي معيار.', 'Aucun critère trouvé.'),
+            textDirection: widget.isFrenchInterface
+                ? TextDirection.ltr
+                : TextDirection.rtl,
+            style: TextStyle(color: Colors.grey, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
+      List<Map<String, dynamic>> baremesValues) {
+    Map<String, List<Map<String, dynamic>>> groupedBaremes =
+        groupBaremes(baremesValues);
+
+    // DEBUG: Afficher le contenu de sumCriteriaMaxPerBareme
+    print('=== STATISTIQUES DISPONIBLES ===');
+    widget.sumCriteriaMaxPerBareme.forEach((key, value) {
+      print('$key: $value');
+    });
+
+    // DEBUG: Afficher la structure des barèmes
+    print('=== STRUCTURE DES BARÈMES POUR AFFICHAGE ===');
+    groupedBaremes.forEach((key, baremes) {
+      print('Groupe: $key');
+      for (var bareme in baremes) {
+        print(
+            '  Barème: ${bareme['id']} - ${bareme['value']} - Type: ${bareme['type']}');
+        if (bareme['type'] == 'bareme' && bareme['sousBaremes'] != null) {
+          for (var sousBareme in (bareme['sousBaremes'] as List)) {
+            print(
+                '    Sous-barème: ${sousBareme['id']} - ${sousBareme['value']}');
+          }
+        }
+      }
+    });
+
+    return Card(
+      elevation: 4,
+      margin: EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _cardColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.vertical,
+            child: DataTable(
+              columnSpacing: 16,
+              horizontalMargin: 16,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              dataRowColor: MaterialStateProperty.resolveWith<Color>(
+                (Set<MaterialState> states) {
+                  if (states.contains(MaterialState.selected)) {
+                    return _accentColor.withOpacity(0.2);
+                  }
+                  return Colors.transparent;
+                },
+              ),
+              columns: [
+                DataColumn(
+                  label: Container(
+                    width: 160,
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: _primaryColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _getTranslatedText('الاسم واللقب', 'Nom et prénom'),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: _primaryColor,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                // CORRECTION: Construction des colonnes simplifiée
+                ..._buildTableColumns(groupedBaremes),
+              ],
+              rows: [
+                ..._buildStudentRows(studentsDocs, groupedBaremes),
+                _buildStatsRow(
+                    _getTranslatedText('عدد التلاميذ المحققين',
+                        'Nombre d\'élèves ayant atteint'),
+                    groupedBaremes,
+                    isPercentage: false),
+                _buildStatsRow(
+                    _getTranslatedText('النسبة المئوية', 'Pourcentage'),
+                    groupedBaremes,
+                    isPercentage: true),
+                ..._buildButtonRows(groupedBaremes),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+// NOUVELLE MÉTHODE: Construction des colonnes
+  List<DataColumn> _buildTableColumns(
+      Map<String, List<Map<String, dynamic>>> groupedBaremes) {
+    List<DataColumn> columns = [];
+
+    for (var entry in groupedBaremes.entries) {
+      for (final bareme in entry.value) {
+        if (bareme['type'] == 'bareme') {
+          // Barème principal
+          columns.add(DataColumn(
+            label: _buildColumnHeader(bareme['value'], entry.key),
+          ));
+
+          // Sous-barèmes de ce barème
+          for (final sousBareme
+              in (bareme['sousBaremes'] as List<dynamic>? ?? [])) {
+            columns.add(DataColumn(
+              label: _buildColumnHeader(sousBareme['value'], entry.key),
+            ));
+          }
+        } else {
+          // Sous-barème seul
+          columns.add(DataColumn(
+            label: _buildColumnHeader(bareme['value'], entry.key),
+          ));
+        }
+      }
+    }
+
+    return columns;
+  }
+
+// NOUVELLE MÉTHODE: Construction de l'en-tête de colonne
+  Widget _buildColumnHeader(String title, String groupKey) {
+    return Container(
+      width: 110,
+      padding: EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            _headerColors.putIfAbsent(groupKey, () => _getRandomColor()),
+            _headerColors[groupKey]!.withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+              fontSize: 12,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+// NOUVELLE MÉTHODE: Construction des lignes étudiants
+  List<DataRow> _buildStudentRows(List<QueryDocumentSnapshot> studentsDocs,
+      Map<String, List<Map<String, dynamic>>> groupedBaremes) {
+    return studentsDocs.asMap().entries.map((entry) {
+      final index = entry.key;
+      final studentDoc = entry.value;
+      final studentId = studentDoc.id;
+      final studentName =
+          studentDoc['name'] ?? _getTranslatedText('غير معروف', 'Inconnu');
+
+      return DataRow(
+        color: MaterialStateProperty.resolveWith<Color>(
+          (Set<MaterialState> states) {
+            return index.isEven
+                ? _backgroundColor.withOpacity(0.3)
+                : Colors.transparent;
+          },
+        ),
+        cells: [
+          DataCell(_buildStudentNameCell(studentName)),
+          ..._buildStudentCells(studentId, groupedBaremes),
+        ],
+      );
+    }).toList();
+  }
+
+// NOUVELLE MÉTHODE: Cellule nom étudiant
+  Widget _buildStudentNameCell(String studentName) {
+    return Container(
+      width: 160,
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: _accentColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              studentName,
+              textDirection: widget.isFrenchInterface
+                  ? TextDirection.ltr
+                  : TextDirection.rtl,
+              style: TextStyle(
+                color: _textColor,
+                fontWeight: FontWeight.w500,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+// NOUVELLE MÉTHODE: Cellules des barèmes pour un étudiant
+  List<DataCell> _buildStudentCells(String studentId,
+      Map<String, List<Map<String, dynamic>>> groupedBaremes) {
+    List<DataCell> cells = [];
+
+    for (var entry in groupedBaremes.entries) {
+      for (final bareme in entry.value) {
+        if (bareme['type'] == 'bareme') {
+          // Barème principal
+          cells.add(DataCell(_buildMarkCell(studentId, bareme['id'])));
+
+          // Sous-barèmes
+          for (final sousBareme
+              in (bareme['sousBaremes'] as List<dynamic>? ?? [])) {
+            cells.add(DataCell(_buildMarkCell(studentId, sousBareme['id'])));
+          }
+        } else {
+          // Sous-barème seul
+          cells.add(DataCell(_buildMarkCell(studentId, bareme['id'])));
+        }
+      }
+    }
+
+    return cells;
+  }
+
+// NOUVELLE MÉTHODE: Cellule de note
+Widget _buildMarkCell(String studentId, String baremeKey) {
+  return Container(
+    width: 110,
+    padding: EdgeInsets.symmetric(vertical: 8),
+    child: FutureBuilder<String>(
+      future: _getSelectedValue(studentId, baremeKey),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
+            ),
+          );
+        }
+        final value = snapshot.data ?? _dropdownValues[0];
+        
+        // Vérifier si c'est "غائب"
+        final isAbsent = value == 'غائب';
+        
+        return Container(
+          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: isAbsent 
+              ? Colors.grey.withOpacity(0.2)
+              : _getValueColor(value).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: isAbsent 
+                ? Colors.grey
+                : _getValueColor(value).withOpacity(0.3),
+            ),
+          ),
+          child: Center(
+            child: Text(
+              value,
+              style: TextStyle(
+                color: isAbsent ? Colors.grey : _getValueColor(value),
+                fontWeight: FontWeight.bold,
+                fontSize: isAbsent ? 10 : 12,
+                fontStyle: isAbsent ? FontStyle.italic : FontStyle.normal,
+              ),
+            ),
+          ),
+        );
+      },
+    ),
+  );
+}
+// NOUVELLE MÉTHODE: Lignes de boutons
+  List<DataRow> _buildButtonRows(
+      Map<String, List<Map<String, dynamic>>> groupedBaremes) {
+    return [
+      _buildButtonRow(_getTranslatedText('تصنيف', 'Classer'), Colors.green,
+          Colors.yellow, groupedBaremes,
+          isClassification: true),
+      _buildButtonRow(_getTranslatedText('خطة العلاج', 'Plan de traitement'),
+          Colors.blue, Colors.white, groupedBaremes,
+          isClassification: false),
+    ];
+  }
+
+  Color _getValueColor(String value) {
+    switch (value) {
+      case '( + + + )':
+        return Colors.green;
+      case '( + + - )':
+        return Colors.orange;
+      case '( + - - )':
+        return Colors.orangeAccent;
+      case '( - - - )':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  DataRow _buildStatsRow(
+      String title, Map<String, List<Map<String, dynamic>>> groupedBaremes,
+      {required bool isPercentage}) {
+    return DataRow(
+      color: MaterialStateProperty.all(_primaryColor.withOpacity(0.05)),
+      cells: [
+        DataCell(
+          Container(
+            width: 160,
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: _primaryColor,
+              ),
+            ),
+          ),
+        ),
+        for (var entry in groupedBaremes.entries)
+          for (final bareme in entry.value)
+            if (bareme['type'] == 'bareme')
+              // Barème principal avec ses sous-barèmes
+              for (final subEntry in [
+                {'id': bareme['id'], 'type': 'bareme'},
+                ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+              ])
+                DataCell(
+                  Container(
+                    width: 110,
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isPercentage
+                            ? _secondaryColor.withOpacity(0.1)
+                            : _accentColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Center(
+                        child: _buildStatValue(subEntry['id'], isPercentage),
+                      ),
+                    ),
+                  ),
+                )
+            else
+              // Sous-barème seul
+              DataCell(
+                Container(
+                  width: 110,
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isPercentage
+                          ? _secondaryColor.withOpacity(0.1)
+                          : _accentColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Center(
+                      child: _buildStatValue(bareme['id'], isPercentage),
+                    ),
+                  ),
+                ),
+              ),
+      ],
+    );
+  }
+
+// CORRECTION : Méthode améliorée pour afficher les statistiques
+  Widget _buildStatValue(String baremeKey, bool isPercentage) {
+    // DEBUG: Afficher la clé recherchée
+    print('🔍 Recherche statistique pour: $baremeKey');
+
+    // Rechercher la valeur dans sumCriteriaMaxPerBareme
+    int? count = widget.sumCriteriaMaxPerBareme[baremeKey];
+
+    // Si non trouvé, essayer de chercher avec différentes variations de la clé
+    if (count == null) {
+      // Essayer de trouver la clé dans les statistiques disponibles
+      for (var key in widget.sumCriteriaMaxPerBareme.keys) {
+        if (key.contains(baremeKey) || baremeKey.contains(key)) {
+          count = widget.sumCriteriaMaxPerBareme[key];
+          print('🔄 Clé trouvée avec variation: $key -> $count');
+          break;
+        }
+      }
+    }
+
+    // Si toujours null, utiliser 0
+    count ??= 0;
+
+    print(
+        '📊 Statistique finale - Clé: $baremeKey, Valeur: $count, Pourcentage: $isPercentage');
+
+    if (isPercentage) {
+      if (widget.totalStudents == 0) {
+        return Text(
+          _getTranslatedText('لا توجد درجات', 'Pas de notes'),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: _secondaryColor,
+            fontSize: 12,
+          ),
+        );
+      } else {
+        final percentage = (count / widget.totalStudents * 100);
+        return Text(
+          '${percentage.toStringAsFixed(2)}%',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: _secondaryColor,
+            fontSize: 12,
+          ),
+        );
+      }
+    } else {
+      return Text(
+        count.toString(),
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: _accentColor,
+          fontSize: 12,
+        ),
+      );
+    }
+  }
+
+  DataRow _buildButtonRow(String buttonText, Color backgroundColor,
+      Color textColor, Map<String, List<Map<String, dynamic>>> groupedBaremes,
+      {required bool isClassification}) {
+    return DataRow(
+      cells: [
+        DataCell(Container()),
+        for (var entry in groupedBaremes.entries)
+          for (final bareme in entry.value)
+            for (final subEntry in [
+              {'id': bareme['id'], 'type': 'bareme', 'name': bareme['value']},
+              ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map((s) =>
+                  {'id': s['id'], 'type': 'sousBareme', 'name': s['value']})
+            ])
+              DataCell(
+                Container(
+                  width: 110,
+                  height: 48,
+                  padding: EdgeInsets.all(4),
+                  child: _buildLoadingButton(
+                    bareme: bareme,
+                    subEntry: subEntry,
+                    buttonText: buttonText,
+                    backgroundColor: backgroundColor,
+                    textColor: textColor,
+                    isClassification: isClassification,
+                  ),
+                ),
+              ),
+      ],
+    );
+  }
+
+  Widget _buildLoadingButton({
+    required Map<String, dynamic> bareme,
+    required Map<String, dynamic> subEntry,
+    required String buttonText,
+    required Color backgroundColor,
+    required Color textColor,
+    required bool isClassification,
+  }) {
+    final String buttonKey = _getButtonKey(
+      bareme['id']!,
+      subEntry['type'] == 'sousBareme' ? subEntry['id'] : null,
+      isClassification,
+    );
+
+    final bool isLoading = isClassification
+        ? _classificationLoadingStates[buttonKey] ?? false
+        : _treatmentPlanLoadingStates[buttonKey] ?? false;
+
+    return ElevatedButton(
+      onPressed: isLoading
+          ? null
+          : () async {
+              _startLoading(buttonKey, isClassification);
+              try {
+                if (isClassification) {
+                  await _classifyStudentsByBarem(
+                    bareme['id']!,
+                    sousBaremeId: subEntry['type'] == 'sousBareme'
+                        ? subEntry['id']
+                        : null,
+                  );
+                } else {
+                  await widget.navigateToClassificationPage(
+                    bareme['id']!,
+                    sousBaremeId: subEntry['type'] == 'sousBareme'
+                        ? subEntry['id']
+                        : null,
+                  );
+                }
+              } catch (e) {
+                print('Erreur: $e');
+                if (_isMounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                          '${_getTranslatedText('حدث خطأ:', 'Erreur:')} $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              } finally {
+                _stopLoading(buttonKey, isClassification);
+              }
+            },
+      style: ElevatedButton.styleFrom(
+        backgroundColor: isLoading ? Colors.grey : backgroundColor,
+        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        elevation: 2,
+      ),
+      child: isLoading
+          ? SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(textColor),
+              ),
+            )
+          : Text(
+              buttonText,
+              style: TextStyle(
+                fontSize: 11,
+                color: textColor,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _getBaremesValues(
+      List<QueryDocumentSnapshot> selectedBaremes) async {
+    final List<Map<String, dynamic>> result = [];
+    final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+
+    for (final baremeDoc in selectedBaremes) {
+      final baremeId = baremeDoc['baremeId'];
+      final baremeSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .doc(baremeId)
+          .get();
+
+      final isBaremeSelected = baremeSnapshot['selected'] ?? false;
+      final sousBaremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .doc(baremeId)
+          .collection('sousBaremes')
+          .get();
+
+      final selectedSousBaremes = sousBaremesSnapshot.docs
+          .where((doc) => doc['selected'] == true)
+          .toList();
+
+      if (isBaremeSelected) {
+        final baremeName = baremeSnapshot['baremeName'] ??
+            _getTranslatedText('غير معروف', 'Inconnu');
+        result.add({
+          'id': baremeId,
+          'value': baremeName,
+          'sousBaremes': [],
+        });
+      } else if (selectedSousBaremes.isNotEmpty) {
+        for (final sousBareme in selectedSousBaremes) {
+          final sousBaremeName = sousBareme['sousBaremeName'] ??
+              _getTranslatedText('غير معروف', 'Inconnu');
+          result.add({
+            'id': sousBareme.id,
+            'value': sousBaremeName,
+            'parentBaremeId': baremeId,
+          });
+        }
+      }
+    }
+    return result;
+  }
+
+
+Future<String> _getSelectedValue(String studentId, String baremeKey) async {
+  try {
+    // Récupérer le système d'évaluation
+    final String evaluationSystem = await _getEvaluationSystem(
+        widget.selectedClass, widget.selectedMatiere);
+    final List<String> customNotes =
+        await _loadCustomNotes(widget.selectedClass, widget.selectedMatiere);
+
+    String storedValue = _dropdownValues[0];
+
+    if (baremeKey.contains('-')) {
+      var parts = baremeKey.split('-');
+      var baremeId = parts[0];
+      var sousBaremeId = parts[1];
+
+      var sousBaremeDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('user_classes')
+          .doc(widget.classDocId)
+          .collection('students')
+          .doc(studentId)
+          .collection('baremes')
+          .doc(baremeId)
+          .collection('sous_baremes')
+          .doc(sousBaremeId)
+          .get();
+
+      if (sousBaremeDoc.exists) {
+        // Vérifier si l'élève est marqué absent
+        if (sousBaremeDoc.data()?['isAbsent'] == true) {
+          return 'غائب';
+        }
+        storedValue =
+            sousBaremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
+      }
+    } else {
+      var baremeDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('user_classes')
+          .doc(widget.classDocId)
+          .collection('students')
+          .doc(studentId)
+          .collection('baremes')
+          .doc(baremeKey)
+          .get();
+
+      if (baremeDoc.exists) {
+        // Vérifier si l'élève est marqué absent
+        if (baremeDoc.data()?['isAbsent'] == true) {
+          return 'غائب';
+        }
+        storedValue = baremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
+      }
+    }
+
+    // Convertir selon le système
+    return _getDisplayEvaluation(storedValue, evaluationSystem,
+        customNotes: customNotes);
+  } catch (e) {
+    print('Erreur récupération valeur pour $baremeKey: $e');
+    return _dropdownValues[0];
+  }
+}
+
+// Méthodes auxiliaires à ajouter dans _StudentsTableState
+  Future<String> _getEvaluationSystem(String classId, String matiereId) async {
+    try {
+      final systemDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('evaluation_systems')
+          .doc('$classId-$matiereId')
+          .get();
+
+      if (systemDoc.exists) {
+        return systemDoc['system'] ?? 'character';
+      }
+      return 'character';
+    } catch (e) {
+      print('Erreur lors de la récupération du système: $e');
+      return 'character';
+    }
+  }
+
+  Future<List<String>> _loadCustomNotes(
+      String classId, String matiereId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('custom_notes')
+          .doc('$classId-$matiereId')
+          .get();
+
+      if (doc.exists && doc.data()?['notes'] != null) {
+        return List<String>.from(doc.data()!['notes']);
+      }
+      return [];
+    } catch (e) {
+      print('Erreur lors du chargement des notes personnalisées: $e');
+      return [];
+    }
+  }
+String _getDisplayEvaluation(String storedValue, String system,
+    {List<String>? customNotes}) {
+  
+  // Vérifier si c'est "غائب"
+  if (storedValue == 'غائب') {
+    return 'غائب';
+  }
+  
+  // Le reste du code existant...
+  if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
+    final Map<String, String> mapping = {
+      '( - - - )': customNotes[0],
+      '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
+      '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
+      '( + + + )': customNotes.last,
+    };
+    return mapping[storedValue] ?? customNotes[0];
+  }
+
+  switch (system) {
+    case 'character':
+      return storedValue;
+
+    case 'note_0_1_5':
+      switch (storedValue) {
+        case '( - - - )':
+          return '0';
+        case '( + - - )':
+          return '0.5';
+        case '( + + - )':
+          return '1';
+        case '( + + + )':
+          return '1.5';
+        default:
+          return '0';
+      }
+
+    case 'note_0_3':
+      switch (storedValue) {
+        case '( - - - )':
+          return '0';
+        case '( + - - )':
+          return '1';
+        case '( + + - )':
+          return '2';
+        case '( + + + )':
+          return '3';
+        default:
+          return '0';
+      }
+
+    case 'note_0_6':
+      switch (storedValue) {
+        case '( - - - )':
+          return '0';
+        case '( + - - )':
+          return '2';
+        case '( + + - )':
+          return '4';
+        case '( + + + )':
+          return '6';
+        default:
+          return '0';
+      }
+
+    default:
+      return storedValue;
+  }
+}
+  List<String> _getDropdownValues(
+      String evaluationSystem, List<String> customNotes) {
+    switch (evaluationSystem) {
+      case 'character':
+        return ['( - - - )', '( + - - )', '( + + - )', '( + + + )'];
+
+      case 'note_0_1_5':
+        return ['0', '0.5', '1', '1.5'];
+
+      case 'note_0_3':
+        return ['0', '1', '2', '3'];
+
+      case 'note_0_6':
+        return ['0', '2', '4', '6'];
+
+      case 'custom':
+        return customNotes.isNotEmpty
+            ? customNotes
+            : ['( - - - )', '( + - - )', '( + + - )', '( + + + )'];
+
+      default:
+        return ['( - - - )', '( + - - )', '( + + - )', '( + + + )'];
+    }
+  }
+
+  Future<void> _classifyStudentsByBarem(String baremeId,
+      {String? sousBaremeId}) async {
+    try {
+      var studentsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('user_classes')
+          .doc(widget.classDocId)
+          .collection('students')
+          .get();
+
+      Map<String, List<String>> studentGroups = {
+        _getTranslatedText('مجموعة العلاج', 'Groupe de traitement'): [],
+        _getTranslatedText('مجموعة الدعم', 'Groupe de soutien'): [],
+        _getTranslatedText('مجموعة التميز', 'Groupe d\'excellence'): [],
+      };
+
+      for (var studentDoc in studentsSnapshot.docs) {
+        var studentId = studentDoc.id;
+        var studentName = studentDoc['name'] ??
+            _getTranslatedText('اسم غير معروف', 'Nom inconnu');
+
+        var baremeRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.currentUser.uid)
+            .collection('user_classes')
+            .doc(widget.classDocId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .doc(baremeId);
+
+        var snapshot = sousBaremeId != null
+            ? await baremeRef.collection('sous_baremes').doc(sousBaremeId).get()
+            : await baremeRef.get();
+
+        if (snapshot.exists) {
+          var value = snapshot['Marks'];
+          if (value == '( + + + )') {
+            studentGroups[_getTranslatedText(
+                    'مجموعة التميز', 'Groupe d\'excellence')]!
+                .add(studentName);
+          } else if (value == '( + + - )') {
+            studentGroups[
+                    _getTranslatedText('مجموعة الدعم', 'Groupe de soutien')]!
+                .add(studentName);
+          } else if (value == '( + - - )' || value == '( - - - )') {
+            studentGroups[_getTranslatedText(
+                    'مجموعة العلاج', 'Groupe de traitement')]!
+                .add(studentName);
+          }
+        }
+      }
+
+      if (_isMounted) {
+        _showClassificationDialog(studentGroups);
+      }
+    } catch (e) {
+      print('Erreur lors de la classification des élèves: $e');
+      rethrow;
+    }
+  }
+
+  void _showClassificationDialog(Map<String, List<String>> studentGroups) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final screenHeight = MediaQuery.of(context).size.height;
+        final isPortrait =
+            MediaQuery.of(context).orientation == Orientation.portrait;
+
+        final dialogWidth = screenWidth * (isPortrait ? 0.9 : 0.7);
+        final dialogMaxHeight = screenHeight * 0.8;
+        final titleFontSize = screenWidth * 0.045;
+        final groupTitleFontSize = screenWidth * 0.035;
+        final studentFontSize = screenWidth * 0.03;
+
+        return Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: dialogWidth,
+              maxHeight: dialogMaxHeight,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: _primaryColor,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _getTranslatedText(
+                            'تصنيف التلاميذ', 'Classification des élèves'),
+                        style: TextStyle(
+                          fontSize: titleFontSize.clamp(18, 24),
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ...[
+                            _getTranslatedText(
+                                'مجموعة التميز', 'Groupe d\'excellence'),
+                            _getTranslatedText(
+                                'مجموعة الدعم', 'Groupe de soutien'),
+                            _getTranslatedText(
+                                'مجموعة العلاج', 'Groupe de traitement')
+                          ].map((groupName) {
+                            return _buildResponsiveGroupCard(
+                              groupName,
+                              studentGroups[groupName]!,
+                              groupTitleFontSize: groupTitleFontSize,
+                              studentFontSize: studentFontSize,
+                            );
+                          }).toList(),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border:
+                          Border(top: BorderSide(color: Colors.grey.shade300)),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(16),
+                        bottomRight: Radius.circular(16),
+                      ),
+                    ),
+                    child: Center(
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primaryColor,
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 32, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          minimumSize: Size(screenWidth * 0.3, 50),
+                        ),
+                        child: Text(
+                          _getTranslatedText('إغلاق', 'Fermer'),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: titleFontSize.clamp(16, 20),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildResponsiveGroupCard(
+    String groupName,
+    List<String> students, {
+    required double groupTitleFontSize,
+    required double studentFontSize,
+  }) {
+    Color cardColor;
+    Color textColor;
+
+    if (groupName.contains(_getTranslatedText('التميز', 'excellence')) ||
+        groupName.contains('excellence')) {
+      cardColor = Colors.green.withOpacity(0.1);
+      textColor = Colors.green;
+    } else if (groupName.contains(_getTranslatedText('الدعم', 'soutien')) ||
+        groupName.contains('soutien')) {
+      cardColor = Colors.orange.withOpacity(0.1);
+      textColor = Colors.orange;
+    } else {
+      cardColor = Colors.red.withOpacity(0.1);
+      textColor = Colors.red;
+    }
+
+    return Card(
+      margin: EdgeInsets.symmetric(vertical: 8),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Container(
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          childrenPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          title: Row(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: textColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  groupName,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: textColor,
+                    fontSize: groupTitleFontSize.clamp(14, 18),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              SizedBox(width: 8),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: textColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  students.length.toString(),
+                  style: TextStyle(
+                    color: textColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: groupTitleFontSize.clamp(12, 16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          children: students.map((student) {
+            return ListTile(
+              contentPadding: EdgeInsets.symmetric(horizontal: 16),
+              leading: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: textColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.person,
+                    color: textColor.withOpacity(0.7), size: 16),
+              ),
+              title: Text(
+                student,
+                style: TextStyle(
+                  color: _textColor,
+                  fontSize: studentFontSize.clamp(12, 16),
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+}
+
+class StudentDropdown extends StatefulWidget {
+  final String studentId;
+  final String baremeId;
+  final String initialValue;
+  final List<String> dropdownValues;
+  final Function(String, String, String) onChanged;
+
+  const StudentDropdown({
+    Key? key,
+    required this.studentId,
+    required this.baremeId,
+    required this.initialValue,
+    required this.dropdownValues,
+    required this.onChanged,
+  }) : super(key: key);
+
+  @override
+  _StudentDropdownState createState() => _StudentDropdownState();
+}
+
+class _StudentDropdownState extends State<StudentDropdown> {
+  late String _currentValue;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentValue = widget.initialValue;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButton<String>(
+      value: _currentValue,
+      alignment: Alignment.center,
+      dropdownColor: Colors.white,
+      items: widget.dropdownValues
+          .map((value) => DropdownMenuItem(
+                value: value,
+                child: Text(value),
+              ))
+          .toList(),
+      onChanged: (value) {
+        if (value != null) {
+          setState(() => _currentValue = value);
+          widget.onChanged(widget.studentId, widget.baremeId, value);
+        }
+      },
+    );
   }
 }

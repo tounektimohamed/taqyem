@@ -113,105 +113,124 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     }
   }
 
-// Mettre à jour _getMappedEvaluation pour inclure le système personnalisé
-//
+  String _getMappedEvaluation(String displayValue, String system,
+      {List<String>? customNotes}) {
+    // Vérifier si c'est "غائب"
+    if (displayValue == 'غائب') {
+      return 'غائب';
+    }
 
+    if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
+      // Pour le système personnalisé, trouver l'index de la valeur affichée
+      int index = customNotes.indexOf(displayValue);
 
-String _getMappedEvaluation(String displayValue, String system,
-    {List<String>? customNotes}) {
-  // Vérifier si c'est "غائب"
-  if (displayValue == 'غائب') {
-    return 'غائب';
-  }
-
-  if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
-    // Pour le système personnalisé, trouver l'index de la valeur affichée
-    int index = customNotes.indexOf(displayValue);
-    
-    if (index == -1) {
-      // Si la valeur n'est pas trouvée, chercher une correspondance partielle
-      for (int i = 0; i < customNotes.length; i++) {
-        if (customNotes[i].contains(displayValue) || displayValue.contains(customNotes[i])) {
-          index = i;
-          break;
+      if (index == -1) {
+        // Si la valeur n'est pas trouvée, chercher une correspondance partielle
+        for (int i = 0; i < customNotes.length; i++) {
+          if (customNotes[i].contains(displayValue) ||
+              displayValue.contains(customNotes[i])) {
+            index = i;
+            break;
+          }
         }
       }
-    }
-    
-    if (index == -1) {
-      // Si toujours pas trouvé, utiliser la première valeur
-      return '( - - - )';
+
+      if (index == -1) {
+        // Si toujours pas trouvé, utiliser la première valeur
+        return '( - - - )';
+      }
+
+      // Mapper vers les 4 niveaux selon la position dans la liste
+      if (customNotes.length == 2) {
+        // 2 valeurs : bas = ---, haut = +++
+        return index == 0 ? '( - - - )' : '( + + + )';
+      } else if (customNotes.length == 3) {
+        // 3 valeurs : bas = ---, moyen = ++-, haut = +++
+        switch (index) {
+          case 0:
+            return '( - - - )';
+          case 1:
+            return '( + + - )';
+          case 2:
+            return '( + + + )';
+          default:
+            return '( - - - )';
+        }
+      } else if (customNotes.length == 4) {
+        // 4 valeurs : bas = ---, moyen-bas = +--, moyen-haut = ++-, haut = +++
+        switch (index) {
+          case 0:
+            return '( - - - )';
+          case 1:
+            return '( + - - )';
+          case 2:
+            return '( + + - )';
+          case 3:
+            return '( + + + )';
+          default:
+            return '( - - - )';
+        }
+      } else {
+        // Pour plus de 4 valeurs, répartir proportionnellement
+        final ratio = index / (customNotes.length - 1);
+        if (ratio < 0.25) return '( - - - )';
+        if (ratio < 0.5) return '( + - - )';
+        if (ratio < 0.75) return '( + + - )';
+        return '( + + + )';
+      }
     }
 
-    // Mapper vers les 4 niveaux selon la position dans la liste
-    if (customNotes.length == 2) {
-      // 2 valeurs : bas = ---, haut = +++
-      return index == 0 ? '( - - - )' : '( + + + )';
-    } else if (customNotes.length == 3) {
-      // 3 valeurs : bas = ---, moyen = ++-, haut = +++
-      switch (index) {
-        case 0: return '( - - - )';
-        case 1: return '( + + - )';
-        case 2: return '( + + + )';
-        default: return '( - - - )';
-      }
-    } else if (customNotes.length == 4) {
-      // 4 valeurs : bas = ---, moyen-bas = +--, moyen-haut = ++-, haut = +++
-      switch (index) {
-        case 0: return '( - - - )';
-        case 1: return '( + - - )';
-        case 2: return '( + + - )';
-        case 3: return '( + + + )';
-        default: return '( - - - )';
-      }
-    } else {
-      // Pour plus de 4 valeurs, répartir proportionnellement
-      final ratio = index / (customNotes.length - 1);
-      if (ratio < 0.25) return '( - - - )';
-      if (ratio < 0.5) return '( + - - )';
-      if (ratio < 0.75) return '( + + - )';
-      return '( + + + )';
+    // Le reste du code pour les autres systèmes...
+    switch (system) {
+      case 'character':
+        return displayValue;
+
+      case 'note_0_1_5':
+        switch (displayValue) {
+          case '0':
+            return '( - - - )';
+          case '0.5':
+            return '( + - - )';
+          case '1':
+            return '( + + - )';
+          case '1.5':
+            return '( + + + )';
+          default:
+            return '( - - - )';
+        }
+
+      case 'note_0_3':
+        switch (displayValue) {
+          case '0':
+            return '( - - - )';
+          case '1':
+            return '( + - - )';
+          case '2':
+            return '( + + - )';
+          case '3':
+            return '( + + + )';
+          default:
+            return '( - - - )';
+        }
+
+      case 'note_0_6':
+        switch (displayValue) {
+          case '0':
+            return '( - - - )';
+          case '2':
+            return '( + - - )';
+          case '4':
+            return '( + + - )';
+          case '6':
+            return '( + + + )';
+          default:
+            return '( - - - )';
+        }
+
+      default:
+        return displayValue;
     }
   }
-
-  // Le reste du code pour les autres systèmes...
-  switch (system) {
-    case 'character':
-      return displayValue;
-
-    case 'note_0_1_5':
-      switch (displayValue) {
-        case '0': return '( - - - )';
-        case '0.5': return '( + - - )';
-        case '1': return '( + + - )';
-        case '1.5': return '( + + + )';
-        default: return '( - - - )';
-      }
-
-    case 'note_0_3':
-      switch (displayValue) {
-        case '0': return '( - - - )';
-        case '1': return '( + - - )';
-        case '2': return '( + + - )';
-        case '3': return '( + + + )';
-        default: return '( - - - )';
-      }
-
-    case 'note_0_6':
-      switch (displayValue) {
-        case '0': return '( - - - )';
-        case '2': return '( + - - )';
-        case '4': return '( + + - )';
-        case '6': return '( + + + )';
-        default: return '( - - - )';
-      }
-
-    default:
-      return displayValue;
-  }
-}
-
-//// Fonction pour convertir la valeur stockée en valeur d'affichage selon le système
 
   Future<void> _navigateAfterSelection(String classId, String matiereId) async {
     try {
@@ -1637,10 +1656,6 @@ String _getMappedEvaluation(String displayValue, String system,
     );
   }
 
-// Widget pour les sous-barèmes
-
-// NOUVELLE MÉTHODE : Afficher le dialogue avec un système spécifique
-
   Future<void> _showEvaluationDialogWithSystem(
     BuildContext context,
     String classId,
@@ -1704,7 +1719,6 @@ String _getMappedEvaluation(String displayValue, String system,
         builder: (context) => StatefulBuilder(
           builder: (context, setStateDialog) {
             // Fonction pour obtenir les options d'affichage d'un barème spécifique
-            // Dans _showEvaluationDialogWithSystem, modifiez :
             List<String> getDisplayOptionsForBareme(
                 Map<String, dynamic> bareme) {
               if (selectedSystem == 'custom') {
@@ -1852,12 +1866,12 @@ String _getMappedEvaluation(String displayValue, String system,
                                         return;
                                       }
 
-                                      // Sauvegarder les notes globales
-                                      await _saveCustomNotes(
-                                        classId,
-                                        matiereId,
-                                        globalNotes,
-                                      );
+                                    //   // Sauvegarder les notes globales
+                                    //   await _saveSousBaremeCustomNotes(
+                                    //     classId,
+                                    //     matiereId,
+                                    //     globalNotes,
+                                    //   );
 
                                       // Mettre à jour tous les barèmes avec les notes globales
                                       setStateDialog(() {
@@ -1879,6 +1893,20 @@ String _getMappedEvaluation(String displayValue, String system,
                                                 (bareme['sousBaremes'] as List)
                                                     .map<Map<String, dynamic>>(
                                                         (sousBareme) {
+                                              final sousBaremeCustomNotes =
+                                                  sousBareme['customNotes']
+                                                      as List<String>?;
+
+                                              // Si le sous-barème n'a pas ses propres notes,
+                                              // utiliser les notes globales
+                                              final notesToUse =
+                                                  sousBaremeCustomNotes !=
+                                                              null &&
+                                                          sousBaremeCustomNotes
+                                                              .isNotEmpty
+                                                      ? sousBaremeCustomNotes
+                                                      : globalNotes;
+
                                               return {
                                                 ...sousBareme,
                                                 'displayEvaluation':
@@ -1887,7 +1915,7 @@ String _getMappedEvaluation(String displayValue, String system,
                                                           'storedEvaluation'] ??
                                                       '( - - - )',
                                                   newSystem,
-                                                  customNotes: globalNotes,
+                                                  customNotes: notesToUse,
                                                 ),
                                               };
                                             }).toList(),
@@ -1920,6 +1948,18 @@ String _getMappedEvaluation(String displayValue, String system,
                                               (bareme['sousBaremes'] as List)
                                                   .map<Map<String, dynamic>>(
                                                       (sousBareme) {
+                                            final sousBaremeCustomNotes =
+                                                sousBareme['customNotes']
+                                                    as List<String>?;
+
+                                            // Utiliser les notes du sous-barème s'il en a, sinon celles du barème
+                                            final notesToUse =
+                                                sousBaremeCustomNotes != null &&
+                                                        sousBaremeCustomNotes
+                                                            .isNotEmpty
+                                                    ? sousBaremeCustomNotes
+                                                    : bareme['customNotes'];
+
                                             return {
                                               ...sousBareme,
                                               'displayEvaluation':
@@ -1928,8 +1968,7 @@ String _getMappedEvaluation(String displayValue, String system,
                                                         'storedEvaluation'] ??
                                                     '( - - - )',
                                                 newSystem,
-                                                customNotes:
-                                                    bareme['customNotes'],
+                                                customNotes: notesToUse,
                                               ),
                                             };
                                           }).toList(),
@@ -2187,6 +2226,22 @@ String _getMappedEvaluation(String displayValue, String system,
                                                                   Map<String,
                                                                       dynamic>>(
                                                               (sousBareme) {
+                                                        final sousBaremeCustomNotes =
+                                                            sousBareme[
+                                                                    'customNotes']
+                                                                as List<
+                                                                    String>?;
+
+                                                        // Si le sous-barème n'a pas ses propres notes,
+                                                        // utiliser les nouvelles notes du barème
+                                                        final notesToUse =
+                                                            sousBaremeCustomNotes !=
+                                                                        null &&
+                                                                    sousBaremeCustomNotes
+                                                                        .isNotEmpty
+                                                                ? sousBaremeCustomNotes
+                                                                : customNotes;
+
                                                         return {
                                                           ...sousBareme,
                                                           'displayEvaluation':
@@ -2196,7 +2251,7 @@ String _getMappedEvaluation(String displayValue, String system,
                                                                 '( - - - )',
                                                             selectedSystem,
                                                             customNotes:
-                                                                customNotes,
+                                                                notesToUse,
                                                           ),
                                                         };
                                                       }).toList();
@@ -2235,61 +2290,71 @@ String _getMappedEvaluation(String displayValue, String system,
                                           children:
                                               baremeCustomNotes.map((note) {
                                             return Container(
-                                                // padding: EdgeInsets.symmetric(
-                                                //     horizontal: 12, vertical: 6),
-                                                // decoration: BoxDecoration(
-                                                //   color: Colors.pink
-                                                //       .withOpacity(0.1),
-                                                //   borderRadius:
-                                                //       BorderRadius.circular(8),
-                                                //   border: Border.all(
-                                                //     color: Colors.pink,
-                                                //     width: 1,
-                                                //   ),
-                                                // ),
-                                                // child: Text(
-                                                //   note,
-                                                //   style: TextStyle(
-                                                //     color: Colors.pink,
-                                                //     fontWeight: FontWeight.bold,
-                                                //     fontSize: 14,
-                                                //   ),
-                                                // ),
-                                                );
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 12, vertical: 6),
+                                              decoration: BoxDecoration(
+                                                color: Colors.pink
+                                                    .withOpacity(0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                border: Border.all(
+                                                  color: Colors.pink,
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: Text(
+                                                note,
+                                                style: TextStyle(
+                                                  color: Colors.pink,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            );
                                           }).toList(),
                                         ),
                                       ),
 
                                     // Légende des valeurs pour ce barème
-                                    // Container(
-                                    //   padding: EdgeInsets.symmetric(vertical: 8),
-                                    //   child: Wrap(
-                                    //     spacing: 8,
-                                    //     runSpacing: 4,
-                                    //     alignment: WrapAlignment.center,
-                                    //     children: displayEvaluationOptions.map((value) {
-                                    //       return Container(
-                                    //         padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    //         decoration: BoxDecoration(
-                                    //           color: evaluationColors[value]?.withOpacity(0.1) ?? Colors.grey[100],
-                                    //           borderRadius: BorderRadius.circular(6),
-                                    //           border: Border.all(
-                                    //             color: evaluationColors[value] ?? Colors.grey,
-                                    //             width: 1,
-                                    //           ),
-                                    //         ),
-                                    //         child: Text(
-                                    //           value,
-                                    //           style: TextStyle(
-                                    //             color: evaluationColors[value] ?? Colors.grey,
-                                    //             fontWeight: FontWeight.bold,
-                                    //             fontSize: 12,
-                                    //           ),
-                                    //         ),
-                                    //       );
-                                    //     }).toList(),
-                                    //   ),
-                                    // ),
+                                    Container(
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 8),
+                                      child: Wrap(
+                                        spacing: 8,
+                                        runSpacing: 4,
+                                        alignment: WrapAlignment.center,
+                                        children: displayEvaluationOptions
+                                            .map((value) {
+                                          return Container(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: 8, vertical: 4),
+                                            decoration: BoxDecoration(
+                                              color: evaluationColors[value]
+                                                      ?.withOpacity(0.1) ??
+                                                  Colors.grey[100],
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                              border: Border.all(
+                                                color:
+                                                    evaluationColors[value] ??
+                                                        Colors.grey,
+                                                width: 1,
+                                              ),
+                                            ),
+                                            child: Text(
+                                              value,
+                                              style: TextStyle(
+                                                color:
+                                                    evaluationColors[value] ??
+                                                        Colors.grey,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
 
                                     if (hasSousBaremes)
                                       Column(
@@ -2302,7 +2367,9 @@ String _getMappedEvaluation(String displayValue, String system,
                                             displayEvaluationOptions,
                                             evaluationColors,
                                             selectedSystem,
-                                            customNotes: baremeCustomNotes,
+                                            classId: classId,
+                                            matiereId: matiereId,
+                                            baremeId: selection['id'],
                                           );
                                         }).toList(),
                                       )
@@ -2393,7 +2460,7 @@ String _getMappedEvaluation(String displayValue, String system,
                                     children: [
                                       CircularProgressIndicator(),
                                       SizedBox(height: 16),
-                                      // Text('جاري حفظ التقييمات...'),
+                                      Text('جاري حفظ التقييمات...'),
                                     ],
                                   ),
                                 ),
@@ -2456,7 +2523,7 @@ String _getMappedEvaluation(String displayValue, String system,
     }
   }
 
-// Fonction pour demander le type de notes personnalisées
+  // Fonction pour demander le type de notes personnalisées
   Future<bool?> _askForNotesType(BuildContext context) async {
     return await showDialog<bool>(
       context: context,
@@ -2507,80 +2574,7 @@ String _getMappedEvaluation(String displayValue, String system,
     );
   }
 
-// Fonction pour afficher le dialogue de configuration des notes personnalisées
-  Future<Map<String, List<String>>> _getAllCustomNotes() async {
-    try {
-      User? currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) return {};
-
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser.uid)
-          .collection('custom_evaluation_systems')
-          .get();
-
-      final Map<String, List<String>> allNotes = {};
-
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final notes = List<String>.from(data['notes'] ?? []);
-        final key = data['classId'] + '-' + data['matiereId'];
-        allNotes[key] = notes;
-      }
-
-      return allNotes;
-    } catch (e) {
-      print('Erreur lors de la récupération de toutes les notes: $e');
-      return {};
-    }
-  }
-
-  Future<bool> _hasCustomNotes(
-    String classId,
-    String matiereId,
-  ) async {
-    try {
-      User? currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) return false;
-
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser.uid)
-          .collection('custom_evaluation_systems')
-          .doc('$classId-$matiereId')
-          .get();
-
-      return doc.exists && doc.data()?['notes'] != null;
-    } catch (e) {
-      print('Erreur lors de la vérification des notes personnalisées: $e');
-      return false;
-    }
-  }
-
-  Future<void> _deleteCustomNotes(
-    String classId,
-    String matiereId,
-  ) async {
-    try {
-      User? currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        throw Exception('Utilisateur non connecté');
-      }
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser.uid)
-          .collection('custom_evaluation_systems')
-          .doc('$classId-$matiereId')
-          .delete();
-
-      print('Notes personnalisées supprimées avec succès');
-    } catch (e) {
-      print('Erreur lors de la suppression des notes personnalisées: $e');
-      rethrow;
-    }
-  }
-
+  // Fonction pour afficher le dialogue de configuration des notes personnalisées
   Future<List<String>?> _showCustomNotesDialog(
     BuildContext context,
     String classId,
@@ -2835,9 +2829,9 @@ String _getMappedEvaluation(String displayValue, String system,
                                   ),
                                 );
 
-                                // Sauvegarder dans Firestore
-                                await _saveCustomNotes(
-                                    classId, matiereId, validValues);
+                                // // Sauvegarder dans Firestore
+                                // await _saveCustomNotes(
+                                //     classId, matiereId, validValues);
 
                                 // Fermer les dialogues
                                 Navigator.pop(context); // Fermer l'indicateur
@@ -2887,29 +2881,29 @@ String _getMappedEvaluation(String displayValue, String system,
     );
   }
 
-// Fonction pour sauvegarder les notes personnalisées
-  Future<void> _saveCustomNotes(
-    String classId,
-    String matiereId,
-    List<String> notes,
-  ) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser!.uid)
-          .collection('custom_notes')
-          .doc('$classId-$matiereId')
-          .set({
-        'notes': notes,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      print('Erreur lors de la sauvegarde des notes personnalisées: $e');
-      rethrow;
-    }
-  }
+  // Fonction pour sauvegarder les notes personnalisées
+//   Future<void> _saveCustomNotes(
+//     String classId,
+//     String matiereId,
+//     List<String> notes,
+//   ) async {
+//     try {
+//       await FirebaseFirestore.instance
+//           .collection('users')
+//           .doc(currentUser!.uid)
+//           .collection('bareme_custom_notes')
+//           .doc('$classId-$matiereId')
+//           .set({
+//         'notes': notes,
+//         'createdAt': FieldValue.serverTimestamp(),
+//       });
+//     } catch (e) {
+//       print('Erreur lors de la sauvegarde des notes personnalisées: $e');
+//       rethrow;
+//     }
+//   }
 
-// Fonction pour charger les notes personnalisées
+  // Fonction pour charger les notes personnalisées
   Future<List<String>> _loadCustomNotes(
     String classId,
     String matiereId,
@@ -2918,7 +2912,7 @@ String _getMappedEvaluation(String displayValue, String system,
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
-          .collection('custom_notes')
+          .collection('bareme_custom_notes')
           .doc('$classId-$matiereId')
           .get();
 
@@ -2932,7 +2926,7 @@ String _getMappedEvaluation(String displayValue, String system,
     }
   }
 
-// Mettre à jour _getSystemColor pour inclure le système personnalisé
+  // Mettre à jour _getSystemColor pour inclure le système personnalisé
   Color _getSystemColor(String system) {
     switch (system) {
       case 'character':
@@ -2950,7 +2944,7 @@ String _getMappedEvaluation(String displayValue, String system,
     }
   }
 
-// Mettre à jour _getSystemIcon pour inclure le système personnalisé
+  // Mettre à jour _getSystemIcon pour inclure le système personnalisé
   IconData _getSystemIcon(String system) {
     switch (system) {
       case 'character':
@@ -2968,7 +2962,7 @@ String _getMappedEvaluation(String displayValue, String system,
     }
   }
 
-// Mettre à jour _getSystemLabel pour inclure le système personnalisé
+  // Mettre à jour _getSystemLabel pour inclure le système personnalisé
   String _getSystemLabel(String system) {
     switch (system) {
       case 'character':
@@ -2986,7 +2980,7 @@ String _getMappedEvaluation(String displayValue, String system,
     }
   }
 
-// Mettre à jour _getSystemDescription pour inclure le système personnalisé
+  // Mettre à jour _getSystemDescription pour inclure le système personnalisé
   String _getSystemDescription(String system) {
     switch (system) {
       case 'character':
@@ -3004,7 +2998,7 @@ String _getMappedEvaluation(String displayValue, String system,
     }
   }
 
-// Mettre à jour _getEvaluationColors pour inclure le système personnalisé
+  // Mettre à jour _getEvaluationColors pour inclure le système personnalisé
   Map<String, Color> _getEvaluationColors(String system,
       {List<String>? customNotes}) {
     if (system == 'character') {
@@ -3053,26 +3047,28 @@ String _getMappedEvaluation(String displayValue, String system,
     }
   }
 
-// Mettre à jour _getDisplayEvaluation pour inclure le système personnalisé
-
+  // Mettre à jour _getDisplayEvaluation pour inclure le système personnalisé
   String _getDisplayEvaluation(String storedValue, String system,
-      {List<String>? customNotes}) {
-    // Vérifier si c'est "غائب"
+      {List<String>? customNotes, String? baremeId, String? sousBaremeId}) {
     if (storedValue == 'غائب') {
       return 'غائب';
     }
 
-    // Le reste du code existant...
+    // Priorité: sous-barème > barème > système global
     if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
-      final Map<String, String> mapping = {
-        '( - - - )': customNotes[0],
-        '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
-        '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
-        '( + + + )': customNotes.last,
-      };
-      return mapping[storedValue] ?? customNotes[0];
+      if (storedValue == '( - - - )') return customNotes[0];
+      if (storedValue == '( + - - )') {
+        return customNotes.length > 1 ? customNotes[1] : customNotes[0];
+      }
+      if (storedValue == '( + + - )') {
+        if (customNotes.length == 3) return customNotes[1];
+        if (customNotes.length >= 3) return customNotes[2];
+        return customNotes.isNotEmpty ? customNotes.last : '( + + - )';
+      }
+      if (storedValue == '( + + + )') return customNotes.last;
+      return customNotes[0];
     }
-
+    
     switch (system) {
       case 'character':
         return storedValue;
@@ -3124,44 +3120,176 @@ String _getMappedEvaluation(String displayValue, String system,
     }
   }
 
-// Mettre à jour _buildSousBaremeCard pour accepter les notes personnalisées
+  // Widget pour les sous-barèmes avec système personnalisé spécifique
   Widget _buildSousBaremeCard(
     Map<String, dynamic> sousBareme,
     Function setState,
-    List<String> options,
-    Map<String, Color> colors,
+    List<String> parentOptions, // Options du barème parent
+    Map<String, Color> parentColors,
     String system, {
-    List<String>? customNotes,
+    required String classId,
+    required String matiereId,
+    required String baremeId,
   }) {
+    // Déterminer les options d'affichage pour ce sous-barème spécifique
+    final sousBaremeCustomNotes = sousBareme['customNotes'] as List<String>?;
+
+    // Si le système est personnalisé et que ce sous-barème a ses propres notes
+    bool hasSpecificNotes = system == 'custom' &&
+        sousBaremeCustomNotes != null &&
+        sousBaremeCustomNotes.isNotEmpty;
+
+    final displayEvaluationOptions =
+        hasSpecificNotes ? sousBaremeCustomNotes! : parentOptions;
+
+    final evaluationColors = hasSpecificNotes
+        ? _getEvaluationColors(system, customNotes: sousBaremeCustomNotes)
+        : parentColors;
+
     return Card(
       margin: EdgeInsets.symmetric(vertical: 4, horizontal: 10),
-      child: ListTile(
-        title: Text(sousBareme['sousBaremeName'] ?? 'Sans nom'),
-        subtitle: _buildEvaluationButtons(
-          options,
-          colors,
-          sousBareme['displayEvaluation'],
-          system,
-          (newDisplayValue) {
-            // Convertir pour le stockage
-            String storedValue = _getMappedEvaluation(
-              newDisplayValue,
-              system,
-              customNotes: customNotes,
-            );
+      child: Column(
+        children: [
+          ListTile(
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(sousBareme['sousBaremeName'] ?? 'Sans nom'),
+                ),
+                if (system == 'custom')
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (hasSpecificNotes)
+                        Container(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          margin: EdgeInsets.only(right: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.purple),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.edit, size: 10, color: Colors.purple),
+                              SizedBox(width: 4),
+                              Text(
+                                'مخصص',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.purple,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      IconButton(
+                        icon: Icon(Icons.settings, size: 18),
+                        onPressed: () async {
+                          // Configurer les notes personnalisées pour ce sous-barème spécifique
+                          final customNotes = await _showCustomNotesDialog(
+                            context,
+                            classId,
+                            matiereId,
+                          );
 
-            setState(() {
-              sousBareme['displayEvaluation'] = newDisplayValue;
-              sousBareme['storedEvaluation'] = storedValue;
-            });
-          },
-        ),
+                          if (customNotes != null && customNotes.isNotEmpty) {
+                            // Sauvegarder les notes pour ce sous-barème spécifique
+                            await _saveSousBaremeCustomNotes(
+                              classId,
+                              matiereId,
+                              baremeId,
+                              sousBareme['id'],
+                              customNotes,
+                            );
+
+                            // Mettre à jour l'état local
+                            setState(() {
+                              sousBareme['customNotes'] = customNotes;
+
+                              // Mettre à jour la valeur d'affichage
+                              sousBareme['displayEvaluation'] =
+                                  _getDisplayEvaluation(
+                                sousBareme['storedEvaluation'] ?? '( - - - )',
+                                system,
+                                customNotes: customNotes,
+                              );
+                            });
+                          }
+                        },
+                        tooltip: 'تخصيص النظام لهذا المعيار الفرعي',
+                        padding: EdgeInsets.all(4),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+
+          // Afficher les notes personnalisées spécifiques à ce sous-barème
+          if (hasSpecificNotes)
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                alignment: WrapAlignment.center,
+                children: sousBaremeCustomNotes!.map((note) {
+                  return Container(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.purple,
+                        width: 1,
+                      ),
+                    ),
+                    child: Text(
+                      note,
+                      style: TextStyle(
+                        color: Colors.purple,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: _buildEvaluationButtons(
+              displayEvaluationOptions,
+              evaluationColors,
+              sousBareme['displayEvaluation'],
+              system,
+              (newDisplayValue) {
+                // Convertir pour le stockage - UTILISER LES NOTES SPÉCIFIQUES SI DISPONIBLES
+                String storedValue = _getMappedEvaluation(
+                  newDisplayValue,
+                  system,
+                  customNotes: hasSpecificNotes ? sousBaremeCustomNotes : null,
+                );
+
+                setState(() {
+                  sousBareme['displayEvaluation'] = newDisplayValue;
+                  sousBareme['storedEvaluation'] = storedValue;
+                });
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
-// Fonction de sauvegarde simplifiée
-
+  // Fonction de sauvegarde simplifiée
   Future<void> _saveEvaluationsSimple({
     required String classId,
     required String studentId,
@@ -3284,8 +3412,7 @@ String _getMappedEvaluation(String displayValue, String system,
     }
   }
 
-// Fonction pour charger les données de sélection
-
+  // Fonction pour charger les données de sélection
   Future<void> _loadSelectionsData(
     String classId,
     String matiereId,
@@ -3317,6 +3444,17 @@ String _getMappedEvaluation(String displayValue, String system,
       List<Map<String, dynamic>> sousBaremes = [];
 
       await Future.wait(sousBaremesSnapshot.docs.map((sousDoc) async {
+        // CHARGER LES NOTES PERSONNALISÉES SPÉCIFIQUES AU SOUS-BARÈME
+        List<String> sousBaremeCustomNotes = [];
+        if (selectedSystem == 'custom') {
+          sousBaremeCustomNotes = await _loadSousBaremeCustomNotes(
+            classId,
+            matiereId,
+            doc.id,
+            sousDoc.id,
+          );
+        }
+
         // Récupérer la valeur stockée (toujours en caractères)
         String? storedEvaluation = await _getEvaluation(
           classId: classId,
@@ -3325,11 +3463,13 @@ String _getMappedEvaluation(String displayValue, String system,
           sousBaremeId: sousDoc.id,
         );
 
-        // Convertir pour l'affichage
+        // Convertir pour l'affichage - UTILISER LES NOTES DU SOUS-BARÈME SI DISPONIBLES
         String displayValue = _getDisplayEvaluation(
           storedEvaluation ?? '( - - - )',
           selectedSystem,
-          customNotes: baremeCustomNotes,
+          customNotes: sousBaremeCustomNotes.isNotEmpty
+              ? sousBaremeCustomNotes
+              : baremeCustomNotes, // Fallback sur les notes du barème
         );
 
         sousBaremes.add({
@@ -3337,6 +3477,9 @@ String _getMappedEvaluation(String displayValue, String system,
           'sousBaremeName': sousDoc['sousBaremeName'],
           'displayEvaluation': displayValue,
           'storedEvaluation': storedEvaluation ?? '( - - - )',
+          'customNotes':
+              sousBaremeCustomNotes, // Notes spécifiques au sous-barème
+          'parentBaremeId': doc.id, // ID du barème parent
         });
       }));
 
@@ -3375,25 +3518,26 @@ String _getMappedEvaluation(String displayValue, String system,
     onDataLoaded(selections);
   }
 
-// Fonction pour charger les notes personnalisées d'un barème spécifique
+  // Fonction pour charger les notes personnalisées d'un barème spécifique
   Future<List<String>> _loadBaremeCustomNotes(
     String classId,
     String matiereId,
     String baremeId,
   ) async {
     try {
-      final doc = await FirebaseFirestore.instance
+      // D'abord essayer de charger les notes spécifiques au barème
+      final baremeDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
           .collection('bareme_custom_notes')
           .doc('$classId-$matiereId-$baremeId')
           .get();
 
-      if (doc.exists && doc.data()?['notes'] != null) {
-        return List<String>.from(doc.data()!['notes']);
+      if (baremeDoc.exists && baremeDoc.data()?['notes'] != null) {
+        return List<String>.from(baremeDoc.data()!['notes']);
       }
 
-      // Si pas de notes spécifiques au barème, charger les notes globales
+      // Si pas de notes spécifiques, charger les notes globales
       return await _loadCustomNotes(classId, matiereId);
     } catch (e) {
       print('Erreur lors du chargement des notes personnalisées du barème: $e');
@@ -3401,7 +3545,7 @@ String _getMappedEvaluation(String displayValue, String system,
     }
   }
 
-// Fonction pour sauvegarder les notes personnalisées d'un barème spécifique
+  // Fonction pour sauvegarder les notes personnalisées d'un barème spécifique
   Future<void> _saveBaremeCustomNotes(
     String classId,
     String matiereId,
@@ -3416,11 +3560,111 @@ String _getMappedEvaluation(String displayValue, String system,
           .doc('$classId-$matiereId-$baremeId')
           .set({
         'notes': notes,
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdpppAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
       print(
           'Erreur lors de la sauvegarde des notes personnalisées du barème: $e');
+      rethrow;
+    }
+  }
+
+  // Fonction pour charger les notes personnalisées d'un sous-barème spécifique
+  Future<List<String>> _loadSousBaremeCustomNotes(
+    String classId,
+    String matiereId,
+    String baremeId,
+    String sousBaremeId,
+  ) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('sous_bareme_custom_notes')
+          .doc('$classId-$matiereId-$baremeId-$sousBaremeId')
+          .get();
+
+      if (doc.exists && doc.data()?['notes'] != null) {
+        return List<String>.from(doc.data()!['notes']);
+      }
+
+      // Si pas de notes spécifiques, essayer de charger les notes du barème parent
+      return await _loadBaremeCustomNotes(classId, matiereId, baremeId);
+    } catch (e) {
+      print('Erreur lors du chargement des notes du sous-barème: $e');
+      return [];
+    }
+  }
+
+  // Fonction pour sauvegarder les notes personnalisées d'un sous-barème
+ Future<void> _saveSousBaremeCustomNotes(
+    String classId,
+    String matiereId,
+    String baremeId,
+    String sousBaremeId,
+    List<String> notes,
+  ) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('sous_bareme_custom_notes')
+          .doc('$classId-$matiereId-$baremeId-$sousBaremeId')
+          .set({
+        'notes': notes,
+        'parentBaremeId': baremeId,
+        'parentMatiereId': matiereId,
+        'parentClassId': classId,
+        'sousBaremeId': sousBaremeId,  // Ajout du champ
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Erreur lors de la sauvegarde des notes du sous-barème: $e');
+      rethrow;
+    }
+  }
+  Future<bool> _hasCustomNotes(
+    String classId,
+    String matiereId,
+  ) async {
+    try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return false;
+
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('custom_evaluation_systems')
+          .doc('$classId-$matiereId')
+          .get();
+
+      return doc.exists && doc.data()?['notes'] != null;
+    } catch (e) {
+      print('Erreur lors de la vérification des notes personnalisées: $e');
+      return false;
+    }
+  }
+
+  Future<void> _deleteCustomNotes(
+    String classId,
+    String matiereId,
+  ) async {
+    try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw Exception('Utilisateur non connecté');
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('bareme_custom_notes')
+          .doc('$classId-$matiereId')
+          .delete();
+
+      print('Notes personnalisées supprimées avec succès');
+    } catch (e) {
+      print('Erreur lors de la suppression des notes personnalisées: $e');
       rethrow;
     }
   }
@@ -3904,7 +4148,7 @@ String _getMappedEvaluation(String displayValue, String system,
     }
   }
 
-// Nouvelle méthode pour charger les matières
+  // Nouvelle méthode pour charger les matières
   Future<void> _loadSubjectsForClass(Map<String, dynamic> classData) async {
     try {
       final classDoc = await FirebaseFirestore.instance
@@ -3951,40 +4195,41 @@ String _getMappedEvaluation(String displayValue, String system,
     }
   }
 
- Widget _buildClassDetailsView() {
-  return Column(
-    children: [
-      AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () {
-            setState(() {
-              _selectedClass = null;
-              _showStudentsList = false;
-            });
-          },
-        ),
-        title: Text(_selectedClass!['class_name']),
-        // SUPPRIMER LE BOUTON "إضافة مادة" QUAND ON EST DANS LA LISTE DES ÉTUDIANTS
-        actions: [
-          if (!_showStudentsList) // <-- AJOUTER CETTE CONDITION
-            TextButton.icon(
-              icon: Icon(Icons.add, size: 20),
-              label: Text('إضافة مادة'),
-              style: TextButton.styleFrom(
-                foregroundColor: Color.fromARGB(255, 10, 101, 236),
+  Widget _buildClassDetailsView() {
+    return Column(
+      children: [
+        AppBar(
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () {
+              setState(() {
+                _selectedClass = null;
+                _showStudentsList = false;
+              });
+            },
+          ),
+          title: Text(_selectedClass!['class_name']),
+          // SUPPRIMER LE BOUTON "إضافة مادة" QUAND ON EST DANS LA LISTE DES ÉTUDIANTS
+          actions: [
+            if (!_showStudentsList) // <-- AJOUTER CETTE CONDITION
+              TextButton.icon(
+                icon: Icon(Icons.add, size: 20),
+                label: Text('إضافة مادة'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Color.fromARGB(255, 10, 101, 236),
+                ),
+                onPressed: () => _addSubjectDialog(_selectedClass!),
               ),
-              onPressed: () => _addSubjectDialog(_selectedClass!),
-            ),
-        ],
-      ),
-      Expanded(
-        child:
-            _showStudentsList ? _buildStudentsList() : _buildSubjectsGrid(),
-      ),
-    ],
-  );
-}
+          ],
+        ),
+        Expanded(
+          child:
+              _showStudentsList ? _buildStudentsList() : _buildSubjectsGrid(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSubjectsGrid() {
     if (_isLoadingSubjects) {
       return Center(
@@ -4999,7 +5244,7 @@ String _getMappedEvaluation(String displayValue, String system,
     }
   }
 
-// Méthode pour afficher le menu contextuel
+  // Méthode pour afficher le menu contextuel
   void _showStudentContextMenu(Map<String, dynamic> student) {
     final isAbsent = student['isAbsent'] ?? false;
 
@@ -5023,14 +5268,14 @@ String _getMappedEvaluation(String displayValue, String system,
                   _toggleAbsentStatus(student);
                 },
               ),
-              // ListTile(
-              //   leading: Icon(Icons.edit, color: Colors.blue),
-              //   title: Text('تعديل اسم التلميذ'),
-              //   onTap: () {
-              //     Navigator.pop(context);
-              //     _editStudentName(student);
-              //   },
-              // ),
+              ListTile(
+                leading: Icon(Icons.edit, color: Colors.blue),
+                title: Text('تعديل اسم التلميذ'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _editStudentName(student);
+                },
+              ),
               ListTile(
                 leading: Icon(Icons.info_outline, color: Colors.blue),
                 title: Text('معلومات التلميذ'),
@@ -5144,7 +5389,6 @@ String _getMappedEvaluation(String displayValue, String system,
       );
     }
   }
-  // Méthodes de navigation uniques (pas de doublons)
 
   void _navigateToDynamicTable(String classId, String matiereId) async {
     try {
@@ -5443,7 +5687,7 @@ String _getMappedEvaluation(String displayValue, String system,
     );
   }
 
-// Méthode pour la navigation depuis l'AppBar
+  // Méthode pour la navigation depuis l'AppBar
   void _navigateToDynamicTableFromAppBar() async {
     if (_selectedClass == null || selectedSubjectId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
