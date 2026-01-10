@@ -895,6 +895,38 @@ class HTMLReportGenerator {
             background: #e3f2fd !important;
             font-weight: bold;
         }
+        /* Styles pour les marques */
+.mark-excellent { background-color: #d4edda !important; color: #155724 !important; font-weight: bold !important; }
+.mark-good { background-color: #fff3cd !important; color: #856404 !important; font-weight: bold !important; }
+.mark-average { background-color: #ffeaa7 !important; color: #856404 !important; }
+.mark-poor { background-color: #f8d7da !important; color: #721c24 !important; }
+.mark-absent { background-color: #e2e3e5 !important; color: #6c757d !important; font-style: italic !important; }
+
+/* Styles pour les statistiques */
+.stats-row td {
+  background: linear-gradient(135deg, #e3f2fd, #bbdefb) !important;
+  font-weight: bold !important;
+  text-align: center !important;
+  border: 1px solid #90caf9 !important;
+  color: #0d47a1 !important;
+}
+
+.percentage-row td {
+  background: linear-gradient(135deg, #f3e5f5, #e1bee7) !important;
+  font-weight: bold !important;
+  text-align: center !important;
+  border: 1px solid #ce93d8 !important;
+}
+
+.percentage-high { color: #2E7D32 !important; }
+.percentage-medium { color: #FF9800 !important; }
+.percentage-low { color: #D32F2F !important; }
+
+.total-row td {
+  background: linear-gradient(135deg, #e8f5e9, #c8e6c9) !important;
+  font-weight: bold !important;
+  border-top: 2px solid #4CAF50 !important;
+}
         /* Styles pour la hiérarchie des barèmes */
 .main-bareme-header {
   background: #075260 !important;
@@ -1365,334 +1397,273 @@ class HTMLReportGenerator {
     return normalized;
   }
 
-  static String _buildTableHTML({
-    required List<dynamic> baremes,
-    required List<dynamic> students,
-    required Map<String, int> sumCriteriaMaxPerBareme,
-    required int totalStudents,
-    required bool isFrenchInterface,
-    required Map<String, String> t,
-  }) {
-    // DÉBOGAGE: Afficher les statistiques reçues
-    print('🔍 === DÉBOGAGE STATISTIQUES DANS HTML ===');
-    print('Total étudiants: $totalStudents');
-    print('Contenu de sumCriteriaMaxPerBareme:');
-    if (sumCriteriaMaxPerBareme.isEmpty) {
-      print('⚠️ Aucune statistique disponible!');
+static String _buildTableHTML({
+  required List<dynamic> baremes,
+  required List<dynamic> students,
+  required Map<String, int> sumCriteriaMaxPerBareme,
+  required int totalStudents,
+  required bool isFrenchInterface,
+  required Map<String, String> t,
+}) {
+  // DÉBOGAGE: Afficher les statistiques reçues
+  print('🔍 === DÉBOGAGE STATISTIQUES DANS HTML ===');
+  print('Total étudiants: $totalStudents');
+  print('Contenu de sumCriteriaMaxPerBareme:');
+  if (sumCriteriaMaxPerBareme.isEmpty) {
+    print('⚠️ Aucune statistique disponible!');
+  } else {
+    sumCriteriaMaxPerBareme.forEach((key, value) {
+      print('  "$key": $value');
+    });
+  }
+
+  // Si pas de barèmes, afficher un message
+  if (baremes.isEmpty) {
+    return '''
+    <div class="table-container">
+      <div style="text-align: center; padding: 40px; color: #666; font-size: 16px;">
+        ${isFrenchInterface ? 'Aucun barème sélectionné pour cette évaluation.' : 'لم يتم تحديد أي معايير لهذا التقييم.'}
+      </div>
+    </div>
+    ''';
+  }
+
+  // Étape 1: Organiser les barèmes par hiérarchie
+  final List<Map<String, dynamic>> mainBaremes = [];
+  final Map<String, List<Map<String, dynamic>>> baremesByParent = {};
+
+  // Première passe: Organiser par parent
+  for (var bareme in baremes) {
+    final baremeId = bareme['id'].toString();
+    final baremeValue = bareme['value']?.toString() ?? '';
+    final parentBaremeId = bareme['parentBaremeId']?.toString();
+    
+    if (parentBaremeId == null || parentBaremeId.isEmpty) {
+      // C'est un barème principal
+      mainBaremes.add({
+        'id': baremeId,
+        'value': baremeValue,
+        'isMain': true,
+        'subBaremes': [],
+        'original': bareme,
+      });
     } else {
-      sumCriteriaMaxPerBareme.forEach((key, value) {
-        print('  "$key": $value');
+      // C'est un sous-barème
+      if (!baremesByParent.containsKey(parentBaremeId)) {
+        baremesByParent[parentBaremeId] = [];
+      }
+      baremesByParent[parentBaremeId]!.add({
+        'id': baremeId,
+        'value': baremeValue,
+        'original': bareme,
       });
     }
+  }
 
-    // Étape 1: Organiser les barèmes par hiérarchie
-    final List<Map<String, dynamic>> mainBaremes = [];
-
-    // D'abord, extraire tous les barèmes parents potentiels des noms des sous-barèmes
-    final Map<String, String> parentNamesFromSubBaremes = {};
-
-    for (var bareme in baremes) {
-      final baremeId = bareme['id'].toString();
-      final baremeValue = bareme['value']?.toString() ?? '';
-      final parentBaremeId = bareme['parentBaremeId']?.toString();
-
-      if (parentBaremeId != null && parentBaremeId.isNotEmpty) {
-        // C'est un sous-barème - extraire le nom du parent
-        String parentName = _extractParentNameFromSubBareme(baremeValue);
-        if (parentName.isNotEmpty) {
-          parentNamesFromSubBaremes[parentBaremeId] = parentName;
-        }
-      }
+  // Deuxième passe: Associer les sous-barèmes à leurs parents
+  for (var mainBareme in mainBaremes) {
+    final mainBaremeId = mainBareme['id'] as String;
+    if (baremesByParent.containsKey(mainBaremeId)) {
+      mainBareme['subBaremes'] = baremesByParent[mainBaremeId]!;
+      mainBareme['hasSubBaremes'] = true;
+    } else {
+      mainBareme['hasSubBaremes'] = false;
     }
+  }
 
-    // Maintenant organiser les barèmes
-    for (var bareme in baremes) {
-      final baremeId = bareme['id'].toString();
-      final baremeValue = bareme['value']?.toString() ?? '';
-      final parentBaremeId = bareme['parentBaremeId']?.toString();
-
-      if (parentBaremeId == null || parentBaremeId.isEmpty) {
-        // Barème principal
-        final existingIndex =
-            mainBaremes.indexWhere((b) => b['id'] == baremeId);
-        if (existingIndex == -1) {
-          mainBaremes.add({
-            'id': baremeId,
-            'value': baremeValue,
-            'hasSubBaremes': false,
-            'subBaremes': [],
-            'isVirtual': false,
-          });
-        }
-      } else {
-        // Sous-barème - trouver ou créer son parent
-        final parentIndex =
-            mainBaremes.indexWhere((b) => b['id'] == parentBaremeId);
-
-        String parentName = baremeValue;
-        // Essayer d'extraire le nom du parent
-        parentName = _extractParentNameFromSubBareme(baremeValue);
-        if (parentName.isEmpty) {
-          // Si impossible à extraire, utiliser le nom du sous-barème sans la lettre
-          parentName = _removeSubBaremeLetter(baremeValue);
-        }
-
-        // Utiliser le nom extrait des sous-barèmes s'il existe
-        if (parentNamesFromSubBaremes.containsKey(parentBaremeId)) {
-          parentName = parentNamesFromSubBaremes[parentBaremeId]!;
-        }
-
-        if (parentIndex != -1) {
-          // Parent existe déjà
-          mainBaremes[parentIndex]['hasSubBaremes'] = true;
-          if (!mainBaremes[parentIndex].containsKey('subBaremes')) {
-            mainBaremes[parentIndex]['subBaremes'] = [];
-          }
-
-          (mainBaremes[parentIndex]['subBaremes'] as List).add({
-            'id': baremeId,
-            'value': baremeValue,
-          });
-        } else {
-          // Créer un nouveau parent
-          mainBaremes.add({
-            'id': parentBaremeId,
-            'value': parentName,
-            'hasSubBaremes': true,
-            'subBaremes': [
-              {
-                'id': baremeId,
-                'value': baremeValue,
-              }
-            ],
-            'isVirtual': true,
-          });
-        }
-      }
+  // Ajouter aussi les sous-barèmes qui n'ont pas de parent dans la liste
+  for (var parentId in baremesByParent.keys) {
+    final parentExists = mainBaremes.any((b) => b['id'] == parentId);
+    if (!parentExists) {
+      // Créer un parent virtuel
+      final firstSubBareme = baremesByParent[parentId]!.first;
+      final parentValue = _extractParentNameFromSubBareme(firstSubBareme['value'] as String);
+      
+      mainBaremes.add({
+        'id': parentId,
+        'value': parentValue.isNotEmpty ? parentValue : 'Groupe $parentId',
+        'isMain': false,
+        'hasSubBaremes': true,
+        'subBaremes': baremesByParent[parentId]!,
+        'isVirtual': true,
+      });
     }
+  }
 
-    // Étape 2: Construire l'en-tête hiérarchique
-    String headerHTML = '';
-    String mainHeaderRow = '';
-    String subHeaderRow = '';
+  // Étape 2: Construire l'en-tête hiérarchique
+  String headerHTML = '';
+  String mainHeaderRow = '';
+  String subHeaderRow = '';
 
-    // Colonne pour les noms des étudiants
-    mainHeaderRow +=
-        '<th rowspan="2" class="student-name-cell">${t['student_name']}</th>';
+  // Colonne pour les noms des étudiants
+  mainHeaderRow += '<th rowspan="2" class="student-name-cell">${t['student_name']}</th>';
+  subHeaderRow += '<th></th>'; // Cellule vide pour la colonne nom
 
-    for (var mainBareme in mainBaremes) {
-      final mainBaremeId = mainBareme['id'] as String;
-      final mainBaremeValue = mainBareme['value'] as String;
-      final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
-      final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
-      final isVirtual = mainBareme['isVirtual'] as bool? ?? false;
+  int totalColumns = 1; // Pour compter les colonnes
 
-      if (hasSubBaremes && subBaremes.isNotEmpty) {
-        // Barème avec sous-barèmes
-        final colspan = subBaremes.length;
-        mainHeaderRow += '''
-        <th colspan="$colspan" style="text-align: center; vertical-align: bottom;" class="main-bareme-header">
+  for (var mainBareme in mainBaremes) {
+    final mainBaremeId = mainBareme['id'] as String;
+    final mainBaremeValue = mainBareme['value'] as String;
+    final hasSubBaremes = mainBareme['hasSubBaremes'] as bool? ?? false;
+    final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
+
+    if (hasSubBaremes && subBaremes.isNotEmpty) {
+      // Barème avec sous-barèmes
+      final colspan = subBaremes.length;
+      mainHeaderRow += '''
+        <th colspan="$colspan" style="text-align: center; vertical-align: bottom; background: #075260; color: white; font-weight: bold; border: 1px solid #0a6b7e;">
           $mainBaremeValue
         </th>
       ''';
+      totalColumns += colspan;
 
-        // Ajouter les sous-en-têtes
-        for (var subBareme in subBaremes) {
-          final subValue = subBareme['value'] as String;
-          final cleanSubValue = _cleanSubBaremeName(subValue, mainBaremeValue);
-          subHeaderRow += '''
-          <th style="font-size: 12px; font-weight: normal; vertical-align: bottom;" class="sub-bareme-header">
+      // Ajouter les sous-en-têtes
+      for (var subBareme in subBaremes) {
+        final subValue = subBareme['value'] as String;
+        final cleanSubValue = _cleanSubBaremeName(subValue, mainBaremeValue);
+        subHeaderRow += '''
+          <th style="font-size: 12px; font-weight: normal; vertical-align: bottom; background: #0a6b7e; color: white; border: 1px solid #0d8bb3;">
             $cleanSubValue
           </th>
         ''';
-        }
-      } else {
-        // Barème sans sous-barèmes
-        mainHeaderRow += '''
-        <th colspan="1" style="vertical-align: bottom;" class="main-bareme-header">
+      }
+    } else {
+      // Barème sans sous-barèmes
+      mainHeaderRow += '''
+        <th colspan="1" rowspan="2" style="vertical-align: middle; text-align: center; background: #075260; color: white; font-weight: bold; border: 1px solid #0a6b7e;">
           $mainBaremeValue
         </th>
       ''';
-        // Ajouter une colonne vide dans la ligne des sous-en-têtes
-        subHeaderRow += '<th></th>';
-      }
+      subHeaderRow += '<th></th>'; // Cellule vide dans la ligne des sous-en-têtes
+      totalColumns += 1;
     }
+  }
 
-    // Construire l'en-tête HTML complet
-    if (subHeaderRow.contains('sub-bareme-header')) {
-      // Avec sous-barèmes - deux lignes d'en-tête
-      headerHTML = '''
-      <thead>
-        <tr>
-          $mainHeaderRow
-        </tr>
-        <tr>
-          $subHeaderRow
-        </tr>
-      </thead>
-    ''';
+  // Construire l'en-tête HTML complet
+  headerHTML = '''
+    <thead>
+      <tr>
+        $mainHeaderRow
+      </tr>
+      <tr>
+        $subHeaderRow
+      </tr>
+    </thead>
+  ''';
+
+  // Étape 3: Construire les lignes des étudiants
+  final List<dynamic> sortedStudents = List.from(students);
+  sortedStudents.sort((a, b) {
+    final nameA = a['name']?.toString() ?? '';
+    final nameB = b['name']?.toString() ?? '';
+
+    if (!isFrenchInterface) {
+      return _arabicComparatorForHTML(nameA, nameB);
     } else {
-      // Sans sous-barèmes - une seule ligne d'en-tête
-      headerHTML = '''
-      <thead>
-        <tr>
-          <th class="student-name-cell">${t['student_name']}</th>
-          ${mainBaremes.map((b) => '''
-            <th class="main-bareme-header">${b['value']}</th>
-          ''').join('')}
-        </tr>
-      </thead>
-    ''';
+      return nameA.toLowerCase().compareTo(nameB.toLowerCase());
     }
+  });
 
-    // Étape 3: Construire les lignes des étudiants
-    // Trier les étudiants par ordre alphabétique
-    final List<dynamic> sortedStudents = List.from(students);
-    sortedStudents.sort((a, b) {
-      final nameA = a['name']?.toString() ?? '';
-      final nameB = b['name']?.toString() ?? '';
+  String studentsRows = '';
 
-      if (!isFrenchInterface) {
-        // Tri arabe pour les noms
-        return _arabicComparatorForHTML(nameA, nameB);
-      } else {
-        // Tri français pour les noms
-        return nameA.toLowerCase().compareTo(nameB.toLowerCase());
-      }
-    });
+  for (var student in sortedStudents) {
+    String studentRow = '<tr>';
 
-    String studentsRows = '';
+    // Colonne nom de l'étudiant
+    studentRow += '<td class="student-name-cell">${student['name']}</td>';
 
-    for (var student in sortedStudents) {
-      String studentRow = '<tr>';
-
-      // Colonne nom de l'étudiant
-      studentRow += '<td class="student-name-cell">${student['name']}</td>';
-
-      // Cellules des notes
-      for (var mainBareme in mainBaremes) {
-        final mainBaremeId = mainBareme['id'] as String;
-        final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
-        final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
-
-        if (hasSubBaremes && subBaremes.isNotEmpty) {
-          // Barème avec sous-barèmes
-          for (var subBareme in subBaremes) {
-            final subBaremeId = subBareme['id'] as String;
-            final fullKey = '$mainBaremeId-$subBaremeId';
-
-            // Chercher la note dans différentes clés possibles
-            String mark = '( - - - )';
-            final studentBaremes =
-                student['baremes'] as Map<String, dynamic>? ?? {};
-
-            if (studentBaremes.containsKey(fullKey)) {
-              mark = studentBaremes[fullKey]?.toString() ?? '( - - - )';
-            } else if (studentBaremes.containsKey(subBaremeId)) {
-              mark = studentBaremes[subBaremeId]?.toString() ?? '( - - - )';
-            } else if (studentBaremes.containsKey(mainBaremeId)) {
-              mark = studentBaremes[mainBaremeId]?.toString() ?? '( - - - )';
-            }
-
-            studentRow += '<td class="mark-cell">$mark</td>';
-          }
-        } else {
-          // Barème principal simple
-          final studentBaremes =
-              student['baremes'] as Map<String, dynamic>? ?? {};
-          final mark = studentBaremes[mainBaremeId]?.toString() ?? '( - - - )';
-          studentRow += '<td class="mark-cell">$mark</td>';
-        }
-      }
-
-      studentRow += '</tr>';
-      studentsRows += studentRow;
-    }
-
-    // Étape 4: Construire les lignes de statistiques
-    String statsRow = '';
-    String percentageRow = '';
-
-    // Colonne label
-    statsRow +=
-        '<td class="student-name-cell"><strong>${t['achieved_students']}</strong></td>';
-    percentageRow +=
-        '<td class="student-name-cell"><strong>${t['percentage']}</strong></td>';
-
-    // Calculer le nombre total de colonnes
-    int totalColumns = 1; // Pour la colonne des noms
-
+    // Cellules des notes
     for (var mainBareme in mainBaremes) {
       final mainBaremeId = mainBareme['id'] as String;
-      final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
+      final hasSubBaremes = mainBareme['hasSubBaremes'] as bool? ?? false;
       final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
 
       if (hasSubBaremes && subBaremes.isNotEmpty) {
         // Barème avec sous-barèmes
-        totalColumns += subBaremes.length;
-
         for (var subBareme in subBaremes) {
           final subBaremeId = subBareme['id'] as String;
           final fullKey = '$mainBaremeId-$subBaremeId';
 
-          // Chercher le compteur - PRIORITÉS D'ACCÈS
-          int count = 0;
+          // Chercher la note dans différentes clés possibles
+          String mark = '( - - - )';
+          final studentBaremes = student['baremes'] as Map<String, dynamic>? ?? {};
 
-          // 1. Chercher avec la clé complète
-          if (sumCriteriaMaxPerBareme.containsKey(fullKey)) {
-            count = sumCriteriaMaxPerBareme[fullKey]!;
-            print('✅ Statistique trouvée pour $fullKey: $count');
-          }
-          // 2. Chercher avec juste l'ID du sous-barème
-          else if (sumCriteriaMaxPerBareme.containsKey(subBaremeId)) {
-            count = sumCriteriaMaxPerBareme[subBaremeId]!;
-            print('✅ Statistique trouvée pour $subBaremeId: $count');
-          }
-          // 3. Chercher avec l'ID du barème principal
-          else if (sumCriteriaMaxPerBareme.containsKey(mainBaremeId)) {
-            count = sumCriteriaMaxPerBareme[mainBaremeId]!;
-            print('✅ Statistique trouvée pour $mainBaremeId: $count');
-          }
-          // 4. Chercher par correspondance partielle
-          else {
-            for (var key in sumCriteriaMaxPerBareme.keys) {
-              if (key.contains(subBaremeId) || key.contains(mainBaremeId)) {
-                count = sumCriteriaMaxPerBareme[key]!;
-                print(
-                    '🔍 Statistique trouvée par correspondance: $key -> $count');
-                break;
-              }
-            }
+          if (studentBaremes.containsKey(fullKey)) {
+            mark = studentBaremes[fullKey]?.toString() ?? '( - - - )';
+          } else if (studentBaremes.containsKey(subBaremeId)) {
+            mark = studentBaremes[subBaremeId]?.toString() ?? '( - - - )';
+          } else if (studentBaremes.containsKey(mainBaremeId)) {
+            mark = studentBaremes[mainBaremeId]?.toString() ?? '( - - - )';
           }
 
-          statsRow += '<td><strong>$count</strong></td>';
+          // Déterminer la classe CSS selon la note
+          String markClass = 'mark-poor';
+          if (mark == '( + + + )') markClass = 'mark-excellent';
+          else if (mark == '( + + - )') markClass = 'mark-good';
+          else if (mark == '( + - - )') markClass = 'mark-average';
+          else if (mark == 'غائب') markClass = 'mark-absent';
 
-          if (totalStudents > 0) {
-            final percentage = (count / totalStudents * 100).toStringAsFixed(2);
-            percentageRow +=
-                '<td class="percentage-cell"><strong>${percentage}%</strong></td>';
-          } else {
-            percentageRow +=
-                '<td class="percentage-cell"><strong>0.00%</strong></td>';
-          }
+          studentRow += '<td class="mark-cell $markClass">$mark</td>';
         }
       } else {
         // Barème principal simple
-        totalColumns += 1;
+        final studentBaremes = student['baremes'] as Map<String, dynamic>? ?? {};
+        final mark = studentBaremes[mainBaremeId]?.toString() ?? '( - - - )';
+        
+        // Déterminer la classe CSS selon la note
+        String markClass = 'mark-poor';
+        if (mark == '( + + + )') markClass = 'mark-excellent';
+        else if (mark == '( + + - )') markClass = 'mark-good';
+        else if (mark == '( + - - )') markClass = 'mark-average';
+        else if (mark == 'غائب') markClass = 'mark-absent';
 
+        studentRow += '<td class="mark-cell $markClass">$mark</td>';
+      }
+    }
+
+    studentRow += '</tr>';
+    studentsRows += studentRow;
+  }
+
+  // Étape 4: Construire les lignes de statistiques
+  String statsRow = '<tr class="stats-row">';
+  String percentageRow = '<tr class="percentage-row">';
+
+  // Colonne label
+  statsRow += '<td class="student-name-cell"><strong>${t['achieved_students']}</strong></td>';
+  percentageRow += '<td class="student-name-cell"><strong>${t['percentage']}</strong></td>';
+
+  for (var mainBareme in mainBaremes) {
+    final mainBaremeId = mainBareme['id'] as String;
+    final hasSubBaremes = mainBareme['hasSubBaremes'] as bool? ?? false;
+    final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
+
+    if (hasSubBaremes && subBaremes.isNotEmpty) {
+      // Barème avec sous-barèmes
+      for (var subBareme in subBaremes) {
+        final subBaremeId = subBareme['id'] as String;
+        final fullKey = '$mainBaremeId-$subBaremeId';
+
+        // Chercher le compteur - dans l'ordre de priorité
         int count = 0;
-
-        // Chercher le compteur
-        if (sumCriteriaMaxPerBareme.containsKey(mainBaremeId)) {
+        
+        // 1. Clé complète
+        if (sumCriteriaMaxPerBareme.containsKey(fullKey)) {
+          count = sumCriteriaMaxPerBareme[fullKey]!;
+        }
+        // 2. ID du sous-barème seul
+        else if (sumCriteriaMaxPerBareme.containsKey(subBaremeId)) {
+          count = sumCriteriaMaxPerBareme[subBaremeId]!;
+        }
+        // 3. ID du barème principal
+        else if (sumCriteriaMaxPerBareme.containsKey(mainBaremeId)) {
           count = sumCriteriaMaxPerBareme[mainBaremeId]!;
-          print('✅ Statistique trouvée pour $mainBaremeId: $count');
-        } else {
-          // Chercher par correspondance partielle
+        }
+        // 4. Chercher par correspondance
+        else {
           for (var key in sumCriteriaMaxPerBareme.keys) {
-            if (key.contains(mainBaremeId) || mainBaremeId.contains(key)) {
+            if (key.contains(subBaremeId) || key.contains(mainBaremeId)) {
               count = sumCriteriaMaxPerBareme[key]!;
-              print(
-                  '🔍 Statistique trouvée par correspondance: $key -> $count');
               break;
             }
           }
@@ -1700,39 +1671,55 @@ class HTMLReportGenerator {
 
         statsRow += '<td><strong>$count</strong></td>';
 
+        // Calculer le pourcentage
         if (totalStudents > 0) {
-          final percentage = (count / totalStudents * 100).toStringAsFixed(2);
-          percentageRow +=
-              '<td class="percentage-cell"><strong>${percentage}%</strong></td>';
+          final percentage = (count / totalStudents * 100);
+          final percentageText = percentage.toStringAsFixed(2);
+          
+          String percentageClass = 'percentage-low';
+          if (percentage >= 80) percentageClass = 'percentage-high';
+          else if (percentage >= 50) percentageClass = 'percentage-medium';
+
+          percentageRow += '<td class="percentage-cell $percentageClass"><strong>${percentageText}%</strong></td>';
         } else {
-          percentageRow +=
-              '<td class="percentage-cell"><strong>0.00%</strong></td>';
+          percentageRow += '<td class="percentage-cell"><strong>0.00%</strong></td>';
         }
       }
-    }
+    } else {
+      // Barème principal simple
+      int count = sumCriteriaMaxPerBareme[mainBaremeId] ?? 0;
+      statsRow += '<td><strong>$count</strong></td>';
 
-    // Étape 5: Ajouter une ligne avec le total des étudiants
-    String totalStudentsRow = '''
-    <tr class="total-row" style="background-color: #e8f5e9;">
+      // Calculer le pourcentage
+      if (totalStudents > 0) {
+        final percentage = (count / totalStudents * 100);
+        final percentageText = percentage.toStringAsFixed(2);
+        
+        String percentageClass = 'percentage-low';
+        if (percentage >= 80) percentageClass = 'percentage-high';
+        else if (percentage >= 50) percentageClass = 'percentage-medium';
+
+        percentageRow += '<td class="percentage-cell $percentageClass"><strong>${percentageText}%</strong></td>';
+      } else {
+        percentageRow += '<td class="percentage-cell"><strong>0.00%</strong></td>';
+      }
+    }
+  }
+
+  statsRow += '</tr>';
+  percentageRow += '</tr>';
+
+  // Étape 5: Ajouter une ligne avec le total des étudiants
+  String totalStudentsRow = '''
+    <tr class="total-row">
       <td class="student-name-cell"><strong>${t['total_students']}</strong></td>
-      <td colspan="${totalColumns - 1}" style="text-align: center;">
+      <td colspan="${totalColumns - 1}" style="text-align: center; background: #e8f5e9;">
         <strong>$totalStudents ${isFrenchInterface ? 'élèves' : 'تلميذ'}</strong>
       </td>
     </tr>
   ''';
 
-    // Vérifier si nous avons des colonnes pour les barèmes
-    if (totalColumns <= 1) {
-      return '''
-    <div class="table-container">
-      <div style="text-align: center; padding: 40px; color: #666; font-size: 16px;">
-        ${isFrenchInterface ? 'Aucun barème sélectionné pour cette évaluation.' : 'لم يتم تحديد أي معايير لهذا التقييم.'}
-      </div>
-    </div>
-    ''';
-    }
-
-    return '''
+  return '''
   <div class="table-container">
     <table class="results-table">
       $headerHTML
@@ -1745,14 +1732,8 @@ class HTMLReportGenerator {
         </tr>
         '''}
         
-        <tr class="stats-row">
-          $statsRow
-        </tr>
-        
-        <tr class="percentage-row">
-          $percentageRow
-        </tr>
-        
+        $statsRow
+        $percentageRow
         $totalStudentsRow
         
       </tbody>
@@ -1786,7 +1767,7 @@ class HTMLReportGenerator {
     </div>
   </div>
   ''';
-  }
+}
 
 // AJOUTER CES FONCTIONS MANQUANTES :
 
