@@ -458,74 +458,88 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
 // Fonction pour convertir la valeur stockée en valeur d'affichage selon le système
 
-
-
-String _getDisplayEvaluation(String storedValue, String system,
-    {List<String>? customNotes}) {
-  
-  // Vérifier si c'est "غائب"
-  if (storedValue == 'غائب') {
-    return 'غائب';
-  }
-  
-  // DEBUG
-  print('🎯 Conversion: $storedValue -> système: $system, notes: ${customNotes?.length ?? 0}');
-  
-  if (system == 'custom') {
-    if (customNotes == null || customNotes.isEmpty) {
-      print('⚠️ Système custom mais notes vides, fallback sur character');
-      return storedValue;
+  String _getDisplayEvaluation(String storedValue, String system,
+      {List<String>? customNotes}) {
+    // Vérifier si c'est "غائب"
+    if (storedValue == 'غائب') {
+      return 'غائب';
     }
-    
-    // Mapping avec les notes personnalisées
-    final Map<String, String> mapping = {
-      '( - - - )': customNotes[0],
-      '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
-      '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
-      '( + + + )': customNotes.last,
-    };
-    
-    final result = mapping[storedValue] ?? customNotes[0];
-    print('✅ Résultat conversion custom: $result');
-    return result;
+
+    // DEBUG
+    print(
+        '🎯 Conversion: $storedValue -> système: $system, notes: ${customNotes?.length ?? 0}');
+
+    if (system == 'custom') {
+      if (customNotes == null || customNotes.isEmpty) {
+        print('⚠️ Système custom mais notes vides, fallback sur character');
+        return storedValue;
+      }
+
+      // Mapping avec les notes personnalisées
+      final Map<String, String> mapping = {
+        '( - - - )': customNotes[0],
+        '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
+        '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
+        '( + + + )': customNotes.last,
+      };
+
+      final result = mapping[storedValue] ?? customNotes[0];
+      print('✅ Résultat conversion custom: $result');
+      return result;
+    }
+
+    // Systèmes standard
+    switch (system) {
+      case 'character':
+        return storedValue;
+
+      case 'note_0_1_5':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '0.5';
+          case '( + + - )':
+            return '1';
+          case '( + + + )':
+            return '1.5';
+          default:
+            return '0';
+        }
+
+      case 'note_0_3':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '1';
+          case '( + + - )':
+            return '2';
+          case '( + + + )':
+            return '3';
+          default:
+            return '0';
+        }
+
+      case 'note_0_6':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '2';
+          case '( + + - )':
+            return '4';
+          case '( + + + )':
+            return '6';
+          default:
+            return '0';
+        }
+
+      default:
+        return storedValue;
+    }
   }
 
-  // Systèmes standard
-  switch (system) {
-    case 'character':
-      return storedValue;
-
-    case 'note_0_1_5':
-      switch (storedValue) {
-        case '( - - - )': return '0';
-        case '( + - - )': return '0.5';
-        case '( + + - )': return '1';
-        case '( + + + )': return '1.5';
-        default: return '0';
-      }
-
-    case 'note_0_3':
-      switch (storedValue) {
-        case '( - - - )': return '0';
-        case '( + - - )': return '1';
-        case '( + + - )': return '2';
-        case '( + + + )': return '3';
-        default: return '0';
-      }
-
-    case 'note_0_6':
-      switch (storedValue) {
-        case '( - - - )': return '0';
-        case '( + - - )': return '2';
-        case '( + + - )': return '4';
-        case '( + + + )': return '6';
-        default: return '0';
-      }
-
-    default:
-      return storedValue;
-  }
-}
 // Fonction pour récupérer le système d'évaluation sélectionné
   Future<String> _getEvaluationSystem(String classId, String matiereId) async {
     try {
@@ -1372,111 +1386,109 @@ String _getDisplayEvaluation(String storedValue, String system,
     }
   }
 
-Future<List<dynamic>> _getStudentsForCompleteReport(
-    String classId, String matiereId) async {
-  try {
-    // Récupérer le système d'évaluation
-    final String evaluationSystem =
-        await _getEvaluationSystem(classId, matiereId);
-    
-    final studentsSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('user_classes')
-        .doc(classId)
-        .collection('students')
-        .get();
+  Future<List<dynamic>> _getStudentsForCompleteReport(
+      String classId, String matiereId) async {
+    try {
+      // Récupérer le système d'évaluation
+      final String evaluationSystem =
+          await _getEvaluationSystem(classId, matiereId);
 
-    final List<dynamic> students = [];
-    for (final studentDoc in studentsSnapshot.docs) {
-      final studentId = studentDoc.id;
-      final studentName = _getFieldSafe(studentDoc, 'name',
-          _isFrenchInterface ? 'Élève inconnu' : 'تلميذ غير معروف');
-
-      final baremesSnapshot = await FirebaseFirestore.instance
+      final studentsSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
           .collection('user_classes')
           .doc(classId)
           .collection('students')
-          .doc(studentId)
-          .collection('baremes')
           .get();
 
-      final Map<String, String> baremes = {};
-      for (final baremeDoc in baremesSnapshot.docs) {
-        final baremeId = baremeDoc.id;
-        final storedValue = _getFieldSafe(baremeDoc, 'Marks', '( - - - )');
-        
-        // IMPORTANT: Charger les notes personnalisées du barème
-        final customNotes = await _getCustomNotesForBareme(
-          classId, 
-          matiereId, 
-          baremeId
-        );
-        
-        // Convertir selon le système avec les notes personnalisées
-        final displayValue = _getDisplayEvaluation(
-          storedValue,
-          evaluationSystem,
-          customNotes: customNotes,
-        );
+      final List<dynamic> students = [];
+      for (final studentDoc in studentsSnapshot.docs) {
+        final studentId = studentDoc.id;
+        final studentName = _getFieldSafe(studentDoc, 'name',
+            _isFrenchInterface ? 'Élève inconnu' : 'تلميذ غير معروف');
 
-        baremes[baremeId] = displayValue;
+        final baremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('user_classes')
+            .doc(classId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .get();
 
-        // Gérer les sous-barèmes
-        final sousBaremesSnapshot =
-            await baremeDoc.reference.collection('sous_baremes').get();
+        final Map<String, String> baremes = {};
+        for (final baremeDoc in baremesSnapshot.docs) {
+          final baremeId = baremeDoc.id;
+          final storedValue = _getFieldSafe(baremeDoc, 'Marks', '( - - - )');
 
-        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-          final sousBaremeId = sousBaremeDoc.id;
-          final sousStoredValue =
-              _getFieldSafe(sousBaremeDoc, 'Marks', '( - - - )');
-          
-          // IMPORTANT: Charger les notes personnalisées du sous-barème
-          final sousCustomNotes = await _getSousBaremeCustomNotes(
-            classId,
-            matiereId,
-            baremeId,
-            sousBaremeId,
-          );
-          
+          // IMPORTANT: Charger les notes personnalisées du barème
+          final customNotes =
+              await _getCustomNotesForBareme(classId, matiereId, baremeId);
+
           // Convertir selon le système avec les notes personnalisées
-          final sousDisplayValue = _getDisplayEvaluation(
-            sousStoredValue,
+          final displayValue = _getDisplayEvaluation(
+            storedValue,
             evaluationSystem,
-            customNotes: sousCustomNotes,
+            customNotes: customNotes,
           );
 
-          baremes['$baremeId-$sousBaremeId'] = sousDisplayValue;
+          baremes[baremeId] = displayValue;
+
+          // Gérer les sous-barèmes
+          final sousBaremesSnapshot =
+              await baremeDoc.reference.collection('sous_baremes').get();
+
+          for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+            final sousBaremeId = sousBaremeDoc.id;
+            final sousStoredValue =
+                _getFieldSafe(sousBaremeDoc, 'Marks', '( - - - )');
+
+            // IMPORTANT: Charger les notes personnalisées du sous-barème
+            final sousCustomNotes = await _getSousBaremeCustomNotes(
+              classId,
+              matiereId,
+              baremeId,
+              sousBaremeId,
+            );
+
+            // Convertir selon le système avec les notes personnalisées
+            final sousDisplayValue = _getDisplayEvaluation(
+              sousStoredValue,
+              evaluationSystem,
+              customNotes: sousCustomNotes,
+            );
+
+            baremes['$baremeId-$sousBaremeId'] = sousDisplayValue;
+          }
         }
+
+        students.add({
+          'id': studentId,
+          'name': studentName,
+          'baremes': baremes,
+        });
       }
 
-      students.add({
-        'id': studentId,
-        'name': studentName,
-        'baremes': baremes,
+      // Trier les étudiants par ordre alphabétique
+      students.sort((a, b) {
+        String nameA = a['name'] ?? '';
+        String nameB = b['name'] ?? '';
+
+        if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+          return _arabicStringComparator(nameA, nameB);
+        }
+
+        return nameA.compareTo(nameB);
       });
+
+      return students;
+    } catch (e) {
+      print('Erreur récupération étudiants rapport complet: $e');
+      return [];
     }
-
-    // Trier les étudiants par ordre alphabétique
-    students.sort((a, b) {
-      String nameA = a['name'] ?? '';
-      String nameB = b['name'] ?? '';
-
-      if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
-        return _arabicStringComparator(nameA, nameB);
-      }
-
-      return nameA.compareTo(nameB);
-    });
-
-    return students;
-  } catch (e) {
-    print('Erreur récupération étudiants rapport complet: $e');
-    return [];
   }
-}
+
 // Méthodes auxiliaires pour récupérer les données
   Future<List<dynamic>> _getStudentsForReport(
       String classId, String matiereId) async {
@@ -3587,188 +3599,183 @@ Future<List<dynamic>> _getStudentsForCompleteReport(
     }
   }
 
-Future<List<dynamic>> _getStudents() async {
-  try {
-    // Récupérer le système d'évaluation
-    final String evaluationSystem = await _getEvaluationSystem(
-        widget.selectedClass, widget.selectedMatiere);
-    
-    final studentsSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('user_classes')
-        .doc(widget.selectedClass)
-        .collection('students')
-        .get();
+  Future<List<dynamic>> _getStudents() async {
+    try {
+      // Récupérer le système d'évaluation
+      final String evaluationSystem = await _getEvaluationSystem(
+          widget.selectedClass, widget.selectedMatiere);
 
-    final List<dynamic> students = [];
-    for (final studentDoc in studentsSnapshot.docs) {
-      final studentId = studentDoc.id;
-      final studentName = _getFieldSafe(studentDoc, 'name',
-          _isFrenchInterface ? 'Élève inconnu' : 'تلميذ غير معروف');
-
-      final baremesSnapshot = await FirebaseFirestore.instance
+      final studentsSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
           .collection('user_classes')
           .doc(widget.selectedClass)
           .collection('students')
-          .doc(studentId)
-          .collection('baremes')
           .get();
 
-      final Map<String, String> baremes = {};
-      for (final baremeDoc in baremesSnapshot.docs) {
-        final baremeId = baremeDoc.id;
-        final storedValue = _getFieldSafe(baremeDoc, 'Marks', '( - - - )');
-        
-        // Charger les notes personnalisées du barème
-        final customNotes = await _getCustomNotesForBareme(
-          widget.selectedClass, 
-          widget.selectedMatiere, 
-          baremeId
-        );
-        
-        // Convertir selon le système
-        final displayValue = _getDisplayEvaluation(
-          storedValue,
-          evaluationSystem,
-          customNotes: customNotes,
-        );
+      final List<dynamic> students = [];
+      for (final studentDoc in studentsSnapshot.docs) {
+        final studentId = studentDoc.id;
+        final studentName = _getFieldSafe(studentDoc, 'name',
+            _isFrenchInterface ? 'Élève inconnu' : 'تلميذ غير معروف');
 
-        baremes[baremeId] = displayValue;
+        final baremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('user_classes')
+            .doc(widget.selectedClass)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .get();
 
-        // Gérer les sous-barèmes
-        final sousBaremesSnapshot =
-            await baremeDoc.reference.collection('sous_baremes').get();
+        final Map<String, String> baremes = {};
+        for (final baremeDoc in baremesSnapshot.docs) {
+          final baremeId = baremeDoc.id;
+          final storedValue = _getFieldSafe(baremeDoc, 'Marks', '( - - - )');
 
-        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-          final sousBaremeId = sousBaremeDoc.id;
-          final sousStoredValue =
-              _getFieldSafe(sousBaremeDoc, 'Marks', '( - - - )');
-          
-          // Charger les notes personnalisées du sous-barème
-          final sousCustomNotes = await _getSousBaremeCustomNotes(
-            widget.selectedClass,
-            widget.selectedMatiere,
-            baremeId,
-            sousBaremeId,
-          );
-          
+          // Charger les notes personnalisées du barème
+          final customNotes = await _getCustomNotesForBareme(
+              widget.selectedClass, widget.selectedMatiere, baremeId);
+
           // Convertir selon le système
-          final sousDisplayValue = _getDisplayEvaluation(
-            sousStoredValue,
+          final displayValue = _getDisplayEvaluation(
+            storedValue,
             evaluationSystem,
-            customNotes: sousCustomNotes,
+            customNotes: customNotes,
           );
 
-          baremes['$baremeId-$sousBaremeId'] = sousDisplayValue;
+          baremes[baremeId] = displayValue;
+
+          // Gérer les sous-barèmes
+          final sousBaremesSnapshot =
+              await baremeDoc.reference.collection('sous_baremes').get();
+
+          for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+            final sousBaremeId = sousBaremeDoc.id;
+            final sousStoredValue =
+                _getFieldSafe(sousBaremeDoc, 'Marks', '( - - - )');
+
+            // Charger les notes personnalisées du sous-barème
+            final sousCustomNotes = await _getSousBaremeCustomNotes(
+              widget.selectedClass,
+              widget.selectedMatiere,
+              baremeId,
+              sousBaremeId,
+            );
+
+            // Convertir selon le système
+            final sousDisplayValue = _getDisplayEvaluation(
+              sousStoredValue,
+              evaluationSystem,
+              customNotes: sousCustomNotes,
+            );
+
+            baremes['$baremeId-$sousBaremeId'] = sousDisplayValue;
+          }
+        }
+
+        students.add({
+          'id': studentId,
+          'name': studentName,
+          'baremes': baremes,
+        });
+      }
+
+      // Trier les étudiants
+      students.sort((a, b) {
+        String nameA = a['name'] ?? '';
+        String nameB = b['name'] ?? '';
+
+        if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+          return _arabicStringComparator(nameA, nameB);
+        }
+
+        return nameA.compareTo(nameB);
+      });
+
+      return students;
+    } catch (e) {
+      print('Erreur récupération étudiants: $e');
+      return [];
+    }
+  }
+
+  Future<List<String>> _getCustomNotesForBareme(
+      String classId, String matiereId, String baremeId) async {
+    try {
+      // 1. Chercher les notes spécifiques au barème
+      final specificDocId = '$classId-$matiereId-$baremeId';
+
+      final specificDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('bareme_custom_notes')
+          .doc(specificDocId)
+          .get();
+
+      if (specificDoc.exists) {
+        final notes = specificDoc.data()?['notes'];
+        if (notes != null && notes is List && notes.isNotEmpty) {
+          return List<String>.from(notes);
         }
       }
 
-      students.add({
-        'id': studentId,
-        'name': studentName,
-        'baremes': baremes,
-      });
-    }
+      // 2. Chercher les notes globales (sans baremeId)
+      final globalDocId = '$classId-$matiereId';
 
-    // Trier les étudiants
-    students.sort((a, b) {
-      String nameA = a['name'] ?? '';
-      String nameB = b['name'] ?? '';
+      final globalDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('bareme_custom_notes')
+          .doc(globalDocId)
+          .get();
 
-      if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
-        return _arabicStringComparator(nameA, nameB);
+      if (globalDoc.exists) {
+        final notes = globalDoc.data()?['notes'];
+        if (notes != null && notes is List && notes.isNotEmpty) {
+          return List<String>.from(notes);
+        }
       }
 
-      return nameA.compareTo(nameB);
-    });
-
-    return students;
-  } catch (e) {
-    print('Erreur récupération étudiants: $e');
-    return [];
+      return [];
+    } catch (e) {
+      print('Erreur chargement notes: $e');
+      return [];
+    }
   }
-}
-Future<List<String>> _getCustomNotesForBareme(
-  String classId, 
-  String matiereId, 
-  String baremeId
-) async {
-  try {
-    // 1. Chercher les notes spécifiques au barème
-    final specificDocId = '$classId-$matiereId-$baremeId';
-    
-    final specificDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('bareme_custom_notes')
-        .doc(specificDocId)
-        .get();
 
-    if (specificDoc.exists) {
-      final notes = specificDoc.data()?['notes'];
-      if (notes != null && notes is List && notes.isNotEmpty) {
-        return List<String>.from(notes);
-      }
-    }
-    
-    // 2. Chercher les notes globales (sans baremeId)
-    final globalDocId = '$classId-$matiereId';
-    
-    final globalDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('bareme_custom_notes')
-        .doc(globalDocId)
-        .get();
+  Future<List<String>> _getSousBaremeCustomNotes(
+    String classId,
+    String matiereId,
+    String baremeId,
+    String sousBaremeId,
+  ) async {
+    try {
+      // Chercher avec sousBaremeId
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('sous_bareme_custom_notes')
+          .where('sousBaremeId', isEqualTo: sousBaremeId)
+          .limit(1)
+          .get();
 
-    if (globalDoc.exists) {
-      final notes = globalDoc.data()?['notes'];
-      if (notes != null && notes is List && notes.isNotEmpty) {
-        return List<String>.from(notes);
+      if (querySnapshot.docs.isNotEmpty) {
+        final doc = querySnapshot.docs.first;
+        final notes = doc.data()['notes'];
+
+        if (notes != null && notes is List && notes.isNotEmpty) {
+          return List<String>.from(notes);
+        }
       }
+
+      return [];
+    } catch (e) {
+      print('Erreur chargement notes sous-barème: $e');
+      return [];
     }
-    
-    return [];
-    
-  } catch (e) {
-    print('Erreur chargement notes: $e');
-    return [];
   }
-}
-Future<List<String>> _getSousBaremeCustomNotes(
-  String classId,
-  String matiereId,
-  String baremeId,
-  String sousBaremeId,
-) async {
-  try {
-    // Chercher avec sousBaremeId
-    final querySnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('sous_bareme_custom_notes')
-        .where('sousBaremeId', isEqualTo: sousBaremeId)
-        .limit(1)
-        .get();
-
-    if (querySnapshot.docs.isNotEmpty) {
-      final doc = querySnapshot.docs.first;
-      final notes = doc.data()['notes'];
-      
-      if (notes != null && notes is List && notes.isNotEmpty) {
-        return List<String>.from(notes);
-      }
-    }
-    
-    return [];
-  } catch (e) {
-    print('Erreur chargement notes sous-barème: $e');
-    return [];
-  }
-}
 
   void _loadUserData() async {
     if (currentUser != null && _isMounted) {
@@ -4960,7 +4967,7 @@ class _StudentsTableState extends State<StudentsTable> {
   List<QueryDocumentSnapshot>? _cachedStudents;
   List<QueryDocumentSnapshot>? _cachedSelections;
   bool _isMounted = false;
-  
+
   // NOUVEAU: Variable pour stocker le système d'évaluation
   String? _currentEvaluationSystem;
 
@@ -5082,41 +5089,53 @@ class _StudentsTableState extends State<StudentsTable> {
   // CORRECTION : Méthode groupBaremes sécurisée
   Map<String, List<Map<String, dynamic>>> groupBaremes(
       List<Map<String, dynamic>> baremesValues) {
-    List<Map<String, dynamic>> sortedBaremes =
-        _sortBaremesAlphabetically(baremesValues);
+    print('🔍 Début groupBaremes - ${baremesValues.length} éléments');
+
+    // Grouper par barème principal (regrouper sous-barèmes avec leur parent)
     Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
 
-    for (var bareme in sortedBaremes) {
-      String baremeValue = bareme['value'] ?? '';
-      String type = bareme['type'] ?? 'bareme';
+    // D'abord, trouver tous les barèmes principaux
+    final mainBaremes =
+        baremesValues.where((b) => b['type'] == 'bareme').toList();
 
-      String key;
-      if (type == 'sousBareme') {
-        // Pour les sous-barèmes, utiliser le parent comme clé de groupe
-        String parentId = bareme['parentBaremeId'] ?? '';
-        key = parentId.isNotEmpty ? parentId : 'sousBaremes';
-      } else {
-        // Pour les barèmes principaux, utiliser les premiers caractères
-        if (baremeValue.length >= 2) {
-          key = baremeValue.substring(0, 2);
-        } else if (baremeValue.isNotEmpty) {
-          key = baremeValue;
-        } else {
-          key = 'autre';
-        }
+    for (final bareme in mainBaremes) {
+      final baremeId = bareme['id'];
+      final baremeValue = bareme['value'] ?? '';
+
+      // Créer une entrée pour ce barème principal
+      if (!groupedBaremes.containsKey(baremeId)) {
+        groupedBaremes[baremeId] = [];
       }
 
-      if (!groupedBaremes.containsKey(key)) {
-        groupedBaremes[key] = [];
-      }
+      // Ajouter le barème principal
+      groupedBaremes[baremeId]!.add(bareme);
 
-      // CORRECTION: S'assurer qu'on n'ajoute pas les mêmes barèmes plusieurs fois
-      bool alreadyExists = groupedBaremes[key]!
-          .any((existingBareme) => existingBareme['id'] == bareme['id']);
-
-      if (!alreadyExists) {
-        groupedBaremes[key]!.add(bareme);
+      // Ajouter ses sous-barèmes
+      final sousBaremes = bareme['sousBaremes'] as List<dynamic>? ?? [];
+      for (final sousBareme in sousBaremes) {
+        groupedBaremes[baremeId]!.add({
+          'id': sousBareme['id'],
+          'value': sousBareme['value'],
+          'type': 'sousBareme',
+          'parentBaremeId': baremeId,
+        });
       }
+    }
+
+    // Maintenant, traiter les sous-barèmes qui n'ont pas de parent dans la liste
+    final orphanSousBaremes = baremesValues
+        .where((b) =>
+            b['type'] == 'sousBareme' &&
+            !groupedBaremes.containsKey(b['parentBaremeId']))
+        .toList();
+
+    if (orphanSousBaremes.isNotEmpty) {
+      groupedBaremes['orphans'] = orphanSousBaremes;
+    }
+
+    print('📊 Groupes créés: ${groupedBaremes.length}');
+    for (var entry in groupedBaremes.entries) {
+      print('   Groupe ${entry.key}: ${entry.value.length} éléments');
     }
 
     return groupedBaremes;
@@ -5169,104 +5188,105 @@ class _StudentsTableState extends State<StudentsTable> {
   }
 
   // NOUVELLE MÉTHODE: Charger le système d'évaluation
-  
 
-Future<void> _loadEvaluationSystem() async {
-  try {
-    final system = await _getEvaluationSystem(widget.selectedClass, widget.selectedMatiere);
-    if (_isMounted) {
-      setState(() {
-        _currentEvaluationSystem = system;
-        print('✅ Système d\'évaluation chargé: $system');
-      });
-    }
-  } catch (e) {
-    print('❌ Erreur chargement système d\'évaluation: $e');
-    if (_isMounted) {
-      setState(() {
-        _currentEvaluationSystem = 'character'; // Valeur par défaut
-      });
+  Future<void> _loadEvaluationSystem() async {
+    try {
+      final system = await _getEvaluationSystem(
+          widget.selectedClass, widget.selectedMatiere);
+      if (_isMounted) {
+        setState(() {
+          _currentEvaluationSystem = system;
+          print('✅ Système d\'évaluation chargé: $system');
+        });
+      }
+    } catch (e) {
+      print('❌ Erreur chargement système d\'évaluation: $e');
+      if (_isMounted) {
+        setState(() {
+          _currentEvaluationSystem = 'character'; // Valeur par défaut
+        });
+      }
     }
   }
-}
 
   // NOUVELLE MÉTHODE: Déterminer si on doit afficher la colonne de somme
   Future<bool> _shouldDisplaySumColumn() async {
-  if (_currentEvaluationSystem == null) {
-    await _loadEvaluationSystem();
     if (_currentEvaluationSystem == null) {
+      await _loadEvaluationSystem();
+      if (_currentEvaluationSystem == null) {
+        return false;
+      }
+    }
+
+    print(
+        '🔍 Vérification affichage colonne somme pour système: $_currentEvaluationSystem');
+
+    // Systèmes qui utilisent des notes numériques
+    final numericSystems = [
+      'note_0_1_5',
+      'note_0_3',
+      'note_0_6',
+      'custom' // Le système custom PEUT être numérique
+    ];
+
+    // Vérifier si c'est un système numérique
+    if (numericSystems.contains(_currentEvaluationSystem)) {
+      // Pour le système custom, vérifier si les notes sont numériques
+      if (_currentEvaluationSystem == 'custom') {
+        final hasNumericNotes = await _isCustomSystemWithNumericNotes();
+        print('📊 Système custom - Notes numériques: $hasNumericNotes');
+        return hasNumericNotes;
+      }
+      // Pour les autres systèmes numériques, toujours afficher
+      print('✅ Système numérique - Afficher colonne somme');
+      return true;
+    }
+
+    // Systèmes basés sur des caractères (pas de colonne somme)
+    final characterSystems = ['character', 'ext'];
+    if (characterSystems.contains(_currentEvaluationSystem)) {
+      print('❌ Système basé sur caractères - Cacher colonne somme');
       return false;
     }
-  }
-  
-  print('🔍 Vérification affichage colonne somme pour système: $_currentEvaluationSystem');
-  
-  // Systèmes qui utilisent des notes numériques
-  final numericSystems = [
-    'note_0_1_5',
-    'note_0_3',
-    'note_0_6',
-    'custom' // Le système custom PEUT être numérique
-  ];
-  
-  // Vérifier si c'est un système numérique
-  if (numericSystems.contains(_currentEvaluationSystem)) {
-    // Pour le système custom, vérifier si les notes sont numériques
-    if (_currentEvaluationSystem == 'custom') {
-      final hasNumericNotes = await _isCustomSystemWithNumericNotes();
-      print('📊 Système custom - Notes numériques: $hasNumericNotes');
-      return hasNumericNotes;
-    }
-    // Pour les autres systèmes numériques, toujours afficher
-    print('✅ Système numérique - Afficher colonne somme');
-    return true;
-  }
-  
-  // Systèmes basés sur des caractères (pas de colonne somme)
-  final characterSystems = ['character', 'ext'];
-  if (characterSystems.contains(_currentEvaluationSystem)) {
-    print('❌ Système basé sur caractères - Cacher colonne somme');
+
+    // Par défaut, ne pas afficher
+    print('⚠️ Système non reconnu - Cacher colonne somme par défaut');
     return false;
   }
-  
-  // Par défaut, ne pas afficher
-  print('⚠️ Système non reconnu - Cacher colonne somme par défaut');
-  return false;
-}
-  
 
   // NOUVELLE MÉTHODE: Méthode corrigée pour déterminer si c'est un système character
-  
-bool _isCharacterSystem() {
-  // Systèmes qui utilisent des caractères plutôt que des notes
-  final characterSystems = ['character', 'ext'];
-  
-  // Si le système est null, essayer de le charger
-  if (_currentEvaluationSystem == null) {
-    return true; // Par défaut, traiter comme character
+
+  bool _isCharacterSystem() {
+    // Systèmes qui utilisent des caractères plutôt que des notes
+    final characterSystems = ['character', 'ext'];
+
+    // Si le système est null, essayer de le charger
+    if (_currentEvaluationSystem == null) {
+      return true; // Par défaut, traiter comme character
+    }
+
+    return characterSystems.contains(_currentEvaluationSystem);
   }
-  
-  return characterSystems.contains(_currentEvaluationSystem);
-}
-@override
-void initState() {
-  super.initState();
-  _isMounted = true;
-  _loadStudentsOnce();
-  _loadSelectionsOnce();
-  _loadEvaluationSystem().then((_) {
-    // Rafraîchir après avoir chargé le système
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_isMounted) {
-        setState(() {});
-      }
+
+  @override
+  void initState() {
+    super.initState();
+    _isMounted = true;
+    _loadStudentsOnce();
+    _loadSelectionsOnce();
+    _loadEvaluationSystem().then((_) {
+      // Rafraîchir après avoir chargé le système
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_isMounted) {
+          setState(() {});
+        }
+      });
     });
-  });
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    _debugAllCustomNotes();
-    _checkCustomNotesType();
-  });
-}
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _debugAllCustomNotes();
+      _checkCustomNotesType();
+    });
+  }
 
   @override
   void dispose() {
@@ -5274,26 +5294,29 @@ void initState() {
     super.dispose();
   }
 
-Future<void> _checkCustomNotesType() async {
-  try {
-    if (_currentEvaluationSystem == 'custom') {
-      final hasNumericNotes = await _isCustomSystemWithNumericNotes();
-      print('🔍 Type de notes custom: ${hasNumericNotes ? 'Numériques' : 'Textuelles'}');
-      
-      // Log toutes les notes custom pour debug
-      final customNotes = await _loadCustomNotes(widget.selectedClass, widget.selectedMatiere);
-      print('📝 Notes custom disponibles: $customNotes');
-      
-      // Vérifier chaque note
-      for (final note in customNotes) {
-        final numValue = double.tryParse(note.trim());
-        print('   - "$note" -> numérique: ${numValue != null}');
+  Future<void> _checkCustomNotesType() async {
+    try {
+      if (_currentEvaluationSystem == 'custom') {
+        final hasNumericNotes = await _isCustomSystemWithNumericNotes();
+        print(
+            '🔍 Type de notes custom: ${hasNumericNotes ? 'Numériques' : 'Textuelles'}');
+
+        // Log toutes les notes custom pour debug
+        final customNotes = await _loadCustomNotes(
+            widget.selectedClass, widget.selectedMatiere);
+        print('📝 Notes custom disponibles: $customNotes');
+
+        // Vérifier chaque note
+        for (final note in customNotes) {
+          final numValue = double.tryParse(note.trim());
+          print('   - "$note" -> numérique: ${numValue != null}');
+        }
       }
+    } catch (e) {
+      print('❌ Erreur vérification type notes: $e');
     }
-  } catch (e) {
-    print('❌ Erreur vérification type notes: $e');
   }
-}
+
 // Méthode pour charger les étudiants une fois
   Future<void> _loadStudentsOnce() async {
     try {
@@ -5607,6 +5630,7 @@ Future<void> _checkCustomNotesType() async {
             baremesValuesSnapshot.data!.isEmpty) {
           return _buildEmptyStateForCriteria();
         }
+      _debugBaremesStructure(baremesValuesSnapshot.data!);
 
         return _buildDataTable(sortedStudents, baremesValuesSnapshot.data!);
       },
@@ -5633,28 +5657,59 @@ Future<void> _checkCustomNotesType() async {
     );
   }
 
-
 // MÉTHODE CORRIGÉE: Mettre à jour le build pour utiliser FutureBuilder
-
 
 Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
     List<Map<String, dynamic>> baremesValues) {
-  Map<String, List<Map<String, dynamic>>> groupedBaremes =
-      groupBaremes(baremesValues);
+  _debugBaremesStructure(baremesValues);
   
+  // CORRECTION: Organiser correctement les barèmes et sous-barèmes
+  final Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
+  
+  // Séparer les barèmes principaux et les sous-barèmes
+  final mainBaremes = baremesValues.where((b) => b['type'] == 'bareme').toList();
+  final sousBaremes = baremesValues.where((b) => b['type'] == 'sousBareme').toList();
+  
+  // Pour chaque barème principal, regrouper avec ses sous-barèmes
+  for (final bareme in mainBaremes) {
+    final baremeId = bareme['id'];
+    groupedBaremes[baremeId] = [bareme];
+    
+    // Ajouter les sous-barèmes de ce barème
+    final sousBaremesOfThisBareme = sousBaremes
+        .where((s) => s['parentBaremeId'] == baremeId)
+        .toList();
+    
+    for (final sousBareme in sousBaremesOfThisBareme) {
+      groupedBaremes[baremeId]!.add(sousBareme);
+    }
+  }
+  
+  // Ajouter les sous-barèmes orphelins (sans parent dans la liste)
+  final orphanSousBaremes = sousBaremes
+      .where((s) => !groupedBaremes.containsKey(s['parentBaremeId']))
+      .toList();
+  
+  if (orphanSousBaremes.isNotEmpty) {
+    groupedBaremes['orphans'] = orphanSousBaremes;
+  }
+  
+  _debugGroupedBaremesStructure(groupedBaremes);
+
   return FutureBuilder<bool>(
     future: _shouldDisplaySumColumn(),
     builder: (context, snapshot) {
       if (snapshot.connectionState == ConnectionState.waiting) {
         return Center(child: CircularProgressIndicator());
       }
-      
+
       final bool shouldDisplaySumColumn = snapshot.data ?? false;
-      
+
       return Card(
         elevation: 4,
         margin: EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Container(
           decoration: BoxDecoration(
             color: _cardColor,
@@ -5670,8 +5725,10 @@ Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                columns: _buildTableColumns(groupedBaremes, shouldDisplaySumColumn),
-                rows: _buildTableRows(studentsDocs, groupedBaremes, shouldDisplaySumColumn),
+                columns: _buildTableColumns(
+                    groupedBaremes, shouldDisplaySumColumn),
+                rows: _buildTableRows(
+                    studentsDocs, groupedBaremes, shouldDisplaySumColumn),
               ),
             ),
           ),
@@ -5681,10 +5738,8 @@ Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
   );
 }
 
-
-// Mettre à jour la méthode pour accepter le paramètre shouldDisplaySumColumn
 List<DataColumn> _buildTableColumns(
-    Map<String, List<Map<String, dynamic>>> groupedBaremes, 
+    Map<String, List<Map<String, dynamic>>> groupedBaremes,
     bool shouldDisplaySumColumn) {
   List<DataColumn> columns = [];
 
@@ -5737,58 +5792,42 @@ List<DataColumn> _buildTableColumns(
   // Colonnes Barèmes
   for (var entry in groupedBaremes.entries) {
     for (final bareme in entry.value) {
-      if (bareme['type'] == 'bareme') {
-        // Barème principal
-        columns.add(DataColumn(
-          label: _buildColumnHeader(bareme['value'], entry.key),
-        ));
-
-        // Sous-barèmes de ce barème
-        for (final sousBareme
-            in (bareme['sousBaremes'] as List<dynamic>? ?? [])) {
-          columns.add(DataColumn(
-            label: _buildColumnHeader(sousBareme['value'], entry.key),
-          ));
-        }
-      } else {
-        // Sous-barème seul
-        columns.add(DataColumn(
-          label: _buildColumnHeader(bareme['value'], entry.key),
-        ));
-      }
+      columns.add(DataColumn(
+        label: _buildColumnHeader(bareme['value'], entry.key),
+      ));
     }
   }
 
   return columns;
 }
-
 // Mettre à jour la méthode pour construire les lignes avec shouldDisplaySumColumn
-List<DataRow> _buildTableRows(List<QueryDocumentSnapshot> studentsDocs,
-    Map<String, List<Map<String, dynamic>>> groupedBaremes, bool shouldDisplaySumColumn) {
-  List<DataRow> rows = [];
+  List<DataRow> _buildTableRows(
+      List<QueryDocumentSnapshot> studentsDocs,
+      Map<String, List<Map<String, dynamic>>> groupedBaremes,
+      bool shouldDisplaySumColumn) {
+    List<DataRow> rows = [];
 
-  // Lignes étudiants
-  rows.addAll(_buildStudentRows(studentsDocs, groupedBaremes, shouldDisplaySumColumn));
-  
-  // Lignes statistiques
-  rows.add(_buildStatsRow(
-      _getTranslatedText('عدد التلاميذ المحققين',
-          'Nombre d\'élèves ayant atteint'),
-      groupedBaremes,
-      shouldDisplaySumColumn,
-      isPercentage: false));
-      
-  rows.add(_buildStatsRow(
-      _getTranslatedText('النسبة المئوية', 'Pourcentage'),
-      groupedBaremes,
-      shouldDisplaySumColumn,
-      isPercentage: true));
-  
-  // Lignes boutons
-  rows.addAll(_buildButtonRows(groupedBaremes, shouldDisplaySumColumn));
+    // Lignes étudiants
+    rows.addAll(_buildStudentRows(
+        studentsDocs, groupedBaremes, shouldDisplaySumColumn));
 
-  return rows;
-}
+    // Lignes statistiques
+    rows.add(_buildStatsRow(
+        _getTranslatedText(
+            'عدد التلاميذ المحققين', 'Nombre d\'élèves ayant atteint'),
+        groupedBaremes,
+        shouldDisplaySumColumn,
+        isPercentage: false));
+
+    rows.add(_buildStatsRow(_getTranslatedText('النسبة المئوية', 'Pourcentage'),
+        groupedBaremes, shouldDisplaySumColumn,
+        isPercentage: true));
+
+    // Lignes boutons
+    rows.addAll(_buildButtonRows(groupedBaremes, shouldDisplaySumColumn));
+
+    return rows;
+  }
 
 // NOUVELLE MÉTHODE: Construction de l'en-tête de colonne
   Widget _buildColumnHeader(String title, String groupKey) {
@@ -5835,278 +5874,336 @@ List<DataRow> _buildTableRows(List<QueryDocumentSnapshot> studentsDocs,
 
 // Mettre à jour _buildStudentRows pour inclure shouldDisplaySumColumn
 
-List<DataRow> _buildStudentRows(List<QueryDocumentSnapshot> studentsDocs,
-    Map<String, List<Map<String, dynamic>>> groupedBaremes, bool shouldDisplaySumColumn) {
-  
-  return studentsDocs.asMap().entries.map((entry) {
-    final index = entry.key;
-    final studentDoc = entry.value;
-    final studentId = studentDoc.id;
-    final studentName =
-        studentDoc['name'] ?? _getTranslatedText('غير معروف', 'Inconnu');
+  List<DataRow> _buildStudentRows(
+      List<QueryDocumentSnapshot> studentsDocs,
+      Map<String, List<Map<String, dynamic>>> groupedBaremes,
+      bool shouldDisplaySumColumn) {
+    return studentsDocs.asMap().entries.map((entry) {
+      final index = entry.key;
+      final studentDoc = entry.value;
+      final studentId = studentDoc.id;
+      final studentName =
+          studentDoc['name'] ?? _getTranslatedText('غير معروف', 'Inconnu');
 
-    List<DataCell> cells = [];
-    
-    // Cellule Nom
-    cells.add(DataCell(_buildStudentNameCell(studentName)));
-    
-    // Cellule Somme (conditionnelle)
-    if (shouldDisplaySumColumn) {
-      cells.add(DataCell(
-        FutureBuilder<double>(
-          future: _calculateStudentTotal(studentId, groupedBaremes),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return _buildSumCellLoading();
-            }
-            
-            if (snapshot.hasError) {
-              print('❌ Erreur calcul somme pour $studentId: ${snapshot.error}');
-              return _buildSumCellError();
-            }
-            
-            final total = snapshot.data ?? 0.0;
-            
-            // Vérifier si le système est custom avec des notes non numériques
-            if (_currentEvaluationSystem == 'custom') {
-              return FutureBuilder<bool>(
-                future: _isCustomSystemWithNumericNotes(),
-                builder: (context, numericSnapshot) {
-                  if (numericSnapshot.connectionState == ConnectionState.waiting) {
-                    return _buildSumCellLoading();
-                  }
-                  
-                  if (numericSnapshot.hasError || !(numericSnapshot.data ?? false)) {
-                    // Système custom sans notes numériques
-                    return _buildSumCellNotAvailable();
-                  }
-                  
-                  // Système custom avec notes numériques
-                  return _buildSumCellValue(total);
-                },
-              );
-            }
-            
-            // Pour les autres systèmes numériques
-            return _buildSumCellValue(total);
+      List<DataCell> cells = [];
+
+      // Cellule Nom
+      cells.add(DataCell(_buildStudentNameCell(studentName)));
+
+      // Cellule Somme (conditionnelle)
+      if (shouldDisplaySumColumn) {
+        cells.add(DataCell(
+          FutureBuilder<double>(
+            future: _calculateStudentTotal(studentId, groupedBaremes),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return _buildSumCellLoading();
+              }
+
+              if (snapshot.hasError) {
+                print(
+                    '❌ Erreur calcul somme pour $studentId: ${snapshot.error}');
+                return _buildSumCellError();
+              }
+
+              final total = snapshot.data ?? 0.0;
+
+              // Vérifier si le système est custom avec des notes non numériques
+              if (_currentEvaluationSystem == 'custom') {
+                return FutureBuilder<bool>(
+                  future: _isCustomSystemWithNumericNotes(),
+                  builder: (context, numericSnapshot) {
+                    if (numericSnapshot.connectionState ==
+                        ConnectionState.waiting) {
+                      return _buildSumCellLoading();
+                    }
+
+                    if (numericSnapshot.hasError ||
+                        !(numericSnapshot.data ?? false)) {
+                      // Système custom sans notes numériques
+                      return _buildSumCellNotAvailable();
+                    }
+
+                    // Système custom avec notes numériques
+                    return _buildSumCellValue(total);
+                  },
+                );
+              }
+
+              // Pour les autres systèmes numériques
+              return _buildSumCellValue(total);
+            },
+          ),
+        ));
+      }
+
+      // Cellules Barèmes
+      cells.addAll(_buildStudentCells(studentId, groupedBaremes));
+
+      return DataRow(
+        color: MaterialStateProperty.resolveWith<Color>(
+          (Set<MaterialState> states) {
+            return index.isEven
+                ? _backgroundColor.withOpacity(0.3)
+                : Colors.transparent;
           },
         ),
-      ));
-    }
-    
-    // Cellules Barèmes
-    cells.addAll(_buildStudentCells(studentId, groupedBaremes));
+        cells: cells,
+      );
+    }).toList();
+  }
 
-    return DataRow(
-      color: MaterialStateProperty.resolveWith<Color>(
-        (Set<MaterialState> states) {
-          return index.isEven
-              ? _backgroundColor.withOpacity(0.3)
-              : Colors.transparent;
-        },
-      ),
-      cells: cells,
-    );
-  }).toList();
-}
-
-Widget _buildSumCellLoading() {
-  return Container(
-    width: 100,
-    padding: EdgeInsets.symmetric(vertical: 8),
-    child: Center(
-      child: SizedBox(
-        width: 16,
-        height: 16,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.purple),
+  Widget _buildSumCellLoading() {
+    return Container(
+      width: 100,
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Center(
+        child: SizedBox(
+          width: 16,
+          height: 16,
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.purple),
+          ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
 // MÉTHODE AUXILIAIRE: Cellule d'erreur de la somme
-Widget _buildSumCellError() {
-  return Container(
-    width: 100,
-    padding: EdgeInsets.symmetric(vertical: 8),
-    child: Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: Colors.red.withOpacity(0.3),
+  Widget _buildSumCellError() {
+    return Container(
+      width: 100,
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.red.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: Colors.red.withOpacity(0.3),
+          ),
+        ),
+        child: Center(
+          child: Icon(
+            Icons.error_outline,
+            size: 14,
+            color: Colors.red,
+          ),
         ),
       ),
-      child: Center(
-        child: Icon(
-          Icons.error_outline,
-          size: 14,
-          color: Colors.red,
-        ),
-      ),
-    ),
-  );
-}
+    );
+  }
 
 // MÉTHODE AUXILIAIRE: Cellule somme non disponible (pour custom textuel)
-Widget _buildSumCellNotAvailable() {
-  return Container(
-    width: 100,
-    padding: EdgeInsets.symmetric(vertical: 8),
-    child: Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: Colors.grey.withOpacity(0.3),
+  Widget _buildSumCellNotAvailable() {
+    return Container(
+      width: 100,
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.grey.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: Colors.grey.withOpacity(0.3),
+          ),
         ),
-      ),
-      child: Center(
-        child: Text(
-          _getTranslatedText('N/A', 'N/A'),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.grey,
-            fontSize: 11,
-            fontStyle: FontStyle.italic,
+        child: Center(
+          child: Text(
+            _getTranslatedText('N/A', 'N/A'),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+              fontSize: 11,
+              fontStyle: FontStyle.italic,
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
 // MÉTHODE AUXILIAIRE: Cellule avec valeur de la somme
-Widget _buildSumCellValue(double total) {
-  // Déterminer la couleur selon la valeur
-  Color textColor;
-  Color backgroundColor;
-  
-  if (total == 0) {
-    textColor = Colors.red;
-    backgroundColor = Colors.red.withOpacity(0.1);
-  } else if (total < 10) {
-    textColor = Colors.orange;
-    backgroundColor = Colors.orange.withOpacity(0.1);
-  } else {
-    textColor = Colors.green;
-    backgroundColor = Colors.green.withOpacity(0.1);
-  }
-  
-  return Container(
-    width: 100,
-    padding: EdgeInsets.symmetric(vertical: 8),
-    child: Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: textColor.withOpacity(0.3),
+  Widget _buildSumCellValue(double total) {
+    // Formater le total selon le système
+    String formattedTotal;
+    if (_currentEvaluationSystem == 'custom') {
+      // Pour custom, afficher tel quel
+      formattedTotal = total.toStringAsFixed(2);
+    } else if (_currentEvaluationSystem == 'note_0_1_5') {
+      // Format pour 0-1.5
+      formattedTotal = total.toStringAsFixed(2);
+    } else if (_currentEvaluationSystem == 'note_0_3') {
+      // Format pour 0-3
+      formattedTotal = total.toStringAsFixed(1);
+    } else if (_currentEvaluationSystem == 'note_0_6') {
+      // Format pour 0-6
+      formattedTotal = total.toStringAsFixed(1);
+    } else {
+      // Format par défaut
+      formattedTotal = total.toStringAsFixed(1);
+    }
+
+    // Déterminer la couleur selon la valeur
+    Color textColor;
+    Color backgroundColor;
+
+    // Adapter les seuils selon le système
+    if (total == 0) {
+      textColor = Colors.red;
+      backgroundColor = Colors.red.withOpacity(0.1);
+    } else if (_currentEvaluationSystem == 'note_0_1_5' && total < 0.75) {
+      textColor = Colors.orange;
+      backgroundColor = Colors.orange.withOpacity(0.1);
+    } else if (_currentEvaluationSystem == 'note_0_3' && total < 1.5) {
+      textColor = Colors.orange;
+      backgroundColor = Colors.orange.withOpacity(0.1);
+    } else if (_currentEvaluationSystem == 'note_0_6' && total < 3) {
+      textColor = Colors.orange;
+      backgroundColor = Colors.orange.withOpacity(0.1);
+    } else {
+      textColor = Colors.green;
+      backgroundColor = Colors.green.withOpacity(0.1);
+    }
+
+    return Container(
+      width: 100,
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: textColor.withOpacity(0.3),
+          ),
         ),
-      ),
-      child: Center(
-        child: Text(
-          total.toStringAsFixed(1),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: textColor,
-            fontSize: 12,
+        child: Center(
+          child: Text(
+            formattedTotal,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: textColor,
+              fontSize: 12,
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
-
-// MÉTHODE AUXILIAIRE: Construction des cellules de barèmes pour un étudiant
-List<DataCell> _buildStudentCells(String studentId,
-    Map<String, List<Map<String, dynamic>>> groupedBaremes) {
-  List<DataCell> cells = [];
-
-  for (var entry in groupedBaremes.entries) {
-    for (final bareme in entry.value) {
-      if (bareme['type'] == 'bareme') {
-        // Barème principal
-        cells.add(DataCell(_buildMarkCell(studentId, bareme['id'])));
-
-        // Sous-barèmes
-        for (final sousBareme
-            in (bareme['sousBaremes'] as List<dynamic>? ?? [])) {
-          cells.add(DataCell(_buildMarkCell(studentId, sousBareme['id'])));
-        }
-      } else {
-        // Sous-barème seul
-        cells.add(DataCell(_buildMarkCell(studentId, bareme['id'])));
-      }
-    }
+    );
   }
 
-  return cells;
-}
+// MÉTHODE AUXILIAIRE: Construction des cellules de barèmes pour un étudiant
+  List<DataCell> _buildStudentCells(String studentId,
+      Map<String, List<Map<String, dynamic>>> groupedBaremes) {
+    List<DataCell> cells = [];
+
+    for (var entry in groupedBaremes.entries) {
+      for (final bareme in entry.value) {
+        if (bareme['type'] == 'bareme') {
+          // Barème principal
+          cells.add(DataCell(_buildMarkCell(studentId, bareme['id'])));
+
+          // Sous-barèmes
+          for (final sousBareme
+              in (bareme['sousBaremes'] as List<dynamic>? ?? [])) {
+            cells.add(DataCell(_buildMarkCell(studentId, sousBareme['id'])));
+          }
+        } else {
+          // Sous-barème seul
+          cells.add(DataCell(_buildMarkCell(studentId, bareme['id'])));
+        }
+      }
+    }
+
+    return cells;
+  }
 
 // MÉTHODE AUXILIAIRE: Cellule de note individuelle
-Widget _buildMarkCell(String studentId, String baremeKey) {
-  return Container(
-    width: 110,
-    padding: EdgeInsets.symmetric(vertical: 8),
-    child: FutureBuilder<String>(
-      future: _getSelectedValue(studentId, baremeKey),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
-            ),
-          );
-        }
-        
-        if (snapshot.hasError) {
-          return Container(
-            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.red.withOpacity(0.3)),
-            ),
-            child: Center(
-              child: Icon(
-                Icons.error_outline,
-                size: 12,
-                color: Colors.red,
+  Widget _buildMarkCell(String studentId, String baremeKey) {
+    return Container(
+      width: 110,
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: FutureBuilder<String>(
+        future: _getSelectedValue(studentId, baremeKey),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(_primaryColor),
               ),
-            ),
-          );
-        }
-        
-        final value = snapshot.data ?? _dropdownValues[0];
-        
-        // Vérifier si c'est "غائب"
-        final isAbsent = value == 'غائب';
-        
-        return FutureBuilder<List<String>>(
-          future: _getDropdownValuesForBareme(baremeKey),
-          builder: (context, dropdownSnapshot) {
-            if (dropdownSnapshot.connectionState == ConnectionState.waiting) {
+            );
+          }
+
+          if (snapshot.hasError) {
+            return Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.red.withOpacity(0.3)),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.error_outline,
+                  size: 12,
+                  color: Colors.red,
+                ),
+              ),
+            );
+          }
+
+          final value = snapshot.data ?? _dropdownValues[0];
+
+          // Vérifier si c'est "غائب"
+          final isAbsent = value == 'غائب';
+
+          return FutureBuilder<List<String>>(
+            future: _getDropdownValuesForBareme(baremeKey),
+            builder: (context, dropdownSnapshot) {
+              if (dropdownSnapshot.connectionState == ConnectionState.waiting) {
+                return Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isAbsent
+                        ? Colors.grey.withOpacity(0.2)
+                        : _getValueColor(value).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isAbsent
+                          ? Colors.grey
+                          : _getValueColor(value).withOpacity(0.3),
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      value,
+                      style: TextStyle(
+                        color: isAbsent ? Colors.grey : _getValueColor(value),
+                        fontWeight: FontWeight.bold,
+                        fontSize: isAbsent ? 10 : 12,
+                      ),
+                    ),
+                  ),
+                );
+              }
+
+              final dropdownValues = dropdownSnapshot.data ?? _dropdownValues;
+
               return Container(
                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
-                  color: isAbsent 
-                    ? Colors.grey.withOpacity(0.2)
-                    : _getValueColor(value).withOpacity(0.1),
+                  color: isAbsent
+                      ? Colors.grey.withOpacity(0.2)
+                      : _getValueColor(value).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
-                    color: isAbsent 
-                      ? Colors.grey
-                      : _getValueColor(value).withOpacity(0.3),
+                    color: isAbsent
+                        ? Colors.grey
+                        : _getValueColor(value).withOpacity(0.3),
                   ),
                 ),
                 child: Center(
@@ -6116,245 +6213,241 @@ Widget _buildMarkCell(String studentId, String baremeKey) {
                       color: isAbsent ? Colors.grey : _getValueColor(value),
                       fontWeight: FontWeight.bold,
                       fontSize: isAbsent ? 10 : 12,
+                      fontStyle: isAbsent ? FontStyle.italic : FontStyle.normal,
                     ),
                   ),
                 ),
               );
-            }
-            
-            final dropdownValues = dropdownSnapshot.data ?? _dropdownValues;
-            
-            return Container(
-              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                color: isAbsent 
-                  ? Colors.grey.withOpacity(0.2)
-                  : _getValueColor(value).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: isAbsent 
-                    ? Colors.grey
-                    : _getValueColor(value).withOpacity(0.3),
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  value,
-                  style: TextStyle(
-                    color: isAbsent ? Colors.grey : _getValueColor(value),
-                    fontWeight: FontWeight.bold,
-                    fontSize: isAbsent ? 10 : 12,
-                    fontStyle: isAbsent ? FontStyle.italic : FontStyle.normal,
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    ),
-  );
-}
+            },
+          );
+        },
+      ),
+    );
+  }
 
 // MÉTHODE AUXILIAIRE: Déterminer la couleur selon la valeur
-Color _getValueColor(String value) {
-  // Si c'est "غائب"
-  if (value == 'غائب') {
-    return Colors.grey;
-  }
-  
-  // Pour les systèmes standard
-  switch (value) {
-    case '( + + + )':
-    case '1.5': // note_0_1_5 max
-    case '3':   // note_0_3 max
-    case '6':   // note_0_6 max
-      return Colors.green;
-      
-    case '( + + - )':
-    case '1':   // note_0_1_5
-    case '2':   // note_0_3
-    case '4':   // note_0_6
-      return Colors.orange;
-      
-    case '( + - - )':
-    case '0.5': // note_0_1_5
-    case '1':   // note_0_3
-    case '2':   // note_0_6
-      return Colors.orangeAccent;
-      
-    case '( - - - )':
-    case '0':   // toutes les notes min
-      return Colors.red;
-      
-    default:
-      // Pour les notes personnalisées, essayer de déterminer si c'est numérique
-      final numValue = double.tryParse(value);
-      if (numValue != null) {
-        // Note numérique dans custom
-        if (numValue >= 3) return Colors.green;
-        if (numValue >= 2) return Colors.orange;
-        if (numValue >= 1) return Colors.orangeAccent;
+  Color _getValueColor(String value) {
+    // Si c'est "غائب"
+    if (value == 'غائب') {
+      return Colors.grey;
+    }
+
+    // Pour les systèmes standard
+    switch (value) {
+      case '( + + + )':
+      case '1.5': // note_0_1_5 max
+      case '3': // note_0_3 max
+      case '6': // note_0_6 max
+        return Colors.green;
+
+      case '( + + - )':
+      case '1': // note_0_1_5
+      case '2': // note_0_3
+      case '4': // note_0_6
+        return Colors.orange;
+
+      case '( + - - )':
+      case '0.5': // note_0_1_5
+      case '1': // note_0_3
+      case '2': // note_0_6
+        return Colors.orangeAccent;
+
+      case '( - - - )':
+      case '0': // toutes les notes min
         return Colors.red;
-      }
-      
-      // Note textuelle dans custom - utiliser une couleur neutre
-      return Colors.blue;
+
+      default:
+        // Pour les notes personnalisées, essayer de déterminer si c'est numérique
+        final numValue = double.tryParse(value);
+        if (numValue != null) {
+          // Note numérique dans custom
+          if (numValue >= 3) return Colors.green;
+          if (numValue >= 2) return Colors.orange;
+          if (numValue >= 1) return Colors.orangeAccent;
+          return Colors.red;
+        }
+
+        // Note textuelle dans custom - utiliser une couleur neutre
+        return Colors.blue;
+    }
   }
-}
 
 // MÉTHODE AUXILIAIRE: Cellule nom étudiant
-Widget _buildStudentNameCell(String studentName) {
-  return Container(
-    width: 160,
-    padding: EdgeInsets.symmetric(vertical: 8),
-    child: Row(
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: _accentColor,
-            shape: BoxShape.circle,
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            studentName,
-            textDirection: widget.isFrenchInterface
-                ? TextDirection.ltr
-                : TextDirection.rtl,
-            style: TextStyle(
-              color: _textColor,
-              fontWeight: FontWeight.w500,
-              fontSize: 13,
+  Widget _buildStudentNameCell(String studentName) {
+    return Container(
+      width: 160,
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: _accentColor,
+              shape: BoxShape.circle,
             ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 2,
           ),
-        ),
-      ],
-    ),
-  );
-}
-// NOUVELLE MÉTHODE: Cellule nom étudiant
-  
-bool _isCharacterBasedSystem() {
-  if (_currentEvaluationSystem == null) return true;
-  
-  final characterBasedSystems = [
-    'character',
-    'ext',
-  ];
-  
-  // Le système custom est basé sur caractères s'il n'a pas de notes numériques
-  if (_currentEvaluationSystem == 'custom') {
-    return true; // Par défaut, considérer comme basé sur caractères
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              studentName,
+              textDirection: widget.isFrenchInterface
+                  ? TextDirection.ltr
+                  : TextDirection.rtl,
+              style: TextStyle(
+                color: _textColor,
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
+          ),
+        ],
+      ),
+    );
   }
-  
-  return characterBasedSystems.contains(_currentEvaluationSystem);
-}
+// NOUVELLE MÉTHODE: Cellule nom étudiant
+
+  bool _isCharacterBasedSystem() {
+    if (_currentEvaluationSystem == null) return true;
+
+    final characterBasedSystems = [
+      'character',
+      'ext',
+    ];
+
+    // Le système custom est basé sur caractères s'il n'a pas de notes numériques
+    if (_currentEvaluationSystem == 'custom') {
+      return true; // Par défaut, considérer comme basé sur caractères
+    }
+
+    return characterBasedSystems.contains(_currentEvaluationSystem);
+  }
 
 // NOUVELLE MÉTHODE: Cellules des barèmes pour un étudiant
 
 // NOUVELLE MÉTHODE: Lignes de boutons
-List<DataRow> _buildButtonRows(
-    Map<String, List<Map<String, dynamic>>> groupedBaremes, bool shouldDisplaySumColumn) {
-  return [
-    _buildButtonRow(
-      _getTranslatedText('تصنيف', 'Classer'),
-      Colors.green,
-      Colors.yellow,
-      groupedBaremes,
-      shouldDisplaySumColumn,
-      isClassification: true,
-    ),
-    _buildButtonRow(
-      _getTranslatedText('خطة العلاج', 'Plan de traitement'),
-      Colors.blue,
-      Colors.white,
-      groupedBaremes,
-      shouldDisplaySumColumn,
-      isClassification: false,
-    ),
-  ];
-}
+  List<DataRow> _buildButtonRows(
+      Map<String, List<Map<String, dynamic>>> groupedBaremes,
+      bool shouldDisplaySumColumn) {
+    return [
+      _buildButtonRow(
+        _getTranslatedText('تصنيف', 'Classer'),
+        Colors.green,
+        Colors.yellow,
+        groupedBaremes,
+        shouldDisplaySumColumn,
+        isClassification: true,
+      ),
+      _buildButtonRow(
+        _getTranslatedText('تشخيص ', 'Plan de traitement'),
+        Colors.blue,
+        Colors.white,
+        groupedBaremes,
+        shouldDisplaySumColumn,
+        isClassification: false,
+      ),
+    ];
+  }
 
+  DataRow _buildStatsRow(
+      String title,
+      Map<String, List<Map<String, dynamic>>> groupedBaremes,
+      bool shouldDisplaySumColumn,
+      {required bool isPercentage}) {
+    List<DataCell> cells = [];
 
-DataRow _buildStatsRow(String title, 
-    Map<String, List<Map<String, dynamic>>> groupedBaremes,
-    bool shouldDisplaySumColumn,
-    {required bool isPercentage}) {
-    
-  List<DataCell> cells = [];
-  
-  // Cellule titre
-  cells.add(DataCell(
-    Container(
-      width: 160,
-      padding: EdgeInsets.symmetric(vertical: 12),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          color: _primaryColor,
+    // Cellule titre
+    cells.add(DataCell(
+      Container(
+        width: 160,
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: _primaryColor,
+          ),
         ),
       ),
-    ),
-  ));
-  
-  // Cellule vide pour la colonne de somme si elle existe
-  if (shouldDisplaySumColumn) {
-    cells.add(DataCell(Container(width: 100)));
-  }
-  
-  // Cellules statistiques
-  cells.addAll(_buildStatCells(groupedBaremes, isPercentage));
-  
-  return DataRow(
-    color: MaterialStateProperty.all(_primaryColor.withOpacity(0.05)),
-    cells: cells,
-  );
-}
+    ));
 
-DataRow _buildButtonRow(String buttonText, Color backgroundColor,
-    Color textColor, Map<String, List<Map<String, dynamic>>> groupedBaremes,
-    bool shouldDisplaySumColumn,
-    {required bool isClassification}) {
-    
-  List<DataCell> cells = [];
-  
-  // Première cellule vide
-  cells.add(DataCell(Container()));
-  
-  // Cellule vide pour la colonne de somme si elle existe
-  if (shouldDisplaySumColumn) {
-    cells.add(DataCell(Container(width: 100)));
-  }
-  
-  // Cellules boutons
-  cells.addAll(_buildButtonCells(buttonText, backgroundColor, textColor, groupedBaremes,
-      isClassification: isClassification));
-  
-  return DataRow(
-    cells: cells,
-  );
-}
+    // Cellule vide pour la colonne de somme si elle existe
+    if (shouldDisplaySumColumn) {
+      cells.add(DataCell(Container(width: 100)));
+    }
 
-List<DataCell> _buildStatCells(
-    Map<String, List<Map<String, dynamic>>> groupedBaremes,
-    bool isPercentage) {
-  List<DataCell> cells = [];
-  
-  for (var entry in groupedBaremes.entries) {
-    for (final bareme in entry.value) {
-      if (bareme['type'] == 'bareme') {
-        // Barème principal avec ses sous-barèmes
-        for (final subEntry in [
-          {'id': bareme['id'], 'type': 'bareme'},
-          ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
-        ]) {
+    // Cellules statistiques
+    cells.addAll(_buildStatCells(groupedBaremes, isPercentage));
+
+    return DataRow(
+      color: MaterialStateProperty.all(_primaryColor.withOpacity(0.05)),
+      cells: cells,
+    );
+  }
+
+  DataRow _buildButtonRow(
+      String buttonText,
+      Color backgroundColor,
+      Color textColor,
+      Map<String, List<Map<String, dynamic>>> groupedBaremes,
+      bool shouldDisplaySumColumn,
+      {required bool isClassification}) {
+    List<DataCell> cells = [];
+
+    // Première cellule vide
+    cells.add(DataCell(Container()));
+
+    // Cellule vide pour la colonne de somme si elle existe
+    if (shouldDisplaySumColumn) {
+      cells.add(DataCell(Container(width: 100)));
+    }
+
+    // Cellules boutons
+    cells.addAll(_buildButtonCells(
+        buttonText, backgroundColor, textColor, groupedBaremes,
+        isClassification: isClassification));
+
+    return DataRow(
+      cells: cells,
+    );
+  }
+
+  List<DataCell> _buildStatCells(
+      Map<String, List<Map<String, dynamic>>> groupedBaremes,
+      bool isPercentage) {
+    List<DataCell> cells = [];
+
+    for (var entry in groupedBaremes.entries) {
+      for (final bareme in entry.value) {
+        if (bareme['type'] == 'bareme') {
+          // Barème principal avec ses sous-barèmes
+          for (final subEntry in [
+            {'id': bareme['id'], 'type': 'bareme'},
+            ...(bareme['sousBaremes'] as List<dynamic>? ?? [])
+          ]) {
+            cells.add(DataCell(
+              Container(
+                width: 110,
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isPercentage
+                        ? _secondaryColor.withOpacity(0.1)
+                        : _accentColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Center(
+                    child: _buildStatValue(subEntry['id'], isPercentage),
+                  ),
+                ),
+              ),
+            ));
+          }
+        } else {
+          // Sous-barème seul
           cells.add(DataCell(
             Container(
               width: 110,
@@ -6368,180 +6461,183 @@ List<DataCell> _buildStatCells(
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Center(
-                  child: _buildStatValue(subEntry['id'], isPercentage),
+                  child: _buildStatValue(bareme['id'], isPercentage),
                 ),
               ),
             ),
           ));
         }
-      } else {
-        // Sous-barème seul
-        cells.add(DataCell(
-          Container(
-            width: 110,
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Container(
-              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                color: isPercentage
-                    ? _secondaryColor.withOpacity(0.1)
-                    : _accentColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Center(
-                child: _buildStatValue(bareme['id'], isPercentage),
+      }
+    }
+
+    return cells;
+  }
+
+  List<DataCell> _buildButtonCells(String buttonText, Color backgroundColor,
+      Color textColor, Map<String, List<Map<String, dynamic>>> groupedBaremes,
+      {required bool isClassification}) {
+    List<DataCell> cells = [];
+
+    for (var entry in groupedBaremes.entries) {
+      for (final bareme in entry.value) {
+        for (final subEntry in [
+          {'id': bareme['id'], 'type': 'bareme', 'name': bareme['value']},
+          ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map(
+              (s) => {'id': s['id'], 'type': 'sousBareme', 'name': s['value']})
+        ]) {
+          cells.add(DataCell(
+            Container(
+              width: 110,
+              height: 48,
+              padding: EdgeInsets.all(4),
+              child: _buildLoadingButton(
+                bareme: bareme,
+                subEntry: subEntry,
+                buttonText: buttonText,
+                backgroundColor: backgroundColor,
+                textColor: textColor,
+                isClassification: isClassification,
               ),
             ),
-          ),
-        ));
+          ));
+        }
       }
     }
-  }
-  
-  return cells;
-}
 
-List<DataCell> _buildButtonCells(String buttonText, Color backgroundColor,
-    Color textColor, Map<String, List<Map<String, dynamic>>> groupedBaremes,
-    {required bool isClassification}) {
-  List<DataCell> cells = [];
-  
-  for (var entry in groupedBaremes.entries) {
-    for (final bareme in entry.value) {
-      for (final subEntry in [
-        {'id': bareme['id'], 'type': 'bareme', 'name': bareme['value']},
-        ...(bareme['sousBaremes'] as List<dynamic>? ?? []).map((s) =>
-            {'id': s['id'], 'type': 'sousBareme', 'name': s['value']})
-      ]) {
-        cells.add(DataCell(
-          Container(
-            width: 110,
-            height: 48,
-            padding: EdgeInsets.all(4),
-            child: _buildLoadingButton(
-              bareme: bareme,
-              subEntry: subEntry,
-              buttonText: buttonText,
-              backgroundColor: backgroundColor,
-              textColor: textColor,
-              isClassification: isClassification,
-            ),
-          ),
-        ));
+    return cells;
+  }
+
+  Future<bool> _isCustomSystemWithNumericNotes() async {
+    if (_currentEvaluationSystem != 'custom') return false;
+
+    try {
+      // 1. Vérifier les notes globales
+      final globalCustomNotes =
+          await _loadCustomNotes(widget.selectedClass, widget.selectedMatiere);
+
+      if (globalCustomNotes.isNotEmpty) {
+        return _areNotesNumeric(globalCustomNotes);
       }
-    }
-  }
-  
-  return cells;
-}
 
+      // 2. Vérifier les notes des barèmes
+      final baremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .get();
 
-Future<bool> _isCustomSystemWithNumericNotes() async {
-  if (_currentEvaluationSystem != 'custom') return false;
-  
-  try {
-    // 1. D'abord vérifier les notes globales
-    final globalCustomNotes = await _loadCustomNotes(widget.selectedClass, widget.selectedMatiere);
-    
-    if (globalCustomNotes.isNotEmpty) {
-      return _areNotesNumeric(globalCustomNotes);
-    }
-    
-    // 2. Vérifier les notes des barèmes
-    final baremesSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('selections')
-        .doc(widget.selectedClass)
-        .collection(widget.selectedMatiere)
-        .get();
-    
-    for (final baremeDoc in baremesSnapshot.docs) {
-      final baremeId = baremeDoc['baremeId'] ?? baremeDoc.id;
-      final customNotes = await _getCustomNotesForBareme(
-        widget.selectedClass, 
-        widget.selectedMatiere, 
-        baremeId
-      );
-      
-      if (customNotes.isNotEmpty) {
-        return _areNotesNumeric(customNotes);
+      for (final baremeDoc in baremesSnapshot.docs) {
+        final baremeId = baremeDoc['baremeId'] ?? baremeDoc.id;
+        final customNotes = await _getCustomNotesForBareme(
+            widget.selectedClass, widget.selectedMatiere, baremeId);
+
+        if (customNotes.isNotEmpty) {
+          return _areNotesNumeric(customNotes);
+        }
       }
-    }
-    
-    return false;
-    
-  } catch (e) {
-    print('❌ Erreur vérification notes custom: $e');
-    return false;
-  }
-}
 
-bool _areNotesNumeric(List<String> notes) {
-  for (final note in notes) {
-    final trimmedNote = note.trim();
-    final numValue = double.tryParse(trimmedNote);
-    if (numValue == null) {
-      print('⚠️ Note non numérique trouvée: "$trimmedNote"');
+      // 3. Vérifier les notes des sous-barèmes
+      for (final baremeDoc in baremesSnapshot.docs) {
+        final baremeId = baremeDoc['baremeId'] ?? baremeDoc.id;
+        final sousBaremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.currentUser.uid)
+            .collection('selections')
+            .doc(widget.selectedClass)
+            .collection(widget.selectedMatiere)
+            .doc(baremeId)
+            .collection('sousBaremes')
+            .get();
+
+        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+          final sousBaremeId = sousBaremeDoc.id;
+          final customNotes = await _getSousBaremeCustomNotes(
+            widget.selectedClass,
+            widget.selectedMatiere,
+            baremeId,
+            sousBaremeId,
+          );
+
+          if (customNotes.isNotEmpty) {
+            return _areNotesNumeric(customNotes);
+          }
+        }
+      }
+
+      return false;
+    } catch (e) {
+      print('❌ Erreur vérification notes custom: $e');
       return false;
     }
   }
-  print('✅ Toutes les notes sont numériques');
-  return true;
-}
 
-// NOUVELLE MÉTHODE: Vérifier les notes personnalisées par barème/sous-barème
-Future<bool> _hasNumericCustomNotesForBareme(String baremeKey) async {
-  if (_currentEvaluationSystem != 'custom') return false;
-  
-  try {
-    List<String> customNotes = [];
-    
-    if (await _isSousBareme(baremeKey)) {
-      // Sous-barème
-      final parentInfo = await _getParentBaremeInfo(baremeKey);
-      final baremeId = parentInfo['parentBaremeId']!;
-      final sousBaremeId = baremeKey;
-      
-      customNotes = await _getSousBaremeCustomNotes(
-        widget.selectedClass,
-        widget.selectedMatiere,
-        baremeId,
-        sousBaremeId,
-      );
-    } else {
-      // Barème principal
-      customNotes = await _getCustomNotesForBareme(
-        widget.selectedClass,
-        widget.selectedMatiere,
-        baremeKey,
-      );
-    }
-    
-    // Si pas de notes personnalisées spécifiques, utiliser les notes globales
-    if (customNotes.isEmpty) {
-      customNotes = await _loadCustomNotes(widget.selectedClass, widget.selectedMatiere);
-    }
-    
-    // Vérifier si toutes les notes sont numériques
-    if (customNotes.isEmpty) return false;
-    
-    for (final note in customNotes) {
+  bool _areNotesNumeric(List<String> notes) {
+    for (final note in notes) {
       final trimmedNote = note.trim();
       final numValue = double.tryParse(trimmedNote);
       if (numValue == null) {
-        print('⚠️ Note non numérique pour barème $baremeKey: "$trimmedNote"');
+        print('⚠️ Note non numérique trouvée: "$trimmedNote"');
         return false;
       }
     }
-    
+    print('✅ Toutes les notes sont numériques');
     return true;
-    
-  } catch (e) {
-    print('❌ Erreur vérification notes numériques barème: $e');
-    return false;
   }
-}
+
+// NOUVELLE MÉTHODE: Vérifier les notes personnalisées par barème/sous-barème
+  Future<bool> _hasNumericCustomNotesForBareme(String baremeKey) async {
+    if (_currentEvaluationSystem != 'custom') return false;
+
+    try {
+      List<String> customNotes = [];
+
+      if (await _isSousBareme(baremeKey)) {
+        // Sous-barème
+        final parentInfo = await _getParentBaremeInfo(baremeKey);
+        final baremeId = parentInfo['parentBaremeId']!;
+        final sousBaremeId = baremeKey;
+
+        customNotes = await _getSousBaremeCustomNotes(
+          widget.selectedClass,
+          widget.selectedMatiere,
+          baremeId,
+          sousBaremeId,
+        );
+      } else {
+        // Barème principal
+        customNotes = await _getCustomNotesForBareme(
+          widget.selectedClass,
+          widget.selectedMatiere,
+          baremeKey,
+        );
+      }
+
+      // Si pas de notes personnalisées spécifiques, utiliser les notes globales
+      if (customNotes.isEmpty) {
+        customNotes = await _loadCustomNotes(
+            widget.selectedClass, widget.selectedMatiere);
+      }
+
+      // Vérifier si toutes les notes sont numériques
+      if (customNotes.isEmpty) return false;
+
+      for (final note in customNotes) {
+        final trimmedNote = note.trim();
+        final numValue = double.tryParse(trimmedNote);
+        if (numValue == null) {
+          print('⚠️ Note non numérique pour barème $baremeKey: "$trimmedNote"');
+          return false;
+        }
+      }
+
+      return true;
+    } catch (e) {
+      print('❌ Erreur vérification notes numériques barème: $e');
+      return false;
+    }
+  }
 
 // CORRECTION : Méthode améliorée pour afficher les statistiques
   Widget _buildStatValue(String baremeKey, bool isPercentage) {
@@ -6690,18 +6786,16 @@ Future<bool> _hasNumericCustomNotesForBareme(String baremeKey) async {
     final List<Map<String, dynamic>> result = [];
     final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
-    for (final baremeDoc in selectedBaremes) {
-      final baremeId = baremeDoc['baremeId'];
-      final baremeSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('selections')
-          .doc(widget.selectedClass)
-          .collection(widget.selectedMatiere)
-          .doc(baremeId)
-          .get();
+    print('🔍 Début _getBaremesValues - ${selectedBaremes.length} barèmes');
 
-      final isBaremeSelected = baremeSnapshot['selected'] ?? false;
+    for (final baremeDoc in selectedBaremes) {
+      final baremeId = baremeDoc['baremeId'] ?? baremeDoc.id;
+      final baremeName = baremeDoc['baremeName'] ?? 'غير معروف';
+      final isBaremeSelected = baremeDoc['selected'] ?? false;
+
+      print('📌 Barème $baremeId - sélectionné: $isBaremeSelected');
+
+      // Récupérer les sous-barèmes
       final sousBaremesSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
@@ -6712,260 +6806,293 @@ Future<bool> _hasNumericCustomNotesForBareme(String baremeKey) async {
           .collection('sousBaremes')
           .get();
 
-      final selectedSousBaremes = sousBaremesSnapshot.docs
-          .where((doc) => doc['selected'] == true)
-          .toList();
+      final List<Map<String, dynamic>> sousBaremesList = [];
+
+      for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+        final isSousBaremeSelected = sousBaremeDoc['selected'] ?? false;
+        final sousBaremeName = sousBaremeDoc['sousBaremeName'] ?? 'غير معروف';
+
+        if (isSousBaremeSelected) {
+          sousBaremesList.add({
+            'id': sousBaremeDoc.id,
+            'value': sousBaremeName,
+            'type': 'sousBareme',
+          });
+          print('   ↪️ Sous-barème ${sousBaremeDoc.id} sélectionné');
+        }
+      }
 
       if (isBaremeSelected) {
-        final baremeName = baremeSnapshot['baremeName'] ??
-            _getTranslatedText('غير معروف', 'Inconnu');
         result.add({
           'id': baremeId,
           'value': baremeName,
-          'sousBaremes': [],
+          'type': 'bareme',
+          'sousBaremes': sousBaremesList,
         });
-      } else if (selectedSousBaremes.isNotEmpty) {
-        for (final sousBareme in selectedSousBaremes) {
-          final sousBaremeName = sousBareme['sousBaremeName'] ??
-              _getTranslatedText('غير معروف', 'Inconnu');
+        print(
+            '   ✅ Barème principal ajouté avec ${sousBaremesList.length} sous-barèmes');
+      } else if (sousBaremesList.isNotEmpty) {
+        // Si seulement les sous-barèmes sont sélectionnés, ajouter les sous-barèmes
+        for (final sousBareme in sousBaremesList) {
           result.add({
-            'id': sousBareme.id,
-            'value': sousBaremeName,
+            'id': sousBareme['id'],
+            'value': sousBareme['value'],
+            'type': 'sousBareme',
             'parentBaremeId': baremeId,
           });
+          print('   ↪️ Sous-barème seul ajouté: ${sousBareme['id']}');
         }
       }
     }
+
+    print('📊 Résultat final: ${result.length} éléments');
     return result;
   }
 
-Future<String> _getSelectedValue(String studentId, String baremeKey) async {
-  try {
-    // Récupérer le système d'évaluation
-    final String evaluationSystem = await _getEvaluationSystem(
-        widget.selectedClass, widget.selectedMatiere);
-    
-    String storedValue = _dropdownValues[0];
-    List<String> customNotes = [];
+  Future<String> _getSelectedValue(String studentId, String baremeKey) async {
+    try {
+      // Récupérer le système d'évaluation
+      final String evaluationSystem = await _getEvaluationSystem(
+          widget.selectedClass, widget.selectedMatiere);
 
-    // DÉTECTION CORRECTE DES SOUS-BARÈMES
-    // Les sous-barèmes sont détectés par leur structure, pas par "-"
-    // Vérifier si c'est un sous-barème en regardant dans les sélections
-    
-    final isSousBareme = await _isSousBareme(baremeKey);
-    
-    if (isSousBareme) {
-      // C'EST UN SOUS-BARÈME
-      print('🔍 SOUS-BARÈME détecté: $baremeKey');
-      
-      // Trouver le parentBaremeId pour ce sous-barème
-      final parentInfo = await _getParentBaremeInfo(baremeKey);
-      final baremeId = parentInfo['parentBaremeId'];
-      final sousBaremeId = baremeKey;
-      
-      print('   Parent baremeId: $baremeId');
-      print('   Sous-baremeId: $sousBaremeId');
+      String storedValue = _dropdownValues[0];
+      List<String> customNotes = [];
 
-      var sousBaremeDoc = await FirebaseFirestore.instance
+      // DÉTECTION CORRECTE DES SOUS-BARÈMES
+      // Les sous-barèmes sont détectés par leur structure, pas par "-"
+      // Vérifier si c'est un sous-barème en regardant dans les sélections
+
+      final isSousBareme = await _isSousBareme(baremeKey);
+
+      if (isSousBareme) {
+        // C'EST UN SOUS-BARÈME
+        print('🔍 SOUS-BARÈME détecté: $baremeKey');
+
+        // Trouver le parentBaremeId pour ce sous-barème
+        final parentInfo = await _getParentBaremeInfo(baremeKey);
+        final baremeId = parentInfo['parentBaremeId'];
+        final sousBaremeId = baremeKey;
+
+        print('   Parent baremeId: $baremeId');
+        print('   Sous-baremeId: $sousBaremeId');
+
+        var sousBaremeDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.currentUser.uid)
+            .collection('user_classes')
+            .doc(widget.classDocId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .doc(baremeId)
+            .collection('sous_baremes')
+            .doc(sousBaremeId)
+            .get();
+
+        if (sousBaremeDoc.exists) {
+          // Vérifier si l'élève est marqué absent
+          if (sousBaremeDoc.data()?['isAbsent'] == true) {
+            return 'غائب';
+          }
+          storedValue =
+              sousBaremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
+
+          // Charger les notes personnalisées du SOUS-BARÈME
+          customNotes = await _getSousBaremeCustomNotes(
+            widget.selectedClass,
+            widget.selectedMatiere,
+            baremeId!,
+            sousBaremeId,
+          );
+
+          print(
+              '📝 Notes sous-barème chargées: ${customNotes.length} notes: $customNotes');
+        }
+      } else {
+        // C'EST UN BARÈME PRINCIPAL
+        print('🔍 BARÈME PRINCIPAL détecté: $baremeKey');
+
+        var baremeDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.currentUser.uid)
+            .collection('user_classes')
+            .doc(widget.classDocId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .doc(baremeKey)
+            .get();
+
+        if (baremeDoc.exists) {
+          // Vérifier si l'élève est marqué absent
+          if (baremeDoc.data()?['isAbsent'] == true) {
+            return 'غائب';
+          }
+          storedValue = baremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
+
+          // Charger les notes personnalisées du BARÈME
+          customNotes = await _getCustomNotesForBareme(
+              widget.selectedClass, widget.selectedMatiere, baremeKey);
+
+          print(
+              '📝 Notes barème chargées: ${customNotes.length} notes: $customNotes');
+        }
+      }
+
+      // DEBUG: Afficher ce qu'on a trouvé
+      print(
+          '🎯 Conversion: $storedValue -> système: $evaluationSystem, notes: $customNotes');
+
+      // Convertir selon le système
+      final result = _getDisplayEvaluation(
+        storedValue,
+        evaluationSystem,
+        customNotes: customNotes,
+      );
+
+      print('✅ Résultat: $result');
+      return result;
+    } catch (e) {
+      print('❌ Erreur récupération valeur pour $baremeKey: $e');
+      return _dropdownValues[0];
+    }
+  }
+
+  Future<bool> _isSousBareme(String baremeKey) async {
+    try {
+      // Vérifier si c'est un sous-barème en cherchant dans la collection sous_bareme_custom_notes
+      final querySnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.currentUser.uid)
-          .collection('user_classes')
-          .doc(widget.classDocId)
-          .collection('students')
-          .doc(studentId)
-          .collection('baremes')
-          .doc(baremeId)
-          .collection('sous_baremes')
-          .doc(sousBaremeId)
+          .collection('sous_bareme_custom_notes')
+          .where('sousBaremeId', isEqualTo: baremeKey)
+          .limit(1)
           .get();
 
-      if (sousBaremeDoc.exists) {
-        // Vérifier si l'élève est marqué absent
-        if (sousBaremeDoc.data()?['isAbsent'] == true) {
-          return 'غائب';
-        }
-        storedValue = sousBaremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
-        
-        // Charger les notes personnalisées du SOUS-BARÈME
-        customNotes = await _getSousBaremeCustomNotes(
-          widget.selectedClass,
-          widget.selectedMatiere,
-          baremeId!,
-          sousBaremeId,
-        );
-        
-        print('📝 Notes sous-barème chargées: ${customNotes.length} notes: $customNotes');
+      if (querySnapshot.docs.isNotEmpty) {
+        print('✅ $baremeKey est un sous-barème');
+        return true;
       }
-    } else {
-      // C'EST UN BARÈME PRINCIPAL
-      print('🔍 BARÈME PRINCIPAL détecté: $baremeKey');
-      
-      var baremeDoc = await FirebaseFirestore.instance
+
+      // Vérifier aussi dans les sélections
+      final selectionsSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.currentUser.uid)
-          .collection('user_classes')
-          .doc(widget.classDocId)
-          .collection('students')
-          .doc(studentId)
-          .collection('baremes')
-          .doc(baremeKey)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
           .get();
 
-      if (baremeDoc.exists) {
-        // Vérifier si l'élève est marqué absent
-        if (baremeDoc.data()?['isAbsent'] == true) {
-          return 'غائب';
-        }
-        storedValue = baremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
-        
-        // Charger les notes personnalisées du BARÈME
-        customNotes = await _getCustomNotesForBareme(
-          widget.selectedClass, 
-          widget.selectedMatiere, 
-          baremeKey
-        );
-        
-        print('📝 Notes barème chargées: ${customNotes.length} notes: $customNotes');
-      }
-    }
+      for (final baremeDoc in selectionsSnapshot.docs) {
+        final baremeId = baremeDoc['baremeId'];
+        final sousBaremesSnapshot =
+            await baremeDoc.reference.collection('sousBaremes').get();
 
-    // DEBUG: Afficher ce qu'on a trouvé
-    print('🎯 Conversion: $storedValue -> système: $evaluationSystem, notes: $customNotes');
-    
-    // Convertir selon le système
-    final result = _getDisplayEvaluation(
-      storedValue, 
-      evaluationSystem,
-      customNotes: customNotes,
-    );
-    
-    print('✅ Résultat: $result');
-    return result;
-    
-  } catch (e) {
-    print('❌ Erreur récupération valeur pour $baremeKey: $e');
-    return _dropdownValues[0];
-  }
-}
-
-Future<bool> _isSousBareme(String baremeKey) async {
-  try {
-    // Vérifier si c'est un sous-barème en cherchant dans la collection sous_bareme_custom_notes
-    final querySnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('sous_bareme_custom_notes')
-        .where('sousBaremeId', isEqualTo: baremeKey)
-        .limit(1)
-        .get();
-
-    if (querySnapshot.docs.isNotEmpty) {
-      print('✅ $baremeKey est un sous-barème');
-      return true;
-    }
-
-    // Vérifier aussi dans les sélections
-    final selectionsSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('selections')
-        .doc(widget.selectedClass)
-        .collection(widget.selectedMatiere)
-        .get();
-
-    for (final baremeDoc in selectionsSnapshot.docs) {
-      final baremeId = baremeDoc['baremeId'];
-      final sousBaremesSnapshot = await baremeDoc.reference.collection('sousBaremes').get();
-      
-      for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-        if (sousBaremeDoc.id == baremeKey) {
-          print('✅ $baremeKey est un sous-barème de $baremeId');
-          return true;
+        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+          if (sousBaremeDoc.id == baremeKey) {
+            print('✅ $baremeKey est un sous-barème de $baremeId');
+            return true;
+          }
         }
       }
+
+      print('❌ $baremeKey n\'est pas un sous-barème');
+      return false;
+    } catch (e) {
+      print('❌ Erreur vérification sous-barème: $e');
+      return false;
     }
-
-    print('❌ $baremeKey n\'est pas un sous-barème');
-    return false;
-  } catch (e) {
-    print('❌ Erreur vérification sous-barème: $e');
-    return false;
   }
-}
 
-Future<Map<String, String>> _getParentBaremeInfo(String sousBaremeId) async {
-  try {
-    // Chercher dans sous_bareme_custom_notes
-    final querySnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('sous_bareme_custom_notes')
-        .where('sousBaremeId', isEqualTo: sousBaremeId)
-        .limit(1)
-        .get();
+  Future<Map<String, String>> _getParentBaremeInfo(String sousBaremeId) async {
+    try {
+      // Chercher dans sous_bareme_custom_notes
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('sous_bareme_custom_notes')
+          .where('sousBaremeId', isEqualTo: sousBaremeId)
+          .limit(1)
+          .get();
 
-    if (querySnapshot.docs.isNotEmpty) {
-      final doc = querySnapshot.docs.first;
-      final data = doc.data();
+      if (querySnapshot.docs.isNotEmpty) {
+        final doc = querySnapshot.docs.first;
+        final data = doc.data();
+        return {
+          'parentBaremeId': data['parentBaremeId'] ?? '',
+          'parentClassId': data['parentClassId'] ?? widget.selectedClass,
+          'parentMatiereId': data['parentMatiereId'] ?? widget.selectedMatiere,
+        };
+      }
+
+      // Chercher dans les sélections
+      final selectionsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .get();
+
+      for (final baremeDoc in selectionsSnapshot.docs) {
+        final baremeId = baremeDoc['baremeId'];
+        final sousBaremesSnapshot =
+            await baremeDoc.reference.collection('sousBaremes').get();
+
+        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+          if (sousBaremeDoc.id == sousBaremeId) {
+            return {
+              'parentBaremeId': baremeId,
+              'parentClassId': widget.selectedClass,
+              'parentMatiereId': widget.selectedMatiere,
+            };
+          }
+        }
+      }
+
       return {
-        'parentBaremeId': data['parentBaremeId'] ?? '',
-        'parentClassId': data['parentClassId'] ?? widget.selectedClass,
-        'parentMatiereId': data['parentMatiereId'] ?? widget.selectedMatiere,
+        'parentBaremeId': '',
+        'parentClassId': widget.selectedClass,
+        'parentMatiereId': widget.selectedMatiere,
+      };
+    } catch (e) {
+      print('❌ Erreur récupération parent bareme: $e');
+      return {
+        'parentBaremeId': '',
+        'parentClassId': widget.selectedClass,
+        'parentMatiereId': widget.selectedMatiere,
       };
     }
-
-    // Chercher dans les sélections
-    final selectionsSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('selections')
-        .doc(widget.selectedClass)
-        .collection(widget.selectedMatiere)
-        .get();
-
-    for (final baremeDoc in selectionsSnapshot.docs) {
-      final baremeId = baremeDoc['baremeId'];
-      final sousBaremesSnapshot = await baremeDoc.reference.collection('sousBaremes').get();
-      
-      for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-        if (sousBaremeDoc.id == sousBaremeId) {
-          return {
-            'parentBaremeId': baremeId,
-            'parentClassId': widget.selectedClass,
-            'parentMatiereId': widget.selectedMatiere,
-          };
-        }
-      }
-    }
-
-    return {
-      'parentBaremeId': '',
-      'parentClassId': widget.selectedClass,
-      'parentMatiereId': widget.selectedMatiere,
-    };
-  } catch (e) {
-    print('❌ Erreur récupération parent bareme: $e');
-    return {
-      'parentBaremeId': '',
-      'parentClassId': widget.selectedClass,
-      'parentMatiereId': widget.selectedMatiere,
-    };
   }
-}
 
-// Méthode pour récupérer les notes personnalisées d'un barème spécifique
 Future<List<String>> _getCustomNotesForBareme(
-  String classId, 
-  String matiereId, 
-  String baremeId
-) async {
+    String classId, String matiereId, String baremeId) async {
   try {
     print('🔍 CHERCHE NOTES pour barème: $baremeId');
     
+    // D'abord vérifier si c'est un sous-barème
+    final isSousBareme = await _isSousBareme(baremeId);
+    
+    if (isSousBareme) {
+      print('⚠️ $baremeId est un sous-barème, utiliser _getSousBaremeCustomNotes');
+      final parentInfo = await _getParentBaremeInfo(baremeId);
+      final parentBaremeId = parentInfo['parentBaremeId'] ?? '';
+      
+      return await _getSousBaremeCustomNotes(
+        classId,
+        matiereId,
+        parentBaremeId,
+        baremeId,
+      );
+    }
+
+    // C'est un barème principal - continuer avec la logique normale
+    print('📌 C\'est un barème principal');
+
     // 1. Chercher d'abord les notes GLOBALES (sans baremeId)
     final globalDocId = '$classId-$matiereId';
     print('   📍 Chercher notes globales: $globalDocId');
-    
+
     final globalDoc = await FirebaseFirestore.instance
         .collection('users')
         .doc(widget.currentUser.uid)
@@ -6981,11 +7108,11 @@ Future<List<String>> _getCustomNotesForBareme(
         return result;
       }
     }
-    
+
     // 2. Chercher les notes spécifiques au barème
     final specificDocId = '$classId-$matiereId-$baremeId';
     print('   📍 Chercher notes spécifiques: $specificDocId');
-    
+
     final specificDoc = await FirebaseFirestore.instance
         .collection('users')
         .doc(widget.currentUser.uid)
@@ -7001,7 +7128,7 @@ Future<List<String>> _getCustomNotesForBareme(
         return result;
       }
     }
-    
+
     // 3. Voir TOUS les documents pour debug
     print('🔍 Voir tous les documents bareme_custom_notes...');
     final allDocs = await FirebaseFirestore.instance
@@ -7009,7 +7136,7 @@ Future<List<String>> _getCustomNotesForBareme(
         .doc(widget.currentUser.uid)
         .collection('bareme_custom_notes')
         .get();
-    
+
     print('📋 Total documents: ${allDocs.docs.length}');
     for (final doc in allDocs.docs) {
       print('   📄 ${doc.id}');
@@ -7018,16 +7145,57 @@ Future<List<String>> _getCustomNotesForBareme(
         print('     📝 Notes: ${data['notes']}');
       }
     }
-    
+
     print('⚠️ Aucune note personnalisée trouvée');
     return [];
-    
   } catch (e) {
     print('❌ Erreur chargement notes: $e');
     return [];
   }
 }
+Future<bool> _sousBaremeHasCustomNotes(
+  String classId,
+  String matiereId,
+  String baremeId,
+  String sousBaremeId,
+) async {
+  try {
+    // Chercher dans sous_bareme_custom_notes
+    final querySnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.currentUser.uid)
+        .collection('sous_bareme_custom_notes')
+        .where('sousBaremeId', isEqualTo: sousBaremeId)
+        .where('parentBaremeId', isEqualTo: baremeId)
+        .limit(1)
+        .get();
 
+    if (querySnapshot.docs.isNotEmpty) {
+      final doc = querySnapshot.docs.first;
+      final notes = doc.data()['notes'];
+      return notes != null && notes is List && notes.isNotEmpty;
+    }
+
+    // Chercher dans bareme_custom_notes avec l'ID complet
+    final fullId = '$classId-$matiereId-$baremeId-$sousBaremeId';
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.currentUser.uid)
+        .collection('bareme_custom_notes')
+        .doc(fullId)
+        .get();
+
+    if (doc.exists) {
+      final notes = doc.data()?['notes'];
+      return notes != null && notes is List && notes.isNotEmpty;
+    }
+
+    return false;
+  } catch (e) {
+    print('Erreur vérification notes sous-barème: $e');
+    return false;
+  }
+}
 Future<List<String>> _getSousBaremeCustomNotes(
   String classId,
   String matiereId,
@@ -7037,9 +7205,31 @@ Future<List<String>> _getSousBaremeCustomNotes(
   try {
     print('🔍 SOUS-BARÈME: Recherche notes pour sousBaremeId: $sousBaremeId');
     print('   parentBaremeId: $baremeId');
-    
-    // 1. Chercher avec les paramètres exacts
-    final querySnapshot = await FirebaseFirestore.instance
+    print('   classId: $classId');
+    print('   matiereId: $matiereId');
+
+    // ESSAI 1: Chercher avec la structure complète (la plus spécifique)
+    final fullId = '$classId-$matiereId-$baremeId-$sousBaremeId';
+    print('   📍 Chercher avec ID complet: $fullId');
+
+    final fullDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.currentUser.uid)
+        .collection('bareme_custom_notes')
+        .doc(fullId)
+        .get();
+
+    if (fullDoc.exists) {
+      final notes = fullDoc.data()?['notes'];
+      if (notes != null && notes is List && notes.isNotEmpty) {
+        final result = List<String>.from(notes);
+        print('✅ Notes trouvées avec ID complet: $result');
+        return result;
+      }
+    }
+
+    // ESSAI 2: Chercher dans sous_bareme_custom_notes avec tous les filtres
+    final querySnapshot1 = await FirebaseFirestore.instance
         .collection('users')
         .doc(widget.currentUser.uid)
         .collection('sous_bareme_custom_notes')
@@ -7050,19 +7240,40 @@ Future<List<String>> _getSousBaremeCustomNotes(
         .limit(1)
         .get();
 
-    if (querySnapshot.docs.isNotEmpty) {
-      final doc = querySnapshot.docs.first;
+    if (querySnapshot1.docs.isNotEmpty) {
+      final doc = querySnapshot1.docs.first;
       final notes = doc.data()['notes'];
-      
+
       if (notes != null && notes is List && notes.isNotEmpty) {
         final result = List<String>.from(notes);
-        print('✅ Notes trouvées avec filtres exacts: $result');
+        print('✅ Notes trouvées avec tous les filtres: $result');
         return result;
       }
     }
-    
-    // 2. Chercher seulement avec sousBaremeId (plus large)
+
+    // ESSAI 3: Chercher seulement avec sousBaremeId et parentBaremeId (plus large)
     final querySnapshot2 = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.currentUser.uid)
+        .collection('sous_bareme_custom_notes')
+        .where('sousBaremeId', isEqualTo: sousBaremeId)
+        .where('parentBaremeId', isEqualTo: baremeId)
+        .limit(1)
+        .get();
+
+    if (querySnapshot2.docs.isNotEmpty) {
+      final doc = querySnapshot2.docs.first;
+      final notes = doc.data()['notes'];
+
+      if (notes != null && notes is List && notes.isNotEmpty) {
+        final result = List<String>.from(notes);
+        print('✅ Notes trouvées avec sousBaremeId et parentBaremeId: $result');
+        return result;
+      }
+    }
+
+    // ESSAI 4: Chercher seulement avec sousBaremeId (le plus large)
+    final querySnapshot3 = await FirebaseFirestore.instance
         .collection('users')
         .doc(widget.currentUser.uid)
         .collection('sous_bareme_custom_notes')
@@ -7070,323 +7281,407 @@ Future<List<String>> _getSousBaremeCustomNotes(
         .limit(1)
         .get();
 
-    if (querySnapshot2.docs.isNotEmpty) {
-      final doc = querySnapshot2.docs.first;
+    if (querySnapshot3.docs.isNotEmpty) {
+      final doc = querySnapshot3.docs.first;
       final notes = doc.data()['notes'];
-      
+
       if (notes != null && notes is List && notes.isNotEmpty) {
         final result = List<String>.from(notes);
-        print('✅ Notes trouvées avec sousBaremeId seulement: $result');
+        print('✅ Notes trouvées avec seulement sousBaremeId: $result');
         return result;
       }
     }
+
+    // ESSAI 5: Vérifier si les notes sont dans bareme_custom_notes avec sousBaremeId seul
+    final sousBaremeDocId = '$classId-$matiereId-$sousBaremeId';
+    final sousBaremeDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.currentUser.uid)
+        .collection('bareme_custom_notes')
+        .doc(sousBaremeDocId)
+        .get();
+
+    if (sousBaremeDoc.exists) {
+      final notes = sousBaremeDoc.data()?['notes'];
+      if (notes != null && notes is List && notes.isNotEmpty) {
+        final result = List<String>.from(notes);
+        print('✅ Notes trouvées dans bareme_custom_notes: $result');
+        return result;
+      }
+    }
+
+    // ESSAI 6: Chercher toutes les notes disponibles pour debug
+    print('⚠️ Aucune note personnalisée trouvée - Affichage tous les documents:');
     
+    final allDocs = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.currentUser.uid)
+        .collection('sous_bareme_custom_notes')
+        .get();
+
+    print('📋 Total documents dans sous_bareme_custom_notes: ${allDocs.docs.length}');
+    for (final doc in allDocs.docs) {
+      final data = doc.data();
+      print('   📄 ${doc.id}');
+      print('     sousBaremeId: ${data['sousBaremeId']}');
+      print('     parentBaremeId: ${data['parentBaremeId']}');
+      print('     parentClassId: ${data['parentClassId']}');
+      print('     parentMatiereId: ${data['parentMatiereId']}');
+      print('     Notes: ${data['notes'] ?? []}');
+    }
+
+    // ESSAI 7: Utiliser les notes du barème parent
+    print('↪️ Utilisation des notes du barème parent: $baremeId');
+    final parentNotes = await _getCustomNotesForBareme(
+      classId,
+      matiereId,
+      baremeId,
+    );
+
+    if (parentNotes.isNotEmpty) {
+      print('✅ Notes du parent utilisées: $parentNotes');
+      return parentNotes;
+    }
+
+    // ESSAI 8: Utiliser les notes globales
+    final globalNotes = await _loadCustomNotes(classId, matiereId);
+    if (globalNotes.isNotEmpty) {
+      print('✅ Notes globales utilisées: $globalNotes');
+      return globalNotes;
+    }
+
     print('⚠️ Aucune note personnalisée trouvée pour sous-barème $sousBaremeId');
     return [];
-    
   } catch (e) {
     print('❌ Erreur chargement notes sous-barème: $e');
     return [];
   }
 }
+  Future<String> _getEvaluationSystem(String classId, String matiereId) async {
+    try {
+      final docId = '$classId-$matiereId';
 
-Future<String> _getEvaluationSystem(String classId, String matiereId) async {
-  try {
-    final docId = '$classId-$matiereId';
-    
-    print('🔍 Chargement système pour: $docId');
-    
-    final systemDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('evaluation_systems')
-        .doc(docId)
-        .get();
+      print('🔍 Chargement système pour: $docId');
 
-    if (systemDoc.exists) {
-      final system = systemDoc['system'] ?? 'character';
-      print('✅ Système trouvé: $system');
-      return system;
-    } else {
-      // Vérifier s'il y a un document avec un ID différent
-      print('⚠️ Document non trouvé avec ID: $docId');
-      
-      final allDocs = await FirebaseFirestore.instance
+      final systemDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.currentUser.uid)
           .collection('evaluation_systems')
+          .doc(docId)
           .get();
-      
-      print('📋 Documents disponibles:');
-      for (final doc in allDocs.docs) {
-        print('   ${doc.id} -> ${doc.data()}');
+
+      if (systemDoc.exists) {
+        final system = systemDoc['system'] ?? 'character';
+        print('✅ Système trouvé: $system');
+        return system;
+      } else {
+        // Vérifier s'il y a un document avec un ID différent
+        print('⚠️ Document non trouvé avec ID: $docId');
+
+        final allDocs = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.currentUser.uid)
+            .collection('evaluation_systems')
+            .get();
+
+        print('📋 Documents disponibles:');
+        for (final doc in allDocs.docs) {
+          print('   ${doc.id} -> ${doc.data()}');
+        }
       }
+
+      print('↪️ Système par défaut: character');
+      return 'character';
+    } catch (e) {
+      print('❌ Erreur récupération système: $e');
+      return 'character';
     }
-    
-    print('↪️ Système par défaut: character');
-    return 'character';
-    
-  } catch (e) {
-    print('❌ Erreur récupération système: $e');
-    return 'character';
   }
-}
 
-Future<List<String>> _loadCustomNotes(String classId, String matiereId) async {
-  try {
-    // Même ID que pour _hasCustomNotes
-    final docId = '$classId-$matiereId';
-    
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('bareme_custom_notes')
-        .doc(docId)
-        .get();
+  Future<List<String>> _loadCustomNotes(
+      String classId, String matiereId) async {
+    try {
+      // Même ID que pour _hasCustomNotes
+      final docId = '$classId-$matiereId';
 
-    if (doc.exists && doc.data()?['notes'] != null) {
-      return List<String>.from(doc.data()!['notes']);
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('bareme_custom_notes')
+          .doc(docId)
+          .get();
+
+      if (doc.exists && doc.data()?['notes'] != null) {
+        return List<String>.from(doc.data()!['notes']);
+      }
+      return [];
+    } catch (e) {
+      print('Erreur lors du chargement des notes personnalisées: $e');
+      return [];
     }
-    return [];
-  } catch (e) {
-    print('Erreur lors du chargement des notes personnalisées: $e');
-    return [];
-  }
-}
-
-String _getDisplayEvaluation(String storedValue, String system,
-    {List<String>? customNotes}) {
-  
-  // Vérifier si c'est "غائب"
-  if (storedValue == 'غائب') {
-    return 'غائب';
-  }
-  
-  // CORRECTION: Si système custom mais pas de notes, utiliser character
-  if (system == 'custom' && (customNotes == null || customNotes.isEmpty)) {
-    print('⚠️ Système custom mais notes vides, fallback sur character');
-    return storedValue; // Retourner direct (+++, ++-, etc.)
-  }
-  
-  if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
-    final Map<String, String> mapping = {
-      '( - - - )': customNotes[0],
-      '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
-      '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
-      '( + + + )': customNotes.last,
-    };
-    final result = mapping[storedValue] ?? customNotes[0];
-    print('🎯 Conversion custom: $storedValue -> $result');
-    return result;
   }
 
-  switch (system) {
-    case 'character':
-      return storedValue;
+  String _getDisplayEvaluation(String storedValue, String system,
+      {List<String>? customNotes}) {
+    // Vérifier si c'est "غائب"
+    if (storedValue == 'غائب') {
+      return 'غائب';
+    }
 
-    case 'note_0_1_5':
-      switch (storedValue) {
-        case '( - - - )':
-          return '0';
-        case '( + - - )':
-          return '0.5';
-        case '( + + - )':
-          return '1';
-        case '( + + + )':
-          return '1.5';
-        default:
-          return '0';
-      }
+    // CORRECTION: Si système custom mais pas de notes, utiliser character
+    if (system == 'custom' && (customNotes == null || customNotes.isEmpty)) {
+      print('⚠️ Système custom mais notes vides, fallback sur character');
+      return storedValue; // Retourner direct (+++, ++-, etc.)
+    }
 
-    case 'note_0_3':
-      switch (storedValue) {
-        case '( - - - )':
-          return '0';
-        case '( + - - )':
-          return '1';
-        case '( + + - )':
-          return '2';
-        case '( + + + )':
-          return '3';
-        default:
-          return '0';
-      }
+    if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
+      final Map<String, String> mapping = {
+        '( - - - )': customNotes[0],
+        '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
+        '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
+        '( + + + )': customNotes.last,
+      };
+      final result = mapping[storedValue] ?? customNotes[0];
+      print('🎯 Conversion custom: $storedValue -> $result');
+      return result;
+    }
 
-    case 'note_0_6':
-      switch (storedValue) {
-        case '( - - - )':
-          return '0';
-        case '( + - - )':
-          return '2';
-        case '( + + - )':
-          return '4';
-        case '( + + + )':
-          return '6';
-        default:
-          return '0';
-      }
+    switch (system) {
+      case 'character':
+        return storedValue;
 
-    default:
-      return storedValue;
+      case 'note_0_1_5':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '0.5';
+          case '( + + - )':
+            return '1';
+          case '( + + + )':
+            return '1.5';
+          default:
+            return '0';
+        }
+
+      case 'note_0_3':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '1';
+          case '( + + - )':
+            return '2';
+          case '( + + + )':
+            return '3';
+          default:
+            return '0';
+        }
+
+      case 'note_0_6':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '2';
+          case '( + + - )':
+            return '4';
+          case '( + + + )':
+            return '6';
+          default:
+            return '0';
+        }
+
+      default:
+        return storedValue;
+    }
   }
-}
 
-Future<List<String>> _getDropdownValuesForBareme(String baremeKey) async {
-  try {
-    List<String> customNotes = [];
-    
-    if (baremeKey.contains('-')) {
-      // C'EST UN SOUS-BARÈME
-      var parts = baremeKey.split('-');
-      var baremeId = parts[0];
-      var sousBaremeId = parts[1];
-      
-      print('🔍 Sous-barème détecté dans getDropdownValues: $sousBaremeId');
-      
-      // Récupérer le système pour le sous-barème
-      final evaluationSystem = await _getEvaluationSystemForSousBareme(
-        widget.selectedClass,
-        widget.selectedMatiere,
-        baremeId,
-        sousBaremeId,
-      );
-      
-      print('📊 Système pour sous-barème $sousBaremeId: $evaluationSystem');
-      
-      if (evaluationSystem == 'custom') {
-        // Charger les notes personnalisées du sous-barème
-        customNotes = await _getSousBaremeCustomNotes(
+  Future<List<String>> _getDropdownValuesForBareme(String baremeKey) async {
+    try {
+      List<String> customNotes = [];
+
+      if (baremeKey.contains('-')) {
+        // C'EST UN SOUS-BARÈME
+        var parts = baremeKey.split('-');
+        var baremeId = parts[0];
+        var sousBaremeId = parts[1];
+
+        print('🔍 Sous-barème détecté dans getDropdownValues: $sousBaremeId');
+
+        // Récupérer le système pour le sous-barème
+        final evaluationSystem = await _getEvaluationSystemForSousBareme(
           widget.selectedClass,
           widget.selectedMatiere,
           baremeId,
           sousBaremeId,
         );
-        
-        print('📝 Notes custom sous-barème: ${customNotes.length} notes');
+
+        print('📊 Système pour sous-barème $sousBaremeId: $evaluationSystem');
+
+        if (evaluationSystem == 'custom') {
+          // Charger les notes personnalisées du sous-barème
+          customNotes = await _getSousBaremeCustomNotes(
+            widget.selectedClass,
+            widget.selectedMatiere,
+            baremeId,
+            sousBaremeId,
+          );
+
+          print('📝 Notes custom sous-barème: ${customNotes.length} notes');
+        }
+
+        return _getDropdownValues(evaluationSystem, customNotes);
+      } else {
+        // BARÈME PRINCIPAL
+        final String evaluationSystem = await _getEvaluationSystem(
+            widget.selectedClass, widget.selectedMatiere);
+
+        print('📊 Système pour barème $baremeKey: $evaluationSystem');
+
+        if (evaluationSystem == 'custom') {
+          customNotes = await _getCustomNotesForBareme(
+              widget.selectedClass, widget.selectedMatiere, baremeKey);
+
+          print('📝 Notes custom barème: ${customNotes.length} notes');
+        }
+
+        return _getDropdownValues(evaluationSystem, customNotes);
       }
-      
-      return _getDropdownValues(evaluationSystem, customNotes);
-    } else {
-      // BARÈME PRINCIPAL
-      final String evaluationSystem = await _getEvaluationSystem(
-          widget.selectedClass, widget.selectedMatiere);
-      
-      print('📊 Système pour barème $baremeKey: $evaluationSystem');
-      
-      if (evaluationSystem == 'custom') {
-        customNotes = await _getCustomNotesForBareme(
-          widget.selectedClass, 
-          widget.selectedMatiere, 
-          baremeKey
-        );
-        
-        print('📝 Notes custom barème: ${customNotes.length} notes');
+    } catch (e) {
+      print('❌ Erreur getDropdownValuesForBareme: $e');
+      return ['( - - - )', '( + - - )', '( + + - )', '( + + + )'];
+    }
+  }
+
+  Future<String> _getEvaluationSystemForSousBareme(String classId,
+      String matiereId, String baremeId, String sousBaremeId) async {
+    try {
+      // D'abord vérifier si le sous-barème a son propre système
+      final sousBaremeSystemDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('evaluation_systems')
+          .doc('$classId-$matiereId-$baremeId-$sousBaremeId')
+          .get();
+
+      if (sousBaremeSystemDoc.exists) {
+        final system = sousBaremeSystemDoc['system'] ?? 'character';
+        print('✅ Système trouvé pour sous-barème $sousBaremeId: $system');
+        return system;
       }
-      
-      return _getDropdownValues(evaluationSystem, customNotes);
+
+      // Sinon, utiliser le système du barème parent
+      final parentSystem = await _getEvaluationSystem(classId, matiereId);
+      print('↪️ Utilisation système parent: $parentSystem');
+      return parentSystem;
+    } catch (e) {
+      print('❌ Erreur récupération système sous-barème: $e');
+      return 'character';
     }
-  } catch (e) {
-    print('❌ Erreur getDropdownValuesForBareme: $e');
-    return ['( - - - )', '( + - - )', '( + + - )', '( + + + )'];
   }
-}
-
-Future<String> _getEvaluationSystemForSousBareme(
-  String classId, 
-  String matiereId, 
-  String baremeId, 
-  String sousBaremeId
-) async {
-  try {
-    // D'abord vérifier si le sous-barème a son propre système
-    final sousBaremeSystemDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('evaluation_systems')
-        .doc('$classId-$matiereId-$baremeId-$sousBaremeId')
-        .get();
-
-    if (sousBaremeSystemDoc.exists) {
-      final system = sousBaremeSystemDoc['system'] ?? 'character';
-      print('✅ Système trouvé pour sous-barème $sousBaremeId: $system');
-      return system;
-    }
-
-    // Sinon, utiliser le système du barème parent
-    final parentSystem = await _getEvaluationSystem(classId, matiereId);
-    print('↪️ Utilisation système parent: $parentSystem');
-    return parentSystem;
-    
-  } catch (e) {
-    print('❌ Erreur récupération système sous-barème: $e');
-    return 'character';
-  }
-}
 
 Future<void> _debugAllCustomNotes() async {
   try {
     print('=== DÉBOGAGE TOUTES LES NOTES PERSONNALISÉES ===');
+
+    final userId = widget.currentUser.uid;
     
     // Notes des barèmes principaux
     final baremeNotes = await FirebaseFirestore.instance
         .collection('users')
-        .doc(widget.currentUser.uid)
+        .doc(userId)
         .collection('bareme_custom_notes')
         .get();
-    
-    print('📋 Notes barème: ${baremeNotes.docs.length} documents');
+
+    print('📋 Notes barème (bareme_custom_notes): ${baremeNotes.docs.length} documents');
     for (final doc in baremeNotes.docs) {
-      print('   📄 ${doc.id}');
+      print('   📄 ID: ${doc.id}');
       print('     Notes: ${doc.data()['notes'] ?? []}');
     }
-    
+
     // Notes des sous-barèmes
     final sousBaremeNotes = await FirebaseFirestore.instance
         .collection('users')
-        .doc(widget.currentUser.uid)
+        .doc(userId)
         .collection('sous_bareme_custom_notes')
         .get();
-    
-    print('📋 Notes sous-barème: ${sousBaremeNotes.docs.length} documents');
+
+    print('📋 Notes sous-barème (sous_bareme_custom_notes): ${sousBaremeNotes.docs.length} documents');
     for (final doc in sousBaremeNotes.docs) {
       final data = doc.data();
-      print('   📄 ${doc.id}');
+      print('   📄 ID: ${doc.id}');
       print('     sousBaremeId: ${data['sousBaremeId']}');
       print('     parentBaremeId: ${data['parentBaremeId']}');
+      print('     parentClassId: ${data['parentClassId']}');
+      print('     parentMatiereId: ${data['parentMatiereId']}');
       print('     Notes: ${data['notes'] ?? []}');
     }
+
+    // Afficher les IDs recherchés pour les sous-barèmes problématiques
+    print('🔍 IDs recherchés pour les sous-barèmes:');
+    print('   - 5QYUZeTCGOCjZhLVGaWl');
+    print('   - hKBd7dUHoporCwSo5Kw9');
     
+    // Chercher spécifiquement ces sous-barèmes
+    final sousBareme1 = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('sous_bareme_custom_notes')
+        .where('sousBaremeId', isEqualTo: '5QYUZeTCGOCjZhLVGaWl')
+        .get();
+    
+    print('   Sous-barème 5QYUZeTCGOCjZhLVGaWl trouvé: ${sousBareme1.docs.isNotEmpty}');
+    if (sousBareme1.docs.isNotEmpty) {
+      for (final doc in sousBareme1.docs) {
+        print('     Document: ${doc.data()}');
+      }
+    }
+    
+    final sousBareme2 = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('sous_bareme_custom_notes')
+        .where('sousBaremeId', isEqualTo: 'hKBd7dUHoporCwSo5Kw9')
+        .get();
+    
+    print('   Sous-barème hKBd7dUHoporCwSo5Kw9 trouvé: ${sousBareme2.docs.isNotEmpty}');
+    if (sousBareme2.docs.isNotEmpty) {
+      for (final doc in sousBareme2.docs) {
+        print('     Document: ${doc.data()}');
+      }
+    }
+
     print('=== FIN DÉBOGAGE ===');
   } catch (e) {
     print('❌ Erreur débogage: $e');
   }
 }
-
 // Modifier l'existant
-List<String> _getDropdownValues(
-    String evaluationSystem, List<String> customNotes) {
-  switch (evaluationSystem) {
-    case 'character':
-      return ['( - - - )', '( + - - )', '( + + - )', '( + + + )'];
+  List<String> _getDropdownValues(
+      String evaluationSystem, List<String> customNotes) {
+    switch (evaluationSystem) {
+      case 'character':
+        return ['( - - - )', '( + - - )', '( + + - )', '( + + + )'];
 
-    case 'note_0_1_5':
-      return ['0', '0.5', '1', '1.5'];
+      case 'note_0_1_5':
+        return ['0', '0.5', '1', '1.5'];
 
-    case 'note_0_3':
-      return ['0', '1', '2', '3'];
+      case 'note_0_3':
+        return ['0', '1', '2', '3'];
 
-    case 'note_0_6':
-      return ['0', '2', '4', '6'];
+      case 'note_0_6':
+        return ['0', '2', '4', '6'];
 
-    case 'custom':
-      return customNotes.isNotEmpty
-          ? customNotes
-          : ['( - - - )', '( + - - )', '( + + - )', '( + + + )'];
+      case 'custom':
+        return customNotes.isNotEmpty
+            ? customNotes
+            : ['( - - - )', '( + - - )', '( + + - )', '( + + + )'];
 
-    default:
-      return ['( - - - )', '( + - - )', '( + + - )', '( + + + )'];
+      default:
+        return ['( - - - )', '( + - - )', '( + + - )', '( + + + )'];
+    }
   }
-}
 
   Future<void> _classifyStudentsByBarem(String baremeId,
       {String? sousBaremeId}) async {
@@ -7676,191 +7971,267 @@ List<String> _getDropdownValues(
   }
 
   // Méthode pour calculer la somme des notes d'un élève
-  
-  Future<double> _calculateStudentTotal(String studentId, 
+
+Future<double> _calculateStudentTotal(String studentId,
     Map<String, List<Map<String, dynamic>>> groupedBaremes) async {
   double total = 0.0;
-  
+
   try {
     // Récupérer le système d'évaluation
     final String evaluationSystem = await _getEvaluationSystem(
         widget.selectedClass, widget.selectedMatiere);
-    
-    // Pour le système custom, vérifier qu'il a des notes numériques
-    if (evaluationSystem == 'custom') {
-      final hasNumericNotes = await _isCustomSystemWithNumericNotes();
-      if (!hasNumericNotes) {
-        print('⚠️ Système custom sans notes numériques - Somme = 0');
-        return 0.0;
-      }
-    }
-    
+
+    print('🔍 CALCUL SOMME pour étudiant $studentId');
+    print('📊 Groupes disponibles: ${groupedBaremes.length}');
+
+    // Parcourir tous les groupes
     for (var entry in groupedBaremes.entries) {
-      for (final bareme in entry.value) {
-        if (bareme['type'] == 'bareme') {
-          // Barème principal
-          total += await _getNumericValueForBareme(
-              studentId, bareme['id'], evaluationSystem);
-          
-          // Sous-barèmes
-          for (final sousBareme 
-              in (bareme['sousBaremes'] as List<dynamic>? ?? [])) {
-            total += await _getNumericValueForBareme(
-                studentId, sousBareme['id'], evaluationSystem);
+      final groupKey = entry.key;
+      final baremesInGroup = entry.value;
+
+      print('  Groupe: $groupKey, ${baremesInGroup.length} éléments');
+
+      for (final bareme in baremesInGroup) {
+        final baremeType = bareme['type'] ?? 'bareme';
+        final baremeId = bareme['id'];
+
+        // Ne pas calculer les barèmes principaux qui ont des sous-barèmes
+        // (on calcule seulement les sous-barèmes et les barèmes sans sous-barèmes)
+        if (baremeType == 'bareme') {
+          final sousBaremes = bareme['sousBaremes'] as List<dynamic>? ?? [];
+          if (sousBaremes.isNotEmpty) {
+            // Ce barème a des sous-barèmes - calculer les sous-barèmes
+            for (final sousBareme in sousBaremes) {
+              final sousBaremeId = sousBareme['id'];
+              final value = await _getNumericValueForBareme(
+                  studentId, sousBaremeId, evaluationSystem);
+              print('    - SOUS-BARÈME: $sousBaremeId -> $value');
+              if (value > 0) {
+                total += value;
+                print('      ✅ Ajouté à la somme: $value (Total: $total)');
+              }
+            }
+            continue; // Passer au prochain élément
           }
-        } else {
-          // Sous-barème seul
-          total += await _getNumericValueForBareme(
-              studentId, bareme['id'], evaluationSystem);
+        }
+
+        // Pour les barèmes sans sous-barèmes et les sous-barèmes seuls
+        if (baremeId != null && baremeId.isNotEmpty) {
+          final value = await _getNumericValueForBareme(
+              studentId, baremeId, evaluationSystem);
+          print('    - ${baremeType == 'bareme' ? 'BARÈME' : 'SOUS-BARÈME'}: $baremeId -> $value');
+          if (value > 0) {
+            total += value;
+            print('      ✅ Ajouté à la somme: $value (Total: $total)');
+          }
         }
       }
     }
+
+    print('✅ SOMME TOTALE pour $studentId: $total');
   } catch (e) {
-    print('Erreur calcul total pour $studentId: $e');
+    print('❌ Erreur calcul total pour $studentId: $e');
+    print('Stack trace: ${e.toString()}');
   }
-  
+
   return total;
 }
+  void _debugGroupedBaremesStructure(
+      Map<String, List<Map<String, dynamic>>> groupedBaremes) {
+    print('=== DÉBOGAGE STRUCTURE BARÈMES ===');
+    print('Nombre de groupes: ${groupedBaremes.length}');
 
-// Méthode pour convertir une valeur en nombre
+    for (var entry in groupedBaremes.entries) {
+      print('Groupe: ${entry.key}');
+      print('  Nombre d\'éléments: ${entry.value.length}');
+
+      for (var bareme in entry.value) {
+        print('  - ID: ${bareme['id']}');
+        print('    Type: ${bareme['type']}');
+        print('    Valeur: ${bareme['value']}');
+        print('    Sous-barèmes: ${bareme['sousBaremes'] ?? []}');
+        if (bareme['sousBaremes'] != null && bareme['sousBaremes'] is List) {
+          final sousBaremes = bareme['sousBaremes'] as List;
+          print('    Nombre de sous-barèmes: ${sousBaremes.length}');
+          for (var sous in sousBaremes) {
+            print('      * ${sous['id']}: ${sous['value']}');
+          }
+        }
+      }
+    }
+    print('=== FIN DÉBOGAGE ===');
+  }
+  // Méthode pour convertir une valeur en nombre
 
 // MÉTHODE CORRIGÉE: Conversion avec vérification des notes numériques
-Future<double> _getNumericValueForBareme(
-    String studentId, String baremeKey, String evaluationSystem) async {
-  try {
-    final storedValue = await _getStoredValue(studentId, baremeKey);
-    
-    // Vérifier si c'est "غائب" (absent)
-    if (storedValue == 'غائب') {
+
+  Future<double> _getNumericValueForBareme(
+      String studentId, String baremeKey, String evaluationSystem) async {
+    try {
+      // Récupérer la valeur stockée
+      final storedValue = await _getStoredValue(studentId, baremeKey);
+
+      // Vérifier si c'est "غائب" (absent)
+      if (storedValue == 'غائب') {
+        return 0.0;
+      }
+
+      // Charger les notes personnalisées si nécessaire
+      List<String> customNotes = [];
+      if (evaluationSystem == 'custom') {
+        if (baremeKey.contains('-')) {
+          // Sous-barème
+          var parts = baremeKey.split('-');
+          if (parts.length >= 2) {
+            var baremeId = parts[0];
+            var sousBaremeId = parts[1];
+            customNotes = await _getSousBaremeCustomNotes(
+              widget.selectedClass,
+              widget.selectedMatiere,
+              baremeId,
+              sousBaremeId,
+            );
+          }
+        } else {
+          // Barème principal
+          customNotes = await _getCustomNotesForBareme(
+            widget.selectedClass,
+            widget.selectedMatiere,
+            baremeKey,
+          );
+        }
+      }
+
+      // Convertir selon le système
+      final displayValue = _getDisplayEvaluation(
+        storedValue,
+        evaluationSystem,
+        customNotes: customNotes,
+      );
+
+      // Convertir en nombre
+      return _convertToNumber(displayValue, evaluationSystem, customNotes);
+    } catch (e) {
+      print('Erreur conversion numérique pour $baremeKey: $e');
       return 0.0;
     }
-    
-    // Charger les notes personnalisées si nécessaire
-    List<String> customNotes = [];
-    if (baremeKey.contains('-')) {
-      // Sous-barème
-      var parts = baremeKey.split('-');
-      var baremeId = parts[0];
-      var sousBaremeId = parts[1];
-      customNotes = await _getSousBaremeCustomNotes(
-        widget.selectedClass,
-        widget.selectedMatiere,
-        baremeId,
-        sousBaremeId,
-      );
-    } else {
-      // Barème principal
-      customNotes = await _getCustomNotesForBareme(
-        widget.selectedClass,
-        widget.selectedMatiere,
-        baremeKey,
-      );
-    }
-    
-    // Convertir selon le système
-    final displayValue = _getDisplayEvaluation(
-      storedValue,
-      evaluationSystem,
-      customNotes: customNotes,
-    );
-    
-    // Convertir en nombre - vérifier si c'est numérique
-    return _convertToNumber(displayValue, evaluationSystem, customNotes);
-    
-  } catch (e) {
-    print('Erreur conversion numérique pour $baremeKey: $e');
-    return 0.0;
   }
-}
-
 
 // Méthode pour récupérer la valeur stockée (sans conversion)
-Future<String> _getStoredValue(String studentId, String baremeKey) async {
-  try {
-    final isSousBareme = await _isSousBareme(baremeKey);
-    
-    if (isSousBareme) {
-      final parentInfo = await _getParentBaremeInfo(baremeKey);
-      final baremeId = parentInfo['parentBaremeId'];
-      final sousBaremeId = baremeKey;
-      
-      var sousBaremeDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.currentUser.uid)
-          .collection('user_classes')
-          .doc(widget.classDocId)
-          .collection('students')
-          .doc(studentId)
-          .collection('baremes')
-          .doc(baremeId)
-          .collection('sous_baremes')
-          .doc(sousBaremeId)
-          .get();
-      
-      return sousBaremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
-    } else {
-      var baremeDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.currentUser.uid)
-          .collection('user_classes')
-          .doc(widget.classDocId)
-          .collection('students')
-          .doc(studentId)
-          .collection('baremes')
-          .doc(baremeKey)
-          .get();
-      
-      return baremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
-    }
-  } catch (e) {
-    return '( - - - )';
-  }
-}
+  Future<String> _getStoredValue(String studentId, String baremeKey) async {
+    try {
+      final isSousBareme = await _isSousBareme(baremeKey);
 
-// Méthode pour convertir la valeur affichée en nombre
-double _convertToNumber(String displayValue, String system, List<String> customNotes) {
+      if (isSousBareme) {
+        final parentInfo = await _getParentBaremeInfo(baremeKey);
+        final baremeId = parentInfo['parentBaremeId'];
+        final sousBaremeId = baremeKey;
+
+        var sousBaremeDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.currentUser.uid)
+            .collection('user_classes')
+            .doc(widget.classDocId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .doc(baremeId)
+            .collection('sous_baremes')
+            .doc(sousBaremeId)
+            .get();
+
+        return sousBaremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
+      } else {
+        var baremeDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(widget.currentUser.uid)
+            .collection('user_classes')
+            .doc(widget.classDocId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .doc(baremeKey)
+            .get();
+
+        return baremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
+      }
+    } catch (e) {
+      return '( - - - )';
+    }
+  }
+
+
+double _convertToNumber(
+    String displayValue, String system, List<String> customNotes) {
   // Si c'est "غائب" ou vide
   if (displayValue == 'غائب' || displayValue.isEmpty) {
     return 0.0;
   }
-  
-  // Pour le système custom, vérifier si la note est numérique
+
+  // Pour le système custom
   if (system == 'custom') {
+    // Si pas de notes personnalisées, traiter comme character system
+    if (customNotes.isEmpty) {
+      print('⚠️ Pas de notes custom, fallback sur character system');
+      switch (displayValue) {
+        case '( - - - )':
+          return 0.0;
+        case '( + - - )':
+          return 0.5;
+        case '( + + - )':
+          return 1.0;
+        case '( + + + )':
+          return 1.5;
+        default:
+          return 0.0;
+      }
+    }
+
     // Essayer de convertir directement en nombre
     final numValue = double.tryParse(displayValue);
     if (numValue != null) {
       return numValue;
     }
-    
+
     // Si non numérique, essayer de trouver l'index dans customNotes
-    if (customNotes.isNotEmpty) {
-      final index = customNotes.indexOf(displayValue);
-      if (index != -1) {
-        // Pour custom avec notes textuelles, ne pas additionner
-        print('⚠️ Note non numérique dans custom: "$displayValue" - Valeur = 0');
-        return 0.0;
+    final index = customNotes.indexOf(displayValue);
+    if (index != -1) {
+      // Convertir l'index en valeur numérique proportionnelle
+      // Exemple: si 4 notes [0, 0.25, 0.5, 0.75], l'index 0 = 0, index 3 = 0.75
+      if (index == 0) return 0.0;
+      if (index == customNotes.length - 1) {
+        // Dernière note (max)
+        final maxValue = double.tryParse(customNotes.last) ?? customNotes.length - 1.0;
+        return maxValue;
       }
+      return index.toDouble();
     }
-    
+
     return 0.0;
   }
-  
-  // Pour les autres systèmes
+
+  // Pour les autres systèmes (character)
   if (system == 'character') {
     switch (displayValue) {
-      case '( - - - )': return 0.0;
-      case '( + - - )': return 1.0;
-      case '( + + - )': return 2.0;
-      case '( + + + )': return 3.0;
-      default: return 0.0;
+      case '( - - - )':
+        return 0.0;
+      case '( + - - )':
+        return 0.5;
+      case '( + + - )':
+        return 1.0;
+      case '( + + + )':
+        return 1.5;
+      default:
+        return 0.0;
     }
   }
-  
+
   // Pour les systèmes numériques
   final numValue = double.tryParse(displayValue);
   return numValue ?? 0.0;
 }
 }
+
 class StudentDropdown extends StatefulWidget {
   final String studentId;
   final String baremeId;
@@ -7910,4 +8281,25 @@ class _StudentDropdownState extends State<StudentDropdown> {
       },
     );
   }
+}
+void _debugBaremesStructure(List<Map<String, dynamic>> baremesValues) {
+  print('=== DÉBOGAGE STRUCTURE BARÈMES ===');
+  print('Total éléments: ${baremesValues.length}');
+  
+  for (int i = 0; i < baremesValues.length; i++) {
+    final bareme = baremesValues[i];
+    print('${i + 1}. ID: ${bareme['id']}');
+    print('   Type: ${bareme['type']}');
+    print('   Valeur: ${bareme['value']}');
+    print('   Parent: ${bareme['parentBaremeId'] ?? 'N/A'}');
+    
+    if (bareme['type'] == 'bareme') {
+      final sousBaremes = bareme['sousBaremes'] as List<dynamic>? ?? [];
+      print('   Sous-barèmes: ${sousBaremes.length}');
+      for (var sous in sousBaremes) {
+        print('     - ${sous['id']}: ${sous['value']}');
+      }
+    }
+  }
+  print('=== FIN DÉBOGAGE ===');
 }

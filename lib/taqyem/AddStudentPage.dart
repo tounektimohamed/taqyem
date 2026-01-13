@@ -2283,78 +2283,78 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                       Container(
                                         padding: EdgeInsets.symmetric(
                                             vertical: 8, horizontal: 16),
-                                        child: Wrap(
-                                          spacing: 8,
-                                          runSpacing: 4,
-                                          alignment: WrapAlignment.center,
-                                          children:
-                                              baremeCustomNotes.map((note) {
-                                            return Container(
-                                              padding: EdgeInsets.symmetric(
-                                                  horizontal: 12, vertical: 6),
-                                              decoration: BoxDecoration(
-                                                color: Colors.pink
-                                                    .withOpacity(0.1),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                border: Border.all(
-                                                  color: Colors.pink,
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              child: Text(
-                                                note,
-                                                style: TextStyle(
-                                                  color: Colors.pink,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                            );
-                                          }).toList(),
-                                        ),
+                                        // child: Wrap(
+                                        //   spacing: 8,
+                                        //   runSpacing: 4,
+                                        //   alignment: WrapAlignment.center,
+                                        //   children:
+                                        //       baremeCustomNotes.map((note) {
+                                        //     return Container(
+                                        //       padding: EdgeInsets.symmetric(
+                                        //           horizontal: 12, vertical: 6),
+                                        //       // decoration: BoxDecoration(
+                                        //       //   color: Colors.pink
+                                        //       //       .withOpacity(0.1),
+                                        //       //   borderRadius:
+                                        //       //       BorderRadius.circular(8),
+                                        //       //   border: Border.all(
+                                        //       //     color: Colors.pink,
+                                        //       //     width: 1,
+                                        //       //   ),
+                                        //       // ),
+                                        //       // child: Text(
+                                        //       //   note,
+                                        //       //   style: TextStyle(
+                                        //       //     color: Colors.pink,
+                                        //       //     fontWeight: FontWeight.bold,
+                                        //       //     fontSize: 14,
+                                        //       //   ),
+                                        //       // ),
+                                        //     );
+                                        //   }).toList(),
+                                        // ),
                                       ),
 
                                     // Légende des valeurs pour ce barème
-                                    Container(
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 8),
-                                      child: Wrap(
-                                        spacing: 8,
-                                        runSpacing: 4,
-                                        alignment: WrapAlignment.center,
-                                        children: displayEvaluationOptions
-                                            .map((value) {
-                                          return Container(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: evaluationColors[value]
-                                                      ?.withOpacity(0.1) ??
-                                                  Colors.grey[100],
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                              border: Border.all(
-                                                color:
-                                                    evaluationColors[value] ??
-                                                        Colors.grey,
-                                                width: 1,
-                                              ),
-                                            ),
-                                            child: Text(
-                                              value,
-                                              style: TextStyle(
-                                                color:
-                                                    evaluationColors[value] ??
-                                                        Colors.grey,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                          );
-                                        }).toList(),
-                                      ),
-                                    ),
+                                    // Container(
+                                    //   padding:
+                                    //       EdgeInsets.symmetric(vertical: 8),
+                                    //   child: Wrap(
+                                    //     spacing: 8,
+                                    //     runSpacing: 4,
+                                    //     alignment: WrapAlignment.center,
+                                    //     children: displayEvaluationOptions
+                                    //         .map((value) {
+                                    //       return Container(
+                                    //         padding: EdgeInsets.symmetric(
+                                    //             horizontal: 8, vertical: 4),
+                                    //         decoration: BoxDecoration(
+                                    //           color: evaluationColors[value]
+                                    //                   ?.withOpacity(0.1) ??
+                                    //               Colors.grey[100],
+                                    //           borderRadius:
+                                    //               BorderRadius.circular(6),
+                                    //           border: Border.all(
+                                    //             color:
+                                    //                 evaluationColors[value] ??
+                                    //                     Colors.grey,
+                                    //             width: 1,
+                                    //           ),
+                                    //         ),
+                                    //         child: Text(
+                                    //           value,
+                                    //           style: TextStyle(
+                                    //             color:
+                                    //                 evaluationColors[value] ??
+                                    //                     Colors.grey,
+                                    //             fontWeight: FontWeight.bold,
+                                    //             fontSize: 12,
+                                    //           ),
+                                    //         ),
+                                    //       );
+                                    //     }).toList(),
+                                    //   ),
+                                    // ),
 
                                     if (hasSousBaremes)
                                       Column(
@@ -3231,36 +3231,36 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           ),
 
           // Afficher les notes personnalisées spécifiques à ce sous-barème
-          if (hasSpecificNotes)
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                alignment: WrapAlignment.center,
-                children: sousBaremeCustomNotes!.map((note) {
-                  return Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.purple.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: Colors.purple,
-                        width: 1,
-                      ),
-                    ),
-                    child: Text(
-                      note,
-                      style: TextStyle(
-                        color: Colors.purple,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
+          // if (hasSpecificNotes)
+          //   Container(
+          //     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          //     child: Wrap(
+          //       spacing: 8,
+          //       runSpacing: 4,
+          //       alignment: WrapAlignment.center,
+          //       children: sousBaremeCustomNotes!.map((note) {
+          //         return Container(
+          //           padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          //           decoration: BoxDecoration(
+          //             color: Colors.purple.withOpacity(0.1),
+          //             borderRadius: BorderRadius.circular(6),
+          //             border: Border.all(
+          //               color: Colors.purple,
+          //               width: 1,
+          //             ),
+          //           ),
+          //           child: Text(
+          //             note,
+          //             style: TextStyle(
+          //               color: Colors.purple,
+          //               fontSize: 12,
+          //               fontWeight: FontWeight.bold,
+          //             ),
+          //           ),
+          //         );
+          //       }).toList(),
+          //     ),
+          //   ),
 
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
