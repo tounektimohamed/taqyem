@@ -3979,54 +3979,91 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     );
   }
 
-  Future<void> fetchMarks() async {
-    if (!_isMounted) return;
+Future<void> fetchMarks() async {
+  if (!_isMounted) return;
 
-    try {
-      User? currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) return;
+  try {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
 
-      var studentsSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser.uid)
-          .collection('user_classes')
-          .doc(widget.selectedClass)
-          .collection('students')
-          .get();
+    // Récupérer les étudiants
+    var studentsSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('user_classes')
+        .doc(widget.selectedClass)
+        .collection('students')
+        .get();
 
-      if (_isMounted) {
-        setState(() {
-          totalStudents = studentsSnapshot.docs.length;
-        });
+    if (_isMounted) {
+      setState(() {
+        totalStudents = studentsSnapshot.docs.length;
+      });
+    }
+
+    // Récupérer les barèmes sélectionnés
+    var selectedBaremes = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('selections')
+        .doc(widget.selectedClass)
+        .collection(widget.selectedMatiere)
+        .get();
+
+    // Réinitialiser les compteurs
+    sumCriteriaMaxPerBareme.clear();
+
+    // Initialiser les compteurs pour tous les barèmes sélectionnés
+    for (var baremeDoc in selectedBaremes.docs) {
+      var baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
+      var isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
+
+      if (isBaremeSelected) {
+        sumCriteriaMaxPerBareme[baremeId] = 0;
       }
 
-      var selectedBaremes = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser.uid)
-          .collection('selections')
-          .doc(widget.selectedClass)
-          .collection(widget.selectedMatiere)
-          .get();
+      // Vérifier les sous-barèmes
+      var sousBaremesSnapshot =
+          await baremeDoc.reference.collection('sousBaremes').get();
+      for (var sousBaremeDoc in sousBaremesSnapshot.docs) {
+        var isSousBaremeSelected =
+            _getFieldSafe(sousBaremeDoc, 'selected', false);
+        if (isSousBaremeSelected) {
+          var sousBaremeId = sousBaremeDoc.id;
+          sumCriteriaMaxPerBareme[sousBaremeId] = 0;
+        }
+      }
+    }
 
-      // Réinitialiser les compteurs
-      sumCriteriaMaxPerBareme.clear();
-
-      // DEBUG: Afficher les barèmes sélectionnés
-      print('=== DEBUG fetchMarks ===');
-      print('Total étudiants: $totalStudents');
-      print('Barèmes sélectionnés: ${selectedBaremes.docs.length}');
+    // Compter les élèves qui ont atteint chaque critère
+    for (var studentDoc in studentsSnapshot.docs) {
+      var studentId = studentDoc.id;
 
       for (var baremeDoc in selectedBaremes.docs) {
         var baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
         var isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
-        // DEBUG
-        print('Barème $baremeId - sélectionné: $isBaremeSelected');
-
-        // Initialiser le compteur pour le barème principal si sélectionné
         if (isBaremeSelected) {
-          sumCriteriaMaxPerBareme[baremeId] = 0;
-          print('  -> Compteur initialisé pour barème principal: $baremeId');
+          // Vérifier le barème principal
+          var baremeSnapshot = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
+              .collection('user_classes')
+              .doc(widget.selectedClass)
+              .collection('students')
+              .doc(studentId)
+              .collection('baremes')
+              .doc(baremeId)
+              .get();
+
+          if (baremeSnapshot.exists) {
+            var value = _getFieldSafe(baremeSnapshot, 'Marks', '( - - - )');
+            // Compter si la note est positive
+            if (value == '( + + + )' || value == '( + + - )') {
+              sumCriteriaMaxPerBareme[baremeId] =
+                  (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
+            }
+          }
         }
 
         // Vérifier les sous-barèmes
@@ -4037,25 +4074,9 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               _getFieldSafe(sousBaremeDoc, 'selected', false);
           if (isSousBaremeSelected) {
             var sousBaremeId = sousBaremeDoc.id;
-            // Créer une clé unique pour le sous-barème
-            var sousBaremeKey = '$baremeId-$sousBaremeId';
-            sumCriteriaMaxPerBareme[sousBaremeKey] = 0;
-            print('  -> Compteur initialisé pour sous-barème: $sousBaremeKey');
-          }
-        }
-      }
 
-      // Compter les élèves qui ont atteint chaque critère
-      for (var studentDoc in studentsSnapshot.docs) {
-        var studentId = studentDoc.id;
-
-        for (var baremeDoc in selectedBaremes.docs) {
-          var baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
-          var isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
-
-          if (isBaremeSelected) {
-            // Vérifier le barème principal
-            var baremeSnapshot = await FirebaseFirestore.instance
+            // Vérifier la valeur du sous-barème
+            var sousBaremeSnapshot = await FirebaseFirestore.instance
                 .collection('users')
                 .doc(currentUser.uid)
                 .collection('user_classes')
@@ -4064,82 +4085,29 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                 .doc(studentId)
                 .collection('baremes')
                 .doc(baremeId)
+                .collection('sous_baremes')
+                .doc(sousBaremeId)
                 .get();
 
-            if (baremeSnapshot.exists) {
-              var value = _getFieldSafe(baremeSnapshot, 'Marks', '');
+            if (sousBaremeSnapshot.exists) {
+              var value = _getFieldSafe(sousBaremeSnapshot, 'Marks', '( - - - )');
               if (value == '( + + + )' || value == '( + + - )') {
-                sumCriteriaMaxPerBareme[baremeId] =
-                    (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
-                print(
-                    '  ✅ Étudiant $studentId - Barème $baremeId: $value -> COMPTÉ');
-              } else {
-                print(
-                    '  ❌ Étudiant $studentId - Barème $baremeId: $value -> NON COMPTÉ');
-              }
-            } else {
-              print('  📭 Étudiant $studentId - Barème $baremeId: NON TROUVÉ');
-            }
-          }
-
-          // Vérifier les sous-barèmes
-          var sousBaremesSnapshot =
-              await baremeDoc.reference.collection('sousBaremes').get();
-          for (var sousBaremeDoc in sousBaremesSnapshot.docs) {
-            var isSousBaremeSelected =
-                _getFieldSafe(sousBaremeDoc, 'selected', false);
-            if (isSousBaremeSelected) {
-              var sousBaremeId = sousBaremeDoc.id;
-              var sousBaremeKey = '$baremeId-$sousBaremeId';
-
-              // Vérifier la valeur du sous-barème
-              var sousBaremeSnapshot = await FirebaseFirestore.instance
-                  .collection('users')
-                  .doc(currentUser.uid)
-                  .collection('user_classes')
-                  .doc(widget.selectedClass)
-                  .collection('students')
-                  .doc(studentId)
-                  .collection('baremes')
-                  .doc(baremeId)
-                  .collection('sous_baremes')
-                  .doc(sousBaremeId)
-                  .get();
-
-              if (sousBaremeSnapshot.exists) {
-                var value = _getFieldSafe(sousBaremeSnapshot, 'Marks', '');
-                if (value == '( + + + )' || value == '( + + - )') {
-                  sumCriteriaMaxPerBareme[sousBaremeKey] =
-                      (sumCriteriaMaxPerBareme[sousBaremeKey] ?? 0) + 1;
-                  print(
-                      '  ✅ Étudiant $studentId - Sous-barème $sousBaremeKey: $value -> COMPTÉ');
-                } else {
-                  print(
-                      '  ❌ Étudiant $studentId - Sous-barème $sousBaremeKey: $value -> NON COMPTÉ');
-                }
-              } else {
-                print(
-                    '  📭 Étudiant $studentId - Sous-barème $sousBaremeKey: NON TROUVÉ');
+                sumCriteriaMaxPerBareme[sousBaremeId] =
+                    (sumCriteriaMaxPerBareme[sousBaremeId] ?? 0) + 1;
               }
             }
           }
         }
       }
-
-      // DEBUG: Afficher les résultats finaux
-      print('=== RÉSULTATS FINAUX ===');
-      sumCriteriaMaxPerBareme.forEach((key, value) {
-        print('$key: $value étudiants');
-      });
-
-      if (_isMounted) {
-        setState(() {});
-      }
-    } catch (e) {
-      print('Erreur lors de la récupération des marques : $e');
     }
-  }
 
+    if (_isMounted) {
+      setState(() {});
+    }
+  } catch (e) {
+    print('Erreur lors de la récupération des marques : $e');
+  }
+}
   // MODIFICATION : Widgets avec textes traduits
   Widget _buildPrintCreditWidget() {
     Color backgroundColor;

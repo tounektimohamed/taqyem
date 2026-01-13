@@ -422,39 +422,7 @@ class HTMLReportGenerator {
             flex-direction: column;
             justify-content: center;
         }
-        /* Ajoutez dans la section CSS */
-.stats-row {
-  background: linear-gradient(135deg, #e3f2fd, #bbdefb) !important;
-  font-weight: bold;
-  font-size: 14px;
-}
-
-.percentage-row {
-  background: linear-gradient(135deg, #f3e5f5, #e1bee7) !important;
-  font-weight: bold;
-  font-size: 14px;
-}
-
-.percentage-high { 
-  color: #2E7D32 !important; 
-  font-weight: bold !important;
-}
-
-.percentage-medium { 
-  color: #FF9800 !important; 
-  font-weight: bold !important;
-}
-
-.percentage-low { 
-  color: #D32F2F !important; 
-  font-weight: bold !important;
-}
-
-.total-row {
-  background: linear-gradient(135deg, #e8f5e9, #c8e6c9) !important;
-  font-weight: bold;
-  border-top: 2px solid #4CAF50 !important;
-}
+        
         .cover-page::before {
             content: '';
             position: absolute;
@@ -895,38 +863,6 @@ class HTMLReportGenerator {
             background: #e3f2fd !important;
             font-weight: bold;
         }
-        /* Styles pour les marques */
-.mark-excellent { background-color: #d4edda !important; color: #155724 !important; font-weight: bold !important; }
-.mark-good { background-color: #fff3cd !important; color: #856404 !important; font-weight: bold !important; }
-.mark-average { background-color: #ffeaa7 !important; color: #856404 !important; }
-.mark-poor { background-color: #f8d7da !important; color: #721c24 !important; }
-.mark-absent { background-color: #e2e3e5 !important; color: #6c757d !important; font-style: italic !important; }
-
-/* Styles pour les statistiques */
-.stats-row td {
-  background: linear-gradient(135deg, #e3f2fd, #bbdefb) !important;
-  font-weight: bold !important;
-  text-align: center !important;
-  border: 1px solid #90caf9 !important;
-  color: #0d47a1 !important;
-}
-
-.percentage-row td {
-  background: linear-gradient(135deg, #f3e5f5, #e1bee7) !important;
-  font-weight: bold !important;
-  text-align: center !important;
-  border: 1px solid #ce93d8 !important;
-}
-
-.percentage-high { color: #2E7D32 !important; }
-.percentage-medium { color: #FF9800 !important; }
-.percentage-low { color: #D32F2F !important; }
-
-.total-row td {
-  background: linear-gradient(135deg, #e8f5e9, #c8e6c9) !important;
-  font-weight: bold !important;
-  border-top: 2px solid #4CAF50 !important;
-}
         /* Styles pour la hiérarchie des barèmes */
 .main-bareme-header {
   background: #075260 !important;
@@ -1405,124 +1341,219 @@ static String _buildTableHTML({
   required bool isFrenchInterface,
   required Map<String, String> t,
 }) {
-  // DÉBOGAGE: Afficher les statistiques reçues
-  print('🔍 === DÉBOGAGE STATISTIQUES DANS HTML ===');
-  print('Total étudiants: $totalStudents');
-  print('Contenu de sumCriteriaMaxPerBareme:');
-  if (sumCriteriaMaxPerBareme.isEmpty) {
-    print('⚠️ Aucune statistique disponible!');
-  } else {
-    sumCriteriaMaxPerBareme.forEach((key, value) {
-      print('  "$key": $value');
-    });
-  }
-
-  // Si pas de barèmes, afficher un message
-  if (baremes.isEmpty) {
-    return '''
-    <div class="table-container">
-      <div style="text-align: center; padding: 40px; color: #666; font-size: 16px;">
-        ${isFrenchInterface ? 'Aucun barème sélectionné pour cette évaluation.' : 'لم يتم تحديد أي معايير لهذا التقييم.'}
-      </div>
-    </div>
-    ''';
-  }
-
   // Étape 1: Organiser les barèmes par hiérarchie
   final List<Map<String, dynamic>> mainBaremes = [];
-  final Map<String, List<Map<String, dynamic>>> baremesByParent = {};
-
-  // Première passe: Organiser par parent
+  
+  // D'abord, extraire tous les barèmes parents potentiels des noms des sous-barèmes
+  final Map<String, String> parentNamesFromSubBaremes = {};
+  
+  for (var bareme in baremes) {
+    final baremeId = bareme['id'].toString();
+    final baremeValue = bareme['value']?.toString() ?? '';
+    final parentBaremeId = bareme['parentBaremeId']?.toString();
+    
+    if (parentBaremeId != null && parentBaremeId.isNotEmpty) {
+      // C'est un sous-barème - extraire le nom du parent
+      // Rechercher le nom du parent dans le nom du sous-barème
+      // Exemple: "مع 3.ا" -> parent = "مع 3"
+      String parentName = _extractParentNameFromSubBareme(baremeValue);
+      if (parentName.isNotEmpty) {
+        parentNamesFromSubBaremes[parentBaremeId] = parentName;
+      }
+    }
+  }
+  
+  // Maintenant organiser les barèmes
   for (var bareme in baremes) {
     final baremeId = bareme['id'].toString();
     final baremeValue = bareme['value']?.toString() ?? '';
     final parentBaremeId = bareme['parentBaremeId']?.toString();
     
     if (parentBaremeId == null || parentBaremeId.isEmpty) {
-      // C'est un barème principal
-      mainBaremes.add({
-        'id': baremeId,
-        'value': baremeValue,
-        'isMain': true,
-        'subBaremes': [],
-        'original': bareme,
-      });
-    } else {
-      // C'est un sous-barème
-      if (!baremesByParent.containsKey(parentBaremeId)) {
-        baremesByParent[parentBaremeId] = [];
+      // Barème principal
+      final existingIndex = mainBaremes.indexWhere((b) => b['id'] == baremeId);
+      if (existingIndex == -1) {
+        mainBaremes.add({
+          'id': baremeId,
+          'value': baremeValue,
+          'hasSubBaremes': false,
+          'subBaremes': [],
+          'isVirtual': false,
+        });
       }
-      baremesByParent[parentBaremeId]!.add({
-        'id': baremeId,
-        'value': baremeValue,
-        'original': bareme,
-      });
-    }
-  }
-
-  // Deuxième passe: Associer les sous-barèmes à leurs parents
-  for (var mainBareme in mainBaremes) {
-    final mainBaremeId = mainBareme['id'] as String;
-    if (baremesByParent.containsKey(mainBaremeId)) {
-      mainBareme['subBaremes'] = baremesByParent[mainBaremeId]!;
-      mainBareme['hasSubBaremes'] = true;
     } else {
-      mainBareme['hasSubBaremes'] = false;
+      // Sous-barème - trouver ou créer son parent
+      final parentIndex = mainBaremes.indexWhere((b) => b['id'] == parentBaremeId);
+      
+      String parentName = baremeValue;
+      // Essayer d'extraire le nom du parent
+      parentName = _extractParentNameFromSubBareme(baremeValue);
+      if (parentName.isEmpty) {
+        // Si impossible à extraire, utiliser le nom du sous-barème sans la lettre
+        parentName = _removeSubBaremeLetter(baremeValue);
+      }
+      
+      // Utiliser le nom extrait des sous-barèmes s'il existe
+      if (parentNamesFromSubBaremes.containsKey(parentBaremeId)) {
+        parentName = parentNamesFromSubBaremes[parentBaremeId]!;
+      }
+      
+      if (parentIndex != -1) {
+        // Parent existe déjà
+        mainBaremes[parentIndex]['hasSubBaremes'] = true;
+        if (!mainBaremes[parentIndex].containsKey('subBaremes')) {
+          mainBaremes[parentIndex]['subBaremes'] = [];
+        }
+        
+        (mainBaremes[parentIndex]['subBaremes'] as List).add({
+          'id': baremeId,
+          'value': baremeValue,
+        });
+      } else {
+        // Créer un nouveau parent
+        mainBaremes.add({
+          'id': parentBaremeId,
+          'value': parentName,
+          'hasSubBaremes': true,
+          'subBaremes': [{
+            'id': baremeId,
+            'value': baremeValue,
+          }],
+          'isVirtual': true,
+        });
+      }
     }
   }
 
-  // Ajouter aussi les sous-barèmes qui n'ont pas de parent dans la liste
-  for (var parentId in baremesByParent.keys) {
-    final parentExists = mainBaremes.any((b) => b['id'] == parentId);
-    if (!parentExists) {
-      // Créer un parent virtuel
-      final firstSubBareme = baremesByParent[parentId]!.first;
-      final parentValue = _extractParentNameFromSubBareme(firstSubBareme['value'] as String);
-      
-      mainBaremes.add({
-        'id': parentId,
-        'value': parentValue.isNotEmpty ? parentValue : 'Groupe $parentId',
-        'isMain': false,
-        'hasSubBaremes': true,
-        'subBaremes': baremesByParent[parentId]!,
-        'isVirtual': true,
-      });
+  // ============ TRI DES BARÈMES ============
+  print('=== DÉBUT DU TRI DES BARÈMES ===');
+  print('Nombre de barèmes principaux avant tri: ${mainBaremes.length}');
+  
+  // Avant le tri
+  print('--- Avant tri des barèmes principaux ---');
+  for (var i = 0; i < mainBaremes.length; i++) {
+    final bareme = mainBaremes[i];
+    print('Barème ${i + 1}: ${bareme['value']} (ID: ${bareme['id']})');
+    
+    if (bareme['hasSubBaremes'] as bool) {
+      final subBaremes = bareme['subBaremes'] as List<dynamic>;
+      print('  Nombre de sous-barèmes: ${subBaremes.length}');
+      for (var j = 0; j < subBaremes.length; j++) {
+        print('    Sous-barème ${j + 1}: ${subBaremes[j]['value']}');
+      }
     }
   }
+
+  // Trier les barèmes principaux alphabétiquement
+  mainBaremes.sort((a, b) {
+    String nameA = a['value'] as String;
+    String nameB = b['value'] as String;
+    
+    // Normaliser les noms pour le tri
+    nameA = _normalizeForSorting(nameA);
+    nameB = _normalizeForSorting(nameB);
+    
+    if (!isFrenchInterface) {
+      // Tri arabe
+      return _arabicComparatorForHTML(nameA, nameB);
+    } else {
+      // Tri français
+      return nameA.toLowerCase().compareTo(nameB.toLowerCase());
+    }
+  });
+
+  print('--- Après tri des barèmes principaux ---');
+  for (var i = 0; i < mainBaremes.length; i++) {
+    final bareme = mainBaremes[i];
+    print('Barème ${i + 1}: ${bareme['value']} (ID: ${bareme['id']})');
+  }
+
+  // Trier les sous-barèmes à l'intérieur de chaque barème principal
+  for (var mainBareme in mainBaremes) {
+    if (mainBareme['hasSubBaremes'] as bool) {
+      final subBaremes = mainBareme['subBaremes'] as List<dynamic>;
+      if (subBaremes.isNotEmpty) {
+        print('--- Tri des sous-barèmes pour ${mainBareme['value']} ---');
+        print('Avant tri:');
+        for (var sub in subBaremes) {
+          print('  ${sub['value']}');
+        }
+        
+        subBaremes.sort((a, b) {
+          String nameA = a['value'] as String;
+          String nameB = b['value'] as String;
+          
+          // Nettoyer les noms pour enlever le préfixe parent
+          String cleanNameA = _cleanSubBaremeNameForSorting(nameA, mainBareme['value'] as String);
+          String cleanNameB = _cleanSubBaremeNameForSorting(nameB, mainBareme['value'] as String);
+          
+          // Normaliser pour le tri
+          nameA = _normalizeForSorting(cleanNameA.isNotEmpty ? cleanNameA : nameA);
+          nameB = _normalizeForSorting(cleanNameB.isNotEmpty ? cleanNameB : nameB);
+          
+          if (!isFrenchInterface) {
+            // Tri arabe pour les sous-barèmes
+            // Si ce sont des lettres arabes (ا, ب, ج, ...)
+            if (_isArabicLetterOnly(nameA) && _isArabicLetterOnly(nameB)) {
+              // Trier par ordre alphabétique arabe
+              return _compareArabicLetters(nameA, nameB);
+            } else {
+              return _arabicComparatorForHTML(nameA, nameB);
+            }
+          } else {
+            // Tri français pour les sous-barèmes
+            // Si ce sont des lettres latines (a, b, c, ...)
+            if (_isLatinLetterOnly(nameA) && _isLatinLetterOnly(nameB)) {
+              return nameA.toLowerCase().compareTo(nameB.toLowerCase());
+            } else {
+              return nameA.toLowerCase().compareTo(nameB.toLowerCase());
+            }
+          }
+        });
+        
+        print('Après tri:');
+        for (var sub in subBaremes) {
+          print('  ${sub['value']}');
+        }
+        
+        // Mettre à jour la liste triée
+        mainBareme['subBaremes'] = subBaremes;
+      }
+    }
+  }
+  print('=== FIN DU TRI DES BARÈMES ===');
+  // ============ FIN DU TRI ============
 
   // Étape 2: Construire l'en-tête hiérarchique
   String headerHTML = '';
   String mainHeaderRow = '';
   String subHeaderRow = '';
-
+  
   // Colonne pour les noms des étudiants
   mainHeaderRow += '<th rowspan="2" class="student-name-cell">${t['student_name']}</th>';
-  subHeaderRow += '<th></th>'; // Cellule vide pour la colonne nom
-
-  int totalColumns = 1; // Pour compter les colonnes
-
+  
   for (var mainBareme in mainBaremes) {
     final mainBaremeId = mainBareme['id'] as String;
     final mainBaremeValue = mainBareme['value'] as String;
-    final hasSubBaremes = mainBareme['hasSubBaremes'] as bool? ?? false;
+    final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
     final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
-
+    final isVirtual = mainBareme['isVirtual'] as bool? ?? false;
+    
     if (hasSubBaremes && subBaremes.isNotEmpty) {
       // Barème avec sous-barèmes
       final colspan = subBaremes.length;
       mainHeaderRow += '''
-        <th colspan="$colspan" style="text-align: center; vertical-align: bottom; background: #075260; color: white; font-weight: bold; border: 1px solid #0a6b7e;">
+        <th colspan="$colspan" style="text-align: center; vertical-align: bottom;" class="main-bareme-header">
           $mainBaremeValue
         </th>
       ''';
-      totalColumns += colspan;
-
+      
       // Ajouter les sous-en-têtes
       for (var subBareme in subBaremes) {
         final subValue = subBareme['value'] as String;
         final cleanSubValue = _cleanSubBaremeName(subValue, mainBaremeValue);
         subHeaderRow += '''
-          <th style="font-size: 12px; font-weight: normal; vertical-align: bottom; background: #0a6b7e; color: white; border: 1px solid #0d8bb3;">
+          <th style="font-size: 12px; font-weight: normal; vertical-align: bottom;" class="sub-bareme-header">
             $cleanSubValue
           </th>
         ''';
@@ -1530,64 +1561,93 @@ static String _buildTableHTML({
     } else {
       // Barème sans sous-barèmes
       mainHeaderRow += '''
-        <th colspan="1" rowspan="2" style="vertical-align: middle; text-align: center; background: #075260; color: white; font-weight: bold; border: 1px solid #0a6b7e;">
+        <th colspan="1" style="vertical-align: bottom;" class="main-bareme-header">
           $mainBaremeValue
         </th>
       ''';
-      subHeaderRow += '<th></th>'; // Cellule vide dans la ligne des sous-en-têtes
-      totalColumns += 1;
+      // Ajouter une colonne vide dans la ligne des sous-en-têtes
+      subHeaderRow += '<th></th>';
     }
   }
 
   // Construire l'en-tête HTML complet
-  headerHTML = '''
-    <thead>
-      <tr>
-        $mainHeaderRow
-      </tr>
-      <tr>
-        $subHeaderRow
-      </tr>
-    </thead>
-  ''';
+  if (subHeaderRow.contains('sub-bareme-header')) {
+    // Avec sous-barèmes - deux lignes d'en-tête
+    headerHTML = '''
+      <thead>
+        <tr>
+          $mainHeaderRow
+        </tr>
+        <tr>
+          $subHeaderRow
+        </tr>
+      </thead>
+    ''';
+  } else {
+    // Sans sous-barèmes - une seule ligne d'en-tête
+    headerHTML = '''
+      <thead>
+        <tr>
+          <th class="student-name-cell">${t['student_name']}</th>
+          ${mainBaremes.map((b) => '''
+            <th class="main-bareme-header">${b['value']}</th>
+          ''').join('')}
+        </tr>
+      </thead>
+    ''';
+  }
 
   // Étape 3: Construire les lignes des étudiants
+  print('=== TRI DES ÉTUDIANTS ===');
+  
+  // Trier les étudiants par ordre alphabétique
   final List<dynamic> sortedStudents = List.from(students);
   sortedStudents.sort((a, b) {
     final nameA = a['name']?.toString() ?? '';
     final nameB = b['name']?.toString() ?? '';
-
+    
     if (!isFrenchInterface) {
+      // Tri arabe pour les noms
       return _arabicComparatorForHTML(nameA, nameB);
     } else {
+      // Tri français pour les noms
       return nameA.toLowerCase().compareTo(nameB.toLowerCase());
     }
   });
-
+  
+  print('Nombre d\'étudiants: ${sortedStudents.length}');
+  print('--- Étudiants triés ---');
+  for (var i = 0; i < math.min(5, sortedStudents.length); i++) {
+    print('${i + 1}: ${sortedStudents[i]['name']}');
+  }
+  if (sortedStudents.length > 5) {
+    print('... et ${sortedStudents.length - 5} autres');
+  }
+  
   String studentsRows = '';
-
+  
   for (var student in sortedStudents) {
     String studentRow = '<tr>';
-
+    
     // Colonne nom de l'étudiant
     studentRow += '<td class="student-name-cell">${student['name']}</td>';
-
+    
     // Cellules des notes
     for (var mainBareme in mainBaremes) {
       final mainBaremeId = mainBareme['id'] as String;
-      final hasSubBaremes = mainBareme['hasSubBaremes'] as bool? ?? false;
+      final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
       final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
-
+      
       if (hasSubBaremes && subBaremes.isNotEmpty) {
         // Barème avec sous-barèmes
         for (var subBareme in subBaremes) {
           final subBaremeId = subBareme['id'] as String;
           final fullKey = '$mainBaremeId-$subBaremeId';
-
+          
           // Chercher la note dans différentes clés possibles
           String mark = '( - - - )';
           final studentBaremes = student['baremes'] as Map<String, dynamic>? ?? {};
-
+          
           if (studentBaremes.containsKey(fullKey)) {
             mark = studentBaremes[fullKey]?.toString() ?? '( - - - )';
           } else if (studentBaremes.containsKey(subBaremeId)) {
@@ -1595,92 +1655,50 @@ static String _buildTableHTML({
           } else if (studentBaremes.containsKey(mainBaremeId)) {
             mark = studentBaremes[mainBaremeId]?.toString() ?? '( - - - )';
           }
-
-          // Déterminer la classe CSS selon la note
-          String markClass = 'mark-poor';
-          if (mark == '( + + + )') markClass = 'mark-excellent';
-          else if (mark == '( + + - )') markClass = 'mark-good';
-          else if (mark == '( + - - )') markClass = 'mark-average';
-          else if (mark == 'غائب') markClass = 'mark-absent';
-
-          studentRow += '<td class="mark-cell $markClass">$mark</td>';
+          
+          studentRow += '<td class="mark-cell">$mark</td>';
         }
       } else {
         // Barème principal simple
         final studentBaremes = student['baremes'] as Map<String, dynamic>? ?? {};
         final mark = studentBaremes[mainBaremeId]?.toString() ?? '( - - - )';
-        
-        // Déterminer la classe CSS selon la note
-        String markClass = 'mark-poor';
-        if (mark == '( + + + )') markClass = 'mark-excellent';
-        else if (mark == '( + + - )') markClass = 'mark-good';
-        else if (mark == '( + - - )') markClass = 'mark-average';
-        else if (mark == 'غائب') markClass = 'mark-absent';
-
-        studentRow += '<td class="mark-cell $markClass">$mark</td>';
+        studentRow += '<td class="mark-cell">$mark</td>';
       }
     }
-
+    
     studentRow += '</tr>';
     studentsRows += studentRow;
   }
 
   // Étape 4: Construire les lignes de statistiques
-  String statsRow = '<tr class="stats-row">';
-  String percentageRow = '<tr class="percentage-row">';
-
+  String statsRow = '';
+  String percentageRow = '';
+  
   // Colonne label
   statsRow += '<td class="student-name-cell"><strong>${t['achieved_students']}</strong></td>';
   percentageRow += '<td class="student-name-cell"><strong>${t['percentage']}</strong></td>';
-
+  
   for (var mainBareme in mainBaremes) {
     final mainBaremeId = mainBareme['id'] as String;
-    final hasSubBaremes = mainBareme['hasSubBaremes'] as bool? ?? false;
+    final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
     final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
-
+    
     if (hasSubBaremes && subBaremes.isNotEmpty) {
       // Barème avec sous-barèmes
       for (var subBareme in subBaremes) {
         final subBaremeId = subBareme['id'] as String;
         final fullKey = '$mainBaremeId-$subBaremeId';
-
-        // Chercher le compteur - dans l'ordre de priorité
-        int count = 0;
         
-        // 1. Clé complète
-        if (sumCriteriaMaxPerBareme.containsKey(fullKey)) {
-          count = sumCriteriaMaxPerBareme[fullKey]!;
-        }
-        // 2. ID du sous-barème seul
-        else if (sumCriteriaMaxPerBareme.containsKey(subBaremeId)) {
-          count = sumCriteriaMaxPerBareme[subBaremeId]!;
-        }
-        // 3. ID du barème principal
-        else if (sumCriteriaMaxPerBareme.containsKey(mainBaremeId)) {
-          count = sumCriteriaMaxPerBareme[mainBaremeId]!;
-        }
-        // 4. Chercher par correspondance
-        else {
-          for (var key in sumCriteriaMaxPerBareme.keys) {
-            if (key.contains(subBaremeId) || key.contains(mainBaremeId)) {
-              count = sumCriteriaMaxPerBareme[key]!;
-              break;
-            }
-          }
-        }
-
+        // Chercher le compteur
+        int count = sumCriteriaMaxPerBareme[fullKey] ?? 
+                    sumCriteriaMaxPerBareme[subBaremeId] ?? 
+                    sumCriteriaMaxPerBareme[mainBaremeId] ?? 0;
+        
         statsRow += '<td><strong>$count</strong></td>';
-
-        // Calculer le pourcentage
+        
         if (totalStudents > 0) {
-          final percentage = (count / totalStudents * 100);
-          final percentageText = percentage.toStringAsFixed(2);
-          
-          String percentageClass = 'percentage-low';
-          if (percentage >= 80) percentageClass = 'percentage-high';
-          else if (percentage >= 50) percentageClass = 'percentage-medium';
-
-          percentageRow += '<td class="percentage-cell $percentageClass"><strong>${percentageText}%</strong></td>';
+          final percentage = (count / totalStudents * 100).toStringAsFixed(2);
+          percentageRow += '<td class="percentage-cell"><strong>${percentage}%</strong></td>';
         } else {
           percentageRow += '<td class="percentage-cell"><strong>0.00%</strong></td>';
         }
@@ -1689,35 +1707,39 @@ static String _buildTableHTML({
       // Barème principal simple
       int count = sumCriteriaMaxPerBareme[mainBaremeId] ?? 0;
       statsRow += '<td><strong>$count</strong></td>';
-
-      // Calculer le pourcentage
+      
       if (totalStudents > 0) {
-        final percentage = (count / totalStudents * 100);
-        final percentageText = percentage.toStringAsFixed(2);
-        
-        String percentageClass = 'percentage-low';
-        if (percentage >= 80) percentageClass = 'percentage-high';
-        else if (percentage >= 50) percentageClass = 'percentage-medium';
-
-        percentageRow += '<td class="percentage-cell $percentageClass"><strong>${percentageText}%</strong></td>';
+        final percentage = (count / totalStudents * 100).toStringAsFixed(2);
+        percentageRow += '<td class="percentage-cell"><strong>${percentage}%</strong></td>';
       } else {
         percentageRow += '<td class="percentage-cell"><strong>0.00%</strong></td>';
       }
     }
   }
 
-  statsRow += '</tr>';
-  percentageRow += '</tr>';
+  // Étape 5: Calculer le nombre total de colonnes
+  int totalColumns = 1; // Pour la colonne des noms
+  for (var mainBareme in mainBaremes) {
+    final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
+    final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
+    
+    if (hasSubBaremes && subBaremes.isNotEmpty) {
+      totalColumns += subBaremes.length;
+    } else {
+      totalColumns += 1;
+    }
+  }
 
-  // Étape 5: Ajouter une ligne avec le total des étudiants
-  String totalStudentsRow = '''
-    <tr class="total-row">
-      <td class="student-name-cell"><strong>${t['total_students']}</strong></td>
-      <td colspan="${totalColumns - 1}" style="text-align: center; background: #e8f5e9;">
-        <strong>$totalStudents ${isFrenchInterface ? 'élèves' : 'تلميذ'}</strong>
-      </td>
-    </tr>
-  ''';
+  // Vérifier que nous avons des colonnes pour les barèmes
+  if (totalColumns <= 1) {
+    return '''
+    <div class="table-container">
+      <div style="text-align: center; padding: 40px; color: #666; font-size: 16px;">
+        ${isFrenchInterface ? 'Aucun barème sélectionné pour cette évaluation.' : 'لم يتم تحديد أي معايير لهذا التقييم.'}
+      </div>
+    </div>
+    ''';
+  }
 
   return '''
   <div class="table-container">
@@ -1732,220 +1754,199 @@ static String _buildTableHTML({
         </tr>
         '''}
         
-        $statsRow
-        $percentageRow
-        $totalStudentsRow
+        <tr class="stats-row">
+          $statsRow
+        </tr>
+        
+        <tr class="percentage-row">
+          $percentageRow
+        </tr>
+        
+        <!-- Ligne du nombre total d'étudiants -->
         
       </tbody>
     </table>
     
-    <!-- Section de légende améliorée -->
-    <div style="margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px; font-size: 12px;">
-      <h4 style="margin-bottom: 10px; color: #075260;">${isFrenchInterface ? 'Légende des symboles' : 'دلالة الرموز'}</h4>
-      <div style="display: flex; flex-wrap: wrap; gap: 15px;">
-        <div style="display: flex; align-items: center; gap: 5px;">
-          <div style="width: 20px; height: 20px; background-color: #d4edda; border: 1px solid #c3e6cb;"></div>
-          <span>${isFrenchInterface ? 'Excellent (+++)' : 'ممتاز (+++)'}</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 5px;">
-          <div style="width: 20px; height: 20px; background-color: #fff3cd; border: 1px solid #ffeaa7;"></div>
-          <span>${isFrenchInterface ? 'Bon (++-)' : 'جيد (++-)'}</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 5px;">
-          <div style="width: 20px; height: 20px; background-color: #ffeaa7; border: 1px solid #ffd54f;"></div>
-          <span>${isFrenchInterface ? 'Moyen (+--)' : 'متوسط (+--)'}</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 5px;">
-          <div style="width: 20px; height: 20px; background-color: #f8d7da; border: 1px solid #f5c6cb;"></div>
-          <span>${isFrenchInterface ? 'Insuffisant (---)' : 'غير كاف (---)'}</span>
-        </div>
-        <div style="display: flex; align-items: center; gap: 5px;">
-          <div style="width: 20px; height: 20px; background-color: #e2e3e5; border: 1px solid #d6d8db;"></div>
-          <span>${isFrenchInterface ? 'Absent' : 'غائب'}</span>
-        </div>
-      </div>
-    </div>
+    <!-- Légende des symboles -->
+   
   </div>
   ''';
 }
-
-// AJOUTER CES FONCTIONS MANQUANTES :
-
-  static String _extractParentNameFromSubBareme(String subBaremeName) {
-    if (subBaremeName.isEmpty) return '';
-
-    // Patterns pour extraire le nom du parent
-    // Exemples: "مع 3.ا" -> "مع 3", "C3.a" -> "C3"
-
-    // Pattern 1: Nom avec point et lettre arabe
-    final arabicPattern = RegExp(r'^(.+)\.([\u0621-\u064A])$');
-    final matchArabic = arabicPattern.firstMatch(subBaremeName);
-    if (matchArabic != null) {
-      return matchArabic.group(1)!.trim();
-    }
-
-    // Pattern 2: Nom avec point et lettre latine
-    final latinPattern = RegExp(r'^(.+)\.([a-zA-Z])$');
-    final matchLatin = latinPattern.firstMatch(subBaremeName);
-    if (matchLatin != null) {
-      return matchLatin.group(1)!.trim();
-    }
-
-    // Pattern 3: Nom avec espace et lettre
-    final spacePattern = RegExp(r'^(.+)\s+([\u0621-\u064A]|[a-zA-Z])$');
-    final matchSpace = spacePattern.firstMatch(subBaremeName);
-    if (matchSpace != null) {
-      return matchSpace.group(1)!.trim();
-    }
-
-    return '';
+// Nouvelles fonctions d'aide
+static String _extractParentNameFromSubBareme(String subBaremeName) {
+  if (subBaremeName.isEmpty) return '';
+  
+  // Patterns pour extraire le nom du parent
+  // Exemples: "مع 3.ا" -> "مع 3", "C3.a" -> "C3"
+  
+  // Pattern 1: Nom avec point et lettre arabe
+  final arabicPattern = RegExp(r'^(.+)\.([\u0621-\u064A])$');
+  final matchArabic = arabicPattern.firstMatch(subBaremeName);
+  if (matchArabic != null) {
+    return matchArabic.group(1)!.trim();
   }
-
-// MODIFIER la fonction _removeSubBaremeLetter pour être plus robuste :
-  static String _removeSubBaremeLetter(String subBaremeName) {
-    if (subBaremeName.isEmpty) return '';
-
-    String result = subBaremeName;
-
-    // Essayer d'extraire le nom du parent d'abord
-    String parentName = _extractParentNameFromSubBareme(subBaremeName);
-    if (parentName.isNotEmpty) {
-      return parentName;
-    }
-
-    // Fallback: Enlever la dernière lettre (arabe ou latine)
-    if (result.isNotEmpty && _isArabicLetter(result[result.length - 1])) {
-      result = result.substring(0, result.length - 1);
-    } else if (result.isNotEmpty && _isLatinLetter(result[result.length - 1])) {
-      result = result.substring(0, result.length - 1);
-    }
-
-    // Nettoyer les caractères de ponctuation à la fin
-    result = result.replaceAll(RegExp(r'[.\s]+$'), '');
-
-    return result.trim();
+  
+  // Pattern 2: Nom avec point et lettre latine
+  final latinPattern = RegExp(r'^(.+)\.([a-zA-Z])$');
+  final matchLatin = latinPattern.firstMatch(subBaremeName);
+  if (matchLatin != null) {
+    return matchLatin.group(1)!.trim();
   }
-
-  static bool _isArabicLetter(String char) {
-    return char.codeUnitAt(0) >= 0x0621 && char.codeUnitAt(0) <= 0x064A;
+  
+  // Pattern 3: Nom avec espace et lettre
+  final spacePattern = RegExp(r'^(.+)\s+([\u0621-\u064A]|[a-zA-Z])$');
+  final matchSpace = spacePattern.firstMatch(subBaremeName);
+  if (matchSpace != null) {
+    return matchSpace.group(1)!.trim();
   }
+  
+  return '';
+}
 
-  static bool _isLatinLetter(String char) {
-    return (char.codeUnitAt(0) >= 65 && char.codeUnitAt(0) <= 90) ||
-        (char.codeUnitAt(0) >= 97 && char.codeUnitAt(0) <= 122);
+static String _removeSubBaremeLetter(String subBaremeName) {
+  if (subBaremeName.isEmpty) return '';
+  
+  // Supprimer la dernière lettre (arabe ou latine)
+  // Exemples: "مع 3.ا" -> "مع 3.", puis enlever le point
+  // "C3.a" -> "C3.", puis enlever le point
+  
+  String result = subBaremeName;
+  
+  // Enlever la dernière lettre arabe
+  if (result.isNotEmpty && _isArabicLetter(result[result.length - 1])) {
+    result = result.substring(0, result.length - 1);
   }
-
-  static String _cleanSubBaremeName(String subName, String parentName) {
-    // Nettoyer le nom du sous-barème pour n'afficher que la partie distinctive
-    // Exemple: si parent = "مع 3" et sub = "مع 3.ا", afficher seulement "ا"
-
-    if (subName.startsWith(parentName)) {
-      String remaining = subName.substring(parentName.length).trim();
-
-      // Enlever les séparateurs au début
-      remaining = remaining.replaceAll(RegExp(r'^[.\s]+'), '');
-
-      if (remaining.isNotEmpty) {
-        return remaining;
-      }
-    }
-
-    return subName;
+  
+  // Enlever la dernière lettre latine
+  if (result.isNotEmpty && _isLatinLetter(result[result.length - 1])) {
+    result = result.substring(0, result.length - 1);
   }
+  
+  // Nettoyer les caractères de ponctuation à la fin
+  result = result.replaceAll(RegExp(r'[.\s]+$'), '');
+  
+  return result.trim();
+}
 
-  static String _normalizeForSorting(String text) {
-    // Normaliser le texte pour le tri
-    String normalized = text.trim();
-    // Supprimer les diacritiques arabes
-    normalized = normalized.replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '');
-    return normalized;
-  }
+static bool _isArabicLetter(String char) {
+  return char.codeUnitAt(0) >= 0x0621 && char.codeUnitAt(0) <= 0x064A;
+}
 
-  static String _cleanSubBaremeNameForSorting(
-      String subName, String parentName) {
-    // Nettoyer le nom du sous-barème en supprimant le préfixe du parent
-    String cleaned = subName;
+static bool _isLatinLetter(String char) {
+  return (char.codeUnitAt(0) >= 65 && char.codeUnitAt(0) <= 90) || 
+         (char.codeUnitAt(0) >= 97 && char.codeUnitAt(0) <= 122);
+}
 
-    // Enlever le préfixe du parent s'il existe
-    if (cleaned.startsWith(parentName)) {
-      cleaned = cleaned.substring(parentName.length).trim();
-    }
-
+static String _cleanSubBaremeName(String subName, String parentName) {
+  // Nettoyer le nom du sous-barème pour n'afficher que la partie distinctive
+  // Exemple: si parent = "مع 3" et sub = "مع 3.ا", afficher seulement "ا"
+  
+  if (subName.startsWith(parentName)) {
+    String remaining = subName.substring(parentName.length).trim();
+    
     // Enlever les séparateurs au début
-    cleaned = cleaned.replaceAll(RegExp(r'^[.\s]+'), '');
-
-    return cleaned;
-  }
-
-  static bool _isArabicLetterOnly(String text) {
-    // Vérifier si le texte ne contient que des lettres arabes
-    final normalized = text.replaceAll(RegExp(r'[\s.\-]'), '').trim();
-    if (normalized.isEmpty) return false;
-
-    for (int i = 0; i < normalized.length; i++) {
-      final code = normalized.codeUnitAt(i);
-      if (!(code >= 0x0621 && code <= 0x064A)) {
-        return false;
-      }
+    remaining = remaining.replaceAll(RegExp(r'^[.\s]+'), '');
+    
+    if (remaining.isNotEmpty) {
+      return remaining;
     }
-    return true;
   }
+  
+  return subName;
+}
 
-  static bool _isLatinLetterOnly(String text) {
-    // Vérifier si le texte ne contient que des lettres latines
-    final normalized = text.replaceAll(RegExp(r'[\s.\-]'), '').trim();
-    if (normalized.isEmpty) return false;
+static String _normalizeForSorting(String text) {
+  // Normaliser le texte pour le tri
+  String normalized = text.trim();
+  // Supprimer les diacritiques arabes
+  normalized = normalized.replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '');
+  return normalized;
+}
 
-    for (int i = 0; i < normalized.length; i++) {
-      final code = normalized.codeUnitAt(i);
-      if (!((code >= 65 && code <= 90) || (code >= 97 && code <= 122))) {
-        return false;
-      }
+static String _cleanSubBaremeNameForSorting(String subName, String parentName) {
+  // Nettoyer le nom du sous-barème en supprimant le préfixe du parent
+  String cleaned = subName;
+  
+  // Enlever le préfixe du parent s'il existe
+  if (cleaned.startsWith(parentName)) {
+    cleaned = cleaned.substring(parentName.length).trim();
+  }
+  
+  // Enlever les séparateurs au début
+  cleaned = cleaned.replaceAll(RegExp(r'^[.\s]+'), '');
+  
+  return cleaned;
+}
+
+static bool _isArabicLetterOnly(String text) {
+  // Vérifier si le texte ne contient que des lettres arabes
+  final normalized = text.replaceAll(RegExp(r'[\s.\-]'), '').trim();
+  if (normalized.isEmpty) return false;
+  
+  for (int i = 0; i < normalized.length; i++) {
+    final code = normalized.codeUnitAt(i);
+    if (!(code >= 0x0621 && code <= 0x064A)) {
+      return false;
     }
-    return true;
   }
+  return true;
+}
 
-  static int _compareArabicLetters(String a, String b) {
-    // Comparer deux lettres arabes par ordre alphabétique arabe
-    const Map<String, int> arabicLetterOrder = {
-      'ا': 1,
-      'ب': 2,
-      'ت': 3,
-      'ث': 4,
-      'ج': 5,
-      'ح': 6,
-      'خ': 7,
-      'د': 8,
-      'ذ': 9,
-      'ر': 10,
-      'ز': 11,
-      'س': 12,
-      'ش': 13,
-      'ص': 14,
-      'ض': 15,
-      'ط': 16,
-      'ظ': 17,
-      'ع': 18,
-      'غ': 19,
-      'ف': 20,
-      'ق': 21,
-      'ك': 22,
-      'ل': 23,
-      'م': 24,
-      'ن': 25,
-      'ه': 26,
-      'و': 27,
-      'ي': 28,
-    };
-
-    final orderA = arabicLetterOrder[a.trim()] ?? a.codeUnitAt(0);
-    final orderB = arabicLetterOrder[b.trim()] ?? b.codeUnitAt(0);
-
-    return orderA - orderB;
+static bool _isLatinLetterOnly(String text) {
+  // Vérifier si le texte ne contient que des lettres latines
+  final normalized = text.replaceAll(RegExp(r'[\s.\-]'), '').trim();
+  if (normalized.isEmpty) return false;
+  
+  for (int i = 0; i < normalized.length; i++) {
+    final code = normalized.codeUnitAt(i);
+    if (!((code >= 65 && code <= 90) || (code >= 97 && code <= 122))) {
+      return false;
+    }
   }
+  return true;
+}
 
-  static String _getDomaineForMatiere(
-      String matiereName, bool isFrenchInterface) {
+static int _compareArabicLetters(String a, String b) {
+  // Comparer deux lettres arabes par ordre alphabétique arabe
+  const Map<String, int> arabicLetterOrder = {
+    'ا': 1,
+    'ب': 2,
+    'ت': 3,
+    'ث': 4,
+    'ج': 5,
+    'ح': 6,
+    'خ': 7,
+    'د': 8,
+    'ذ': 9,
+    'ر': 10,
+    'ز': 11,
+    'س': 12,
+    'ش': 13,
+    'ص': 14,
+    'ض': 15,
+    'ط': 16,
+    'ظ': 17,
+    'ع': 18,
+    'غ': 19,
+    'ف': 20,
+    'ق': 21,
+    'ك': 22,
+    'ل': 23,
+    'م': 24,
+    'ن': 25,
+    'ه': 26,
+    'و': 27,
+    'ي': 28,
+  };
+  
+  final orderA = arabicLetterOrder[a.trim()] ?? a.codeUnitAt(0);
+  final orderB = arabicLetterOrder[b.trim()] ?? b.codeUnitAt(0);
+  
+  return orderA - orderB;
+}
+
+static String _getDomaineForMatiere(
+    String matiereName, bool isFrenchInterface) {
     final matieresArabic = {
       'التواصل الشفوي': 'مجال اللغة العربية',
       'قراءة': 'مجال اللغة العربية',
