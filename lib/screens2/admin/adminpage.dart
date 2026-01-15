@@ -4,6 +4,11 @@ import 'package:Taqyem/taqyem/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
 import 'package:Taqyem/taqyem/StatisticsDashboard.dart';
 import 'package:Taqyem/taqyem/appjson.dart';
+import 'package:Taqyem/taqyem/data/addprobsolu.dart';
+import 'package:Taqyem/taqyem/data/app_wrapper.dart';
+import 'package:Taqyem/taqyem/data/firebase_data-service.dart';
+import 'package:Taqyem/taqyem/data/import_json_screen.dart';
+import 'package:Taqyem/taqyem/data/provider_wrapper.dart';
 import 'package:Taqyem/taqyem/feedback_system.dart';
 import 'package:Taqyem/taqyem/payment/PaymentPage.dart';
 import 'package:Taqyem/taqyem/pdf/ManagePDFPage.dart';
@@ -16,6 +21,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_timeline_calendar/timeline/flutter_timeline_calendar.dart';
+import 'package:provider/provider.dart';
 import '../login_signup/account_settings.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:intl/intl.dart';
@@ -42,8 +48,46 @@ class _AdminDashboardState extends State<AdminDashboard> {
   String userName = "Utilisateur";
   bool _isDrawerOpen = false;
   int _currentCarouselIndex = 0;
-  Timer? _feedbackTimer; // Utilisez un Timer nullable
+  Timer? _feedbackTimer;
   bool _feedbackShown = false;
+
+  final List<String> _allowedUserIds = [
+    'fhilpGu5Eddhl46rZbsLoldiXnb2',
+    'dxjCTRGQU5MYqEbDEnzQ9ZYkUCA3'
+  ];
+
+  // Vérifie si l'utilisateur courant peut voir l'option
+  bool _canShowAddProbItem() {
+    if (currentUser == null) return false;
+    // Retourne TRUE si l'utilisateur est dans la liste des autorisés
+    return _allowedUserIds.contains(currentUser!.uid);
+  }
+
+ String _extractUserId(String input) {
+    // Règles d'extraction
+    final regex = RegExp(r'(?:/Users/)?([^/]+)$');
+    final match = regex.firstMatch(input);
+    
+    if (match != null && match.groupCount >= 1) {
+      return match.group(1) ?? input;
+    }
+    
+    return input;
+  }
+  
+String _cleanUserId(String userId) {
+  print('🧹 Nettoyage de l\'ID: $userId');
+  
+  // Règles de nettoyage
+  final cleaned = userId
+      .replaceAll('/Users/', '')
+      .replaceAll('users/', '')
+      .replaceAll('/users/', '')
+      .trim();
+  
+  print('🧹 ID nettoyé: $cleaned');
+  return cleaned;
+}
 
   @override
   void initState() {
@@ -54,14 +98,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   void dispose() {
-    _feedbackTimer?.cancel(); // Utilisez l'opérateur ?. pour éviter les erreurs
+    _feedbackTimer?.cancel();
     super.dispose();
   }
 
   void _setupRandomFeedback() {
-    // Génère un délai aléatoire entre 2 et 8 heures (en millisecondes)
     final random = Random();
-    final delayHours = 2 + random.nextInt(6); // Entre 2 et 7 heures
+    final delayHours = 2 + random.nextInt(6);
     final delayMillis = delayHours * 60 * 60 * 1000;
 
     _feedbackTimer = Timer(Duration(milliseconds: delayMillis), () {
@@ -73,7 +116,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   void _showRandomFeedback() {
-    // Vérifie l'heure actuelle (entre 9h et 20h)
     final now = DateTime.now();
     if (now.hour >= 9 && now.hour <= 7) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -94,7 +136,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  _setupRandomFeedback(); // Reprogramme pour plus tard
+                  _setupRandomFeedback();
                   _feedbackShown = false;
                 },
                 child: const Text('لاحقاً'),
@@ -104,7 +146,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
         );
       });
     } else {
-      // Si c'est en dehors des heures normales, reprogramme pour le lendemain
       _setupRandomFeedback();
     }
   }
@@ -132,6 +173,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
         .doc(currentUser!.uid)
         .snapshots();
   }
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -244,7 +287,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Carousel Section with improved UI
                 const SizedBox(height: 20),
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
@@ -278,7 +320,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 const SizedBox(height: 30),
                 const SizedBox(height: 30),
 
-                // Calendar Section with improved visual distinction
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 20),
                   padding: const EdgeInsets.all(16),
@@ -336,7 +377,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                         dateTime: _selectedDate.value,
                       ),
                       const SizedBox(height: 16),
-                      // Quick navigation buttons
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
@@ -379,7 +419,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
                 const SizedBox(height: 20),
 
-                // Selected Date Section with improved prominence
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 20),
                   padding:
@@ -417,7 +456,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
                 const SizedBox(height: 20),
 
-                // News Section with all improvements
                 NewsSection(),
                 const SizedBox(height: 30),
               ],
@@ -440,7 +478,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           side: BorderSide(
               color: Theme.of(context).colorScheme.primary.withOpacity(0.2)),
         ),
-      ), // <== Ici, il manquait une virgule
+      ),
       child: Text(
         text,
         style: GoogleFonts.roboto(
@@ -487,20 +525,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    userName, // Utilisation du nom de l'utilisateur
+                    userName,
                     style: GoogleFonts.roboto(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
                   ),
-                  // Text(
-                  //   currentUser?.email ?? '',
-                  //   style: GoogleFonts.roboto(
-                  //     fontSize: 14,
-                  //     color: Colors.white70,
-                  //   ),
-                  // ),
                   StreamBuilder<DocumentSnapshot>(
                     stream: _getAccountStatusStream(),
                     builder: (context, snapshot) {
@@ -555,19 +586,22 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 );
               },
             ),
-            //  _buildDrawerItem(
-            //   context,
-            //   Icons.class_,
-            //   'إدارة الأقسام',
-            //   () {
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(
-            //         builder: (context) => appmed(),
-            //       ),
-            //     );
-            //   },
-            // ),
+            
+            // Afficher l'option addprobsolu seulement si l'utilisateur n'est pas exclu
+          // Afficher addprobsolu seulement si l'utilisateur N'EST PAS exclu
+             if (_canShowAddProbItem()) _buildDrawerItem(
+              context,
+              Icons.class_,
+              'addprobsolu',
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddProbProviderWrapper(),
+                  ),
+                );
+              },
+            ),
             _buildDrawerItem(
               context,
               Icons.class_,
@@ -597,19 +631,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
                 );
               },
             ),
-            // _buildDrawerItem(
-            //   context,
-            //   Icons.list_alt,
-            //   'قائمة الجداول الجامعة',
-            //   () {
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(
-            //         builder: (context) => ClassListPage(),
-            //       ),
-            //     );
-            //   },
-            // ),
 
             // Documents Section
             _buildDrawerSectionHeader('Documents'),
@@ -687,6 +708,9 @@ class _AdminDashboardState extends State<AdminDashboard> {
     );
   }
 }
+
+// Les autres classes restent inchangées (SimpleCarousel, NewsSection, etc.)
+// ... (gardez tout le reste du code tel quel à partir d'ici)
 class SimpleCarousel extends StatefulWidget {
   final List<Map<String, dynamic>> items;
   final double? height;
@@ -711,7 +735,8 @@ class SimpleCarousel extends StatefulWidget {
 
 class _SimpleCarouselState extends State<SimpleCarousel> {
   int _currentIndex = 0;
-  final CarouselSliderController _carouselController = CarouselSliderController();
+  final CarouselSliderController _carouselController =
+      CarouselSliderController();
 
   @override
   Widget build(BuildContext context) {
@@ -728,7 +753,8 @@ class _SimpleCarouselState extends State<SimpleCarousel> {
           options: CarouselOptions(
             height: widget.height,
             autoPlay: widget.autoPlay,
-            autoPlayInterval: widget.autoPlayInterval ?? const Duration(seconds: 3),
+            autoPlayInterval:
+                widget.autoPlayInterval ?? const Duration(seconds: 3),
             autoPlayAnimationDuration: const Duration(milliseconds: 800),
             enlargeCenterPage: true,
             viewportFraction: 0.85,
@@ -742,7 +768,7 @@ class _SimpleCarouselState extends State<SimpleCarousel> {
             return _buildCarouselItem(item, index);
           },
         ),
-        
+
         // Indicateurs
         if (widget.showIndicators && widget.items.length > 1)
           Padding(
@@ -780,7 +806,7 @@ class _SimpleCarouselState extends State<SimpleCarousel> {
             children: [
               // Image de fond
               _buildImage(imageUrl),
-              
+
               // Overlay de gradient
               Container(
                 decoration: BoxDecoration(
@@ -797,7 +823,7 @@ class _SimpleCarouselState extends State<SimpleCarousel> {
                   ),
                 ),
               ),
-              
+
               // Contenu textuel
               if (title.isNotEmpty || subtitle != null)
                 Positioned(
@@ -847,7 +873,7 @@ class _SimpleCarouselState extends State<SimpleCarousel> {
                     ],
                   ),
                 ),
-              
+
               // Badge de numéro (optionnel)
               if (widget.items.length > 1)
                 Positioned(
@@ -953,7 +979,7 @@ class _SimpleCarouselState extends State<SimpleCarousel> {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             constraints: const BoxConstraints(),
           ),
-        
+
         // Indicateurs
         AnimatedSmoothIndicator(
           activeIndex: _currentIndex,
@@ -967,7 +993,7 @@ class _SimpleCarouselState extends State<SimpleCarousel> {
             expansionFactor: 3,
           ),
         ),
-        
+
         // Bouton suivant
         if (widget.items.length > 1)
           IconButton(
@@ -1022,7 +1048,7 @@ class _SimpleCarouselState extends State<SimpleCarousel> {
 
   void _handleItemTap(Map<String, dynamic> item) {
     HapticFeedback.lightImpact();
-    
+
     if (widget.onItemTap != null) {
       widget.onItemTap!(item);
     } else {
@@ -1066,7 +1092,7 @@ class _SimpleCarouselState extends State<SimpleCarousel> {
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  
+
                   // Image
                   if (imageUrl.isNotEmpty)
                     ClipRRect(
@@ -1103,7 +1129,7 @@ class _SimpleCarouselState extends State<SimpleCarousel> {
                         },
                       ),
                     ),
-                  
+
                   // Contenu
                   Expanded(
                     child: SingleChildScrollView(
@@ -1116,11 +1142,14 @@ class _SimpleCarouselState extends State<SimpleCarousel> {
                           if (title.isNotEmpty)
                             Text(
                               title,
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
-                          
+
                           // Sous-titre
                           if (subtitle != null && subtitle.isNotEmpty)
                             Padding(
@@ -1139,16 +1168,16 @@ class _SimpleCarouselState extends State<SimpleCarousel> {
                                     ),
                               ),
                             ),
-                          
+
                           const SizedBox(height: 16),
-                          
+
                           // Description
                           if (description.isNotEmpty)
                             Text(
                               description,
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
-                          
+
                           // Espace pour le padding bottom
                           const SizedBox(height: 20),
                         ],
@@ -1164,6 +1193,7 @@ class _SimpleCarouselState extends State<SimpleCarousel> {
     );
   }
 }
+
 class NewsSection extends StatefulWidget {
   @override
   _NewsSectionState createState() => _NewsSectionState();

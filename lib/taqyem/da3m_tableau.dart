@@ -49,7 +49,22 @@ class DataTranslator {
     "السنة السادسة ابتدائي ج": "6ème année primaire C",
     "السنة السادسة ابتدائي د": "6ème année primaire D"
   };
+// Dans la classe DataTranslator du code 2, ajoutez cette méthode statique :
 
+static String translateBaremeName(String baremeName, bool isFrenchInterface) {
+  // Si le barème est déjà en français, ne pas le traduire
+  if (baremeName.contains('C') && baremeName.contains('.')) {
+    return baremeName; // C'est déjà la version française
+  }
+  
+  // Si l'interface est en français et que le barème est en arabe, le traduire
+  if (isFrenchInterface) {
+    return translateBareme(baremeName);
+  }
+  
+  // Sinon, garder le nom arabe
+  return baremeName;
+}
   static final Map<String, String> _matiereTranslations = {
     "التواصل الشفوي": "Communication orale",
     "قراءة": "Lecture",
@@ -325,7 +340,20 @@ class _ClassificationPageState extends State<ClassificationPage> {
       return defaultValue;
     }
   }
+// Ajoutez cette méthode dans _ClassificationPageState
+bool _isBaremeNameInArabic(String baremeName) {
+  // Vérifier si le nom contient des caractères arabes
+  final arabicRegex = RegExp(r'[\u0600-\u06FF]');
+  return arabicRegex.hasMatch(baremeName);
+}
 
+// Et cette méthode pour obtenir le nom affiché
+String _getDisplayBaremeName(String originalName) {
+  if (_isFrenchInterface && _isBaremeNameInArabic(originalName)) {
+    return DataTranslator.translateBareme(originalName);
+  }
+  return originalName;
+}
   // Condition de vérification du crédit (identique au code 1)
   Future<bool> _checkAndUpdatePrintCredit() async {
     final user = FirebaseAuth.instance.currentUser;
