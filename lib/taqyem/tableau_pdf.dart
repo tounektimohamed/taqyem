@@ -10,6 +10,10 @@ import 'package:open_file/open_file.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class HTMLReportGenerator {
+  // Constantes pour les performances
+  static const int MAX_STUDENTS_PER_PAGE = 50;
+  static const int MAX_BAREMES_PER_TABLE = 20;
+
   static Future<void> generateAndDownloadReport({
     required String profName,
     required String matiereName,
@@ -21,17 +25,14 @@ class HTMLReportGenerator {
     required int totalStudents,
     required bool isFrenchInterface,
     required bool downloadAsPDF,
-    // Paramètres existants
     String trimestre = 'الأول',
     String periode = '',
     String evaluationType = 'تقييم',
-    // Nouveaux paramètres optionnels
     String selectedClass = '',
     List<Map<String, dynamic>> criteria = const [],
-    String performanceAttendue = '', // NOUVEAU: Performance attendue
+    String performanceAttendue = '',
   }) async {
     try {
-      // Charger le logo en base64
       String logoBase64 = "";
       try {
         final logoBytes = await _loadImage('lib/assets/icons/me/ministere.png');
@@ -42,7 +43,6 @@ class HTMLReportGenerator {
         print('Logo non trouvé: $e');
       }
 
-      // Générer le contenu HTML complet avec performance attendue
       final htmlContent = _buildCompleteHTMLContent(
         profName: profName,
         matiereName: matiereName,
@@ -58,7 +58,7 @@ class HTMLReportGenerator {
         periode: periode,
         evaluationType: evaluationType,
         criteria: criteria,
-        performanceAttendue: performanceAttendue, // NOUVEAU
+        performanceAttendue: performanceAttendue,
       );
 
       if (downloadAsPDF) {
@@ -71,99 +71,68 @@ class HTMLReportGenerator {
       rethrow;
     }
   }
-
-  // Méthode pour générer le tableau des critères (similaire à _buildCriteriaHTML mais sans la page complète)
-  static String _buildCriteriaTableHTML({
-    required List<Map<String, dynamic>> criteria,
-    required bool isFrenchInterface,
-  }) {
-    if (criteria.isEmpty) {
-      return '';
-    }
-
-    String rows = '';
-    int totalIndicators = 0;
-
-    // Trier les critères
-    final sortedCriteria = List<Map<String, dynamic>>.from(criteria);
-
-    if (!isFrenchInterface) {
-      // Tri arabe
-      sortedCriteria.sort((a, b) {
-        final nameA = a['name'] as String;
-        final nameB = b['name'] as String;
-        return _arabicComparatorForHTML(nameA, nameB);
-      });
-    } else {
-      // Tri français
-      sortedCriteria.sort((a, b) {
-        return (a['name'] as String).compareTo(b['name'] as String);
-      });
-    }
-
-    for (int i = 0; i < sortedCriteria.length; i++) {
-      final critere = sortedCriteria[i];
-      final name = critere['name']?.toString() ?? 'معيار ${i + 1}';
-      final domaine = critere['domaine']?.toString() ?? '';
-      final indicators = critere['indicators'] as List<dynamic>? ?? [];
-      totalIndicators += indicators.length;
-
-      // Trier les indicateurs
-      final List<String> indicatorStrings =
-          indicators.map((e) => e.toString()).toList();
-
-      if (!isFrenchInterface) {
-        indicatorStrings.sort(_arabicComparatorForHTML);
-      } else {
-        indicatorStrings.sort();
-      }
-
-      // Ligne principale du critère
-      rows += '''
-    <tr class="criteria-main-row">
-        <td class="criteria-number">${i + 1}</td>
-        <td colspan="2">
-            <span class="criteria-title">$name</span>
-            ${domaine.isNotEmpty ? '<span class="domain-badge">${isFrenchInterface ? 'Domaine' : 'المجال'}: $domaine</span>' : ''}
-        </td>
-    </tr>
-    ''';
-
-      // Lignes des indicateurs
-      for (int j = 0; j < indicatorStrings.length; j++) {
-        final indicator = indicatorStrings[j];
-        rows += '''
-      <tr class="indicator-row">
-          <td class="indicator-number">${i + 1}.${j + 1}</td>
-          <td colspan="2">$indicator</td>
-      </tr>
-      ''';
-      }
-    }
-
-    return '''
-    <div style="margin-top: 20px;">
-      <div style="margin-bottom: 10px; color: #666; font-size: 14px;">
-        ${isFrenchInterface ? 'Total des critères' : 'مجموع المعايير'}: ${sortedCriteria.length} | 
-        ${isFrenchInterface ? 'Total des indicateurs' : 'مجموع المؤشرات'}: $totalIndicators
-      </div>
-      
-      <table class="criteria-table">
-          <thead>
-              <tr>
-                  <th style="width: 80px;">#</th>
-                  <th colspan="2">${isFrenchInterface ? 'Critères / Indicateurs' : 'المعايير / المؤشرات'}</th>
-              </tr>
-          </thead>
-          <tbody>
-              $rows
-          </tbody>
-      </table>
-    </div>
-  ''';
+static String _buildCriteriaTableHTML({
+  required List<Map<String, dynamic>> criteria,
+  required bool isFrenchInterface,
+}) {
+  if (criteria.isEmpty) {
+    return '';
   }
 
-// NOUVELLE MÉTHODE: Page combinée des données de période et des critères
+  final StringBuffer rows = StringBuffer();
+  int totalIndicators = 0;
+
+  for (int i = 0; i < criteria.length; i++) {
+    final critere = criteria[i];
+    final name = critere['name']?.toString() ?? 'معيار ${i + 1}';
+    final domaine = critere['domaine']?.toString() ?? '';
+    final indicators = critere['indicators'] as List<dynamic>? ?? [];
+    totalIndicators += indicators.length;
+
+    // Ligne principale du critère
+    rows.write('''
+  <tr class="criteria-main-row">
+      <td class="criteria-number">${i + 1}</td>
+      <td colspan="2">
+          <span class="criteria-title">$name</span>
+       
+      </td>
+  </tr>
+  ''');
+
+    // Lignes des indicateurs (sans tri)
+    for (int j = 0; j < indicators.length; j++) {
+      final indicator = indicators[j].toString();
+      rows.write('''
+    <tr class="indicator-row">
+        <td class="indicator-number">${i + 1}.${j + 1}</td>
+        <td colspan="2">$indicator</td>
+    </tr>
+    ''');
+    }
+  }
+
+  return '''
+  <div style="margin-top: 20px;">
+    <div style="margin-bottom: 10px; color: #666; font-size: 14px;">
+      ${isFrenchInterface ? 'Total des critères' : 'مجموع المعايير'}: ${criteria.length} | 
+      ${isFrenchInterface ? 'Total des indicateurs' : 'مجموع المؤشرات'}: $totalIndicators
+    </div>
+    
+    <table class="criteria-table">
+        <thead>
+            <tr>
+                <th style="width: 80px;">#</th>
+                <th colspan="2">${isFrenchInterface ? 'Critères / Indicateurs' : 'المعايير / المؤشرات'}</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rows.toString()}
+        </tbody>
+    </table>
+  </div>
+''';
+}
   static String _buildCombinedPeriodAndCriteriaPageHTML({
     required String trimestre,
     required String periode,
@@ -176,7 +145,6 @@ class HTMLReportGenerator {
     required String performanceAttendue,
     required List<Map<String, dynamic>> criteria,
   }) {
-    // Générer le contenu HTML des critères
     final criteriaHTML = _buildCriteriaTableHTML(
       criteria: criteria,
       isFrenchInterface: isFrenchInterface,
@@ -192,74 +160,53 @@ class HTMLReportGenerator {
         
         <!-- Section des données de période -->
         <div class="period-section">
-    <h3 style="color: var(--primary-color); margin-bottom: 20px; font-size: 20px;">
-        ${isFrenchInterface ? 'Détails de la période' : 'تفاصيل الفترة'}
-    </h3>
-    
-    <div class="period-grid" style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 20px;">
-        <div class="period-card" style="flex: 1; min-width: 200px;">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div class="period-icon" style="background: var(--primary-color); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px;">
-                    📅
+            <h3>${isFrenchInterface ? 'Détails de la période' : 'تفاصيل الفترة'}</h3>
+            
+            <div class="period-grid">
+                <div class="period-card">
+                    <div class="period-icon">📅</div>
+                    <div>
+                        <div class="period-label">${t['trimestre']}</div>
+                        <div class="period-value">${_getTrimestreDisplay(trimestre, isFrenchInterface)}</div>
+                    </div>
                 </div>
-                <div>
-                    <div class="period-label">${t['trimestre']}</div>
-                    <div class="period-value">${_getTrimestreDisplay(trimestre, isFrenchInterface)}</div>
+                
+                <div class="period-card">
+                    <div class="period-icon">📚</div>
+                    <div>
+                        <div class="period-label">${t['periode']}</div>
+                        <div class="period-value">
+                            ${periode.isNotEmpty ? periode : (isFrenchInterface ? 'Non spécifié' : 'غير محدد')}
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-        
-        <div class="period-card" style="flex: 1; min-width: 200px;">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div class="period-icon" style="background: var(--secondary-color); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px;">
-                    📚
-                </div>
-                <div>
-                    <div class="period-label">${t['periode']}</div>
-                    <div class="period-value">
-                        ${periode.isNotEmpty ? periode : (isFrenchInterface ? 'Non spécifié' : 'غير محدد')}
+                
+                <div class="period-card">
+                    <div class="period-icon">📝</div>
+                    <div>
+                        <div class="period-label">${t['evaluation_type']}</div>
+                        <div class="period-value">
+                            ${_getEvaluationTypeDisplay(evaluationType, isFrenchInterface)}
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
         
-        <div class="period-card" style="flex: 1; min-width: 200px;">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div class="period-icon" style="background: var(--accent-color); width: 50px; height: 50px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px;">
-                    📝
-                </div>
-                <div>
-                    <div class="period-label">${t['evaluation_type']}</div>
-                    <div class="period-value">
-                        ${_getEvaluationTypeDisplay(evaluationType, isFrenchInterface)}
-                    </div>
-                </div>
+        <!-- Section Performance Attendue -->
+        ${performanceAttendue.isNotEmpty ? '''
+        <div class="performance-section">
+            <h3>${isFrenchInterface ? 'Performance Attendue' : 'الأداء المنتظر'}</h3>
+            <div class="performance-content">
+                ${performanceAttendue}
             </div>
         </div>
-    </div>
-</div>
-            <!-- Section Performance Attendue -->
-            ${performanceAttendue.isNotEmpty ? '''
-            <div class="performance-section">
-                <h3 class="performance-title">
-                    ${isFrenchInterface ? 'Performance Attendue' : 'الأداء المنتظر'}
-                </h3>
-                <div class="performance-content">
-                    ${performanceAttendue}
-                </div>
-            </div>
-            ''' : ''}
-            
-            
-        </div>
+        ''' : ''}
         
-        <!-- Section des critères d'évaluation (si disponibles) -->
+        <!-- Section des critères d'évaluation -->
         ${criteria.isNotEmpty ? '''
         <div class="criteria-section">
-            <h3 style="color: var(--secondary-color); margin-bottom: 20px; font-size: 20px;">
-                ${t['evaluation_criteria']}
-            </h3>
-            
+            <h3>${t['evaluation_criteria']}</h3>
             ${criteriaHTML}
         </div>
         ''' : ''}
@@ -285,14 +232,12 @@ class HTMLReportGenerator {
     required String trimestre,
     required String periode,
     required String evaluationType,
-    // Nouveau paramètre optionnel
     required List<Map<String, dynamic>> criteria,
-    required String performanceAttendue, // NOUVEAU
+    required String performanceAttendue,
   }) {
     final direction = isFrenchInterface ? 'ltr' : 'rtl';
     final textAlign = isFrenchInterface ? 'left' : 'right';
 
-    // Traductions existantes
     final t = {
       'title': isFrenchInterface ? 'Rapport des Résultats' : 'تقرير النتائج',
       'cover_title': isFrenchInterface
@@ -321,7 +266,6 @@ class HTMLReportGenerator {
       'evaluation_type':
           isFrenchInterface ? 'Type d\'évaluation' : 'نوع التقييم',
       'generated_on': isFrenchInterface ? 'Généré le' : 'تم الإنشاء في',
-      // Nouvelles traductions pour les critères
       'evaluation_criteria':
           isFrenchInterface ? 'Critères d\'évaluation' : 'معايير التقييم',
       'criteria': isFrenchInterface ? 'Critères' : 'المعايير',
@@ -333,16 +277,13 @@ class HTMLReportGenerator {
           isFrenchInterface ? 'Total des indicateurs' : 'مجموع المؤشرات',
     };
 
-    // Date et année scolaire (existant)
     final now = DateTime.now();
     final currentDate = '${now.day}/${now.month}/${now.year}';
     final academicYear = '${now.year}/${now.year + 1}';
-
-    // Déterminer le domaine de la matière (existant)
     final domaine = _getDomaineForMatiere(matiereName, isFrenchInterface);
 
-    // Générer le tableau principal (existant)
-    final tableHTML = _buildTableHTML(
+    // Tableau optimisé
+    final tableHTML = _buildOptimizedTableHTML(
       baremes: baremes,
       students: students,
       sumCriteriaMaxPerBareme: sumCriteriaMaxPerBareme,
@@ -351,7 +292,6 @@ class HTMLReportGenerator {
       t: t,
     );
 
-    // MODIFICATION: Combiner les données de période et les critères sur une seule page
     final combinedPeriodAndCriteriaHTML =
         _buildCombinedPeriodAndCriteriaPageHTML(
       trimestre: trimestre,
@@ -374,7 +314,7 @@ class HTMLReportGenerator {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${t['title']}</title>
     <style>
-        /* STYLES EXISTANTS - NE PAS MODIFIER */
+        /* STYLES SIMPLIFIÉS */
         * {
             margin: 0;
             padding: 0;
@@ -382,25 +322,24 @@ class HTMLReportGenerator {
         }
         
         :root {
-            --primary-color: #075260;
-            --secondary-color: #2E7D32;
-            --accent-color: #FF9800;
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #7f8c8d;
             --light-bg: #f8f9fa;
             --white: #ffffff;
             --text-color: #333333;
-            --border-radius: 8px;
-            --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            --transition: all 0.3s ease;
+            --border-color: #ddd;
+            --border-radius: 5px;
+            --box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         
         body {
-            font-family: ${isFrenchInterface ? 'Arial, Helvetica, sans-serif' : "'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif"};
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: ${isFrenchInterface ? 'Arial, Helvetica, sans-serif' : "'Noto Sans Arabic', Tahoma, sans-serif"};
+            background: #f5f5f5;
             color: var(--text-color);
             direction: $direction;
-            line-height: 1.6;
-            min-height: 100vh;
-            padding: 20px;
+            line-height: 1.5;
+            padding: 10px;
         }
         
         .report-container {
@@ -413,36 +352,21 @@ class HTMLReportGenerator {
             background: var(--white);
             border-radius: var(--border-radius);
             box-shadow: var(--box-shadow);
-            padding: 40px;
-            margin-bottom: 40px;
-            position: relative;
-            overflow: hidden;
-            min-height: 90vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        
-        .cover-page::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            ${isFrenchInterface ? 'left' : 'right'}: 0;
-            width: 100%;
-            height: 5px;
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            padding: 30px;
+            margin-bottom: 20px;
+            border-top: 5px solid var(--primary-color);
         }
         
         .cover-header {
             text-align: center;
-            margin-bottom: 40px;
-            border-bottom: 2px solid var(--primary-color);
-            padding-bottom: 20px;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
         }
         
         .ministry-title {
             color: var(--primary-color);
-            font-size: 24px;
+            font-size: 22px;
             font-weight: bold;
             margin-bottom: 10px;
             line-height: 1.3;
@@ -450,79 +374,58 @@ class HTMLReportGenerator {
         
         .delegation-title {
             color: var(--secondary-color);
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
             margin-bottom: 15px;
         }
         
         .logo-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 20px;
-            margin: 30px 0;
+            margin: 20px 0;
+            text-align: center;
         }
         
         .logo {
-            height: 100px;
-            max-width: 200px;
+            height: 80px;
+            max-width: 150px;
             object-fit: contain;
         }
         
         .school-info {
             background: var(--light-bg);
             border-radius: var(--border-radius);
-            padding: 25px;
-            margin: 30px 0;
-            border: 2px solid var(--primary-color);
-            position: relative;
-        }
-        
-        .school-info::before {
-            content: '🏫';
-            position: absolute;
-            top: -15px;
-            ${isFrenchInterface ? 'left' : 'right'}: 20px;
-            background: var(--white);
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 20px;
+            padding: 20px;
+            margin: 20px 0;
+            border: 1px solid var(--border-color);
+            text-align: center;
         }
         
         .info-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
         }
         
         .info-card {
             background: var(--white);
             border-radius: var(--border-radius);
-            padding: 20px;
-            border: 1px solid #e0e0e0;
-            transition: var(--transition);
+            padding: 15px;
+            border: 1px solid var(--border-color);
             display: flex;
             align-items: center;
-            gap: 15px;
-        }
-        
-        .info-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--box-shadow);
-            border-color: var(--primary-color);
+            gap: 10px;
         }
         
         .info-icon {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            width: 40px;
+            height: 40px;
+            background: var(--primary-color);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 20px;
+            font-size: 16px;
             flex-shrink: 0;
         }
         
@@ -532,252 +435,195 @@ class HTMLReportGenerator {
         
         .info-label {
             color: #666;
-            font-size: 14px;
-            margin-bottom: 5px;
+            font-size: 13px;
+            margin-bottom: 3px;
         }
         
         .info-value {
             color: var(--text-color);
-            font-size: 16px;
+            font-size: 14px;
             font-weight: 600;
         }
         
         .domaine-section {
-            background: linear-gradient(135deg, var(--secondary-color), #4CAF50);
-            color: white;
-            padding: 20px;
+            background: var(--light-bg);
+            color: var(--primary-color);
+            padding: 15px;
             border-radius: var(--border-radius);
-            margin: 30px 0;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .domaine-section::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            ${isFrenchInterface ? 'left' : 'right'}: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255, 255, 255, 0.1);
-            clip-path: circle(30% at 10% 10%);
+            margin: 20px 0;
+            border-left: 4px solid var(--primary-color);
         }
         
         .domaine-title {
-            font-size: 22px;
+            font-size: 18px;
             font-weight: bold;
-            margin-bottom: 15px;
-            position: relative;
-            z-index: 1;
+            margin-bottom: 10px;
         }
         
         .domaine-content {
-            font-size: 18px;
-            font-weight: 500;
-            position: relative;
-            z-index: 1;
+            font-size: 16px;
         }
         
         .footer-cover {
             text-align: center;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
             color: #666;
-            font-size: 14px;
+            font-size: 13px;
         }
         
-        /* Page combinée des données de période et des critères */
+        /* Page combinée */
         .combined-page {
             background: var(--white);
             border-radius: var(--border-radius);
             box-shadow: var(--box-shadow);
-            padding: 30px;
-            margin-top: 40px;
+            padding: 25px;
+            margin-top: 20px;
             page-break-before: always;
         }
         
         .section-header {
-            background: linear-gradient(135deg, var(--primary-color), #0a6b7e);
-            color: white;
-            padding: 20px;
-            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            background: var(--light-bg);
+            padding: 15px;
+            border-radius: var(--border-radius);
             margin-bottom: 20px;
+            border-bottom: 2px solid var(--primary-color);
         }
         
         .section-title {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             text-align: center;
-            margin-bottom: 10px;
+            color: var(--primary-color);
         }
         
-        .section-subtitle {
-            text-align: center;
-            opacity: 0.9;
-            font-size: 16px;
+        .period-section h3,
+        .performance-section h3,
+        .criteria-section h3 {
+            color: var(--primary-color);
+            margin-bottom: 15px;
+            font-size: 18px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
         }
         
         .period-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin: 40px 0;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
         }
         
         .period-card {
             background: var(--light-bg);
             border-radius: var(--border-radius);
-            padding: 25px;
-            transition: var(--transition);
-            border: 2px solid transparent;
-        }
-        
-        .period-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--box-shadow);
-        }
-        
-        .period-card:nth-child(1) {
-            border-color: var(--primary-color);
-        }
-        
-        .period-card:nth-child(2) {
-            border-color: var(--secondary-color);
-        }
-        
-        .period-card:nth-child(3) {
-            border-color: var(--accent-color);
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
         
         .period-icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            margin-bottom: 15px;
-        }
-        
-        .period-icon:nth-child(1) {
-            background: var(--primary-color);
-            color: white;
-        }
-        
-        .period-icon:nth-child(2) {
-            background: var(--secondary-color);
-            color: white;
-        }
-        
-        .period-icon:nth-child(3) {
-            background: var(--accent-color);
-            color: white;
+            font-size: 20px;
+            color: var(--primary-color);
         }
         
         .period-label {
             color: #666;
-            font-size: 14px;
+            font-size: 13px;
             margin-bottom: 5px;
         }
         
         .period-value {
             color: var(--text-color);
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 600;
         }
         
         /* Section Performance Attendue */
         .performance-section {
-            margin: 30px 0;
-            padding: 20px;
-            background: #E8F5E9;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f0f7f0;
             border-radius: var(--border-radius);
             border-left: 4px solid #4CAF50;
-        }
-        
-        .performance-title {
-            color: #2E7D32;
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 15px;
         }
         
         .performance-content {
             color: #333;
             line-height: 1.6;
             white-space: pre-line;
-            font-size: 16px;
+            font-size: 15px;
         }
         
         /* Section des critères */
         .criteria-section {
-            margin-top: 40px;
+            margin-top: 30px;
             padding-top: 20px;
-            border-top: 2px solid var(--secondary-color);
+            border-top: 1px solid var(--border-color);
         }
         
         .criteria-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
-            margin: 20px 0;
+            font-size: 13px;
+            margin: 15px 0;
+            border: 1px solid var(--border-color);
         }
         
         .criteria-table th {
-            background: #4CAF50;
+            background: var(--primary-color);
             color: white;
-            padding: 12px 8px;
+            padding: 10px 8px;
             text-align: center;
             font-weight: 600;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-color);
         }
         
         .criteria-table td {
-            padding: 10px 8px;
-            border: 1px solid #ddd;
+            padding: 8px;
+            border: 1px solid var(--border-color);
             vertical-align: top;
         }
         
         .criteria-main-row {
-            background: #f1f8e9 !important;
+            background: #f8f9fa !important;
             font-weight: bold;
         }
         
         .indicator-row {
-            background: #f9f9f9 !important;
+            background: var(--white) !important;
         }
         
         .criteria-number {
-            width: 60px;
+            width: 50px;
             text-align: center;
             font-weight: bold;
-            color: #2E7D32;
-            background: #f1f8e9;
+            color: var(--primary-color);
         }
         
         .indicator-number {
-            width: 80px;
+            width: 70px;
             text-align: center;
             color: #666;
-            background: #f9f9f9;
         }
         
         .domain-badge {
             display: inline-block;
-            padding: 4px 10px;
-            background: #E8F5E9;
+            padding: 3px 8px;
+            background: #e8f5e9;
             color: #2E7D32;
-            border-radius: 15px;
-            font-size: 12px;
-            margin-${isFrenchInterface ? 'left' : 'right'}: 10px;
-            border: 1px solid #C8E6C9;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-${isFrenchInterface ? 'left' : 'right'}: 8px;
+            border: 1px solid #c8e6c9;
         }
         
         .criteria-title {
             font-weight: bold;
-            color: #2E7D32;
+            color: var(--primary-color);
         }
         
         /* Page du tableau principal */
@@ -785,111 +631,101 @@ class HTMLReportGenerator {
             background: var(--white);
             border-radius: var(--border-radius);
             box-shadow: var(--box-shadow);
-            padding: 30px;
-            margin-top: 40px;
+            padding: 25px;
+            margin-top: 20px;
             page-break-before: always;
         }
         
         .table-header {
-            background: linear-gradient(135deg, var(--primary-color), #0a6b7e);
-            color: white;
-            padding: 20px;
-            border-radius: var(--border-radius) var(--border-radius) 0 0;
+            background: var(--light-bg);
+            padding: 15px;
+            border-radius: var(--border-radius);
             margin-bottom: 20px;
+            border-bottom: 2px solid var(--primary-color);
         }
         
         .table-main-title {
-            font-size: 24px;
+            font-size: 20px;
             font-weight: bold;
             text-align: center;
-            margin-bottom: 10px;
+            color: var(--primary-color);
+            margin-bottom: 8px;
         }
         
         .table-subtitle {
             text-align: center;
-            opacity: 0.9;
-            font-size: 16px;
+            color: #666;
+            font-size: 15px;
         }
         
         .table-container {
             overflow-x: auto;
-            margin: 20px 0;
+            margin: 15px 0;
+            border: 1px solid var(--border-color);
             border-radius: var(--border-radius);
-            border: 1px solid #e0e0e0;
         }
         
         .results-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 14px;
+            font-size: 13px;
         }
         
         .results-table th {
             background: var(--primary-color);
             color: white;
-            padding: 12px 8px;
+            padding: 10px 8px;
             text-align: center;
             font-weight: 600;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-color);
             white-space: nowrap;
             position: sticky;
             top: 0;
-            z-index: 10;
         }
         
         .results-table td {
-            padding: 10px 8px;
+            padding: 8px;
             text-align: center;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-color);
             vertical-align: middle;
         }
         
         .student-name-cell {
             background: var(--light-bg);
             font-weight: 600;
-            text-align: ${isFrenchInterface ? 'left' : 'right'};
+            text-align: ${textAlign};
             min-width: 150px;
             position: sticky;
             ${isFrenchInterface ? 'left' : 'right'}: 0;
-            z-index: 5;
+            z-index: 1;
         }
         
+        /* Styles pour la hiérarchie des barèmes */
+        .main-bareme-header {
+            background: var(--secondary-color) !important;
+            color: white !important;
+            font-weight: bold !important;
+        }
+        
+        .sub-bareme-header {
+            background: var(--accent-color) !important;
+            color: white !important;
+            font-weight: normal !important;
+            font-size: 12px !important;
+        }
+        
+        /* Couleurs des notes */
         .mark-excellent { background-color: #d4edda; color: #155724; font-weight: bold; }
         .mark-good { background-color: #fff3cd; color: #856404; font-weight: bold; }
         .mark-average { background-color: #ffeaa7; color: #856404; }
         .mark-poor { background-color: #f8d7da; color: #721c24; }
         
+        /* Lignes de statistiques */
         .stats-row {
             background: #e3f2fd !important;
             font-weight: bold;
         }
-        /* Styles pour la hiérarchie des barèmes */
-.main-bareme-header {
-  background: #075260 !important;
-  color: white !important;
-  font-weight: bold !important;
-  text-align: center !important;
-  border-bottom: 2px solid #0a6b7e !important;
-}
-
-.sub-bareme-header {
-  background: #0a6b7e !important;
-  color: white !important;
-  font-weight: normal !important;
-  font-size: 12px !important;
-  border-top: none !important;
-}
-
-/* Bordures pour séparer les groupes de barèmes */
-.results-table th:not(.student-name-cell) {
-  border-right: 1px solid rgba(255, 255, 255, 0.3) !important;
-}
-
-.results-table th:last-child {
-  border-right: none !important;
-}
-
-/
+        
         .percentage-row {
             background: #f3e5f5 !important;
             font-weight: bold;
@@ -899,56 +735,92 @@ class HTMLReportGenerator {
         .percentage-medium { color: #FF9800; }
         .percentage-low { color: #D32F2F; }
         
+        /* Section résumé */
         .summary-section {
             background: var(--light-bg);
-            padding: 20px;
+            padding: 15px;
             border-radius: var(--border-radius);
-            margin-top: 30px;
+            margin-top: 20px;
         }
         
         .summary-title {
             color: var(--primary-color);
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         
         .summary-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
         }
         
         .summary-item {
             background: white;
-            padding: 15px;
+            padding: 12px;
             border-radius: var(--border-radius);
-            border-left: 4px solid var(--primary-color);
+            border-left: 3px solid var(--primary-color);
         }
         
         .summary-label {
             color: #666;
-            font-size: 14px;
-            margin-bottom: 5px;
+            font-size: 13px;
+            margin-bottom: 3px;
         }
         
         .summary-value {
             color: var(--text-color);
-            font-size: 18px;
+            font-size: 15px;
             font-weight: bold;
         }
         
         .report-footer {
             text-align: center;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color);
             color: #666;
-            font-size: 14px;
+            font-size: 13px;
         }
         
-        /* STYLES D'IMPRESSION EXISTANTS */
+        /* Styles d'impression */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .cover-page, .combined-page, .table-page {
+                box-shadow: none;
+                border: none;
+                page-break-inside: avoid;
+            }
+            
+            .no-print {
+                display: none;
+            }
+            
+            .table-container {
+                overflow: visible;
+            }
+        }
         
+        /* Responsive */
+        @media (max-width: 768px) {
+            .info-grid, .period-grid, .summary-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .period-card {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .table-container {
+                font-size: 12px;
+            }
+        }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -965,8 +837,8 @@ class HTMLReportGenerator {
     </div>
     
     <script>
-        // Script existant pour les couleurs
         document.addEventListener('DOMContentLoaded', function() {
+            // Appliquer les couleurs aux notes
             const cells = document.querySelectorAll('.mark-cell');
             cells.forEach(cell => {
                 const mark = cell.textContent.trim();
@@ -981,6 +853,7 @@ class HTMLReportGenerator {
                 }
             });
             
+            // Appliquer les couleurs aux pourcentages
             const percentageCells = document.querySelectorAll('.percentage-cell');
             percentageCells.forEach(cell => {
                 const text = cell.textContent.trim();
@@ -1002,83 +875,611 @@ class HTMLReportGenerator {
     ''';
   }
 
-  // ============ NOUVELLES MÉTHODES POUR LA RÉORGANISATION ============
+  // ============ MÉTHODES OPTIMISÉES POUR LE TABLEAU ============
 
-  // Page des données de période
+  static String _buildOptimizedTableHTML({
+    required List<dynamic> baremes,
+    required List<dynamic> students,
+    required Map<String, int> sumCriteriaMaxPerBareme,
+    required int totalStudents,
+    required bool isFrenchInterface,
+    required Map<String, String> t,
+  }) {
+    print('=== DÉBUT DE LA CONSTRUCTION DU TABLEAU ===');
+    print('Nombre de barèmes: ${baremes.length}');
+    print('Nombre d\'étudiants: ${students.length}');
 
-  static String _buildPeriodDataPageHTML(
-    String trimestre,
-    String periode,
-    String evaluationType,
-    Map<String, String> t,
-    bool isFrenchInterface,
-    String matiereName,
-    String className,
-    String profName,
-    String performanceAttendue, // NOUVEAU
-  ) {
-    return '''
-    <div class="period-page">
-        <!-- ... contenu existant ... -->
-        
-        <!-- NOUVEAU: Section Performance Attendue -->
-        ${performanceAttendue.isNotEmpty ? '''
-        <div class="performance-section">
-            <h3 style="color: var(--secondary-color); margin-top: 20px;">
-                ${isFrenchInterface ? 'Performance Attendue' : 'الأداء المنتظر'}
-            </h3>
-            <div style="background: #F1F8E9; padding: 15px; border-radius: 8px; margin-top: 10px; border: 1px solid #C8E6C9;">
-                <p style="color: #333; line-height: 1.6; white-space: pre-line;">
-                    ${performanceAttendue}
-                </p>
-            </div>
-        </div>
-        ''' : ''}
-        
-        <div class="report-footer">
-            <p class="no-print">${isFrenchInterface ? 'Page 2' : 'الصفحة 2'}</p>
-        </div>
-    </div>
-  ''';
+    // Limiter les barèmes si trop nombreux
+    final List<dynamic> limitedBaremes = baremes.length > MAX_BAREMES_PER_TABLE
+        ? baremes.sublist(0, MAX_BAREMES_PER_TABLE)
+        : baremes;
+
+    // Organiser et trier les barèmes alphabétiquement
+    final List<Map<String, dynamic>> mainBaremes = _organizeAndSortBaremes(
+      limitedBaremes,
+      isFrenchInterface,
+    );
+
+    // Trier les étudiants alphabétiquement
+    final List<Map<String, dynamic>> sortedStudents = _sortStudents(
+      students,
+      isFrenchInterface,
+    );
+
+    // Construire l'en-tête
+    final String headerHTML = _buildTableHeader(mainBaremes, t);
+
+    // Construire les lignes des étudiants
+    final String studentsRows = _buildStudentRowsOptimized(
+      sortedStudents,
+      mainBaremes,
+    );
+
+    // Construire les statistiques
+    final String statsHTML = _buildStatisticsRows(
+      mainBaremes,
+      sumCriteriaMaxPerBareme,
+      totalStudents,
+      t,
+    );
+
+    // Calculer le nombre total de colonnes
+    final int totalColumns = _calculateTotalColumns(mainBaremes);
+
+    print('=== FIN DE LA CONSTRUCTION DU TABLEAU ===');
+
+    return _buildFinalTableHTML(
+      headerHTML,
+      studentsRows,
+      statsHTML,
+      totalColumns,
+      isFrenchInterface,
+    );
   }
 
-  // Page du tableau d'évaluation
-  static String _buildEvaluationTablePageHTML(
-    String matiereName,
-    String className,
-    String trimestre,
+  static List<Map<String, dynamic>> _organizeAndSortBaremes(
+    List<dynamic> baremes,
+    bool isFrenchInterface,
+  ) {
+    print('=== ORGANISATION DES BARÈMES ===');
+
+    final Map<String, Map<String, dynamic>> baremeMap = {};
+    final Map<String, List<Map<String, dynamic>>> subBaremesByParent = {};
+
+    // Premier passage: organiser les barèmes avec leurs valeurs réelles
+    for (var bareme in baremes) {
+      final baremeId = bareme['id'].toString();
+      final baremeValue = bareme['value']?.toString() ?? '';
+      final parentBaremeId = bareme['parentBaremeId']?.toString();
+
+      print(
+          'Barème trouvé: ID=$baremeId, Valeur="$baremeValue", Parent=$parentBaremeId');
+
+      if (parentBaremeId == null || parentBaremeId.isEmpty) {
+        // Barème principal
+        baremeMap[baremeId] = {
+          'id': baremeId,
+          'value': baremeValue,
+          'originalValue': baremeValue,
+          'hasSubBaremes': false,
+          'subBaremes': [],
+          'isVirtual': false,
+        };
+        print('  → Ajouté comme barème principal: $baremeValue');
+      } else {
+        // Sous-barème
+        if (!subBaremesByParent.containsKey(parentBaremeId)) {
+          subBaremesByParent[parentBaremeId] = [];
+        }
+        subBaremesByParent[parentBaremeId]!.add({
+          'id': baremeId,
+          'value': baremeValue,
+          'originalValue': baremeValue,
+        });
+        print('  → Ajouté comme sous-barème de parent $parentBaremeId');
+      }
+    }
+
+    print('--- Recherche des noms de parents ---');
+
+    // Deuxième passage: trouver les noms des parents manquants
+    for (var parentId in subBaremesByParent.keys) {
+      print('Traitement du parent ID: $parentId');
+
+      if (!baremeMap.containsKey(parentId)) {
+        // Chercher le vrai nom du parent dans la liste originale
+        String parentName = '';
+
+        for (var bareme in baremes) {
+          if (bareme['id'].toString() == parentId) {
+            parentName = bareme['value']?.toString() ?? '';
+            break;
+          }
+        }
+
+        // Si on ne trouve pas, essayer d'extraire du premier sous-barème
+        if (parentName.isEmpty && subBaremesByParent[parentId]!.isNotEmpty) {
+          final firstSub = subBaremesByParent[parentId]!.first;
+          parentName = _extractParentNameFromSub(firstSub['value'] as String);
+        }
+
+        final finalParentName =
+            parentName.isNotEmpty ? parentName : 'معیار $parentId';
+
+        baremeMap[parentId] = {
+          'id': parentId,
+          'value': finalParentName,
+          'originalValue': finalParentName,
+          'hasSubBaremes': true,
+          'subBaremes': subBaremesByParent[parentId]!,
+          'isVirtual': true,
+        };
+
+        print(
+            '  → Créé parent virtuel: $finalParentName avec ${subBaremesByParent[parentId]!.length} sous-barèmes');
+      } else {
+        // Parent existe déjà, ajouter les sous-barèmes
+        baremeMap[parentId]!['hasSubBaremes'] = true;
+        baremeMap[parentId]!['subBaremes'] = subBaremesByParent[parentId]!;
+        print(
+            '  → Ajouté sous-barèmes au parent existant: ${baremeMap[parentId]!['value']}');
+      }
+    }
+
+    // Trier les barèmes principaux par ordre alphabétique
+    final List<Map<String, dynamic>> mainBaremesList =
+        baremeMap.values.toList();
+
+    print('--- Tri alphabétique des barèmes principaux ---');
+    mainBaremesList.sort((a, b) {
+      final nameA = a['value'] as String;
+      final nameB = b['value'] as String;
+
+      // Normaliser les noms pour le tri
+      final normalizedA = _normalizeForSorting(nameA);
+      final normalizedB = _normalizeForSorting(nameB);
+
+      if (!isFrenchInterface) {
+        // Tri arabe
+        return _arabicComparatorForHTML(normalizedA, normalizedB);
+      } else {
+        // Tri français
+        return normalizedA.toLowerCase().compareTo(normalizedB.toLowerCase());
+      }
+    });
+
+    // Trier les sous-barèmes alphabétiquement
+    print('--- Tri alphabétique des sous-barèmes ---');
+    for (var bareme in mainBaremesList) {
+      if (bareme['hasSubBaremes'] as bool) {
+        final subBaremes = bareme['subBaremes'] as List<Map<String, dynamic>>;
+
+        print('Tri des sous-barèmes de: ${bareme['value']}');
+
+        subBaremes.sort((a, b) {
+          final nameA = a['value'] as String;
+          final nameB = b['value'] as String;
+
+          // Nettoyer les noms pour le tri (enlever le préfixe parent)
+          String cleanA =
+              _cleanSubBaremeNameForSorting(nameA, bareme['value'] as String);
+          String cleanB =
+              _cleanSubBaremeNameForSorting(nameB, bareme['value'] as String);
+
+          if (cleanA.isEmpty) cleanA = nameA;
+          if (cleanB.isEmpty) cleanB = nameB;
+
+          final normalizedA = _normalizeForSorting(cleanA);
+          final normalizedB = _normalizeForSorting(cleanB);
+
+          if (!isFrenchInterface) {
+            return _arabicComparatorForHTML(normalizedA, normalizedB);
+          } else {
+            return normalizedA
+                .toLowerCase()
+                .compareTo(normalizedB.toLowerCase());
+          }
+        });
+
+        bareme['subBaremes'] = subBaremes;
+
+        // Afficher l'ordre final
+        for (var i = 0; i < subBaremes.length; i++) {
+          print('  ${i + 1}. ${subBaremes[i]['value']}');
+        }
+      }
+    }
+
+    // Afficher l'organisation finale
+    _debugBaremes(mainBaremesList);
+
+    return mainBaremesList;
+  }
+
+  static String _extractParentNameFromSub(String subBaremeName) {
+    if (subBaremeName.isEmpty) return '';
+
+    // Patterns courants pour les sous-barèmes:
+    // "مع 2.ب" -> "مع 2"
+    // "C3.a" -> "C3"
+    // "معيار 1.أ" -> "معيار 1"
+
+    // Pattern 1: Point avec lettre arabe
+    final arabicPattern = RegExp(r'^(.+)\.([\u0621-\u064A])$');
+    final matchArabic = arabicPattern.firstMatch(subBaremeName);
+    if (matchArabic != null) {
+      return matchArabic.group(1)!.trim();
+    }
+
+    // Pattern 2: Point avec lettre latine
+    final latinPattern = RegExp(r'^(.+)\.([a-zA-Z])$');
+    final matchLatin = latinPattern.firstMatch(subBaremeName);
+    if (matchLatin != null) {
+      return matchLatin.group(1)!.trim();
+    }
+
+    // Pattern 3: Espace avec lettre
+    final spacePattern = RegExp(r'^(.+)\s+([\u0621-\u064A]|[a-zA-Z])$');
+    final matchSpace = spacePattern.firstMatch(subBaremeName);
+    if (matchSpace != null) {
+      return matchSpace.group(1)!.trim();
+    }
+
+    // Pattern 4: Numéro entre parenthèses
+    final parenPattern = RegExp(r'^(.+)\s*\(([^)]+)\)$');
+    final matchParen = parenPattern.firstMatch(subBaremeName);
+    if (matchParen != null) {
+      return matchParen.group(1)!.trim();
+    }
+
+    return subBaremeName;
+  }
+
+  static String _normalizeForSorting(String text) {
+    if (text.isEmpty) return text;
+
+    String normalized = text.trim();
+
+    // Supprimer les diacritiques arabes
+    normalized = normalized.replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '');
+
+    // Normaliser les lettres arabes
+    final arabicNormalizations = {
+      'أ': 'ا',
+      'إ': 'ا',
+      'آ': 'ا',
+      'ؤ': 'و',
+      'ئ': 'ي',
+      'ة': 'ه',
+      'ى': 'ي'
+    };
+
+    arabicNormalizations.forEach((key, value) {
+      normalized = normalized.replaceAll(key, value);
+    });
+
+    // Convertir les chiffres arabes en latins pour le tri
+    final arabicNumbers = {
+      '٠': '0',
+      '١': '1',
+      '٢': '2',
+      '٣': '3',
+      '٤': '4',
+      '٥': '5',
+      '٦': '6',
+      '٧': '7',
+      '٨': '8',
+      '٩': '9'
+    };
+
+    arabicNumbers.forEach((key, value) {
+      normalized = normalized.replaceAll(key, value);
+    });
+
+    return normalized;
+  }
+
+  static String _cleanSubBaremeNameForSorting(
+      String subName, String parentName) {
+    if (subName.isEmpty || parentName.isEmpty) return subName;
+
+    String cleaned = subName;
+
+    // Enlever le nom du parent du début
+    if (cleaned.startsWith(parentName)) {
+      cleaned = cleaned.substring(parentName.length).trim();
+    }
+
+    // Enlever les séparateurs communs au début
+    cleaned = cleaned.replaceAll(RegExp(r'^[.\s\-_]+'), '');
+
+    return cleaned;
+  }
+
+  static String _cleanSubBaremeNameDisplay(String subName, String parentName) {
+    if (subName.isEmpty) return subName;
+
+    // Si le sous-barème commence par le nom du parent
+    if (subName.startsWith(parentName)) {
+      String remaining = subName.substring(parentName.length).trim();
+
+      // Enlever les séparateurs au début
+      remaining = remaining.replaceAll(RegExp(r'^[.\s\-_]+'), '');
+
+      // Si ce qui reste est une seule lettre ou un caractère simple, l'afficher
+      if (remaining.isNotEmpty && remaining.length <= 2) {
+        return remaining;
+      }
+    }
+
+    // Sinon, retourner le nom complet
+    return subName;
+  }
+
+  static void _debugBaremes(List<Map<String, dynamic>> mainBaremes) {
+    print('=== ORGANISATION FINALE DES BARÈMES ===');
+    for (var i = 0; i < mainBaremes.length; i++) {
+      final bareme = mainBaremes[i];
+      print(
+          '${i + 1}. Barème principal: "${bareme['value']}" (ID: ${bareme['id']})');
+
+      if (bareme['hasSubBaremes'] as bool) {
+        final subBaremes = bareme['subBaremes'] as List<dynamic>;
+        print('   Sous-barèmes (${subBaremes.length}):');
+        for (var j = 0; j < subBaremes.length; j++) {
+          final sub = subBaremes[j];
+          print('   ${j + 1}. "${sub['value']}" (ID: ${sub['id']})');
+        }
+      } else {
+        print('   (pas de sous-barèmes)');
+      }
+    }
+    print('===============================');
+  }
+
+  static List<Map<String, dynamic>> _sortStudents(
+    List<dynamic> students,
+    bool isFrenchInterface,
+  ) {
+    final List<Map<String, dynamic>> studentList =
+        students.map((s) => s as Map<String, dynamic>).toList();
+
+    studentList.sort((a, b) {
+      final nameA = a['name']?.toString() ?? '';
+      final nameB = b['name']?.toString() ?? '';
+
+      // Normaliser pour le tri
+      final normalizedA = _normalizeForSorting(nameA);
+      final normalizedB = _normalizeForSorting(nameB);
+
+      return isFrenchInterface
+          ? normalizedA.toLowerCase().compareTo(normalizedB.toLowerCase())
+          : _arabicComparatorForHTML(normalizedA, normalizedB);
+    });
+
+    return studentList;
+  }
+
+  static String _buildTableHeader(
+    List<Map<String, dynamic>> mainBaremes,
     Map<String, String> t,
-    String tableHTML,
+  ) {
+    final StringBuffer mainHeader = StringBuffer();
+    final StringBuffer subHeader = StringBuffer();
+
+    mainHeader.write(
+        '<th rowspan="2" class="student-name-cell">${t['student_name']}</th>');
+
+    for (var mainBareme in mainBaremes) {
+      final mainBaremeValue = mainBareme['value'] as String;
+      final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
+      final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
+
+      if (hasSubBaremes && subBaremes.isNotEmpty) {
+        final colspan = subBaremes.length;
+        mainHeader.write('''
+          <th colspan="$colspan" class="main-bareme-header">
+            $mainBaremeValue
+          </th>
+        ''');
+
+        for (var subBareme in subBaremes) {
+          final subValue = subBareme['value'] as String;
+          // Utiliser la méthode de nettoyage pour l'affichage
+          final cleanSubValue =
+              _cleanSubBaremeNameDisplay(subValue, mainBaremeValue);
+          subHeader.write('''
+            <th class="sub-bareme-header">
+              $cleanSubValue
+            </th>
+          ''');
+        }
+      } else {
+        mainHeader.write('''
+          <th colspan="1" class="main-bareme-header">
+            $mainBaremeValue
+          </th>
+        ''');
+        subHeader.write('<th></th>');
+      }
+    }
+
+    if (subHeader.toString().contains('sub-bareme-header')) {
+      return '''
+        <thead>
+          <tr>${mainHeader.toString()}</tr>
+          <tr>${subHeader.toString()}</tr>
+        </thead>
+      ''';
+    } else {
+      final StringBuffer singleHeader = StringBuffer();
+      singleHeader
+          .write('<th class="student-name-cell">${t['student_name']}</th>');
+      for (var mainBareme in mainBaremes) {
+        singleHeader.write(
+            '<th class="main-bareme-header">${mainBareme['value']}</th>');
+      }
+      return '<thead><tr>${singleHeader.toString()}</tr></thead>';
+    }
+  }
+
+  static String _buildStudentRowsOptimized(
+    List<Map<String, dynamic>> students,
+    List<Map<String, dynamic>> mainBaremes,
+  ) {
+    final StringBuffer buffer = StringBuffer();
+
+    for (var student in students) {
+      buffer.write('<tr>');
+      buffer.write('<td class="student-name-cell">${student['name']}</td>');
+
+      final studentBaremes = student['baremes'] as Map<String, dynamic>? ?? {};
+
+      for (var mainBareme in mainBaremes) {
+        final mainBaremeId = mainBareme['id'] as String;
+        final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
+        final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
+
+        if (hasSubBaremes && subBaremes.isNotEmpty) {
+          for (var subBareme in subBaremes) {
+            final subBaremeId = subBareme['id'] as String;
+            final fullKey = '$mainBaremeId-$subBaremeId';
+            final mark = _getStudentMarkOptimized(
+                studentBaremes, fullKey, subBaremeId, mainBaremeId);
+            buffer.write('<td class="mark-cell">$mark</td>');
+          }
+        } else {
+          final mark = studentBaremes[mainBaremeId]?.toString() ?? '( - - - )';
+          buffer.write('<td class="mark-cell">$mark</td>');
+        }
+      }
+
+      buffer.write('</tr>');
+    }
+
+    return buffer.toString();
+  }
+
+  static String _getStudentMarkOptimized(
+    Map<String, dynamic> studentBaremes,
+    String fullKey,
+    String subBaremeId,
+    String mainBaremeId,
+  ) {
+    if (studentBaremes.containsKey(fullKey)) {
+      return studentBaremes[fullKey]?.toString() ?? '( - - - )';
+    }
+    if (studentBaremes.containsKey(subBaremeId)) {
+      return studentBaremes[subBaremeId]?.toString() ?? '( - - - )';
+    }
+    if (studentBaremes.containsKey(mainBaremeId)) {
+      return studentBaremes[mainBaremeId]?.toString() ?? '( - - - )';
+    }
+    return '( - - - )';
+  }
+
+  static String _buildStatisticsRows(
+    List<Map<String, dynamic>> mainBaremes,
+    Map<String, int> sumCriteriaMaxPerBareme,
     int totalStudents,
-    DateTime now,
-    String schoolName,
-    bool isFrenchInterface,
-    String evaluationType,
+    Map<String, String> t,
   ) {
-    // Déterminer le numéro de page
-    final pageNumber = isFrenchInterface ? 'Page 4' : 'الصفحة 4';
+    final StringBuffer statsRow = StringBuffer();
+    final StringBuffer percentageRow = StringBuffer();
+
+    statsRow.write(
+        '<td class="student-name-cell"><strong>${t['achieved_students']}</strong></td>');
+    percentageRow.write(
+        '<td class="student-name-cell"><strong>${t['percentage']}</strong></td>');
+
+    for (var mainBareme in mainBaremes) {
+      final mainBaremeId = mainBareme['id'] as String;
+      final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
+      final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
+
+      if (hasSubBaremes && subBaremes.isNotEmpty) {
+        for (var subBareme in subBaremes) {
+          final subBaremeId = subBareme['id'] as String;
+          final fullKey = '$mainBaremeId-$subBaremeId';
+          final count = sumCriteriaMaxPerBareme[fullKey] ??
+              sumCriteriaMaxPerBareme[subBaremeId] ??
+              sumCriteriaMaxPerBareme[mainBaremeId] ??
+              0;
+
+          statsRow.write('<td><strong>$count</strong></td>');
+
+          final percentage = totalStudents > 0
+              ? (count / totalStudents * 100).toStringAsFixed(2)
+              : '0.00';
+          percentageRow.write(
+              '<td class="percentage-cell"><strong>${percentage}%</strong></td>');
+        }
+      } else {
+        final count = sumCriteriaMaxPerBareme[mainBaremeId] ?? 0;
+        statsRow.write('<td><strong>$count</strong></td>');
+
+        final percentage = totalStudents > 0
+            ? (count / totalStudents * 100).toStringAsFixed(2)
+            : '0.00';
+        percentageRow.write(
+            '<td class="percentage-cell"><strong>${percentage}%</strong></td>');
+      }
+    }
 
     return '''
-    <div class="table-page">
-        <div class="table-header">
-            <h2 class="table-main-title">${t['main_title']}</h2>
-            <div class="table-subtitle">
-                $matiereName - $className - ${t['trimestre']}: ${_getTrimestreDisplay(trimestre, isFrenchInterface)}
-            </div>
-        </div>
-        
-        $tableHTML
-        
-        
-        <div class="report-footer">
-            <p>${isFrenchInterface ? 'Établissement' : 'المدرسة'}: $schoolName</p>
-            <p class="no-print">$pageNumber</p>
-        </div>
-    </div>
-  ''';
+      <tr class="stats-row">${statsRow.toString()}</tr>
+      <tr class="percentage-row">${percentageRow.toString()}</tr>
+    ''';
   }
 
-  // ============ MÉTHODES EXISTANTES (inchangées) ============
+  static int _calculateTotalColumns(List<Map<String, dynamic>> mainBaremes) {
+    int totalColumns = 1; // Pour la colonne des noms
+    for (var mainBareme in mainBaremes) {
+      final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
+      final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
+      totalColumns +=
+          hasSubBaremes && subBaremes.isNotEmpty ? subBaremes.length : 1;
+    }
+    return totalColumns;
+  }
+
+  static String _buildFinalTableHTML(
+    String headerHTML,
+    String studentsRows,
+    String statsHTML,
+    int totalColumns,
+    bool isFrenchInterface,
+  ) {
+    if (totalColumns <= 1) {
+      return '''
+      <div class="table-container">
+        <div style="text-align: center; padding: 40px; color: #666; font-size: 16px;">
+          ${isFrenchInterface ? 'Aucun barème sélectionné pour cette évaluation.' : 'لم يتم تحديد أي معايير لهذا التقييم.'}
+        </div>
+      </div>
+      ''';
+    }
+
+    return '''
+    <div class="table-container">
+      <table class="results-table">
+        $headerHTML
+        <tbody>
+          ${studentsRows.isNotEmpty ? studentsRows : '''
+          <tr>
+            <td colspan="$totalColumns" style="text-align:center; padding:30px; color:#666;">
+              ${isFrenchInterface ? 'Aucune donnée disponible' : 'لا توجد بيانات متاحة'}
+            </td>
+          </tr>
+          '''}
+          $statsHTML
+        </tbody>
+      </table>
+    </div>
+    ''';
+  }
+
+  // ============ MÉTHODES EXISTANTES ============
 
   static String _buildCoverPageHTML(
     String profName,
@@ -1109,7 +1510,7 @@ class HTMLReportGenerator {
         ''' : ''}
         
         <div class="school-info">
-            <div class="info-value" style="text-align: center; font-size: 20px;">
+            <div class="info-value" style="font-size: 18px;">
                 ${t['school']}: <strong>$schoolName</strong>
             </div>
         </div>
@@ -1126,8 +1527,8 @@ class HTMLReportGenerator {
             <div class="info-card">
                 <div class="info-icon">📚</div>
                 <div class="info-content">
-                    <div class="info-label">${t['subject']}</div>
-                    <div class="info-value">$domaine</div>
+                     <div class="domaine-title">${isFrenchInterface ? 'Domaine' : 'المجال'}</div>
+            <div class="domaine-content">$domaine</div>
                 </div>
             </div>
             
@@ -1149,110 +1550,60 @@ class HTMLReportGenerator {
         </div>
         
        
+        
+        <div class="footer-cover">
+            <p>${t['generated_on']}: ${now.day}/${now.month}/${now.year}</p>
+        </div>
     </div>
     ''';
   }
 
-  static String _buildCriteriaHTML({
-    required List<Map<String, dynamic>> criteria,
-    required Map<String, String> t,
-    required bool isFrenchInterface,
-  }) {
-    if (criteria.isEmpty) {
-      return '';
-    }
-
-    String rows = '';
-    int totalIndicators = 0;
-
-    // Trier les critères
-    final sortedCriteria = List<Map<String, dynamic>>.from(criteria);
-
-    if (!isFrenchInterface) {
-      // Tri arabe
-      sortedCriteria.sort((a, b) {
-        final nameA = a['name'] as String;
-        final nameB = b['name'] as String;
-        return _arabicComparatorForHTML(nameA, nameB);
-      });
-    } else {
-      // Tri français
-      sortedCriteria.sort((a, b) {
-        return (a['name'] as String).compareTo(b['name'] as String);
-      });
-    }
-
-    for (int i = 0; i < sortedCriteria.length; i++) {
-      final critere = sortedCriteria[i];
-      final name = critere['name']?.toString() ?? '${t['criteria']} ${i + 1}';
-      final domaine = critere['domaine']?.toString() ?? '';
-      final indicators = critere['indicators'] as List<dynamic>? ?? [];
-      totalIndicators += indicators.length;
-
-      // Trier les indicateurs
-      final List<String> indicatorStrings =
-          indicators.map((e) => e.toString()).toList();
-
-      if (!isFrenchInterface) {
-        indicatorStrings.sort(_arabicComparatorForHTML);
-      } else {
-        indicatorStrings.sort();
-      }
-
-      // Ligne principale du critère
-      rows += '''
-      <tr class="criteria-main-row">
-          <td class="criteria-number">${i + 1}</td>
-          <td colspan="2">
-              <span class="criteria-title">$name</span>
-              ${domaine.isNotEmpty ? '<span class="domain-badge">${t['domain']}: $domaine</span>' : ''}
-          </td>
-      </tr>
-      ''';
-
-      // Lignes des indicateurs
-      for (int j = 0; j < indicatorStrings.length; j++) {
-        final indicator = indicatorStrings[j];
-        rows += '''
-        <tr class="indicator-row">
-            <td class="indicator-number">${i + 1}.${j + 1}</td>
-            <td colspan="2">$indicator</td>
-        </tr>
-        ''';
-      }
-    }
-
+  static String _buildEvaluationTablePageHTML(
+    String matiereName,
+    String className,
+    String trimestre,
+    Map<String, String> t,
+    String tableHTML,
+    int totalStudents,
+    DateTime now,
+    String schoolName,
+    bool isFrenchInterface,
+    String evaluationType,
+  ) {
     return '''
-      <div class="criteria-page">
-          <div class="criteria-header">
-              <h2 class="table-main-title">${t['evaluation_criteria']}</h2>
-              <div class="table-subtitle">
-                  ${t['total_criteria']}: ${sortedCriteria.length} | ${t['total_indicators']}: $totalIndicators
-              </div>
-          </div>
-          
-          <table class="criteria-table">
-              <thead>
-                  <tr>
-                      <th style="width: 80px;">#</th>
-                      <th colspan="2">${t['criteria']} / ${t['indicators']}</th>
-                  </tr>
-              </thead>
-              <tbody>
-                  $rows
-              </tbody>
-          </table>
-          
-          <div class="report-footer">
-              <p class="no-print">${isFrenchInterface ? 'Page 3' : 'الصفحة 3'}</p>
-          </div>
-      </div>
-    ''';
+    <div class="table-page">
+        <div class="table-header">
+            <h2 class="table-main-title">${t['main_title']}</h2>
+            <div class="table-subtitle">
+                $matiereName - $className - ${t['trimestre']}: ${_getTrimestreDisplay(trimestre, isFrenchInterface)}
+            </div>
+        </div>
+        
+        $tableHTML
+        
+        <div class="summary-section">
+            <div class="summary-title">${isFrenchInterface ? 'Résumé' : 'ملخص'}</div>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="summary-label">${t['total_students']}</div>
+                    <div class="summary-value">$totalStudents</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-label">${t['generated_on']}</div>
+                    <div class="summary-value">${now.day}/${now.month}/${now.year}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="report-footer">
+            <p>${isFrenchInterface ? 'Établissement' : 'المدرسة'}: $schoolName</p>
+            <p class="no-print">${isFrenchInterface ? 'Page 3' : 'الصفحة 3'}</p>
+        </div>
+    </div>
+  ''';
   }
 
-  // Comparateur arabe pour HTML
   static int _arabicComparatorForHTML(String a, String b) {
-    // Table d'ordre des lettres arabes
     const Map<String, int> arabicOrder = {
       'ا': 1,
       'أ': 1,
@@ -1292,30 +1643,21 @@ class HTMLReportGenerator {
       'ء': 1
     };
 
-    // Normaliser
     final normalizedA = _normalizeArabicHTML(a);
     final normalizedB = _normalizeArabicHTML(b);
 
     for (int i = 0; i < math.min(normalizedA.length, normalizedB.length); i++) {
       final charA = normalizedA[i];
       final charB = normalizedB[i];
-
       final orderA = arabicOrder[charA] ?? charA.codeUnitAt(0);
       final orderB = arabicOrder[charB] ?? charB.codeUnitAt(0);
-
-      if (orderA != orderB) {
-        return orderA - orderB;
-      }
+      if (orderA != orderB) return orderA - orderB;
     }
-
     return normalizedA.length - normalizedB.length;
   }
 
   static String _normalizeArabicHTML(String text) {
-    // Supprimer les diacritiques
     String normalized = text.replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '');
-
-    // Normaliser les formes
     final replacements = {
       'أ': 'ا',
       'إ': 'ا',
@@ -1325,628 +1667,14 @@ class HTMLReportGenerator {
       'ة': 'ه',
       'ى': 'ي'
     };
-
     replacements.forEach((key, value) {
       normalized = normalized.replaceAll(key, value);
     });
-
     return normalized;
   }
 
-static String _buildTableHTML({
-  required List<dynamic> baremes,
-  required List<dynamic> students,
-  required Map<String, int> sumCriteriaMaxPerBareme,
-  required int totalStudents,
-  required bool isFrenchInterface,
-  required Map<String, String> t,
-}) {
-  // Étape 1: Organiser les barèmes par hiérarchie
-  final List<Map<String, dynamic>> mainBaremes = [];
-  
-  // D'abord, extraire tous les barèmes parents potentiels des noms des sous-barèmes
-  final Map<String, String> parentNamesFromSubBaremes = {};
-  
-  for (var bareme in baremes) {
-    final baremeId = bareme['id'].toString();
-    final baremeValue = bareme['value']?.toString() ?? '';
-    final parentBaremeId = bareme['parentBaremeId']?.toString();
-    
-    if (parentBaremeId != null && parentBaremeId.isNotEmpty) {
-      // C'est un sous-barème - extraire le nom du parent
-      // Rechercher le nom du parent dans le nom du sous-barème
-      // Exemple: "مع 3.ا" -> parent = "مع 3"
-      String parentName = _extractParentNameFromSubBareme(baremeValue);
-      if (parentName.isNotEmpty) {
-        parentNamesFromSubBaremes[parentBaremeId] = parentName;
-      }
-    }
-  }
-  
-  // Maintenant organiser les barèmes
-  for (var bareme in baremes) {
-    final baremeId = bareme['id'].toString();
-    final baremeValue = bareme['value']?.toString() ?? '';
-    final parentBaremeId = bareme['parentBaremeId']?.toString();
-    
-    if (parentBaremeId == null || parentBaremeId.isEmpty) {
-      // Barème principal
-      final existingIndex = mainBaremes.indexWhere((b) => b['id'] == baremeId);
-      if (existingIndex == -1) {
-        mainBaremes.add({
-          'id': baremeId,
-          'value': baremeValue,
-          'hasSubBaremes': false,
-          'subBaremes': [],
-          'isVirtual': false,
-        });
-      }
-    } else {
-      // Sous-barème - trouver ou créer son parent
-      final parentIndex = mainBaremes.indexWhere((b) => b['id'] == parentBaremeId);
-      
-      String parentName = baremeValue;
-      // Essayer d'extraire le nom du parent
-      parentName = _extractParentNameFromSubBareme(baremeValue);
-      if (parentName.isEmpty) {
-        // Si impossible à extraire, utiliser le nom du sous-barème sans la lettre
-        parentName = _removeSubBaremeLetter(baremeValue);
-      }
-      
-      // Utiliser le nom extrait des sous-barèmes s'il existe
-      if (parentNamesFromSubBaremes.containsKey(parentBaremeId)) {
-        parentName = parentNamesFromSubBaremes[parentBaremeId]!;
-      }
-      
-      if (parentIndex != -1) {
-        // Parent existe déjà
-        mainBaremes[parentIndex]['hasSubBaremes'] = true;
-        if (!mainBaremes[parentIndex].containsKey('subBaremes')) {
-          mainBaremes[parentIndex]['subBaremes'] = [];
-        }
-        
-        (mainBaremes[parentIndex]['subBaremes'] as List).add({
-          'id': baremeId,
-          'value': baremeValue,
-        });
-      } else {
-        // Créer un nouveau parent
-        mainBaremes.add({
-          'id': parentBaremeId,
-          'value': parentName,
-          'hasSubBaremes': true,
-          'subBaremes': [{
-            'id': baremeId,
-            'value': baremeValue,
-          }],
-          'isVirtual': true,
-        });
-      }
-    }
-  }
-
-  // ============ TRI DES BARÈMES ============
-  print('=== DÉBUT DU TRI DES BARÈMES ===');
-  print('Nombre de barèmes principaux avant tri: ${mainBaremes.length}');
-  
-  // Avant le tri
-  print('--- Avant tri des barèmes principaux ---');
-  for (var i = 0; i < mainBaremes.length; i++) {
-    final bareme = mainBaremes[i];
-    print('Barème ${i + 1}: ${bareme['value']} (ID: ${bareme['id']})');
-    
-    if (bareme['hasSubBaremes'] as bool) {
-      final subBaremes = bareme['subBaremes'] as List<dynamic>;
-      print('  Nombre de sous-barèmes: ${subBaremes.length}');
-      for (var j = 0; j < subBaremes.length; j++) {
-        print('    Sous-barème ${j + 1}: ${subBaremes[j]['value']}');
-      }
-    }
-  }
-
-  // Trier les barèmes principaux alphabétiquement
-  mainBaremes.sort((a, b) {
-    String nameA = a['value'] as String;
-    String nameB = b['value'] as String;
-    
-    // Normaliser les noms pour le tri
-    nameA = _normalizeForSorting(nameA);
-    nameB = _normalizeForSorting(nameB);
-    
-    if (!isFrenchInterface) {
-      // Tri arabe
-      return _arabicComparatorForHTML(nameA, nameB);
-    } else {
-      // Tri français
-      return nameA.toLowerCase().compareTo(nameB.toLowerCase());
-    }
-  });
-
-  print('--- Après tri des barèmes principaux ---');
-  for (var i = 0; i < mainBaremes.length; i++) {
-    final bareme = mainBaremes[i];
-    print('Barème ${i + 1}: ${bareme['value']} (ID: ${bareme['id']})');
-  }
-
-  // Trier les sous-barèmes à l'intérieur de chaque barème principal
-  for (var mainBareme in mainBaremes) {
-    if (mainBareme['hasSubBaremes'] as bool) {
-      final subBaremes = mainBareme['subBaremes'] as List<dynamic>;
-      if (subBaremes.isNotEmpty) {
-        print('--- Tri des sous-barèmes pour ${mainBareme['value']} ---');
-        print('Avant tri:');
-        for (var sub in subBaremes) {
-          print('  ${sub['value']}');
-        }
-        
-        subBaremes.sort((a, b) {
-          String nameA = a['value'] as String;
-          String nameB = b['value'] as String;
-          
-          // Nettoyer les noms pour enlever le préfixe parent
-          String cleanNameA = _cleanSubBaremeNameForSorting(nameA, mainBareme['value'] as String);
-          String cleanNameB = _cleanSubBaremeNameForSorting(nameB, mainBareme['value'] as String);
-          
-          // Normaliser pour le tri
-          nameA = _normalizeForSorting(cleanNameA.isNotEmpty ? cleanNameA : nameA);
-          nameB = _normalizeForSorting(cleanNameB.isNotEmpty ? cleanNameB : nameB);
-          
-          if (!isFrenchInterface) {
-            // Tri arabe pour les sous-barèmes
-            // Si ce sont des lettres arabes (ا, ب, ج, ...)
-            if (_isArabicLetterOnly(nameA) && _isArabicLetterOnly(nameB)) {
-              // Trier par ordre alphabétique arabe
-              return _compareArabicLetters(nameA, nameB);
-            } else {
-              return _arabicComparatorForHTML(nameA, nameB);
-            }
-          } else {
-            // Tri français pour les sous-barèmes
-            // Si ce sont des lettres latines (a, b, c, ...)
-            if (_isLatinLetterOnly(nameA) && _isLatinLetterOnly(nameB)) {
-              return nameA.toLowerCase().compareTo(nameB.toLowerCase());
-            } else {
-              return nameA.toLowerCase().compareTo(nameB.toLowerCase());
-            }
-          }
-        });
-        
-        print('Après tri:');
-        for (var sub in subBaremes) {
-          print('  ${sub['value']}');
-        }
-        
-        // Mettre à jour la liste triée
-        mainBareme['subBaremes'] = subBaremes;
-      }
-    }
-  }
-  print('=== FIN DU TRI DES BARÈMES ===');
-  // ============ FIN DU TRI ============
-
-  // Étape 2: Construire l'en-tête hiérarchique
-  String headerHTML = '';
-  String mainHeaderRow = '';
-  String subHeaderRow = '';
-  
-  // Colonne pour les noms des étudiants
-  mainHeaderRow += '<th rowspan="2" class="student-name-cell">${t['student_name']}</th>';
-  
-  for (var mainBareme in mainBaremes) {
-    final mainBaremeId = mainBareme['id'] as String;
-    final mainBaremeValue = mainBareme['value'] as String;
-    final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
-    final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
-    final isVirtual = mainBareme['isVirtual'] as bool? ?? false;
-    
-    if (hasSubBaremes && subBaremes.isNotEmpty) {
-      // Barème avec sous-barèmes
-      final colspan = subBaremes.length;
-      mainHeaderRow += '''
-        <th colspan="$colspan" style="text-align: center; vertical-align: bottom;" class="main-bareme-header">
-          $mainBaremeValue
-        </th>
-      ''';
-      
-      // Ajouter les sous-en-têtes
-      for (var subBareme in subBaremes) {
-        final subValue = subBareme['value'] as String;
-        final cleanSubValue = _cleanSubBaremeName(subValue, mainBaremeValue);
-        subHeaderRow += '''
-          <th style="font-size: 12px; font-weight: normal; vertical-align: bottom;" class="sub-bareme-header">
-            $cleanSubValue
-          </th>
-        ''';
-      }
-    } else {
-      // Barème sans sous-barèmes
-      mainHeaderRow += '''
-        <th colspan="1" style="vertical-align: bottom;" class="main-bareme-header">
-          $mainBaremeValue
-        </th>
-      ''';
-      // Ajouter une colonne vide dans la ligne des sous-en-têtes
-      subHeaderRow += '<th></th>';
-    }
-  }
-
-  // Construire l'en-tête HTML complet
-  if (subHeaderRow.contains('sub-bareme-header')) {
-    // Avec sous-barèmes - deux lignes d'en-tête
-    headerHTML = '''
-      <thead>
-        <tr>
-          $mainHeaderRow
-        </tr>
-        <tr>
-          $subHeaderRow
-        </tr>
-      </thead>
-    ''';
-  } else {
-    // Sans sous-barèmes - une seule ligne d'en-tête
-    headerHTML = '''
-      <thead>
-        <tr>
-          <th class="student-name-cell">${t['student_name']}</th>
-          ${mainBaremes.map((b) => '''
-            <th class="main-bareme-header">${b['value']}</th>
-          ''').join('')}
-        </tr>
-      </thead>
-    ''';
-  }
-
-  // Étape 3: Construire les lignes des étudiants
-  print('=== TRI DES ÉTUDIANTS ===');
-  
-  // Trier les étudiants par ordre alphabétique
-  final List<dynamic> sortedStudents = List.from(students);
-  sortedStudents.sort((a, b) {
-    final nameA = a['name']?.toString() ?? '';
-    final nameB = b['name']?.toString() ?? '';
-    
-    if (!isFrenchInterface) {
-      // Tri arabe pour les noms
-      return _arabicComparatorForHTML(nameA, nameB);
-    } else {
-      // Tri français pour les noms
-      return nameA.toLowerCase().compareTo(nameB.toLowerCase());
-    }
-  });
-  
-  print('Nombre d\'étudiants: ${sortedStudents.length}');
-  print('--- Étudiants triés ---');
-  for (var i = 0; i < math.min(5, sortedStudents.length); i++) {
-    print('${i + 1}: ${sortedStudents[i]['name']}');
-  }
-  if (sortedStudents.length > 5) {
-    print('... et ${sortedStudents.length - 5} autres');
-  }
-  
-  String studentsRows = '';
-  
-  for (var student in sortedStudents) {
-    String studentRow = '<tr>';
-    
-    // Colonne nom de l'étudiant
-    studentRow += '<td class="student-name-cell">${student['name']}</td>';
-    
-    // Cellules des notes
-    for (var mainBareme in mainBaremes) {
-      final mainBaremeId = mainBareme['id'] as String;
-      final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
-      final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
-      
-      if (hasSubBaremes && subBaremes.isNotEmpty) {
-        // Barème avec sous-barèmes
-        for (var subBareme in subBaremes) {
-          final subBaremeId = subBareme['id'] as String;
-          final fullKey = '$mainBaremeId-$subBaremeId';
-          
-          // Chercher la note dans différentes clés possibles
-          String mark = '( - - - )';
-          final studentBaremes = student['baremes'] as Map<String, dynamic>? ?? {};
-          
-          if (studentBaremes.containsKey(fullKey)) {
-            mark = studentBaremes[fullKey]?.toString() ?? '( - - - )';
-          } else if (studentBaremes.containsKey(subBaremeId)) {
-            mark = studentBaremes[subBaremeId]?.toString() ?? '( - - - )';
-          } else if (studentBaremes.containsKey(mainBaremeId)) {
-            mark = studentBaremes[mainBaremeId]?.toString() ?? '( - - - )';
-          }
-          
-          studentRow += '<td class="mark-cell">$mark</td>';
-        }
-      } else {
-        // Barème principal simple
-        final studentBaremes = student['baremes'] as Map<String, dynamic>? ?? {};
-        final mark = studentBaremes[mainBaremeId]?.toString() ?? '( - - - )';
-        studentRow += '<td class="mark-cell">$mark</td>';
-      }
-    }
-    
-    studentRow += '</tr>';
-    studentsRows += studentRow;
-  }
-
-  // Étape 4: Construire les lignes de statistiques
-  String statsRow = '';
-  String percentageRow = '';
-  
-  // Colonne label
-  statsRow += '<td class="student-name-cell"><strong>${t['achieved_students']}</strong></td>';
-  percentageRow += '<td class="student-name-cell"><strong>${t['percentage']}</strong></td>';
-  
-  for (var mainBareme in mainBaremes) {
-    final mainBaremeId = mainBareme['id'] as String;
-    final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
-    final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
-    
-    if (hasSubBaremes && subBaremes.isNotEmpty) {
-      // Barème avec sous-barèmes
-      for (var subBareme in subBaremes) {
-        final subBaremeId = subBareme['id'] as String;
-        final fullKey = '$mainBaremeId-$subBaremeId';
-        
-        // Chercher le compteur
-        int count = sumCriteriaMaxPerBareme[fullKey] ?? 
-                    sumCriteriaMaxPerBareme[subBaremeId] ?? 
-                    sumCriteriaMaxPerBareme[mainBaremeId] ?? 0;
-        
-        statsRow += '<td><strong>$count</strong></td>';
-        
-        if (totalStudents > 0) {
-          final percentage = (count / totalStudents * 100).toStringAsFixed(2);
-          percentageRow += '<td class="percentage-cell"><strong>${percentage}%</strong></td>';
-        } else {
-          percentageRow += '<td class="percentage-cell"><strong>0.00%</strong></td>';
-        }
-      }
-    } else {
-      // Barème principal simple
-      int count = sumCriteriaMaxPerBareme[mainBaremeId] ?? 0;
-      statsRow += '<td><strong>$count</strong></td>';
-      
-      if (totalStudents > 0) {
-        final percentage = (count / totalStudents * 100).toStringAsFixed(2);
-        percentageRow += '<td class="percentage-cell"><strong>${percentage}%</strong></td>';
-      } else {
-        percentageRow += '<td class="percentage-cell"><strong>0.00%</strong></td>';
-      }
-    }
-  }
-
-  // Étape 5: Calculer le nombre total de colonnes
-  int totalColumns = 1; // Pour la colonne des noms
-  for (var mainBareme in mainBaremes) {
-    final hasSubBaremes = mainBareme['hasSubBaremes'] as bool;
-    final subBaremes = mainBareme['subBaremes'] as List<dynamic>? ?? [];
-    
-    if (hasSubBaremes && subBaremes.isNotEmpty) {
-      totalColumns += subBaremes.length;
-    } else {
-      totalColumns += 1;
-    }
-  }
-
-  // Vérifier que nous avons des colonnes pour les barèmes
-  if (totalColumns <= 1) {
-    return '''
-    <div class="table-container">
-      <div style="text-align: center; padding: 40px; color: #666; font-size: 16px;">
-        ${isFrenchInterface ? 'Aucun barème sélectionné pour cette évaluation.' : 'لم يتم تحديد أي معايير لهذا التقييم.'}
-      </div>
-    </div>
-    ''';
-  }
-
-  return '''
-  <div class="table-container">
-    <table class="results-table">
-      $headerHTML
-      <tbody>
-        ${studentsRows.isNotEmpty ? studentsRows : '''
-        <tr>
-          <td colspan="$totalColumns" style="text-align:center; padding:30px; color:#666;">
-            ${isFrenchInterface ? 'Aucune donnée disponible' : 'لا توجد بيانات متاحة'}
-          </td>
-        </tr>
-        '''}
-        
-        <tr class="stats-row">
-          $statsRow
-        </tr>
-        
-        <tr class="percentage-row">
-          $percentageRow
-        </tr>
-        
-        <!-- Ligne du nombre total d'étudiants -->
-        
-      </tbody>
-    </table>
-    
-    <!-- Légende des symboles -->
-   
-  </div>
-  ''';
-}
-// Nouvelles fonctions d'aide
-static String _extractParentNameFromSubBareme(String subBaremeName) {
-  if (subBaremeName.isEmpty) return '';
-  
-  // Patterns pour extraire le nom du parent
-  // Exemples: "مع 3.ا" -> "مع 3", "C3.a" -> "C3"
-  
-  // Pattern 1: Nom avec point et lettre arabe
-  final arabicPattern = RegExp(r'^(.+)\.([\u0621-\u064A])$');
-  final matchArabic = arabicPattern.firstMatch(subBaremeName);
-  if (matchArabic != null) {
-    return matchArabic.group(1)!.trim();
-  }
-  
-  // Pattern 2: Nom avec point et lettre latine
-  final latinPattern = RegExp(r'^(.+)\.([a-zA-Z])$');
-  final matchLatin = latinPattern.firstMatch(subBaremeName);
-  if (matchLatin != null) {
-    return matchLatin.group(1)!.trim();
-  }
-  
-  // Pattern 3: Nom avec espace et lettre
-  final spacePattern = RegExp(r'^(.+)\s+([\u0621-\u064A]|[a-zA-Z])$');
-  final matchSpace = spacePattern.firstMatch(subBaremeName);
-  if (matchSpace != null) {
-    return matchSpace.group(1)!.trim();
-  }
-  
-  return '';
-}
-
-static String _removeSubBaremeLetter(String subBaremeName) {
-  if (subBaremeName.isEmpty) return '';
-  
-  // Supprimer la dernière lettre (arabe ou latine)
-  // Exemples: "مع 3.ا" -> "مع 3.", puis enlever le point
-  // "C3.a" -> "C3.", puis enlever le point
-  
-  String result = subBaremeName;
-  
-  // Enlever la dernière lettre arabe
-  if (result.isNotEmpty && _isArabicLetter(result[result.length - 1])) {
-    result = result.substring(0, result.length - 1);
-  }
-  
-  // Enlever la dernière lettre latine
-  if (result.isNotEmpty && _isLatinLetter(result[result.length - 1])) {
-    result = result.substring(0, result.length - 1);
-  }
-  
-  // Nettoyer les caractères de ponctuation à la fin
-  result = result.replaceAll(RegExp(r'[.\s]+$'), '');
-  
-  return result.trim();
-}
-
-static bool _isArabicLetter(String char) {
-  return char.codeUnitAt(0) >= 0x0621 && char.codeUnitAt(0) <= 0x064A;
-}
-
-static bool _isLatinLetter(String char) {
-  return (char.codeUnitAt(0) >= 65 && char.codeUnitAt(0) <= 90) || 
-         (char.codeUnitAt(0) >= 97 && char.codeUnitAt(0) <= 122);
-}
-
-static String _cleanSubBaremeName(String subName, String parentName) {
-  // Nettoyer le nom du sous-barème pour n'afficher que la partie distinctive
-  // Exemple: si parent = "مع 3" et sub = "مع 3.ا", afficher seulement "ا"
-  
-  if (subName.startsWith(parentName)) {
-    String remaining = subName.substring(parentName.length).trim();
-    
-    // Enlever les séparateurs au début
-    remaining = remaining.replaceAll(RegExp(r'^[.\s]+'), '');
-    
-    if (remaining.isNotEmpty) {
-      return remaining;
-    }
-  }
-  
-  return subName;
-}
-
-static String _normalizeForSorting(String text) {
-  // Normaliser le texte pour le tri
-  String normalized = text.trim();
-  // Supprimer les diacritiques arabes
-  normalized = normalized.replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '');
-  return normalized;
-}
-
-static String _cleanSubBaremeNameForSorting(String subName, String parentName) {
-  // Nettoyer le nom du sous-barème en supprimant le préfixe du parent
-  String cleaned = subName;
-  
-  // Enlever le préfixe du parent s'il existe
-  if (cleaned.startsWith(parentName)) {
-    cleaned = cleaned.substring(parentName.length).trim();
-  }
-  
-  // Enlever les séparateurs au début
-  cleaned = cleaned.replaceAll(RegExp(r'^[.\s]+'), '');
-  
-  return cleaned;
-}
-
-static bool _isArabicLetterOnly(String text) {
-  // Vérifier si le texte ne contient que des lettres arabes
-  final normalized = text.replaceAll(RegExp(r'[\s.\-]'), '').trim();
-  if (normalized.isEmpty) return false;
-  
-  for (int i = 0; i < normalized.length; i++) {
-    final code = normalized.codeUnitAt(i);
-    if (!(code >= 0x0621 && code <= 0x064A)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-static bool _isLatinLetterOnly(String text) {
-  // Vérifier si le texte ne contient que des lettres latines
-  final normalized = text.replaceAll(RegExp(r'[\s.\-]'), '').trim();
-  if (normalized.isEmpty) return false;
-  
-  for (int i = 0; i < normalized.length; i++) {
-    final code = normalized.codeUnitAt(i);
-    if (!((code >= 65 && code <= 90) || (code >= 97 && code <= 122))) {
-      return false;
-    }
-  }
-  return true;
-}
-
-static int _compareArabicLetters(String a, String b) {
-  // Comparer deux lettres arabes par ordre alphabétique arabe
-  const Map<String, int> arabicLetterOrder = {
-    'ا': 1,
-    'ب': 2,
-    'ت': 3,
-    'ث': 4,
-    'ج': 5,
-    'ح': 6,
-    'خ': 7,
-    'د': 8,
-    'ذ': 9,
-    'ر': 10,
-    'ز': 11,
-    'س': 12,
-    'ش': 13,
-    'ص': 14,
-    'ض': 15,
-    'ط': 16,
-    'ظ': 17,
-    'ع': 18,
-    'غ': 19,
-    'ف': 20,
-    'ق': 21,
-    'ك': 22,
-    'ل': 23,
-    'م': 24,
-    'ن': 25,
-    'ه': 26,
-    'و': 27,
-    'ي': 28,
-  };
-  
-  final orderA = arabicLetterOrder[a.trim()] ?? a.codeUnitAt(0);
-  final orderB = arabicLetterOrder[b.trim()] ?? b.codeUnitAt(0);
-  
-  return orderA - orderB;
-}
-
-static String _getDomaineForMatiere(
-    String matiereName, bool isFrenchInterface) {
+  static String _getDomaineForMatiere(
+      String matiereName, bool isFrenchInterface) {
     final matieresArabic = {
       'التواصل الشفوي': 'مجال اللغة العربية',
       'قراءة': 'مجال اللغة العربية',
@@ -1992,7 +1720,6 @@ static String _getDomaineForMatiere(
     };
 
     final domaines = isFrenchInterface ? matieresFrench : matieresArabic;
-
     for (var key in domaines.keys) {
       if (matiereName.contains(key) || key.contains(matiereName)) {
         return domaines[key]!;
@@ -2047,20 +1774,15 @@ static String _getDomaineForMatiere(
   static Future<void> _generateAndDownloadPDF(String htmlContent) async {
     try {
       if (kIsWeb) {
-        print('Platforme Web détectée - Téléchargement HTML');
         await _downloadHTMLFile(htmlContent);
         return;
       }
 
       print('Début de la génération PDF...');
-
       final directory = await getTemporaryDirectory();
       final targetPath = directory.path;
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = 'rapport_complet_$timestamp.pdf';
-
-      print('Chemin cible: $targetPath');
-      print('Nom du fichier: $fileName');
 
       final generatedPdfFile = await FlutterHtmlToPdf.convertFromHtmlContent(
         htmlContent,
@@ -2068,15 +1790,11 @@ static String _getDomaineForMatiere(
         fileName,
       );
 
-      print('PDF généré avec succès: ${generatedPdfFile.path}');
-      print('Taille du fichier: ${generatedPdfFile.lengthSync()} bytes');
-
+      print('PDF généré: ${generatedPdfFile.path}');
       await OpenFile.open(generatedPdfFile.path);
-
       print('PDF ouvert avec succès');
     } catch (e) {
-      print('Erreur lors de la génération du fichier PDF: $e');
-
+      print('Erreur PDF: $e');
       print('Fallback: téléchargement HTML...');
       await _downloadHTMLFile(htmlContent);
     }
@@ -2087,12 +1805,10 @@ static String _getDomaineForMatiere(
       if (kIsWeb) {
         final blob = html.Blob([htmlContent], 'text/html; charset=utf-8');
         final url = html.Url.createObjectUrlFromBlob(blob);
-
         final anchor = html.AnchorElement(href: url)
           ..setAttribute('download',
               'rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html')
           ..click();
-
         Future.delayed(const Duration(seconds: 2), () {
           html.Url.revokeObjectUrl(url);
         });
@@ -2103,10 +1819,9 @@ static String _getDomaineForMatiere(
         await file.writeAsString(htmlContent, flush: true);
         await OpenFile.open(file.path);
       }
-
       print('Fichier généré avec succès');
     } catch (e) {
-      print('Erreur lors de la génération du fichier: $e');
+      print('Erreur génération fichier: $e');
       rethrow;
     }
   }

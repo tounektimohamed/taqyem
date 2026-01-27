@@ -2360,63 +2360,55 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
-  List<Map<String, dynamic>> _createCriteriaList(
-      List<dynamic> criteriaList, String matiereName) {
-    final List<Map<String, dynamic>> criteria = [];
+List<Map<String, dynamic>> _createCriteriaList(
+    List<dynamic> criteriaList, String matiereName) {
+  final List<Map<String, dynamic>> criteria = [];
 
-    for (int i = 0; i < criteriaList.length; i++) {
-      final criterion = criteriaList[i] as Map<String, dynamic>;
-      final criteriaName = criterion['name']?.toString() ?? 'معيار ${i + 1}';
+  for (int i = 0; i < criteriaList.length; i++) {
+    final criterion = criteriaList[i] as Map<String, dynamic>;
+    final criteriaName = criterion['name']?.toString() ?? 'معيار ${i + 1}';
 
-      // Récupérer les indicateurs
-      final indicators = criterion['indicators'] as List<dynamic>? ?? [];
+    // Récupérer les indicateurs
+    final indicators = criterion['indicators'] as List<dynamic>? ?? [];
 
-      // Filtrer les indicateurs non vides
-      final List<String> indicatorStrings = indicators
-          .map((indicator) => indicator.toString())
-          .where((indicator) => indicator.trim().isNotEmpty)
-          .toList();
+    // Garder les indicateurs DANS L'ORDRE DU JSON
+    final List<String> indicatorStrings = indicators
+        .map((indicator) => indicator.toString())
+        .where((indicator) => indicator.trim().isNotEmpty)
+        .toList();
+    
+    // NE PAS TRIER les indicateurs
+    // indicatorStrings.sort(_arabicStringComparator); // À SUPPRIMER
 
-      // Trier les indicateurs
-      indicatorStrings.sort(_arabicStringComparator);
-
-      // Créer l'entrée du critère
-      criteria.add({
-        'id': i + 1,
-        'name': _isFrenchInterface
-            ? DataTranslator.translateMatiere(criteriaName)
-            : criteriaName,
-        'originalName': criteriaName,
-        'frenchName': DataTranslator.translateMatiere(criteriaName),
-        'arabicName': criteriaName,
-        'domaine': _getDomaineForMatiere(matiereName, _isFrenchInterface),
-        'indicators': indicatorStrings,
-        'indicators_count': indicatorStrings.length,
-        'displayNumber': i + 1,
-        'sortKey': _generateArabicSortKey(criteriaName),
-      });
-    }
-
-    // Trier les critères selon la langue
-    if (_isFrenchInterface) {
-      criteria
-          .sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
-    } else {
-      criteria.sort((a, b) => _arabicStringComparator(
-            a['originalName'] as String,
-            b['originalName'] as String,
-          ));
-    }
-
-    // Mettre à jour les numéros d'affichage après tri
-    for (int i = 0; i < criteria.length; i++) {
-      criteria[i]['displayNumber'] = i + 1;
-    }
-
-    print('✅ ${criteria.length} critères traités avec succès');
-    return criteria;
+    // Créer l'entrée du critère
+    criteria.add({
+      'id': i + 1,
+      'name': _isFrenchInterface
+          ? DataTranslator.translateMatiere(criteriaName)
+          : criteriaName,
+      'originalName': criteriaName,
+      'frenchName': DataTranslator.translateMatiere(criteriaName),
+      'arabicName': criteriaName,
+      'domaine': _getDomaineForMatiere(matiereName, _isFrenchInterface),
+      'indicators': indicatorStrings, // Garder l'ordre original
+      'indicators_count': indicatorStrings.length,
+      'displayNumber': i + 1, // Garder l'ordre du JSON
+      'sortKey': i + 1, // Utiliser l'index comme clé de tri
+      'jsonOrder': i, // Ajouter l'ordre original du JSON
+    });
   }
 
+  // NE PAS TRIER LES CRITÈRES
+  // Supprimer tout le code de tri ici
+  // if (_isFrenchInterface) { ... }
+  // else { ... }
+
+  // Garder l'ordre du JSON tel quel
+  // Les critères sont déjà dans l'ordre d'itération du JSON
+
+  print('✅ ${criteria.length} critères chargés dans l\'ordre du JSON');
+  return criteria;
+}
 // Méthode auxiliaire pour extraire les critères d'une classe
   List<Map<String, dynamic>> _extractCriteriaFromClassData(
       dynamic classData, String matiereName) {
@@ -2446,60 +2438,47 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     return [];
   }
 
-// Méthode auxiliaire pour traiter la liste des critères
-  List<Map<String, dynamic>> _processCriteriaList(
-      List<dynamic> criteriaList, String matiereName) {
-    List<Map<String, dynamic>> criteria = [];
+// 
+List<Map<String, dynamic>> _processCriteriaList(
+    List<dynamic> criteriaList, String matiereName) {
+  List<Map<String, dynamic>> criteria = [];
 
-    for (int i = 0; i < criteriaList.length; i++) {
-      final criteriaData = criteriaList[i] as Map<String, dynamic>;
-      final criteriaName = criteriaData['name']?.toString() ?? 'معيار ${i + 1}';
-      final indicators = criteriaData['indicators'] as List<dynamic>? ?? [];
+  for (int i = 0; i < criteriaList.length; i++) {
+    final criteriaData = criteriaList[i] as Map<String, dynamic>;
+    final criteriaName = criteriaData['name']?.toString() ?? 'معيار ${i + 1}';
+    final indicators = criteriaData['indicators'] as List<dynamic>? ?? [];
 
-      // Trier les indicateurs par ordre alphabétique arabe
-      final List<String> indicatorStrings = indicators
-          .map((indicator) => indicator.toString())
-          .where(
-              (indicator) => indicator.isNotEmpty) // Exclure les chaînes vides
-          .toList();
+    // Garder l'ordre original du JSON
+    final List<String> indicatorStrings = indicators
+        .map((indicator) => indicator.toString())
+        .where((indicator) => indicator.isNotEmpty)
+        .toList();
+    
+    // NE PAS TRIER
+    // indicatorStrings.sort(_arabicStringComparator); // À SUPPRIMER
 
-      // Trier les indicateurs
-      indicatorStrings.sort(_arabicStringComparator);
-
-      criteria.add({
-        'name': _isFrenchInterface
-            ? DataTranslator.translateMatiere(criteriaName)
-            : criteriaName,
-        'originalName': criteriaName,
-        'domaine': _getDomaineForMatiere(matiereName, _isFrenchInterface),
-        'indicators': indicatorStrings.map((indicator) {
-          return _isFrenchInterface
-              ? DataTranslator.translateMatiere(indicator)
-              : indicator;
-        }).toList(),
-        'sortKey': _generateArabicSortKey(criteriaName),
-      });
-    }
-
-    // Trier les critères
-    criteria.sort((a, b) {
-      if (_isFrenchInterface) {
-        return (a['name'] as String).compareTo(b['name'] as String);
-      } else {
-        return _arabicStringComparator(
-          a['originalName'] as String,
-          b['originalName'] as String,
-        );
-      }
+    criteria.add({
+      'name': _isFrenchInterface
+          ? DataTranslator.translateMatiere(criteriaName)
+          : criteriaName,
+      'originalName': criteriaName,
+      'domaine': _getDomaineForMatiere(matiereName, _isFrenchInterface),
+      'indicators': indicatorStrings.map((indicator) {
+        return _isFrenchInterface
+            ? DataTranslator.translateMatiere(indicator)
+            : indicator;
+      }).toList(), // Garder l'ordre original
+      'sortKey': (i + 1).toString().padLeft(3, '0'), // Garder l'ordre numérique
+      'jsonIndex': i, // Index original du JSON
     });
-
-    // Réassigner les numéros après le tri
-    for (int i = 0; i < criteria.length; i++) {
-      criteria[i]['displayNumber'] = i + 1;
-    }
-
-    return criteria;
   }
+
+  // NE PAS TRIER
+  // Supprimer tout le code de tri
+  // criteria.sort((a, b) { ... });
+
+  return criteria;
+}
 
 // Méthode pour extraire l'année arabe d'un nom de classe
   String _extractArabicYear(String className) {
@@ -8271,3 +8250,5 @@ void _debugBaremesStructure(List<Map<String, dynamic>> baremesValues) {
   }
   print('=== FIN DÉBOGAGE ===');
 }
+
+

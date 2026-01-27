@@ -1,320 +1,159 @@
 // import 'dart:io';
-// import 'package:pdf/pdf.dart';
-// import 'package:pdf/widgets.dart' as pw;
+
+// import 'package:cloud_functions/cloud_functions.dart';
+// import 'package:flutter/foundation.dart';
+// import 'package:http/http.dart' as http;
+// import 'package:open_file/open_file.dart';
 // import 'package:path_provider/path_provider.dart';
-// import 'package:intl/intl.dart';
 
-// class PdfReportGenerator {
-//   static final Map<String, Map<String, String>> TRANSLATIONS = {
-//     'ar': {
-//       'title': 'تقرير النتائج',
-//       'professor': 'الأستاذ',
-//       'subject': 'المادة',
-//       'class': 'القسم',
-//       'school': 'المؤسسة',
-//       'main_title': 'الجدول الجامع للنتائج',
-//       'student_name': 'الاسم واللقب',
-//       'achieved_students': 'عدد التلاميذ المحققين',
-//       'percentage': 'النسبة المئوية',
-//       'generated_by': 'تم إنشاء التقرير بواسطة نظام تقييم',
-//       'unknown': 'غير معروف',
-//       'no_data': 'لا توجد بيانات'
-//     },
-//     'fr': {
-//       'title': 'Rapport des Résultats',
-//       'professor': 'Professeur',
-//       'subject': 'Matière',
-//       'class': 'Classe',
-//       'school': 'Établissement',
-//       'main_title': 'Tableau Global des Résultats',
-//       'student_name': 'Nom et Prénom',
-//       'achieved_students': 'Nombre d\'élèves ayant atteint',
-//       'percentage': 'Pourcentage',
-//       'generated_by': 'Rapport généré par le système d\'évaluation',
-//       'unknown': 'Inconnu',
-//       'no_data': 'Aucune donnée'
-//     }
-//   };
-
-//   static String detectLanguage(String matiereName) {
-//     if (matiereName.isEmpty) return 'ar';
-    
-//     final matiereLower = matiereName.toLowerCase();
-//     final frenchKeywords = [
-//       'expression orale', 'lecture', 'production écrite', 'écriture', 
-//       'dictée', 'langue', 'anglais', 'français', 'english', 'french',
-//       'oral', 'écrit', 'rédaction'
-//     ];
-    
-//     for (final keyword in frenchKeywords) {
-//       if (matiereLower.contains(keyword)) return 'fr';
-//     }
-    
-//     final arabicRegex = RegExp(r'[\u0600-\u06FF]');
-//     return arabicRegex.hasMatch(matiereName) ? 'ar' : 'fr';
-//   }
-
-//   static String getTranslation(String lang, String key) {
-//     return TRANSLATIONS[lang]?[key] ?? TRANSLATIONS['ar']![key]!;
-//   }
-
-//   static Future<File> generatePDF(Map<String, dynamic> data) async {
-//     final pdf = pw.Document();
-//     final lang = detectLanguage(data['matiereName'] ?? '');
-//     final t = (String key) => getTranslation(lang, key);
-
-//     // Charger les polices avec support Unicode
-//     final font = await _loadPdfFont();
-    
-//     pdf.addPage(
-//       pw.MultiPage(
-//         pageFormat: PdfPageFormat.a4,
-//         theme: pw.ThemeData.withFont(
-//           base: font,
-//           bold: font,
-//         ),
-//         build: (pw.Context context) => [
-//           _buildHeader(data, t, font),
-//           pw.SizedBox(height: 20),
-//           _buildMainTable(data, t, font),
-//           pw.SizedBox(height: 20),
-//           _buildFooter(t, font),
-//         ],
-//       ),
-//     );
-
-//     // Sauvegarder le fichier
-//     final output = await getTemporaryDirectory();
-//     final file = File("${output.path}/rapport_resultats.pdf");
-//     await file.writeAsBytes(await pdf.save());
-
-//     return file;
-//   }
-
-//   static pw.Widget _buildHeader(Map<String, dynamic> data, Function t, pw.Font font) {
-//     return pw.Column(
-//       children: [
-//         // Titre principal
-//         pw.Text(
-//           t('main_title'),
-//           style: pw.TextStyle(
-//             font: font,
-//             fontSize: 18,
-//             fontWeight: pw.FontWeight.bold,
-//             color: PdfColors.blue900,
-//           ),
-//           textAlign: pw.TextAlign.center,
-//         ),
-//         pw.SizedBox(height: 10),
-        
-//         // Informations
-//         pw.Row(
-//           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-//           children: [
-//             pw.Column(
-//               crossAxisAlignment: pw.CrossAxisAlignment.start,
-//               children: [
-//                 pw.Text(
-//                   '${t('professor')}: ${data['profName'] ?? t('unknown')}',
-//                   style: pw.TextStyle(font: font),
-//                 ),
-//                 pw.Text(
-//                   '${t('subject')}: ${data['matiereName'] ?? t('unknown')}',
-//                   style: pw.TextStyle(font: font),
-//                 ),
-//                 pw.Text(
-//                   '${t('class')}: ${data['className'] ?? t('unknown')}',
-//                   style: pw.TextStyle(font: font),
-//                 ),
-//               ],
-//             ),
-//             pw.Column(
-//               crossAxisAlignment: pw.CrossAxisAlignment.end,
-//               children: [
-//                 pw.Text(
-//                   '${t('school')}: ${data['schoolName'] ?? t('unknown')}',
-//                   style: pw.TextStyle(font: font),
-//                 ),
-//                 pw.Text(
-//                   '${DateFormat('yyyy-MM-dd').format(DateTime.now())}',
-//                   style: pw.TextStyle(font: font),
-//                 ),
-//               ],
-//             ),
-//           ],
-//         ),
-//       ],
-//     );
-//   }
-
-//   static pw.Widget _buildMainTable(Map<String, dynamic> data, Function t, pw.Font font) {
-//     final baremes = data['baremes'] as List<dynamic>? ?? [];
-//     final students = data['students'] as List<dynamic>? ?? [];
-//     final sumCriteria = data['sumCriteriaMaxPerBareme'] as Map<String, dynamic>? ?? {};
-//     final totalStudents = data['totalStudents'] as int? ?? 0;
-
-//     // Préparer les colonnes
-//     final headers = [
-//       pw.Container(
-//         width: 120,
-//         padding: const pw.EdgeInsets.all(8),
-//         child: pw.Text(
-//           t('student_name'),
-//           style: pw.TextStyle(
-//             font: font,
-//             color: PdfColors.white, 
-//             fontWeight: pw.FontWeight.bold
-//           ),
-//         ),
-//       ),
-//       for (final bareme in baremes)
-//         pw.Container(
-//           width: 60,
-//           padding: const pw.EdgeInsets.all(8),
-//           child: pw.Text(
-//             bareme['value'] ?? '',
-//             style: pw.TextStyle(
-//               font: font,
-//               color: PdfColors.white, 
-//               fontWeight: pw.FontWeight.bold
-//             ),
-//             textAlign: pw.TextAlign.center,
-//           ),
-//         ),
-//     ];
-
-//     // Préparer les lignes des étudiants
-//     final studentRows = [
-//       for (final student in students)
-//         pw.TableRow(
-//           children: [
-//             pw.Container(
-//               padding: const pw.EdgeInsets.all(6),
-//               child: pw.Text(
-//                 student['name'] ?? t('unknown'),
-//                 style: pw.TextStyle(font: font),
-//               ),
-//             ),
-//             for (final bareme in baremes)
-//               pw.Container(
-//                 padding: const pw.EdgeInsets.all(6),
-//                 child: pw.Text(
-//                   (student['baremes']?[bareme['id']] ?? '( - - - )').toString(),
-//                   style: pw.TextStyle(font: font),
-//                   textAlign: pw.TextAlign.center,
-//                 ),
-//               ),
-//           ],
-//         ),
-//     ];
-
-//     // Ligne des statistiques
-//     final statsRow = pw.TableRow(
-//       decoration: pw.BoxDecoration(color: PdfColors.grey300),
-//       children: [
-//         pw.Container(
-//           padding: const pw.EdgeInsets.all(6),
-//           child: pw.Text(
-//             t('achieved_students'),
-//             style: pw.TextStyle(
-//               font: font,
-//               fontWeight: pw.FontWeight.bold
-//             ),
-//           ),
-//         ),
-//         for (final bareme in baremes)
-//           pw.Container(
-//             padding: const pw.EdgeInsets.all(6),
-//             child: pw.Text(
-//               (sumCriteria[bareme['id']] ?? 0).toString(),
-//               style: pw.TextStyle(
-//                 font: font,
-//                 fontWeight: pw.FontWeight.bold
-//               ),
-//               textAlign: pw.TextAlign.center,
-//             ),
-//           ),
-//       ],
-//     );
-
-//     // Ligne des pourcentages
-//     final percentageRow = pw.TableRow(
-//       decoration: pw.BoxDecoration(color: PdfColors.grey300),
-//       children: [
-//         pw.Container(
-//           padding: const pw.EdgeInsets.all(6),
-//           child: pw.Text(
-//             t('percentage'),
-//             style: pw.TextStyle(
-//               font: font,
-//               fontWeight: pw.FontWeight.bold
-//             ),
-//           ),
-//         ),
-//         for (final bareme in baremes)
-//           pw.Container(
-//             padding: const pw.EdgeInsets.all(6),
-//             child: pw.Text(
-//               totalStudents > 0 
-//                 ? '${((sumCriteria[bareme['id']] ?? 0) / totalStudents * 100).toStringAsFixed(2)}%'
-//                 : '0%',
-//               style: pw.TextStyle(
-//                 font: font,
-//                 fontWeight: pw.FontWeight.bold
-//               ),
-//               textAlign: pw.TextAlign.center,
-//             ),
-//           ),
-//       ],
-//     );
-
-//     return pw.Table(
-//       border: pw.TableBorder.all(color: PdfColors.blue800, width: 1),
-//       columnWidths: {
-//         for (int i = 0; i < headers.length; i++)
-//           i: i == 0 ? const pw.FixedColumnWidth(120) : const pw.FixedColumnWidth(60),
-//       },
-//       children: [
-//         // En-tête
-//         pw.TableRow(
-//           decoration: pw.BoxDecoration(color: PdfColors.blue800),
-//           children: headers,
-//         ),
-//         // Données des étudiants
-//         ...studentRows,
-//         // Statistiques
-//         statsRow,
-//         percentageRow,
-//       ],
-//     );
-//   }
-
-//   static pw.Widget _buildFooter(Function t, pw.Font font) {
-//     return pw.Column(
-//       children: [
-//         pw.Divider(),
-//         pw.Text(
-//           '${t('generated_by')}',
-//           style: pw.TextStyle(
-//             font: font,
-//             fontSize: 10, 
-//             color: PdfColors.grey600
-//           ),
-//           textAlign: pw.TextAlign.center,
-//         ),
-//       ],
-//     );
-//   }
-
-//   // Méthode pour charger une police avec support Unicode
-//   static Future<pw.Font> _loadPdfFont() async {
+// class PDFReportGenerator {
+//   // Méthode principale pour générer un rapport PDF via Firebase Function
+//   static Future<Map<String, dynamic>> generateCompleteReportPDF({
+//     required String profName,
+//     required String matiereName,
+//     required String className,
+//     required String schoolName,
+//     required List<dynamic> baremes,
+//     required List<dynamic> students,
+//     required Map<String, int> sumCriteriaMaxPerBareme,
+//     required int totalStudents,
+//     required bool isFrenchInterface,
+//     required String userId,
+//     String trimestre = 'الأول',
+//     String periode = '',
+//     String evaluationType = 'تقييم',
+//     List<Map<String, dynamic>> criteria = const [],
+//     String performanceAttendue = '',
+//   }) async {
 //     try {
-//       // Essayer de charger une police système qui supporte l'arabe
-//       // Pour le web, on utilise les polices par défaut
-//       return pw.Font.courier(); // Courier supporte mieux Unicode
+//       print('🔄 Préparation des données pour la génération PDF...');
+
+//       // Préparer les données pour la Firebase Function
+//       final Map<String, dynamic> reportData = {
+//         'profName': profName,
+//         'matiereName': matiereName,
+//         'className': className,
+//         'schoolName': schoolName,
+//         'baremes': _prepareBaremesData(baremes),
+//         'students': _prepareStudentsData(students),
+//         'sumCriteriaMaxPerBareme': sumCriteriaMaxPerBareme,
+//         'totalStudents': totalStudents,
+//         'isFrenchInterface': isFrenchInterface,
+//         'trimestre': trimestre,
+//         'periode': periode,
+//         'evaluationType': evaluationType,
+//         'criteria': _prepareCriteriaData(criteria, isFrenchInterface),
+//         'performanceAttendue': performanceAttendue,
+//         'generatedAt': DateTime.now().toIso8601String(),
+//       };
+
+//       // Données pour la Firebase Function
+//       final Map<String, dynamic> functionData = {
+//         'reportData': reportData,
+//         'fileName': 'rapport_complet_${DateTime.now().millisecondsSinceEpoch}.pdf',
+//         'folderPath': 'complete_reports',
+//       };
+
+//       // Appeler la Firebase Function
+//       final HttpsCallable callable = FirebaseFunctions.instance
+//           .httpsCallable('generateCompleteReportPDF');
+
+//       print('📡 Appel de la Firebase Function...');
+//       final result = await callable.call(functionData);
+//       final response = result.data as Map<String, dynamic>;
+
+//       print('✅ PDF généré avec succès via Firebase Function');
+//       print('📥 URL: ${response['downloadURL']}');
+//       print('📄 Nom du fichier: ${response['fileName']}');
+//       print('📏 Taille: ${response['fileSize']} bytes');
+
+//       return {
+//         'success': true,
+//         'downloadURL': response['downloadURL'],
+//         'fileName': response['fileName'],
+//         'timestamp': response['timestamp'],
+//         'fileSize': response['fileSize'],
+//       };
+
 //     } catch (e) {
-//       // Fallback vers une police basique
-//       return pw.Font.helvetica();
+//       print('❌ Erreur lors de la génération du PDF: $e');
+//       return {
+//         'success': false,
+//         'error': e.toString(),
+//         'timestamp': DateTime.now().toIso8601String(),
+//       };
+//     }
+//   }
+
+//   // Préparer les données des barèmes
+//   static List<Map<String, dynamic>> _prepareBaremesData(List<dynamic> baremes) {
+//     return baremes.map((bareme) {
+//       return {
+//         'id': bareme['id']?.toString() ?? '',
+//         'value': bareme['value']?.toString() ?? '',
+//         'type': bareme['type']?.toString() ?? 'bareme',
+//         'parentBaremeId': bareme['parentBaremeId']?.toString(),
+//       };
+//     }).toList();
+//   }
+
+//   // Préparer les données des étudiants
+//   static List<Map<String, dynamic>> _prepareStudentsData(List<dynamic> students) {
+//     return students.map((student) {
+//       // Convertir les notes en Map<String, String>
+//       Map<String, String> baremesMap = {};
+//       if (student['baremes'] is Map<String, dynamic>) {
+//         final studentBaremes = student['baremes'] as Map<String, dynamic>;
+//         studentBaremes.forEach((key, value) {
+//           baremesMap[key] = value.toString();
+//         });
+//       }
+
+//       return {
+//         'id': student['id']?.toString() ?? '',
+//         'name': student['name']?.toString() ?? '',
+//         'baremes': baremesMap,
+//       };
+//     }).toList();
+//   }
+
+//   // Préparer les données des critères
+//   static List<Map<String, dynamic>> _prepareCriteriaData(
+//       List<Map<String, dynamic>> criteria, bool isFrenchInterface) {
+//     return criteria.map((criterion) {
+//       return {
+//         'name': isFrenchInterface
+//             ? (criterion['frenchName'] ?? criterion['name'] ?? '')
+//             : (criterion['arabicName'] ?? criterion['name'] ?? ''),
+//         'indicators': (criterion['indicators'] as List<dynamic>? ?? [])
+//             .map((indicator) => indicator.toString())
+//             .toList(),
+//         'domaine': criterion['domaine']?.toString() ?? '',
+//       };
+//     }).toList();
+//   }
+
+//   // Méthode pour télécharger le PDF depuis l'URL
+//   static Future<void> downloadPDFFromURL(String downloadURL, String fileName) async {
+//     try {
+//       if (kIsWeb) {
+//         // Pour le web
+//       } else {
+//         // Pour mobile/desktop
+//         final response = await http.get(Uri.parse(downloadURL));
+//         final bytes = response.bodyBytes;
+        
+//         final directory = await getTemporaryDirectory();
+//         final file = File('${directory.path}/$fileName');
+//         await file.writeAsBytes(bytes);
+        
+//         await OpenFile.open(file.path);
+//       }
+      
+//       print('✅ PDF téléchargé avec succès');
+//     } catch (e) {
+//       print('❌ Erreur lors du téléchargement du PDF: $e');
+//       rethrow;
 //     }
 //   }
 // }
