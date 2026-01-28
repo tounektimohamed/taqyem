@@ -806,21 +806,7 @@ static String _buildCriteriaTableHTML({
             }
         }
         
-        /* Responsive */
-        @media (max-width: 768px) {
-            .info-grid, .period-grid, .summary-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .period-card {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .table-container {
-                font-size: 12px;
-            }
-        }
+        
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
