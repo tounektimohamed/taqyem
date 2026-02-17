@@ -1203,61 +1203,58 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
 // Méthode pour générer le rapport complet
 
-Future<void> _generateCompleteReport(
-  String classId,
-  String matiereId,
-  String className,
-  String matiereName, {
-  String performanceAttendue = '',
-}) async {
-  if (!await _checkAndUpdatePrintCredit()) {
-    _showCreditErrorDialog();
-    return;
-  }
-
-  setState(() {
-    _isGeneratingReport = true;
-  });
-
-  try {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) => _buildLoadingDialog(isPDF: true),
-    );
-
-    // NOUVEAU: Envoyer uniquement les données essentielles à Flask
-    final response = await _sendLightDataToFlaskForCompleteReport(
-      classId: classId,
-      matiereId: matiereId,
-      className: className,
-      matiereName: matiereName,
-      performanceAttendue: performanceAttendue,
-    );
-
-    if (response['success']) {
-      // Dédure le crédit
-      await _deductPrintCredit();
-
-      _showSuccessSnackbar(_getTranslatedText(
-        'تم إنشاء التقرير الكامل بنجاح',
-        'Rapport complet généré avec succès'
-      ));
-    } else {
-      _showErrorSnackbar(response['message']);
+  Future<void> _generateCompleteReport(
+    String classId,
+    String matiereId,
+    String className,
+    String matiereName, {
+    String performanceAttendue = '',
+  }) async {
+    if (!await _checkAndUpdatePrintCredit()) {
+      _showCreditErrorDialog();
+      return;
     }
-  } catch (e) {
-    _showErrorSnackbar(_getTranslatedText(
-      'خطأ في إنشاء التقرير الكامل',
-      'Erreur lors de la génération du rapport complet'
-    ) + ': $e');
-  } finally {
+
     setState(() {
-      _isGeneratingReport = false;
+      _isGeneratingReport = true;
     });
-    Navigator.of(context).pop();
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) => _buildLoadingDialog(isPDF: true),
+      );
+
+      // NOUVEAU: Envoyer uniquement les données essentielles à Flask
+      final response = await _sendLightDataToFlaskForCompleteReport(
+        classId: classId,
+        matiereId: matiereId,
+        className: className,
+        matiereName: matiereName,
+        performanceAttendue: performanceAttendue,
+      );
+
+      if (response['success']) {
+        // Dédure le crédit
+        await _deductPrintCredit();
+
+        _showSuccessSnackbar(_getTranslatedText('تم إنشاء التقرير الكامل بنجاح',
+            'Rapport complet généré avec succès'));
+      } else {
+        _showErrorSnackbar(response['message']);
+      }
+    } catch (e) {
+      _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء التقرير الكامل',
+              'Erreur lors de la génération du rapport complet') +
+          ': $e');
+    } finally {
+      setState(() {
+        _isGeneratingReport = false;
+      });
+      Navigator.of(context).pop();
+    }
   }
-}
 
 // NOUVELLE MÉTHODE: Envoyer les données légères à Flask
 //
@@ -1265,639 +1262,663 @@ Future<void> _generateCompleteReport(
 
 // Dans votre fichier Flutter, modifiez la fonction principale:
 
-Future<Map<String, dynamic>> _sendLightDataToFlaskForCompleteReport({
-  required String classId,
-  required String matiereId,
-  required String className,
-  required String matiereName,
-  required String performanceAttendue,
-}) async {
-  try {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      return {'success': false, 'message': 'Utilisateur non connecté'};
-    }
-
-    // Préparer les données essentielles
-    final Map<String, dynamic> lightData = {
-      'userId': currentUser.uid,
-      'user': {
-        'profName': _profName,
-        'schoolName': _schoolName,
-      },
-      'class': {
-        'id': classId,
-        'name': className,
-      },
-      'matiere': {
-        'id': matiereId,
-        'name': matiereName,
-      },
-      'performanceAttendue': performanceAttendue,
-      'period': {
-        'trimestre': _selectedTrimestre,
-        'periode': _selectedPeriode,
-        'evaluationType': _selectedEvaluationType,
-      },
-      'isFrenchInterface': _isFrenchInterface,
-      'timestamp': DateTime.now().toIso8601String(),
-    };
-
-    print('📤 Envoi des données à Flask...');
-    
-    // Tester d'abord la connexion
-    final testUrl = Uri.parse('https://mohamedtsou-taqyem-imprission.hf.space/health');
+  Future<Map<String, dynamic>> _sendLightDataToFlaskForCompleteReport({
+    required String classId,
+    required String matiereId,
+    required String className,
+    required String matiereName,
+    required String performanceAttendue,
+  }) async {
     try {
-      final testResponse = await http.get(testUrl).timeout(Duration(seconds: 5));
-      print('✅ Serveur Flask accessible');
-    } catch (e) {
-      print('❌ Impossible de se connecter au serveur Flask: $e');
-      return {
-        'success': false,
-        'message': 'Serveur Flask non démarré. Veuillez le démarrer sur https://mohamedtsou-taqyem-imprission.hf.space/'
-      };
-    }
-
-    // Envoyer la requête principale
-    final url = Uri.parse('https://mohamedtsou-taqyem-imprission.hf.space/generate-complete-report');
-    
-    print('⏳ Génération du rapport en cours...');
-    
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json; charset=utf-8',
-        'Accept': 'application/json',
-      },
-      body: json.encode(lightData),
-    ).timeout(const Duration(seconds: 120));
-
-    print('✅ Réponse reçue: ${response.statusCode}');
-
-    if (response.statusCode == 200) {
-      final responseData = json.decode(response.body);
-      
-      if (responseData['success'] == true) {
-        // NOUVEAU: Récupérer l'URL de téléchargement depuis Firebase Storage
-        if (responseData.containsKey('downloadUrl')) {
-          print('📥 URL de téléchargement disponible');
-          
-          // Télécharger le fichier depuis Firebase Storage
-          await _downloadReportFromUrl(
-            responseData['downloadUrl'],
-            responseData['filename'] ?? 'rapport.pdf',
-            responseData['reportId']
-          );
-          
-          // Enregistrer les métadonnées dans Firestore (optionnel)
-          await _saveReportMetadata(
-            currentUser.uid,
-            responseData['reportId'],
-            responseData,
-            className,
-            matiereName
-          );
-          
-          return {
-            'success': true,
-            'message': 'Rapport généré et téléchargé avec succès',
-            'reportId': responseData['reportId']
-          };
-        } else if (responseData.containsKey('htmlContent')) {
-          // Fallback: télécharger le HTML
-          print('⚠️ Pas de PDF, téléchargement HTML...');
-          await _downloadHTMLContent(responseData['htmlContent']);
-          return {'success': true, 'message': 'Rapport HTML généré'};
-        } else {
-          return {'success': false, 'message': 'Aucun contenu disponible'};
-        }
-      } else {
-        return {'success': false, 'message': responseData['message'] ?? 'Erreur inconnue'};
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        return {'success': false, 'message': 'Utilisateur non connecté'};
       }
-    } else {
-      return {'success': false, 'message': 'Erreur HTTP ${response.statusCode}'};
-    }
-  } on TimeoutException {
-    return {
-      'success': false,
-      'message': 'Timeout: Le serveur a mis trop de temps à répondre'
-    };
-  } on SocketException catch (e) {
-    return {
-      'success': false,
-      'message': 'Impossible de se connecter au serveur: ${e.message}'
-    };
-  } catch (e) {
-    print('💥 Erreur inattendue: $e');
-    return {
-      'success': false,
-      'message': 'Erreur technique: $e'
-    };
-  }
-}
 
-// NOUVELLE FONCTION: Télécharger le rapport depuis Firebase Storage
-Future<void> _downloadReportFromUrl(String downloadUrl, String filename, String reportId) async {
-  try {
-    print('📥 Téléchargement depuis: $downloadUrl');
-    
-    if (kIsWeb) {
-      // Pour le web: ouvrir dans un nouvel onglet
-      html.window.open(downloadUrl, '_blank');
-      
-      // Afficher un message de confirmation
-      _showSuccessSnackbar('Le rapport est en cours de téléchargement...');
-    } else {
-      // Pour mobile/desktop
-      final response = await http.get(Uri.parse(downloadUrl));
-      
-      if (response.statusCode == 200) {
-        final bytes = response.bodyBytes;
-        final directory = await getTemporaryDirectory();
-        final file = File('${directory.path}/$filename');
-        await file.writeAsBytes(bytes);
-        
-        // Ouvrir le fichier
-        await OpenFile.open(file.path);
-        
-        _showSuccessSnackbar('Rapport téléchargé avec succès');
-      } else {
-        throw Exception('Erreur de téléchargement: ${response.statusCode}');
-      }
-    }
-  } catch (e) {
-    print('❌ Erreur téléchargement: $e');
-    _showErrorSnackbar('Erreur lors du téléchargement: $e');
-    rethrow;
-  }
-}
-
-// NOUVELLE FONCTION: Sauvegarder les métadonnées dans Firestore
-Future<void> _saveReportMetadata(
-  String userId,
-  String reportId,
-  Map<String, dynamic> reportData,
-  String className,
-  String matiereName
-) async {
-  try {
-    await FirebaseFirestore.instance
-        .collection('user_reports')
-        .doc(userId)
-        .collection('rapports')
-        .doc(reportId)
-        .set({
-          'reportId': reportId,
-          'className': className,
-          'matiereName': matiereName,
-          'downloadUrl': reportData['downloadUrl'],
-          'generatedAt': DateTime.now().toIso8601String(),
+      // Préparer les données essentielles
+      final Map<String, dynamic> lightData = {
+        'userId': currentUser.uid,
+        'user': {
           'profName': _profName,
           'schoolName': _schoolName,
+        },
+        'class': {
+          'id': classId,
+          'name': className,
+        },
+        'matiere': {
+          'id': matiereId,
+          'name': matiereName,
+        },
+        'performanceAttendue': performanceAttendue,
+        'period': {
           'trimestre': _selectedTrimestre,
           'periode': _selectedPeriode,
-          'status': 'downloaded'
-        });
-    
-    print('✅ Métadonnées sauvegardées dans Firestore');
-  } catch (e) {
-    print('⚠️ Erreur sauvegarde métadonnées: $e');
-    // Ne pas bloquer l'utilisateur pour cette erreur
+          'evaluationType': _selectedEvaluationType,
+        },
+        'isFrenchInterface': _isFrenchInterface,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
+
+      print('📤 Envoi des données à Flask...');
+
+      // Tester d'abord la connexion
+      final testUrl =
+          Uri.parse('https://mohamedtsou-taqyem-imprission.hf.space/health');
+      try {
+        final testResponse =
+            await http.get(testUrl).timeout(Duration(seconds: 5));
+        print('✅ Serveur Flask accessible');
+      } catch (e) {
+        print('❌ Impossible de se connecter au serveur Flask: $e');
+        return {
+          'success': false,
+          'message':
+              'Serveur Flask non démarré. Veuillez le démarrer sur https://mohamedtsou-taqyem-imprission.hf.space/'
+        };
+      }
+
+      // Envoyer la requête principale
+      final url = Uri.parse(
+          'https://mohamedtsou-taqyem-imprission.hf.space/generate-complete-report');
+
+      print('⏳ Génération du rapport en cours...');
+
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Accept': 'application/json',
+            },
+            body: json.encode(lightData),
+          )
+          .timeout(const Duration(seconds: 120));
+
+      print('✅ Réponse reçue: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          // NOUVEAU: Récupérer l'URL de téléchargement depuis Firebase Storage
+          if (responseData.containsKey('downloadUrl')) {
+            print('📥 URL de téléchargement disponible');
+
+            // Télécharger le fichier depuis Firebase Storage
+            await _downloadReportFromUrl(
+                responseData['downloadUrl'],
+                responseData['filename'] ?? 'rapport.pdf',
+                responseData['reportId']);
+
+            // Enregistrer les métadonnées dans Firestore (optionnel)
+            await _saveReportMetadata(currentUser.uid, responseData['reportId'],
+                responseData, className, matiereName);
+
+            return {
+              'success': true,
+              'message': 'Rapport généré et téléchargé avec succès',
+              'reportId': responseData['reportId']
+            };
+          } else if (responseData.containsKey('htmlContent')) {
+            // Fallback: télécharger le HTML
+            print('⚠️ Pas de PDF, téléchargement HTML...');
+            await _downloadHTMLContent(responseData['htmlContent']);
+            return {'success': true, 'message': 'Rapport HTML généré'};
+          } else {
+            return {'success': false, 'message': 'Aucun contenu disponible'};
+          }
+        } else {
+          return {
+            'success': false,
+            'message': responseData['message'] ?? 'Erreur inconnue'
+          };
+        }
+      } else {
+        return {
+          'success': false,
+          'message': 'Erreur HTTP ${response.statusCode}'
+        };
+      }
+    } on TimeoutException {
+      return {
+        'success': false,
+        'message': 'Timeout: Le serveur a mis trop de temps à répondre'
+      };
+    } on SocketException catch (e) {
+      return {
+        'success': false,
+        'message': 'Impossible de se connecter au serveur: ${e.message}'
+      };
+    } catch (e) {
+      print('💥 Erreur inattendue: $e');
+      return {'success': false, 'message': 'Erreur technique: $e'};
+    }
   }
-}
+
+// NOUVELLE FONCTION: Télécharger le rapport depuis Firebase Storage
+  Future<void> _downloadReportFromUrl(
+      String downloadUrl, String filename, String reportId) async {
+    try {
+      print('📥 Téléchargement depuis: $downloadUrl');
+
+      if (kIsWeb) {
+        // Pour le web: ouvrir dans un nouvel onglet
+        html.window.open(downloadUrl, '_blank');
+
+        // Afficher un message de confirmation
+        _showSuccessSnackbar('Le rapport est en cours de téléchargement...');
+      } else {
+        // Pour mobile/desktop
+        final response = await http.get(Uri.parse(downloadUrl));
+
+        if (response.statusCode == 200) {
+          final bytes = response.bodyBytes;
+          final directory = await getTemporaryDirectory();
+          final file = File('${directory.path}/$filename');
+          await file.writeAsBytes(bytes);
+
+          // Ouvrir le fichier
+          await OpenFile.open(file.path);
+
+          _showSuccessSnackbar('Rapport téléchargé avec succès');
+        } else {
+          throw Exception('Erreur de téléchargement: ${response.statusCode}');
+        }
+      }
+    } catch (e) {
+      print('❌ Erreur téléchargement: $e');
+      _showErrorSnackbar('Erreur lors du téléchargement: $e');
+      rethrow;
+    }
+  }
+
+// NOUVELLE FONCTION: Sauvegarder les métadonnées dans Firestore
+  Future<void> _saveReportMetadata(
+      String userId,
+      String reportId,
+      Map<String, dynamic> reportData,
+      String className,
+      String matiereName) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('user_reports')
+          .doc(userId)
+          .collection('rapports')
+          .doc(reportId)
+          .set({
+        'reportId': reportId,
+        'className': className,
+        'matiereName': matiereName,
+        'downloadUrl': reportData['downloadUrl'],
+        'generatedAt': DateTime.now().toIso8601String(),
+        'profName': _profName,
+        'schoolName': _schoolName,
+        'trimestre': _selectedTrimestre,
+        'periode': _selectedPeriode,
+        'status': 'downloaded'
+      });
+
+      print('✅ Métadonnées sauvegardées dans Firestore');
+    } catch (e) {
+      print('⚠️ Erreur sauvegarde métadonnées: $e');
+      // Ne pas bloquer l'utilisateur pour cette erreur
+    }
+  }
 
 // NOUVELLE FONCTION: Récupérer l'historique des rapports
-Future<List<Map<String, dynamic>>> _getUserReportsHistory() async {
-  try {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return [];
+  Future<List<Map<String, dynamic>>> _getUserReportsHistory() async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return [];
 
-    final snapshot = await FirebaseFirestore.instance
-        .collection('user_reports')
-        .doc(currentUser.uid)
-        .collection('rapports')
-        .orderBy('generatedAt', descending: true)
-        .get();
+      final snapshot = await FirebaseFirestore.instance
+          .collection('user_reports')
+          .doc(currentUser.uid)
+          .collection('rapports')
+          .orderBy('generatedAt', descending: true)
+          .get();
 
-    return snapshot.docs.map((doc) {
-      final data = doc.data();
-      return {
-        'id': doc.id,
-        ...data,
-        'date': DateTime.parse(data['generatedAt']).toLocal()
-      };
-    }).toList();
-  } catch (e) {
-    print('❌ Erreur récupération historique: $e');
-    return [];
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': doc.id,
+          ...data,
+          'date': DateTime.parse(data['generatedAt']).toLocal()
+        };
+      }).toList();
+    } catch (e) {
+      print('❌ Erreur récupération historique: $e');
+      return [];
+    }
   }
-}
 
 // NOUVELLE FONCTION: Afficher l'historique des rapports
 // NOUVELLE FONCTION: Afficher l'historique des rapports avec suppression
-void _showReportsHistory() {
-  showDialog(
-    context: context,
-    builder: (context) {
-      return FutureBuilder<List<Map<String, dynamic>>>(
-        future: _getUserReportsHistory(),
-        builder: (context, snapshot) {
-          return AlertDialog(
-            title: Row(
-              children: [
-                Icon(Icons.history, color: Colors.blue),
-                SizedBox(width: 10),
-                Text(_getTranslatedText('التقارير السابقة', 'Historique des rapports')),
-              ],
-            ),
-            content: Container(
-              width: double.maxFinite,
-              height: MediaQuery.of(context).size.height * 0.6,
-              child: snapshot.connectionState == ConnectionState.waiting
-                  ? Center(child: CircularProgressIndicator())
-                  : snapshot.hasData && snapshot.data!.isNotEmpty
-                      ? ListView.builder(
-                          itemCount: snapshot.data!.length,
-                          itemBuilder: (context, index) {
-                            final report = snapshot.data![index];
-                            return Card(
-                              margin: EdgeInsets.symmetric(vertical: 4),
-                              child: ListTile(
-                                leading: Icon(Icons.picture_as_pdf, color: Colors.red),
-                                title: Text(
-                                  '${report['className']} - ${report['matiereName']}',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      DateFormat('dd/MM/yyyy HH:mm').format(report['date']),
-                                    ),
-                                    if (report['downloadUrl'] != null)
-                                      Text(
-                                        _getTranslatedText('حجم الملف', 'Taille fichier') + 
-                                        ': ${_formatFileSize(report['fileSize'] ?? 0)}',
-                                        style: TextStyle(fontSize: 10, color: Colors.grey),
-                                      ),
-                                  ],
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(Icons.download),
-                                      tooltip: _getTranslatedText('تحميل', 'Télécharger'),
-                                      onPressed: () {
-                                        if (report['downloadUrl'] != null) {
-                                          _downloadReportFromUrl(
-                                            report['downloadUrl'],
-                                            '${report['className']}_${report['matiereName']}_${DateFormat('yyyyMMdd_HHmm').format(report['date'])}.pdf',
-                                            report['reportId']
-                                          );
-                                        }
-                                      },
-                                    ),
-                                    IconButton(
-                                      icon: Icon(Icons.delete, color: Colors.red),
-                                      tooltip: _getTranslatedText('حذف', 'Supprimer'),
-                                      onPressed: () {
-                                        _showDeleteReportDialog(report);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        )
-                      : Center(
-                          child: Text(
-                            _getTranslatedText('لا توجد تقارير سابقة', 'Aucun rapport précédent'),
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                        ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(_getTranslatedText('إغلاق', 'Fermer')),
-              ),
-            ],
-          );
-        },
-      );
-    },
-  );
-}
-
-// NOUVELLE FONCTION: Afficher le dialogue de confirmation de suppression
-void _showDeleteReportDialog(Map<String, dynamic> report) {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Row(
-        children: [
-          Icon(Icons.warning, color: Colors.orange),
-          SizedBox(width: 10),
-          Text(_getTranslatedText('تأكيد الحذف', 'Confirmation suppression')),
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _getTranslatedText(
-              'هل أنت متأكد من حذف هذا التقرير؟',
-              'Êtes-vous sûr de vouloir supprimer ce rapport ?'
-            ),
-          ),
-          SizedBox(height: 10),
-          Container(
-            padding: EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${report['className']} - ${report['matiereName']}',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  DateFormat('dd/MM/yyyy HH:mm').format(report['date']),
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 10),
-          Text(
-            _getTranslatedText(
-              'سيتم حذف التقرير نهائياً ولا يمكن استرجاعه.',
-              'Le rapport sera définitivement supprimé et ne pourra pas être récupéré.'
-            ),
-            style: TextStyle(fontSize: 12, color: Colors.red),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(_getTranslatedText('إلغاء', 'Annuler')),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pop(context); // Fermer le dialogue de confirmation
-            _deleteReport(report['id']);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-          ),
-          child: Text(_getTranslatedText('حذف', 'Supprimer')),
-        ),
-      ],
-    ),
-  );
-}
-
-// NOUVELLE FONCTION: Supprimer un rapport
-Future<void> _deleteReport(String reportId) async {
-  try {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      _showErrorSnackbar(_getTranslatedText('يجب تسجيل الدخول', 'Connectez-vous d\'abord'));
-      return;
-    }
-
-    // Afficher un indicateur de chargement
+  void _showReportsHistory() {
     showDialog(
       context: context,
-      barrierDismissible: false,
+      builder: (context) {
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: _getUserReportsHistory(),
+          builder: (context, snapshot) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.history, color: Colors.blue),
+                  SizedBox(width: 10),
+                  Text(_getTranslatedText(
+                      'التقارير السابقة', 'Historique des rapports')),
+                ],
+              ),
+              content: Container(
+                width: double.maxFinite,
+                height: MediaQuery.of(context).size.height * 0.6,
+                child: snapshot.connectionState == ConnectionState.waiting
+                    ? Center(child: CircularProgressIndicator())
+                    : snapshot.hasData && snapshot.data!.isNotEmpty
+                        ? ListView.builder(
+                            itemCount: snapshot.data!.length,
+                            itemBuilder: (context, index) {
+                              final report = snapshot.data![index];
+                              return Card(
+                                margin: EdgeInsets.symmetric(vertical: 4),
+                                child: ListTile(
+                                  leading: Icon(Icons.picture_as_pdf,
+                                      color: Colors.red),
+                                  title: Text(
+                                    '${report['className']} - ${report['matiereName']}',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        DateFormat('dd/MM/yyyy HH:mm')
+                                            .format(report['date']),
+                                      ),
+                                      if (report['downloadUrl'] != null)
+                                        Text(
+                                          _getTranslatedText('حجم الملف',
+                                                  'Taille fichier') +
+                                              ': ${_formatFileSize(report['fileSize'] ?? 0)}',
+                                          style: TextStyle(
+                                              fontSize: 10, color: Colors.grey),
+                                        ),
+                                    ],
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: Icon(Icons.download),
+                                        tooltip: _getTranslatedText(
+                                            'تحميل', 'Télécharger'),
+                                        onPressed: () {
+                                          if (report['downloadUrl'] != null) {
+                                            _downloadReportFromUrl(
+                                                report['downloadUrl'],
+                                                '${report['className']}_${report['matiereName']}_${DateFormat('yyyyMMdd_HHmm').format(report['date'])}.pdf',
+                                                report['reportId']);
+                                          }
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.delete,
+                                            color: Colors.red),
+                                        tooltip: _getTranslatedText(
+                                            'حذف', 'Supprimer'),
+                                        onPressed: () {
+                                          _showDeleteReportDialog(report);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : Center(
+                            child: Text(
+                              _getTranslatedText('لا توجد تقارير سابقة',
+                                  'Aucun rapport précédent'),
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(_getTranslatedText('إغلاق', 'Fermer')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+// NOUVELLE FONCTION: Afficher le dialogue de confirmation de suppression
+  void _showDeleteReportDialog(Map<String, dynamic> report) {
+    showDialog(
+      context: context,
       builder: (context) => AlertDialog(
-        content: Row(
+        title: Row(
           children: [
-            CircularProgressIndicator(),
-            SizedBox(width: 20),
-            Text(_getTranslatedText('جاري الحذف...', 'Suppression en cours...')),
+            Icon(Icons.warning, color: Colors.orange),
+            SizedBox(width: 10),
+            Text(_getTranslatedText('تأكيد الحذف', 'Confirmation suppression')),
           ],
         ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _getTranslatedText('هل أنت متأكد من حذف هذا التقرير؟',
+                  'Êtes-vous sûr de vouloir supprimer ce rapport ?'),
+            ),
+            SizedBox(height: 10),
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${report['className']} - ${report['matiereName']}',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    DateFormat('dd/MM/yyyy HH:mm').format(report['date']),
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 10),
+            Text(
+              _getTranslatedText('سيتم حذف التقرير نهائياً ولا يمكن استرجاعه.',
+                  'Le rapport sera définitivement supprimé et ne pourra pas être récupéré.'),
+              style: TextStyle(fontSize: 12, color: Colors.red),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(_getTranslatedText('إلغاء', 'Annuler')),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // Fermer le dialogue de confirmation
+              _deleteReport(report['id']);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: Text(_getTranslatedText('حذف', 'Supprimer')),
+          ),
+        ],
       ),
     );
-
-    // Appeler l'API Flask pour supprimer le rapport
-    final response = await http.delete(
-      Uri.parse('https://mohamedtsou-taqyem-imprission.hf.space/delete-report/$reportId'),
-      headers: {'Content-Type': 'application/json'},
-    ).timeout(const Duration(seconds: 30));
-
-    // Fermer le dialogue de chargement
-    Navigator.pop(context);
-
-    if (response.statusCode == 200) {
-      final result = json.decode(response.body);
-      
-      if (result['success'] == true) {
-        _showSuccessSnackbar(_getTranslatedText('تم حذف التقرير', 'Rapport supprimé avec succès'));
-        
-        // Rafraîchir la liste des rapports
-        if (Navigator.of(context).canPop()) {
-          Navigator.pop(context); // Fermer le dialogue d'historique
-        }
-        
-        // Réafficher l'historique mis à jour
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _showReportsHistory();
-        });
-      } else {
-        _showErrorSnackbar(result['message'] ?? _getTranslatedText('فشل الحذف', 'Échec de la suppression'));
-      }
-    } else {
-      _showErrorSnackbar(_getTranslatedText('خطأ في الاتصال', 'Erreur de connexion'));
-    }
-  } on TimeoutException {
-    Navigator.pop(context);
-    _showErrorSnackbar(_getTranslatedText('انتهت المهلة', 'Timeout'));
-  } catch (e) {
-    if (Navigator.of(context).canPop()) Navigator.pop(context);
-    _showErrorSnackbar(_getTranslatedText('خطأ تقني', 'Erreur technique') + ': $e');
   }
-}
+
+// NOUVELLE FONCTION: Supprimer un rapport
+  Future<void> _deleteReport(String reportId) async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        _showErrorSnackbar(
+            _getTranslatedText('يجب تسجيل الدخول', 'Connectez-vous d\'abord'));
+        return;
+      }
+
+      // Afficher un indicateur de chargement
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          content: Row(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(width: 20),
+              Text(_getTranslatedText(
+                  'جاري الحذف...', 'Suppression en cours...')),
+            ],
+          ),
+        ),
+      );
+
+      // Appeler l'API Flask pour supprimer le rapport
+      final response = await http.delete(
+        Uri.parse(
+            'https://mohamedtsou-taqyem-imprission.hf.space/delete-report/$reportId'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(const Duration(seconds: 30));
+
+      // Fermer le dialogue de chargement
+      Navigator.pop(context);
+
+      if (response.statusCode == 200) {
+        final result = json.decode(response.body);
+
+        if (result['success'] == true) {
+          _showSuccessSnackbar(_getTranslatedText(
+              'تم حذف التقرير', 'Rapport supprimé avec succès'));
+
+          // Rafraîchir la liste des rapports
+          if (Navigator.of(context).canPop()) {
+            Navigator.pop(context); // Fermer le dialogue d'historique
+          }
+
+          // Réafficher l'historique mis à jour
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _showReportsHistory();
+          });
+        } else {
+          _showErrorSnackbar(result['message'] ??
+              _getTranslatedText('فشل الحذف', 'Échec de la suppression'));
+        }
+      } else {
+        _showErrorSnackbar(
+            _getTranslatedText('خطأ في الاتصال', 'Erreur de connexion'));
+      }
+    } on TimeoutException {
+      Navigator.pop(context);
+      _showErrorSnackbar(_getTranslatedText('انتهت المهلة', 'Timeout'));
+    } catch (e) {
+      if (Navigator.of(context).canPop()) Navigator.pop(context);
+      _showErrorSnackbar(
+          _getTranslatedText('خطأ تقني', 'Erreur technique') + ': $e');
+    }
+  }
 
 // NOUVELLE FONCTION: Formater la taille du fichier
-String _formatFileSize(int bytes) {
-  if (bytes < 1024) return '$bytes B';
-  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-}
-// MODIFIEZ votre menu d'impression pour ajouter l'historique
-Widget _buildPrintButton() {
-  return PopupMenuButton<String>(
-    icon: Container(
-      padding: EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withOpacity(0.2),
-        border: Border.all(color: Colors.white, width: 1),
-      ),
-      child: Icon(
-        Icons.print,
-        color: Colors.white,
-        size: 20,
-      ),
-    ),
-    onSelected: _isGeneratingReport
-        ? null
-        : (value) {
-            if (value == 'complete_report') {
-              _showCompleteReportDialog();
-            } else if (value == 'baremes_table') {
-              _showClassAndMatiereSelectionDialog();
-            } else if (value == 'history') {
-              _showReportsHistory();
-            } else {
-              _showEvaluationInfoDialog(() {
-                if (value == 'html') {
-                  _generateHTMLReport(downloadAsPDF: false);
-                } else if (value == 'pdf') {
-                  _generateHTMLReport(downloadAsPDF: true);
-                }
-              });
-            }
-          },
-    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-      PopupMenuItem<String>(
-        value: 'html',
-        child: Row(
-          children: [
-            Icon(Icons.description, color: Colors.blue),
-            SizedBox(width: 8),
-            Text(_getTranslatedText('طباعة الجدول (HTML)', 'Imprimer le tableau (HTML)')),
-          ],
-        ),
-      ),
-      PopupMenuItem<String>(
-        value: 'pdf',
-        child: Row(
-          children: [
-            Icon(Icons.picture_as_pdf, color: Colors.red),
-            SizedBox(width: 8),
-            Text(_getTranslatedText('طباعة الجدول (PDF)', 'Imprimer le tableau (PDF)')),
-          ],
-        ),
-      ),
-      PopupMenuDivider(),
-      PopupMenuItem<String>(
-        value: 'baremes_table',
-        child: Row(
-          children: [
-            Icon(Icons.table_chart, color: Colors.green),
-            SizedBox(width: 8),
-            Text(_getTranslatedText('طباعة جدول المعايير', 'Imprimer tableau des critères')),
-          ],
-        ),
-      ),
-      PopupMenuDivider(),
-      PopupMenuItem<String>(
-        value: 'complete_report',
-        child: Row(
-          children: [
-            Icon(Icons.book, color: Colors.purple),
-            SizedBox(width: 8),
-            Text(_getTranslatedText('تقرير كامل', 'Rapport Complet')),
-          ],
-        ),
-      ),
-      PopupMenuDivider(),
-      PopupMenuItem<String>(
-        value: 'history',
-        child: Row(
-          children: [
-            Icon(Icons.history, color: Colors.orange),
-            SizedBox(width: 8),
-            Text(_getTranslatedText('التقارير السابقة', 'Historique')),
-          ],
-        ),
-      ),
-    ],
-  );
-}
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
 
-// 
+// MODIFIEZ votre menu d'impression pour ajouter l'historique
+  Widget _buildPrintButton() {
+    return PopupMenuButton<String>(
+      icon: Container(
+        padding: EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.2),
+          border: Border.all(color: Colors.white, width: 1),
+        ),
+        child: Icon(
+          Icons.print,
+          color: Colors.white,
+          size: 20,
+        ),
+      ),
+      onSelected: _isGeneratingReport
+          ? null
+          : (value) {
+              if (value == 'complete_report') {
+                _showCompleteReportDialog();
+              } else if (value == 'baremes_table') {
+                _showClassAndMatiereSelectionDialog();
+              } else if (value == 'history') {
+                _showReportsHistory();
+              } else {
+                _showEvaluationInfoDialog(() {
+                  if (value == 'html') {
+                    _generateHTMLReport(downloadAsPDF: false);
+                  } else if (value == 'pdf') {
+                    _generateHTMLReport(downloadAsPDF: true);
+                  }
+                });
+              }
+            },
+      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+        // PopupMenuItem<String>(
+        //   value: 'html',
+        //   child: Row(
+        //     children: [
+        //       Icon(Icons.description, color: Colors.blue),
+        //       SizedBox(width: 8),
+        //       Text(_getTranslatedText('طباعة الجدول (HTML)', 'Imprimer le tableau (HTML)')),
+        //     ],
+        //   ),
+        // ),
+        // PopupMenuItem<String>(
+        //   value: 'pdf',
+        //   child: Row(
+        //     children: [
+        //       Icon(Icons.picture_as_pdf, color: Colors.red),
+        //       SizedBox(width: 8),
+        //       Text(_getTranslatedText('طباعة الجدول (PDF)', 'Imprimer le tableau (PDF)')),
+        //     ],
+        //   ),
+        // ),
+        // PopupMenuDivider(),
+        // PopupMenuItem<String>(
+        //   value: 'baremes_table',
+        //   child: Row(
+        //     children: [
+        //       Icon(Icons.table_chart, color: Colors.green),
+        //       SizedBox(width: 8),
+        //       Text(_getTranslatedText('طباعة جدول المعايير', 'Imprimer tableau des critères')),
+        //     ],
+        //   ),
+        // ),
+        PopupMenuDivider(),
+        PopupMenuItem<String>(
+          value: 'complete_report',
+          child: Row(
+            children: [
+              Icon(Icons.book, color: Colors.purple),
+              SizedBox(width: 8),
+              Text(_getTranslatedText('تقرير كامل', 'Rapport Complet')),
+            ],
+          ),
+        ),
+        PopupMenuDivider(),
+        PopupMenuItem<String>(
+          value: 'history',
+          child: Row(
+            children: [
+              Icon(Icons.history, color: Colors.orange),
+              SizedBox(width: 8),
+              Text(_getTranslatedText('التقارير السابقة', 'Historique')),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+//
 // //
 //
-Future<void> _downloadPdfFromBase64(String pdfBase64) async {
-  try {
-    final bytes = base64Decode(pdfBase64);
-    
-    if (kIsWeb) {
-      // Pour le web
-      final blob = html.Blob([bytes], 'application/pdf');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute('download', 'rapport_complet_${DateTime.now().millisecondsSinceEpoch}.pdf')
-        ..click();
-      Future.delayed(const Duration(seconds: 2), () {
-        html.Url.revokeObjectUrl(url);
-      });
-    } else {
-      // Pour mobile/desktop
-      final directory = await getTemporaryDirectory();
-      final file = File('${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.pdf');
-      await file.writeAsBytes(bytes);
-      await OpenFile.open(file.path);
+  Future<void> _downloadPdfFromBase64(String pdfBase64) async {
+    try {
+      final bytes = base64Decode(pdfBase64);
+
+      if (kIsWeb) {
+        // Pour le web
+        final blob = html.Blob([bytes], 'application/pdf');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download',
+              'rapport_complet_${DateTime.now().millisecondsSinceEpoch}.pdf')
+          ..click();
+        Future.delayed(const Duration(seconds: 2), () {
+          html.Url.revokeObjectUrl(url);
+        });
+      } else {
+        // Pour mobile/desktop
+        final directory = await getTemporaryDirectory();
+        final file = File(
+            '${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.pdf');
+        await file.writeAsBytes(bytes);
+        await OpenFile.open(file.path);
+      }
+    } catch (e) {
+      print('Erreur téléchargement PDF base64: $e');
+      rethrow;
     }
-  } catch (e) {
-    print('Erreur téléchargement PDF base64: $e');
-    rethrow;
   }
-}
+
 // Méthode pour télécharger le rapport généré
-Future<void> _downloadGeneratedReport(String pdfUrl) async {
-  try {
-    if (kIsWeb) {
-      html.window.open(pdfUrl, '_blank');
-    } else {
-      final response = await http.get(Uri.parse(pdfUrl));
-      final bytes = response.bodyBytes;
-      
-      final directory = await getTemporaryDirectory();
-      final file = File('${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.pdf');
-      await file.writeAsBytes(bytes);
-      await OpenFile.open(file.path);
+  Future<void> _downloadGeneratedReport(String pdfUrl) async {
+    try {
+      if (kIsWeb) {
+        html.window.open(pdfUrl, '_blank');
+      } else {
+        final response = await http.get(Uri.parse(pdfUrl));
+        final bytes = response.bodyBytes;
+
+        final directory = await getTemporaryDirectory();
+        final file = File(
+            '${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.pdf');
+        await file.writeAsBytes(bytes);
+        await OpenFile.open(file.path);
+      }
+    } catch (e) {
+      print('Erreur téléchargement rapport: $e');
+      rethrow;
     }
-  } catch (e) {
-    print('Erreur téléchargement rapport: $e');
-    rethrow;
   }
-}
 
 // Méthode pour télécharger le contenu HTML
-Future<void> _downloadHTMLContent(String htmlContent) async {
-  try {
-    if (kIsWeb) {
-      final blob = html.Blob([htmlContent], 'text/html; charset=utf-8');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..setAttribute('download', 'rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html')
-        ..click();
-      Future.delayed(const Duration(seconds: 2), () {
-        html.Url.revokeObjectUrl(url);
-      });
-    } else {
-      final directory = await getTemporaryDirectory();
-      final file = File('${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html');
-      await file.writeAsString(htmlContent, flush: true);
-      await OpenFile.open(file.path);
+  Future<void> _downloadHTMLContent(String htmlContent) async {
+    try {
+      if (kIsWeb) {
+        final blob = html.Blob([htmlContent], 'text/html; charset=utf-8');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download',
+              'rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html')
+          ..click();
+        Future.delayed(const Duration(seconds: 2), () {
+          html.Url.revokeObjectUrl(url);
+        });
+      } else {
+        final directory = await getTemporaryDirectory();
+        final file = File(
+            '${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html');
+        await file.writeAsString(htmlContent, flush: true);
+        await OpenFile.open(file.path);
+      }
+    } catch (e) {
+      print('Erreur téléchargement HTML: $e');
+      rethrow;
     }
-  } catch (e) {
-    print('Erreur téléchargement HTML: $e');
-    rethrow;
   }
-}
+
 // Méthode pour récupérer les barèmes POUR LE RAPPORT COMPLET
   Future<List<dynamic>> _getBaremesForCompleteReport(
       String classId, String matiereId) async {
@@ -2944,55 +2965,56 @@ Future<void> _downloadHTMLContent(String htmlContent) async {
     }
   }
 
-List<Map<String, dynamic>> _createCriteriaList(
-    List<dynamic> criteriaList, String matiereName) {
-  final List<Map<String, dynamic>> criteria = [];
+  List<Map<String, dynamic>> _createCriteriaList(
+      List<dynamic> criteriaList, String matiereName) {
+    final List<Map<String, dynamic>> criteria = [];
 
-  for (int i = 0; i < criteriaList.length; i++) {
-    final criterion = criteriaList[i] as Map<String, dynamic>;
-    final criteriaName = criterion['name']?.toString() ?? 'معيار ${i + 1}';
+    for (int i = 0; i < criteriaList.length; i++) {
+      final criterion = criteriaList[i] as Map<String, dynamic>;
+      final criteriaName = criterion['name']?.toString() ?? 'معيار ${i + 1}';
 
-    // Récupérer les indicateurs
-    final indicators = criterion['indicators'] as List<dynamic>? ?? [];
+      // Récupérer les indicateurs
+      final indicators = criterion['indicators'] as List<dynamic>? ?? [];
 
-    // Garder les indicateurs DANS L'ORDRE DU JSON
-    final List<String> indicatorStrings = indicators
-        .map((indicator) => indicator.toString())
-        .where((indicator) => indicator.trim().isNotEmpty)
-        .toList();
-    
-    // NE PAS TRIER les indicateurs
-    // indicatorStrings.sort(_arabicStringComparator); // À SUPPRIMER
+      // Garder les indicateurs DANS L'ORDRE DU JSON
+      final List<String> indicatorStrings = indicators
+          .map((indicator) => indicator.toString())
+          .where((indicator) => indicator.trim().isNotEmpty)
+          .toList();
 
-    // Créer l'entrée du critère
-    criteria.add({
-      'id': i + 1,
-      'name': _isFrenchInterface
-          ? DataTranslator.translateMatiere(criteriaName)
-          : criteriaName,
-      'originalName': criteriaName,
-      'frenchName': DataTranslator.translateMatiere(criteriaName),
-      'arabicName': criteriaName,
-      'domaine': _getDomaineForMatiere(matiereName, _isFrenchInterface),
-      'indicators': indicatorStrings, // Garder l'ordre original
-      'indicators_count': indicatorStrings.length,
-      'displayNumber': i + 1, // Garder l'ordre du JSON
-      'sortKey': i + 1, // Utiliser l'index comme clé de tri
-      'jsonOrder': i, // Ajouter l'ordre original du JSON
-    });
+      // NE PAS TRIER les indicateurs
+      // indicatorStrings.sort(_arabicStringComparator); // À SUPPRIMER
+
+      // Créer l'entrée du critère
+      criteria.add({
+        'id': i + 1,
+        'name': _isFrenchInterface
+            ? DataTranslator.translateMatiere(criteriaName)
+            : criteriaName,
+        'originalName': criteriaName,
+        'frenchName': DataTranslator.translateMatiere(criteriaName),
+        'arabicName': criteriaName,
+        'domaine': _getDomaineForMatiere(matiereName, _isFrenchInterface),
+        'indicators': indicatorStrings, // Garder l'ordre original
+        'indicators_count': indicatorStrings.length,
+        'displayNumber': i + 1, // Garder l'ordre du JSON
+        'sortKey': i + 1, // Utiliser l'index comme clé de tri
+        'jsonOrder': i, // Ajouter l'ordre original du JSON
+      });
+    }
+
+    // NE PAS TRIER LES CRITÈRES
+    // Supprimer tout le code de tri ici
+    // if (_isFrenchInterface) { ... }
+    // else { ... }
+
+    // Garder l'ordre du JSON tel quel
+    // Les critères sont déjà dans l'ordre d'itération du JSON
+
+    print('✅ ${criteria.length} critères chargés dans l\'ordre du JSON');
+    return criteria;
   }
 
-  // NE PAS TRIER LES CRITÈRES
-  // Supprimer tout le code de tri ici
-  // if (_isFrenchInterface) { ... }
-  // else { ... }
-
-  // Garder l'ordre du JSON tel quel
-  // Les critères sont déjà dans l'ordre d'itération du JSON
-
-  print('✅ ${criteria.length} critères chargés dans l\'ordre du JSON');
-  return criteria;
-}
 // Méthode auxiliaire pour extraire les critères d'une classe
   List<Map<String, dynamic>> _extractCriteriaFromClassData(
       dynamic classData, String matiereName) {
@@ -3022,47 +3044,48 @@ List<Map<String, dynamic>> _createCriteriaList(
     return [];
   }
 
-// 
-List<Map<String, dynamic>> _processCriteriaList(
-    List<dynamic> criteriaList, String matiereName) {
-  List<Map<String, dynamic>> criteria = [];
+//
+  List<Map<String, dynamic>> _processCriteriaList(
+      List<dynamic> criteriaList, String matiereName) {
+    List<Map<String, dynamic>> criteria = [];
 
-  for (int i = 0; i < criteriaList.length; i++) {
-    final criteriaData = criteriaList[i] as Map<String, dynamic>;
-    final criteriaName = criteriaData['name']?.toString() ?? 'معيار ${i + 1}';
-    final indicators = criteriaData['indicators'] as List<dynamic>? ?? [];
+    for (int i = 0; i < criteriaList.length; i++) {
+      final criteriaData = criteriaList[i] as Map<String, dynamic>;
+      final criteriaName = criteriaData['name']?.toString() ?? 'معيار ${i + 1}';
+      final indicators = criteriaData['indicators'] as List<dynamic>? ?? [];
 
-    // Garder l'ordre original du JSON
-    final List<String> indicatorStrings = indicators
-        .map((indicator) => indicator.toString())
-        .where((indicator) => indicator.isNotEmpty)
-        .toList();
-    
+      // Garder l'ordre original du JSON
+      final List<String> indicatorStrings = indicators
+          .map((indicator) => indicator.toString())
+          .where((indicator) => indicator.isNotEmpty)
+          .toList();
+
+      // NE PAS TRIER
+      // indicatorStrings.sort(_arabicStringComparator); // À SUPPRIMER
+
+      criteria.add({
+        'name': _isFrenchInterface
+            ? DataTranslator.translateMatiere(criteriaName)
+            : criteriaName,
+        'originalName': criteriaName,
+        'domaine': _getDomaineForMatiere(matiereName, _isFrenchInterface),
+        'indicators': indicatorStrings.map((indicator) {
+          return _isFrenchInterface
+              ? DataTranslator.translateMatiere(indicator)
+              : indicator;
+        }).toList(), // Garder l'ordre original
+        'sortKey':
+            (i + 1).toString().padLeft(3, '0'), // Garder l'ordre numérique
+        'jsonIndex': i, // Index original du JSON
+      });
+    }
+
     // NE PAS TRIER
-    // indicatorStrings.sort(_arabicStringComparator); // À SUPPRIMER
+    // Supprimer tout le code de tri
+    // criteria.sort((a, b) { ... });
 
-    criteria.add({
-      'name': _isFrenchInterface
-          ? DataTranslator.translateMatiere(criteriaName)
-          : criteriaName,
-      'originalName': criteriaName,
-      'domaine': _getDomaineForMatiere(matiereName, _isFrenchInterface),
-      'indicators': indicatorStrings.map((indicator) {
-        return _isFrenchInterface
-            ? DataTranslator.translateMatiere(indicator)
-            : indicator;
-      }).toList(), // Garder l'ordre original
-      'sortKey': (i + 1).toString().padLeft(3, '0'), // Garder l'ordre numérique
-      'jsonIndex': i, // Index original du JSON
-    });
+    return criteria;
   }
-
-  // NE PAS TRIER
-  // Supprimer tout le code de tri
-  // criteria.sort((a, b) { ... });
-
-  return criteria;
-}
 
 // Méthode pour extraire l'année arabe d'un nom de classe
   String _extractArabicYear(String className) {
@@ -4542,91 +4565,47 @@ List<Map<String, dynamic>> _processCriteriaList(
     );
   }
 
-Future<void> fetchMarks() async {
-  if (!_isMounted) return;
+  Future<void> fetchMarks() async {
+    if (!_isMounted) return;
 
-  try {
-    User? currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
+    try {
+      User? currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
 
-    // Récupérer les étudiants
-    var studentsSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser.uid)
-        .collection('user_classes')
-        .doc(widget.selectedClass)
-        .collection('students')
-        .get();
+      // Récupérer les étudiants
+      var studentsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('user_classes')
+          .doc(widget.selectedClass)
+          .collection('students')
+          .get();
 
-    if (_isMounted) {
-      setState(() {
-        totalStudents = studentsSnapshot.docs.length;
-      });
-    }
-
-    // Récupérer les barèmes sélectionnés
-    var selectedBaremes = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser.uid)
-        .collection('selections')
-        .doc(widget.selectedClass)
-        .collection(widget.selectedMatiere)
-        .get();
-
-    // Réinitialiser les compteurs
-    sumCriteriaMaxPerBareme.clear();
-
-    // Initialiser les compteurs pour tous les barèmes sélectionnés
-    for (var baremeDoc in selectedBaremes.docs) {
-      var baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
-      var isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
-
-      if (isBaremeSelected) {
-        sumCriteriaMaxPerBareme[baremeId] = 0;
+      if (_isMounted) {
+        setState(() {
+          totalStudents = studentsSnapshot.docs.length;
+        });
       }
 
-      // Vérifier les sous-barèmes
-      var sousBaremesSnapshot =
-          await baremeDoc.reference.collection('sousBaremes').get();
-      for (var sousBaremeDoc in sousBaremesSnapshot.docs) {
-        var isSousBaremeSelected =
-            _getFieldSafe(sousBaremeDoc, 'selected', false);
-        if (isSousBaremeSelected) {
-          var sousBaremeId = sousBaremeDoc.id;
-          sumCriteriaMaxPerBareme[sousBaremeId] = 0;
-        }
-      }
-    }
+      // Récupérer les barèmes sélectionnés
+      var selectedBaremes = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .get();
 
-    // Compter les élèves qui ont atteint chaque critère
-    for (var studentDoc in studentsSnapshot.docs) {
-      var studentId = studentDoc.id;
+      // Réinitialiser les compteurs
+      sumCriteriaMaxPerBareme.clear();
 
+      // Initialiser les compteurs pour tous les barèmes sélectionnés
       for (var baremeDoc in selectedBaremes.docs) {
         var baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
         var isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
         if (isBaremeSelected) {
-          // Vérifier le barème principal
-          var baremeSnapshot = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(currentUser.uid)
-              .collection('user_classes')
-              .doc(widget.selectedClass)
-              .collection('students')
-              .doc(studentId)
-              .collection('baremes')
-              .doc(baremeId)
-              .get();
-
-          if (baremeSnapshot.exists) {
-            var value = _getFieldSafe(baremeSnapshot, 'Marks', '( - - - )');
-            // Compter si la note est positive
-            if (value == '( + + + )' || value == '( + + - )') {
-              sumCriteriaMaxPerBareme[baremeId] =
-                  (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
-            }
-          }
+          sumCriteriaMaxPerBareme[baremeId] = 0;
         }
 
         // Vérifier les sous-barèmes
@@ -4637,9 +4616,22 @@ Future<void> fetchMarks() async {
               _getFieldSafe(sousBaremeDoc, 'selected', false);
           if (isSousBaremeSelected) {
             var sousBaremeId = sousBaremeDoc.id;
+            sumCriteriaMaxPerBareme[sousBaremeId] = 0;
+          }
+        }
+      }
 
-            // Vérifier la valeur du sous-barème
-            var sousBaremeSnapshot = await FirebaseFirestore.instance
+      // Compter les élèves qui ont atteint chaque critère
+      for (var studentDoc in studentsSnapshot.docs) {
+        var studentId = studentDoc.id;
+
+        for (var baremeDoc in selectedBaremes.docs) {
+          var baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
+          var isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
+
+          if (isBaremeSelected) {
+            // Vérifier le barème principal
+            var baremeSnapshot = await FirebaseFirestore.instance
                 .collection('users')
                 .doc(currentUser.uid)
                 .collection('user_classes')
@@ -4648,29 +4640,62 @@ Future<void> fetchMarks() async {
                 .doc(studentId)
                 .collection('baremes')
                 .doc(baremeId)
-                .collection('sous_baremes')
-                .doc(sousBaremeId)
                 .get();
 
-            if (sousBaremeSnapshot.exists) {
-              var value = _getFieldSafe(sousBaremeSnapshot, 'Marks', '( - - - )');
+            if (baremeSnapshot.exists) {
+              var value = _getFieldSafe(baremeSnapshot, 'Marks', '( - - - )');
+              // Compter si la note est positive
               if (value == '( + + + )' || value == '( + + - )') {
-                sumCriteriaMaxPerBareme[sousBaremeId] =
-                    (sumCriteriaMaxPerBareme[sousBaremeId] ?? 0) + 1;
+                sumCriteriaMaxPerBareme[baremeId] =
+                    (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
+              }
+            }
+          }
+
+          // Vérifier les sous-barèmes
+          var sousBaremesSnapshot =
+              await baremeDoc.reference.collection('sousBaremes').get();
+          for (var sousBaremeDoc in sousBaremesSnapshot.docs) {
+            var isSousBaremeSelected =
+                _getFieldSafe(sousBaremeDoc, 'selected', false);
+            if (isSousBaremeSelected) {
+              var sousBaremeId = sousBaremeDoc.id;
+
+              // Vérifier la valeur du sous-barème
+              var sousBaremeSnapshot = await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(currentUser.uid)
+                  .collection('user_classes')
+                  .doc(widget.selectedClass)
+                  .collection('students')
+                  .doc(studentId)
+                  .collection('baremes')
+                  .doc(baremeId)
+                  .collection('sous_baremes')
+                  .doc(sousBaremeId)
+                  .get();
+
+              if (sousBaremeSnapshot.exists) {
+                var value =
+                    _getFieldSafe(sousBaremeSnapshot, 'Marks', '( - - - )');
+                if (value == '( + + + )' || value == '( + + - )') {
+                  sumCriteriaMaxPerBareme[sousBaremeId] =
+                      (sumCriteriaMaxPerBareme[sousBaremeId] ?? 0) + 1;
+                }
               }
             }
           }
         }
       }
-    }
 
-    if (_isMounted) {
-      setState(() {});
+      if (_isMounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print('Erreur lors de la récupération des marques : $e');
     }
-  } catch (e) {
-    print('Erreur lors de la récupération des marques : $e');
   }
-}
+
   // MODIFICATION : Widgets avec textes traduits
   Widget _buildPrintCreditWidget() {
     Color backgroundColor;
@@ -4815,8 +4840,7 @@ Future<void> fetchMarks() async {
       onPressed: _showEditDialog,
     );
   }
-  
-  
+
   Widget _buildUpgradeButton() {
     if (_isAccountActive) return SizedBox();
 
@@ -6076,7 +6100,7 @@ class _StudentsTableState extends State<StudentsTable> {
             baremesValuesSnapshot.data!.isEmpty) {
           return _buildEmptyStateForCriteria();
         }
-      _debugBaremesStructure(baremesValuesSnapshot.data!);
+        _debugBaremesStructure(baremesValuesSnapshot.data!);
 
         return _buildDataTable(sortedStudents, baremesValuesSnapshot.data!);
       },
@@ -6105,147 +6129,149 @@ class _StudentsTableState extends State<StudentsTable> {
 
 // MÉTHODE CORRIGÉE: Mettre à jour le build pour utiliser FutureBuilder
 
-Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
-    List<Map<String, dynamic>> baremesValues) {
-  _debugBaremesStructure(baremesValues);
-  
-  // CORRECTION: Organiser correctement les barèmes et sous-barèmes
-  final Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
-  
-  // Séparer les barèmes principaux et les sous-barèmes
-  final mainBaremes = baremesValues.where((b) => b['type'] == 'bareme').toList();
-  final sousBaremes = baremesValues.where((b) => b['type'] == 'sousBareme').toList();
-  
-  // Pour chaque barème principal, regrouper avec ses sous-barèmes
-  for (final bareme in mainBaremes) {
-    final baremeId = bareme['id'];
-    groupedBaremes[baremeId] = [bareme];
-    
-    // Ajouter les sous-barèmes de ce barème
-    final sousBaremesOfThisBareme = sousBaremes
-        .where((s) => s['parentBaremeId'] == baremeId)
-        .toList();
-    
-    for (final sousBareme in sousBaremesOfThisBareme) {
-      groupedBaremes[baremeId]!.add(sousBareme);
-    }
-  }
-  
-  // Ajouter les sous-barèmes orphelins (sans parent dans la liste)
-  final orphanSousBaremes = sousBaremes
-      .where((s) => !groupedBaremes.containsKey(s['parentBaremeId']))
-      .toList();
-  
-  if (orphanSousBaremes.isNotEmpty) {
-    groupedBaremes['orphans'] = orphanSousBaremes;
-  }
-  
-  _debugGroupedBaremesStructure(groupedBaremes);
+  Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
+      List<Map<String, dynamic>> baremesValues) {
+    _debugBaremesStructure(baremesValues);
 
-  return FutureBuilder<bool>(
-    future: _shouldDisplaySumColumn(),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return Center(child: CircularProgressIndicator());
+    // CORRECTION: Organiser correctement les barèmes et sous-barèmes
+    final Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
+
+    // Séparer les barèmes principaux et les sous-barèmes
+    final mainBaremes =
+        baremesValues.where((b) => b['type'] == 'bareme').toList();
+    final sousBaremes =
+        baremesValues.where((b) => b['type'] == 'sousBareme').toList();
+
+    // Pour chaque barème principal, regrouper avec ses sous-barèmes
+    for (final bareme in mainBaremes) {
+      final baremeId = bareme['id'];
+      groupedBaremes[baremeId] = [bareme];
+
+      // Ajouter les sous-barèmes de ce barème
+      final sousBaremesOfThisBareme =
+          sousBaremes.where((s) => s['parentBaremeId'] == baremeId).toList();
+
+      for (final sousBareme in sousBaremesOfThisBareme) {
+        groupedBaremes[baremeId]!.add(sousBareme);
       }
+    }
 
-      final bool shouldDisplaySumColumn = snapshot.data ?? false;
+    // Ajouter les sous-barèmes orphelins (sans parent dans la liste)
+    final orphanSousBaremes = sousBaremes
+        .where((s) => !groupedBaremes.containsKey(s['parentBaremeId']))
+        .toList();
 
-      return Card(
-        elevation: 4,
-        margin: EdgeInsets.all(16),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Container(
-          decoration: BoxDecoration(
-            color: _cardColor,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+    if (orphanSousBaremes.isNotEmpty) {
+      groupedBaremes['orphans'] = orphanSousBaremes;
+    }
+
+    _debugGroupedBaremesStructure(groupedBaremes);
+
+    return FutureBuilder<bool>(
+      future: _shouldDisplaySumColumn(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        final bool shouldDisplaySumColumn = snapshot.data ?? false;
+
+        return Card(
+          elevation: 4,
+          margin: EdgeInsets.all(16),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Container(
+            decoration: BoxDecoration(
+              color: _cardColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: SingleChildScrollView(
-              scrollDirection: Axis.vertical,
-              child: DataTable(
-                columnSpacing: 16,
-                horizontalMargin: 16,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
+              scrollDirection: Axis.horizontal,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.vertical,
+                child: DataTable(
+                  columnSpacing: 16,
+                  horizontalMargin: 16,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  columns: _buildTableColumns(
+                      groupedBaremes, shouldDisplaySumColumn),
+                  rows: _buildTableRows(
+                      studentsDocs, groupedBaremes, shouldDisplaySumColumn),
                 ),
-                columns: _buildTableColumns(
-                    groupedBaremes, shouldDisplaySumColumn),
-                rows: _buildTableRows(
-                    studentsDocs, groupedBaremes, shouldDisplaySumColumn),
               ),
             ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
-List<DataColumn> _buildTableColumns(
-    Map<String, List<Map<String, dynamic>>> groupedBaremes,
-    bool shouldDisplaySumColumn) {
-  List<DataColumn> columns = [];
+  List<DataColumn> _buildTableColumns(
+      Map<String, List<Map<String, dynamic>>> groupedBaremes,
+      bool shouldDisplaySumColumn) {
+    List<DataColumn> columns = [];
 
-  // Colonne Nom
-  columns.add(DataColumn(
-    label: Container(
-      width: 160,
-      padding: EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: _primaryColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Center(
-        child: Text(
-          _getTranslatedText('الاسم واللقب', 'Nom et prénom'),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: _primaryColor,
-            fontSize: 14,
-          ),
-        ),
-      ),
-    ),
-  ));
-
-  // Colonne Somme (conditionnelle)
-  if (shouldDisplaySumColumn) {
+    // Colonne Nom
     columns.add(DataColumn(
       label: Container(
-        width: 100,
+        width: 160,
         padding: EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.purple.withOpacity(0.1),
+          color: _primaryColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Center(
           child: Text(
-            _getTranslatedText('المجموع', 'Total'),
+            _getTranslatedText('الاسم واللقب', 'Nom et prénom'),
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              color: Colors.purple,
+              color: _primaryColor,
               fontSize: 14,
             ),
           ),
         ),
       ),
     ));
-  }
 
-  // Colonnes Barèmes
-  for (var entry in groupedBaremes.entries) {
-    for (final bareme in entry.value) {
+    // Colonne Somme (conditionnelle)
+    if (shouldDisplaySumColumn) {
       columns.add(DataColumn(
-        label: _buildColumnHeader(bareme['value'], entry.key),
+        label: Container(
+          width: 100,
+          padding: EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.purple.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Center(
+            child: Text(
+              _getTranslatedText('المجموع', 'Total'),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.purple,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ),
       ));
     }
+
+    // Colonnes Barèmes
+    for (var entry in groupedBaremes.entries) {
+      for (final bareme in entry.value) {
+        columns.add(DataColumn(
+          label: _buildColumnHeader(bareme['value'], entry.key),
+        ));
+      }
+    }
+
+    return columns;
   }
 
-  return columns;
-}
 // Mettre à jour la méthode pour construire les lignes avec shouldDisplaySumColumn
   List<DataRow> _buildTableRows(
       List<QueryDocumentSnapshot> studentsDocs,
@@ -7511,298 +7537,306 @@ List<DataColumn> _buildTableColumns(
     }
   }
 
-Future<List<String>> _getCustomNotesForBareme(
-    String classId, String matiereId, String baremeId) async {
-  try {
-    print('🔍 CHERCHE NOTES pour barème: $baremeId');
-    
-    // D'abord vérifier si c'est un sous-barème
-    final isSousBareme = await _isSousBareme(baremeId);
-    
-    if (isSousBareme) {
-      print('⚠️ $baremeId est un sous-barème, utiliser _getSousBaremeCustomNotes');
-      final parentInfo = await _getParentBaremeInfo(baremeId);
-      final parentBaremeId = parentInfo['parentBaremeId'] ?? '';
-      
-      return await _getSousBaremeCustomNotes(
+  Future<List<String>> _getCustomNotesForBareme(
+      String classId, String matiereId, String baremeId) async {
+    try {
+      print('🔍 CHERCHE NOTES pour barème: $baremeId');
+
+      // D'abord vérifier si c'est un sous-barème
+      final isSousBareme = await _isSousBareme(baremeId);
+
+      if (isSousBareme) {
+        print(
+            '⚠️ $baremeId est un sous-barème, utiliser _getSousBaremeCustomNotes');
+        final parentInfo = await _getParentBaremeInfo(baremeId);
+        final parentBaremeId = parentInfo['parentBaremeId'] ?? '';
+
+        return await _getSousBaremeCustomNotes(
+          classId,
+          matiereId,
+          parentBaremeId,
+          baremeId,
+        );
+      }
+
+      // C'est un barème principal - continuer avec la logique normale
+      print('📌 C\'est un barème principal');
+
+      // 1. Chercher d'abord les notes GLOBALES (sans baremeId)
+      final globalDocId = '$classId-$matiereId';
+      print('   📍 Chercher notes globales: $globalDocId');
+
+      final globalDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('bareme_custom_notes')
+          .doc(globalDocId)
+          .get();
+
+      if (globalDoc.exists) {
+        final notes = globalDoc.data()?['notes'];
+        if (notes != null && notes is List && notes.isNotEmpty) {
+          final result = List<String>.from(notes);
+          print('✅ Notes globales trouvées: $result');
+          return result;
+        }
+      }
+
+      // 2. Chercher les notes spécifiques au barème
+      final specificDocId = '$classId-$matiereId-$baremeId';
+      print('   📍 Chercher notes spécifiques: $specificDocId');
+
+      final specificDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('bareme_custom_notes')
+          .doc(specificDocId)
+          .get();
+
+      if (specificDoc.exists) {
+        final notes = specificDoc.data()?['notes'];
+        if (notes != null && notes is List && notes.isNotEmpty) {
+          final result = List<String>.from(notes);
+          print('✅ Notes spécifiques trouvées: $result');
+          return result;
+        }
+      }
+
+      // 3. Voir TOUS les documents pour debug
+      print('🔍 Voir tous les documents bareme_custom_notes...');
+      final allDocs = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('bareme_custom_notes')
+          .get();
+
+      print('📋 Total documents: ${allDocs.docs.length}');
+      for (final doc in allDocs.docs) {
+        print('   📄 ${doc.id}');
+        final data = doc.data();
+        if (data['notes'] != null) {
+          print('     📝 Notes: ${data['notes']}');
+        }
+      }
+
+      print('⚠️ Aucune note personnalisée trouvée');
+      return [];
+    } catch (e) {
+      print('❌ Erreur chargement notes: $e');
+      return [];
+    }
+  }
+
+  Future<bool> _sousBaremeHasCustomNotes(
+    String classId,
+    String matiereId,
+    String baremeId,
+    String sousBaremeId,
+  ) async {
+    try {
+      // Chercher dans sous_bareme_custom_notes
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('sous_bareme_custom_notes')
+          .where('sousBaremeId', isEqualTo: sousBaremeId)
+          .where('parentBaremeId', isEqualTo: baremeId)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        final doc = querySnapshot.docs.first;
+        final notes = doc.data()['notes'];
+        return notes != null && notes is List && notes.isNotEmpty;
+      }
+
+      // Chercher dans bareme_custom_notes avec l'ID complet
+      final fullId = '$classId-$matiereId-$baremeId-$sousBaremeId';
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('bareme_custom_notes')
+          .doc(fullId)
+          .get();
+
+      if (doc.exists) {
+        final notes = doc.data()?['notes'];
+        return notes != null && notes is List && notes.isNotEmpty;
+      }
+
+      return false;
+    } catch (e) {
+      print('Erreur vérification notes sous-barème: $e');
+      return false;
+    }
+  }
+
+  Future<List<String>> _getSousBaremeCustomNotes(
+    String classId,
+    String matiereId,
+    String baremeId,
+    String sousBaremeId,
+  ) async {
+    try {
+      print('🔍 SOUS-BARÈME: Recherche notes pour sousBaremeId: $sousBaremeId');
+      print('   parentBaremeId: $baremeId');
+      print('   classId: $classId');
+      print('   matiereId: $matiereId');
+
+      // ESSAI 1: Chercher avec la structure complète (la plus spécifique)
+      final fullId = '$classId-$matiereId-$baremeId-$sousBaremeId';
+      print('   📍 Chercher avec ID complet: $fullId');
+
+      final fullDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('bareme_custom_notes')
+          .doc(fullId)
+          .get();
+
+      if (fullDoc.exists) {
+        final notes = fullDoc.data()?['notes'];
+        if (notes != null && notes is List && notes.isNotEmpty) {
+          final result = List<String>.from(notes);
+          print('✅ Notes trouvées avec ID complet: $result');
+          return result;
+        }
+      }
+
+      // ESSAI 2: Chercher dans sous_bareme_custom_notes avec tous les filtres
+      final querySnapshot1 = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('sous_bareme_custom_notes')
+          .where('sousBaremeId', isEqualTo: sousBaremeId)
+          .where('parentBaremeId', isEqualTo: baremeId)
+          .where('parentClassId', isEqualTo: classId)
+          .where('parentMatiereId', isEqualTo: matiereId)
+          .limit(1)
+          .get();
+
+      if (querySnapshot1.docs.isNotEmpty) {
+        final doc = querySnapshot1.docs.first;
+        final notes = doc.data()['notes'];
+
+        if (notes != null && notes is List && notes.isNotEmpty) {
+          final result = List<String>.from(notes);
+          print('✅ Notes trouvées avec tous les filtres: $result');
+          return result;
+        }
+      }
+
+      // ESSAI 3: Chercher seulement avec sousBaremeId et parentBaremeId (plus large)
+      final querySnapshot2 = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('sous_bareme_custom_notes')
+          .where('sousBaremeId', isEqualTo: sousBaremeId)
+          .where('parentBaremeId', isEqualTo: baremeId)
+          .limit(1)
+          .get();
+
+      if (querySnapshot2.docs.isNotEmpty) {
+        final doc = querySnapshot2.docs.first;
+        final notes = doc.data()['notes'];
+
+        if (notes != null && notes is List && notes.isNotEmpty) {
+          final result = List<String>.from(notes);
+          print(
+              '✅ Notes trouvées avec sousBaremeId et parentBaremeId: $result');
+          return result;
+        }
+      }
+
+      // ESSAI 4: Chercher seulement avec sousBaremeId (le plus large)
+      final querySnapshot3 = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('sous_bareme_custom_notes')
+          .where('sousBaremeId', isEqualTo: sousBaremeId)
+          .limit(1)
+          .get();
+
+      if (querySnapshot3.docs.isNotEmpty) {
+        final doc = querySnapshot3.docs.first;
+        final notes = doc.data()['notes'];
+
+        if (notes != null && notes is List && notes.isNotEmpty) {
+          final result = List<String>.from(notes);
+          print('✅ Notes trouvées avec seulement sousBaremeId: $result');
+          return result;
+        }
+      }
+
+      // ESSAI 5: Vérifier si les notes sont dans bareme_custom_notes avec sousBaremeId seul
+      final sousBaremeDocId = '$classId-$matiereId-$sousBaremeId';
+      final sousBaremeDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('bareme_custom_notes')
+          .doc(sousBaremeDocId)
+          .get();
+
+      if (sousBaremeDoc.exists) {
+        final notes = sousBaremeDoc.data()?['notes'];
+        if (notes != null && notes is List && notes.isNotEmpty) {
+          final result = List<String>.from(notes);
+          print('✅ Notes trouvées dans bareme_custom_notes: $result');
+          return result;
+        }
+      }
+
+      // ESSAI 6: Chercher toutes les notes disponibles pour debug
+      print(
+          '⚠️ Aucune note personnalisée trouvée - Affichage tous les documents:');
+
+      final allDocs = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.currentUser.uid)
+          .collection('sous_bareme_custom_notes')
+          .get();
+
+      print(
+          '📋 Total documents dans sous_bareme_custom_notes: ${allDocs.docs.length}');
+      for (final doc in allDocs.docs) {
+        final data = doc.data();
+        print('   📄 ${doc.id}');
+        print('     sousBaremeId: ${data['sousBaremeId']}');
+        print('     parentBaremeId: ${data['parentBaremeId']}');
+        print('     parentClassId: ${data['parentClassId']}');
+        print('     parentMatiereId: ${data['parentMatiereId']}');
+        print('     Notes: ${data['notes'] ?? []}');
+      }
+
+      // ESSAI 7: Utiliser les notes du barème parent
+      print('↪️ Utilisation des notes du barème parent: $baremeId');
+      final parentNotes = await _getCustomNotesForBareme(
         classId,
         matiereId,
-        parentBaremeId,
         baremeId,
       );
-    }
 
-    // C'est un barème principal - continuer avec la logique normale
-    print('📌 C\'est un barème principal');
-
-    // 1. Chercher d'abord les notes GLOBALES (sans baremeId)
-    final globalDocId = '$classId-$matiereId';
-    print('   📍 Chercher notes globales: $globalDocId');
-
-    final globalDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('bareme_custom_notes')
-        .doc(globalDocId)
-        .get();
-
-    if (globalDoc.exists) {
-      final notes = globalDoc.data()?['notes'];
-      if (notes != null && notes is List && notes.isNotEmpty) {
-        final result = List<String>.from(notes);
-        print('✅ Notes globales trouvées: $result');
-        return result;
+      if (parentNotes.isNotEmpty) {
+        print('✅ Notes du parent utilisées: $parentNotes');
+        return parentNotes;
       }
-    }
 
-    // 2. Chercher les notes spécifiques au barème
-    final specificDocId = '$classId-$matiereId-$baremeId';
-    print('   📍 Chercher notes spécifiques: $specificDocId');
-
-    final specificDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('bareme_custom_notes')
-        .doc(specificDocId)
-        .get();
-
-    if (specificDoc.exists) {
-      final notes = specificDoc.data()?['notes'];
-      if (notes != null && notes is List && notes.isNotEmpty) {
-        final result = List<String>.from(notes);
-        print('✅ Notes spécifiques trouvées: $result');
-        return result;
+      // ESSAI 8: Utiliser les notes globales
+      final globalNotes = await _loadCustomNotes(classId, matiereId);
+      if (globalNotes.isNotEmpty) {
+        print('✅ Notes globales utilisées: $globalNotes');
+        return globalNotes;
       }
+
+      print(
+          '⚠️ Aucune note personnalisée trouvée pour sous-barème $sousBaremeId');
+      return [];
+    } catch (e) {
+      print('❌ Erreur chargement notes sous-barème: $e');
+      return [];
     }
-
-    // 3. Voir TOUS les documents pour debug
-    print('🔍 Voir tous les documents bareme_custom_notes...');
-    final allDocs = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('bareme_custom_notes')
-        .get();
-
-    print('📋 Total documents: ${allDocs.docs.length}');
-    for (final doc in allDocs.docs) {
-      print('   📄 ${doc.id}');
-      final data = doc.data();
-      if (data['notes'] != null) {
-        print('     📝 Notes: ${data['notes']}');
-      }
-    }
-
-    print('⚠️ Aucune note personnalisée trouvée');
-    return [];
-  } catch (e) {
-    print('❌ Erreur chargement notes: $e');
-    return [];
   }
-}
-Future<bool> _sousBaremeHasCustomNotes(
-  String classId,
-  String matiereId,
-  String baremeId,
-  String sousBaremeId,
-) async {
-  try {
-    // Chercher dans sous_bareme_custom_notes
-    final querySnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('sous_bareme_custom_notes')
-        .where('sousBaremeId', isEqualTo: sousBaremeId)
-        .where('parentBaremeId', isEqualTo: baremeId)
-        .limit(1)
-        .get();
 
-    if (querySnapshot.docs.isNotEmpty) {
-      final doc = querySnapshot.docs.first;
-      final notes = doc.data()['notes'];
-      return notes != null && notes is List && notes.isNotEmpty;
-    }
-
-    // Chercher dans bareme_custom_notes avec l'ID complet
-    final fullId = '$classId-$matiereId-$baremeId-$sousBaremeId';
-    final doc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('bareme_custom_notes')
-        .doc(fullId)
-        .get();
-
-    if (doc.exists) {
-      final notes = doc.data()?['notes'];
-      return notes != null && notes is List && notes.isNotEmpty;
-    }
-
-    return false;
-  } catch (e) {
-    print('Erreur vérification notes sous-barème: $e');
-    return false;
-  }
-}
-Future<List<String>> _getSousBaremeCustomNotes(
-  String classId,
-  String matiereId,
-  String baremeId,
-  String sousBaremeId,
-) async {
-  try {
-    print('🔍 SOUS-BARÈME: Recherche notes pour sousBaremeId: $sousBaremeId');
-    print('   parentBaremeId: $baremeId');
-    print('   classId: $classId');
-    print('   matiereId: $matiereId');
-
-    // ESSAI 1: Chercher avec la structure complète (la plus spécifique)
-    final fullId = '$classId-$matiereId-$baremeId-$sousBaremeId';
-    print('   📍 Chercher avec ID complet: $fullId');
-
-    final fullDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('bareme_custom_notes')
-        .doc(fullId)
-        .get();
-
-    if (fullDoc.exists) {
-      final notes = fullDoc.data()?['notes'];
-      if (notes != null && notes is List && notes.isNotEmpty) {
-        final result = List<String>.from(notes);
-        print('✅ Notes trouvées avec ID complet: $result');
-        return result;
-      }
-    }
-
-    // ESSAI 2: Chercher dans sous_bareme_custom_notes avec tous les filtres
-    final querySnapshot1 = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('sous_bareme_custom_notes')
-        .where('sousBaremeId', isEqualTo: sousBaremeId)
-        .where('parentBaremeId', isEqualTo: baremeId)
-        .where('parentClassId', isEqualTo: classId)
-        .where('parentMatiereId', isEqualTo: matiereId)
-        .limit(1)
-        .get();
-
-    if (querySnapshot1.docs.isNotEmpty) {
-      final doc = querySnapshot1.docs.first;
-      final notes = doc.data()['notes'];
-
-      if (notes != null && notes is List && notes.isNotEmpty) {
-        final result = List<String>.from(notes);
-        print('✅ Notes trouvées avec tous les filtres: $result');
-        return result;
-      }
-    }
-
-    // ESSAI 3: Chercher seulement avec sousBaremeId et parentBaremeId (plus large)
-    final querySnapshot2 = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('sous_bareme_custom_notes')
-        .where('sousBaremeId', isEqualTo: sousBaremeId)
-        .where('parentBaremeId', isEqualTo: baremeId)
-        .limit(1)
-        .get();
-
-    if (querySnapshot2.docs.isNotEmpty) {
-      final doc = querySnapshot2.docs.first;
-      final notes = doc.data()['notes'];
-
-      if (notes != null && notes is List && notes.isNotEmpty) {
-        final result = List<String>.from(notes);
-        print('✅ Notes trouvées avec sousBaremeId et parentBaremeId: $result');
-        return result;
-      }
-    }
-
-    // ESSAI 4: Chercher seulement avec sousBaremeId (le plus large)
-    final querySnapshot3 = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('sous_bareme_custom_notes')
-        .where('sousBaremeId', isEqualTo: sousBaremeId)
-        .limit(1)
-        .get();
-
-    if (querySnapshot3.docs.isNotEmpty) {
-      final doc = querySnapshot3.docs.first;
-      final notes = doc.data()['notes'];
-
-      if (notes != null && notes is List && notes.isNotEmpty) {
-        final result = List<String>.from(notes);
-        print('✅ Notes trouvées avec seulement sousBaremeId: $result');
-        return result;
-      }
-    }
-
-    // ESSAI 5: Vérifier si les notes sont dans bareme_custom_notes avec sousBaremeId seul
-    final sousBaremeDocId = '$classId-$matiereId-$sousBaremeId';
-    final sousBaremeDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('bareme_custom_notes')
-        .doc(sousBaremeDocId)
-        .get();
-
-    if (sousBaremeDoc.exists) {
-      final notes = sousBaremeDoc.data()?['notes'];
-      if (notes != null && notes is List && notes.isNotEmpty) {
-        final result = List<String>.from(notes);
-        print('✅ Notes trouvées dans bareme_custom_notes: $result');
-        return result;
-      }
-    }
-
-    // ESSAI 6: Chercher toutes les notes disponibles pour debug
-    print('⚠️ Aucune note personnalisée trouvée - Affichage tous les documents:');
-    
-    final allDocs = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.currentUser.uid)
-        .collection('sous_bareme_custom_notes')
-        .get();
-
-    print('📋 Total documents dans sous_bareme_custom_notes: ${allDocs.docs.length}');
-    for (final doc in allDocs.docs) {
-      final data = doc.data();
-      print('   📄 ${doc.id}');
-      print('     sousBaremeId: ${data['sousBaremeId']}');
-      print('     parentBaremeId: ${data['parentBaremeId']}');
-      print('     parentClassId: ${data['parentClassId']}');
-      print('     parentMatiereId: ${data['parentMatiereId']}');
-      print('     Notes: ${data['notes'] ?? []}');
-    }
-
-    // ESSAI 7: Utiliser les notes du barème parent
-    print('↪️ Utilisation des notes du barème parent: $baremeId');
-    final parentNotes = await _getCustomNotesForBareme(
-      classId,
-      matiereId,
-      baremeId,
-    );
-
-    if (parentNotes.isNotEmpty) {
-      print('✅ Notes du parent utilisées: $parentNotes');
-      return parentNotes;
-    }
-
-    // ESSAI 8: Utiliser les notes globales
-    final globalNotes = await _loadCustomNotes(classId, matiereId);
-    if (globalNotes.isNotEmpty) {
-      print('✅ Notes globales utilisées: $globalNotes');
-      return globalNotes;
-    }
-
-    print('⚠️ Aucune note personnalisée trouvée pour sous-barème $sousBaremeId');
-    return [];
-  } catch (e) {
-    print('❌ Erreur chargement notes sous-barème: $e');
-    return [];
-  }
-}
   Future<String> _getEvaluationSystem(String classId, String matiereId) async {
     try {
       final docId = '$classId-$matiereId';
@@ -8027,82 +8061,87 @@ Future<List<String>> _getSousBaremeCustomNotes(
     }
   }
 
-Future<void> _debugAllCustomNotes() async {
-  try {
-    print('=== DÉBOGAGE TOUTES LES NOTES PERSONNALISÉES ===');
+  Future<void> _debugAllCustomNotes() async {
+    try {
+      print('=== DÉBOGAGE TOUTES LES NOTES PERSONNALISÉES ===');
 
-    final userId = widget.currentUser.uid;
-    
-    // Notes des barèmes principaux
-    final baremeNotes = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('bareme_custom_notes')
-        .get();
+      final userId = widget.currentUser.uid;
 
-    print('📋 Notes barème (bareme_custom_notes): ${baremeNotes.docs.length} documents');
-    for (final doc in baremeNotes.docs) {
-      print('   📄 ID: ${doc.id}');
-      print('     Notes: ${doc.data()['notes'] ?? []}');
-    }
+      // Notes des barèmes principaux
+      final baremeNotes = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('bareme_custom_notes')
+          .get();
 
-    // Notes des sous-barèmes
-    final sousBaremeNotes = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('sous_bareme_custom_notes')
-        .get();
-
-    print('📋 Notes sous-barème (sous_bareme_custom_notes): ${sousBaremeNotes.docs.length} documents');
-    for (final doc in sousBaremeNotes.docs) {
-      final data = doc.data();
-      print('   📄 ID: ${doc.id}');
-      print('     sousBaremeId: ${data['sousBaremeId']}');
-      print('     parentBaremeId: ${data['parentBaremeId']}');
-      print('     parentClassId: ${data['parentClassId']}');
-      print('     parentMatiereId: ${data['parentMatiereId']}');
-      print('     Notes: ${data['notes'] ?? []}');
-    }
-
-    // Afficher les IDs recherchés pour les sous-barèmes problématiques
-    print('🔍 IDs recherchés pour les sous-barèmes:');
-    print('   - 5QYUZeTCGOCjZhLVGaWl');
-    print('   - hKBd7dUHoporCwSo5Kw9');
-    
-    // Chercher spécifiquement ces sous-barèmes
-    final sousBareme1 = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('sous_bareme_custom_notes')
-        .where('sousBaremeId', isEqualTo: '5QYUZeTCGOCjZhLVGaWl')
-        .get();
-    
-    print('   Sous-barème 5QYUZeTCGOCjZhLVGaWl trouvé: ${sousBareme1.docs.isNotEmpty}');
-    if (sousBareme1.docs.isNotEmpty) {
-      for (final doc in sousBareme1.docs) {
-        print('     Document: ${doc.data()}');
+      print(
+          '📋 Notes barème (bareme_custom_notes): ${baremeNotes.docs.length} documents');
+      for (final doc in baremeNotes.docs) {
+        print('   📄 ID: ${doc.id}');
+        print('     Notes: ${doc.data()['notes'] ?? []}');
       }
-    }
-    
-    final sousBareme2 = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('sous_bareme_custom_notes')
-        .where('sousBaremeId', isEqualTo: 'hKBd7dUHoporCwSo5Kw9')
-        .get();
-    
-    print('   Sous-barème hKBd7dUHoporCwSo5Kw9 trouvé: ${sousBareme2.docs.isNotEmpty}');
-    if (sousBareme2.docs.isNotEmpty) {
-      for (final doc in sousBareme2.docs) {
-        print('     Document: ${doc.data()}');
-      }
-    }
 
-    print('=== FIN DÉBOGAGE ===');
-  } catch (e) {
-    print('❌ Erreur débogage: $e');
+      // Notes des sous-barèmes
+      final sousBaremeNotes = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('sous_bareme_custom_notes')
+          .get();
+
+      print(
+          '📋 Notes sous-barème (sous_bareme_custom_notes): ${sousBaremeNotes.docs.length} documents');
+      for (final doc in sousBaremeNotes.docs) {
+        final data = doc.data();
+        print('   📄 ID: ${doc.id}');
+        print('     sousBaremeId: ${data['sousBaremeId']}');
+        print('     parentBaremeId: ${data['parentBaremeId']}');
+        print('     parentClassId: ${data['parentClassId']}');
+        print('     parentMatiereId: ${data['parentMatiereId']}');
+        print('     Notes: ${data['notes'] ?? []}');
+      }
+
+      // Afficher les IDs recherchés pour les sous-barèmes problématiques
+      print('🔍 IDs recherchés pour les sous-barèmes:');
+      print('   - 5QYUZeTCGOCjZhLVGaWl');
+      print('   - hKBd7dUHoporCwSo5Kw9');
+
+      // Chercher spécifiquement ces sous-barèmes
+      final sousBareme1 = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('sous_bareme_custom_notes')
+          .where('sousBaremeId', isEqualTo: '5QYUZeTCGOCjZhLVGaWl')
+          .get();
+
+      print(
+          '   Sous-barème 5QYUZeTCGOCjZhLVGaWl trouvé: ${sousBareme1.docs.isNotEmpty}');
+      if (sousBareme1.docs.isNotEmpty) {
+        for (final doc in sousBareme1.docs) {
+          print('     Document: ${doc.data()}');
+        }
+      }
+
+      final sousBareme2 = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('sous_bareme_custom_notes')
+          .where('sousBaremeId', isEqualTo: 'hKBd7dUHoporCwSo5Kw9')
+          .get();
+
+      print(
+          '   Sous-barème hKBd7dUHoporCwSo5Kw9 trouvé: ${sousBareme2.docs.isNotEmpty}');
+      if (sousBareme2.docs.isNotEmpty) {
+        for (final doc in sousBareme2.docs) {
+          print('     Document: ${doc.data()}');
+        }
+      }
+
+      print('=== FIN DÉBOGAGE ===');
+    } catch (e) {
+      print('❌ Erreur débogage: $e');
+    }
   }
-}
+
 // Modifier l'existant
   List<String> _getDropdownValues(
       String evaluationSystem, List<String> customNotes) {
@@ -8418,70 +8457,72 @@ Future<void> _debugAllCustomNotes() async {
 
   // Méthode pour calculer la somme des notes d'un élève
 
-Future<double> _calculateStudentTotal(String studentId,
-    Map<String, List<Map<String, dynamic>>> groupedBaremes) async {
-  double total = 0.0;
+  Future<double> _calculateStudentTotal(String studentId,
+      Map<String, List<Map<String, dynamic>>> groupedBaremes) async {
+    double total = 0.0;
 
-  try {
-    // Récupérer le système d'évaluation
-    final String evaluationSystem = await _getEvaluationSystem(
-        widget.selectedClass, widget.selectedMatiere);
+    try {
+      // Récupérer le système d'évaluation
+      final String evaluationSystem = await _getEvaluationSystem(
+          widget.selectedClass, widget.selectedMatiere);
 
-    print('🔍 CALCUL SOMME pour étudiant $studentId');
-    print('📊 Groupes disponibles: ${groupedBaremes.length}');
+      print('🔍 CALCUL SOMME pour étudiant $studentId');
+      print('📊 Groupes disponibles: ${groupedBaremes.length}');
 
-    // Parcourir tous les groupes
-    for (var entry in groupedBaremes.entries) {
-      final groupKey = entry.key;
-      final baremesInGroup = entry.value;
+      // Parcourir tous les groupes
+      for (var entry in groupedBaremes.entries) {
+        final groupKey = entry.key;
+        final baremesInGroup = entry.value;
 
-      print('  Groupe: $groupKey, ${baremesInGroup.length} éléments');
+        print('  Groupe: $groupKey, ${baremesInGroup.length} éléments');
 
-      for (final bareme in baremesInGroup) {
-        final baremeType = bareme['type'] ?? 'bareme';
-        final baremeId = bareme['id'];
+        for (final bareme in baremesInGroup) {
+          final baremeType = bareme['type'] ?? 'bareme';
+          final baremeId = bareme['id'];
 
-        // Ne pas calculer les barèmes principaux qui ont des sous-barèmes
-        // (on calcule seulement les sous-barèmes et les barèmes sans sous-barèmes)
-        if (baremeType == 'bareme') {
-          final sousBaremes = bareme['sousBaremes'] as List<dynamic>? ?? [];
-          if (sousBaremes.isNotEmpty) {
-            // Ce barème a des sous-barèmes - calculer les sous-barèmes
-            for (final sousBareme in sousBaremes) {
-              final sousBaremeId = sousBareme['id'];
-              final value = await _getNumericValueForBareme(
-                  studentId, sousBaremeId, evaluationSystem);
-              print('    - SOUS-BARÈME: $sousBaremeId -> $value');
-              if (value > 0) {
-                total += value;
-                print('      ✅ Ajouté à la somme: $value (Total: $total)');
+          // Ne pas calculer les barèmes principaux qui ont des sous-barèmes
+          // (on calcule seulement les sous-barèmes et les barèmes sans sous-barèmes)
+          if (baremeType == 'bareme') {
+            final sousBaremes = bareme['sousBaremes'] as List<dynamic>? ?? [];
+            if (sousBaremes.isNotEmpty) {
+              // Ce barème a des sous-barèmes - calculer les sous-barèmes
+              for (final sousBareme in sousBaremes) {
+                final sousBaremeId = sousBareme['id'];
+                final value = await _getNumericValueForBareme(
+                    studentId, sousBaremeId, evaluationSystem);
+                print('    - SOUS-BARÈME: $sousBaremeId -> $value');
+                if (value > 0) {
+                  total += value;
+                  print('      ✅ Ajouté à la somme: $value (Total: $total)');
+                }
               }
+              continue; // Passer au prochain élément
             }
-            continue; // Passer au prochain élément
           }
-        }
 
-        // Pour les barèmes sans sous-barèmes et les sous-barèmes seuls
-        if (baremeId != null && baremeId.isNotEmpty) {
-          final value = await _getNumericValueForBareme(
-              studentId, baremeId, evaluationSystem);
-          print('    - ${baremeType == 'bareme' ? 'BARÈME' : 'SOUS-BARÈME'}: $baremeId -> $value');
-          if (value > 0) {
-            total += value;
-            print('      ✅ Ajouté à la somme: $value (Total: $total)');
+          // Pour les barèmes sans sous-barèmes et les sous-barèmes seuls
+          if (baremeId != null && baremeId.isNotEmpty) {
+            final value = await _getNumericValueForBareme(
+                studentId, baremeId, evaluationSystem);
+            print(
+                '    - ${baremeType == 'bareme' ? 'BARÈME' : 'SOUS-BARÈME'}: $baremeId -> $value');
+            if (value > 0) {
+              total += value;
+              print('      ✅ Ajouté à la somme: $value (Total: $total)');
+            }
           }
         }
       }
+
+      print('✅ SOMME TOTALE pour $studentId: $total');
+    } catch (e) {
+      print('❌ Erreur calcul total pour $studentId: $e');
+      print('Stack trace: ${e.toString()}');
     }
 
-    print('✅ SOMME TOTALE pour $studentId: $total');
-  } catch (e) {
-    print('❌ Erreur calcul total pour $studentId: $e');
-    print('Stack trace: ${e.toString()}');
+    return total;
   }
 
-  return total;
-}
   void _debugGroupedBaremesStructure(
       Map<String, List<Map<String, dynamic>>> groupedBaremes) {
     print('=== DÉBOGAGE STRUCTURE BARÈMES ===');
@@ -8606,19 +8647,58 @@ Future<double> _calculateStudentTotal(String studentId,
     }
   }
 
+  double _convertToNumber(
+      String displayValue, String system, List<String> customNotes) {
+    // Si c'est "غائب" ou vide
+    if (displayValue == 'غائب' || displayValue.isEmpty) {
+      return 0.0;
+    }
 
-double _convertToNumber(
-    String displayValue, String system, List<String> customNotes) {
-  // Si c'est "غائب" ou vide
-  if (displayValue == 'غائب' || displayValue.isEmpty) {
-    return 0.0;
-  }
+    // Pour le système custom
+    if (system == 'custom') {
+      // Si pas de notes personnalisées, traiter comme character system
+      if (customNotes.isEmpty) {
+        print('⚠️ Pas de notes custom, fallback sur character system');
+        switch (displayValue) {
+          case '( - - - )':
+            return 0.0;
+          case '( + - - )':
+            return 0.5;
+          case '( + + - )':
+            return 1.0;
+          case '( + + + )':
+            return 1.5;
+          default:
+            return 0.0;
+        }
+      }
 
-  // Pour le système custom
-  if (system == 'custom') {
-    // Si pas de notes personnalisées, traiter comme character system
-    if (customNotes.isEmpty) {
-      print('⚠️ Pas de notes custom, fallback sur character system');
+      // Essayer de convertir directement en nombre
+      final numValue = double.tryParse(displayValue);
+      if (numValue != null) {
+        return numValue;
+      }
+
+      // Si non numérique, essayer de trouver l'index dans customNotes
+      final index = customNotes.indexOf(displayValue);
+      if (index != -1) {
+        // Convertir l'index en valeur numérique proportionnelle
+        // Exemple: si 4 notes [0, 0.25, 0.5, 0.75], l'index 0 = 0, index 3 = 0.75
+        if (index == 0) return 0.0;
+        if (index == customNotes.length - 1) {
+          // Dernière note (max)
+          final maxValue =
+              double.tryParse(customNotes.last) ?? customNotes.length - 1.0;
+          return maxValue;
+        }
+        return index.toDouble();
+      }
+
+      return 0.0;
+    }
+
+    // Pour les autres systèmes (character)
+    if (system == 'character') {
       switch (displayValue) {
         case '( - - - )':
           return 0.0;
@@ -8633,49 +8713,10 @@ double _convertToNumber(
       }
     }
 
-    // Essayer de convertir directement en nombre
+    // Pour les systèmes numériques
     final numValue = double.tryParse(displayValue);
-    if (numValue != null) {
-      return numValue;
-    }
-
-    // Si non numérique, essayer de trouver l'index dans customNotes
-    final index = customNotes.indexOf(displayValue);
-    if (index != -1) {
-      // Convertir l'index en valeur numérique proportionnelle
-      // Exemple: si 4 notes [0, 0.25, 0.5, 0.75], l'index 0 = 0, index 3 = 0.75
-      if (index == 0) return 0.0;
-      if (index == customNotes.length - 1) {
-        // Dernière note (max)
-        final maxValue = double.tryParse(customNotes.last) ?? customNotes.length - 1.0;
-        return maxValue;
-      }
-      return index.toDouble();
-    }
-
-    return 0.0;
+    return numValue ?? 0.0;
   }
-
-  // Pour les autres systèmes (character)
-  if (system == 'character') {
-    switch (displayValue) {
-      case '( - - - )':
-        return 0.0;
-      case '( + - - )':
-        return 0.5;
-      case '( + + - )':
-        return 1.0;
-      case '( + + + )':
-        return 1.5;
-      default:
-        return 0.0;
-    }
-  }
-
-  // Pour les systèmes numériques
-  final numValue = double.tryParse(displayValue);
-  return numValue ?? 0.0;
-}
 }
 
 class StudentDropdown extends StatefulWidget {
@@ -8728,17 +8769,18 @@ class _StudentDropdownState extends State<StudentDropdown> {
     );
   }
 }
+
 void _debugBaremesStructure(List<Map<String, dynamic>> baremesValues) {
   print('=== DÉBOGAGE STRUCTURE BARÈMES ===');
   print('Total éléments: ${baremesValues.length}');
-  
+
   for (int i = 0; i < baremesValues.length; i++) {
     final bareme = baremesValues[i];
     print('${i + 1}. ID: ${bareme['id']}');
     print('   Type: ${bareme['type']}');
     print('   Valeur: ${bareme['value']}');
     print('   Parent: ${bareme['parentBaremeId'] ?? 'N/A'}');
-    
+
     if (bareme['type'] == 'bareme') {
       final sousBaremes = bareme['sousBaremes'] as List<dynamic>? ?? [];
       print('   Sous-barèmes: ${sousBaremes.length}');
@@ -8749,5 +8791,3 @@ void _debugBaremesStructure(List<Map<String, dynamic>> baremesValues) {
   }
   print('=== FIN DÉBOGAGE ===');
 }
-
-
