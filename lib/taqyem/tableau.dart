@@ -16,6 +16,7 @@ import 'package:Taqyem/taqyem/da3m_tableau.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -1202,118 +1203,701 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
 // Méthode pour générer le rapport complet
 
-  Future<void> _generateCompleteReport(
-    String classId,
-    String matiereId,
-    String className,
-    String matiereName, {
-    String performanceAttendue = '', // NOUVEAU: paramètre optionnel
-  }) async {
-    if (!await _checkAndUpdatePrintCredit()) {
-      _showCreditErrorDialog();
-      return;
-    }
+Future<void> _generateCompleteReport(
+  String classId,
+  String matiereId,
+  String className,
+  String matiereName, {
+  String performanceAttendue = '',
+}) async {
+  if (!await _checkAndUpdatePrintCredit()) {
+    _showCreditErrorDialog();
+    return;
+  }
 
-    setState(() {
-      _isGeneratingReport = true;
-    });
+  setState(() {
+    _isGeneratingReport = true;
+  });
 
-    try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) => _buildLoadingDialog(isPDF: true),
-      );
+  try {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => _buildLoadingDialog(isPDF: true),
+    );
 
-      // 1. Récupérer les critères (barèmes) depuis le JSON
-      final criteria = await _getCriteriaFromJson(
-          classId, matiereId, className, matiereName);
+    // NOUVEAU: Envoyer uniquement les données essentielles à Flask
+    final response = await _sendLightDataToFlaskForCompleteReport(
+      classId: classId,
+      matiereId: matiereId,
+      className: className,
+      matiereName: matiereName,
+      performanceAttendue: performanceAttendue,
+    );
 
-      // 2. Récupérer les données COMPLÈTES comme dans le tableau normal
-      final matiereDisplayName = _isFrenchInterface
-          ? DataTranslator.translateMatiere(matiereName)
-          : matiereName;
-      final classDisplayName = _isFrenchInterface
-          ? DataTranslator.translateClass(className)
-          : className;
-
-      // RÉCUPÉRER LES MÊMES DONNÉES QUE POUR L'IMPRESSION NORMALE
-      final baremes = await _getBaremesForCompleteReport(classId, matiereId);
-      final students = await _getStudentsForCompleteReport(classId, matiereId);
-
-      // CALCULER LES STATISTIQUES CORRECTEMENT
-      final Map<String, int> sumCriteriaMaxPerBareme = {};
-      int totalStudents = students.length;
-
-      // Initialiser les compteurs
-      for (var bareme in baremes) {
-        final baremeId = bareme['id'].toString();
-        sumCriteriaMaxPerBareme[baremeId] = 0;
-      }
-
-      // Compter les étudiants qui ont atteint chaque critère
-      for (var student in students) {
-        final studentBaremes = student['baremes'] as Map<String, dynamic>;
-
-        for (var bareme in baremes) {
-          final baremeId = bareme['id'].toString();
-          final mark = studentBaremes[baremeId]?.toString() ?? '( - - - )';
-
-          if (mark == '( + + + )' || mark == '( + + - )') {
-            sumCriteriaMaxPerBareme[baremeId] =
-                (sumCriteriaMaxPerBareme[baremeId] ?? 0) + 1;
-          }
-        }
-      }
-
-      // DEBUG: Afficher les statistiques
-      print('=== STATISTIQUES RAPPORT COMPLET ===');
-      print('Total étudiants: $totalStudents');
-      sumCriteriaMaxPerBareme.forEach((key, value) {
-        if (totalStudents > 0) {
-          final percentage = (value / totalStudents * 100).toStringAsFixed(2);
-          print('$key: $value/$totalStudents = $percentage%');
-        }
-      });
-
-      // 3. Générer le rapport HTML complet avec la performance attendue
-      await HTMLReportGenerator.generateAndDownloadReport(
-        profName: _profName,
-        matiereName: matiereDisplayName,
-        className: classDisplayName,
-        schoolName: _schoolName,
-        baremes: baremes,
-        students: students,
-        sumCriteriaMaxPerBareme: sumCriteriaMaxPerBareme,
-        totalStudents: totalStudents,
-        isFrenchInterface: _isFrenchInterface,
-        downloadAsPDF: true,
-        trimestre: _selectedTrimestre,
-        periode: _selectedPeriode,
-        evaluationType: _selectedEvaluationType,
-        selectedClass: classId,
-        criteria: criteria,
-        performanceAttendue:
-            performanceAttendue, // NOUVEAU: Ajouter le paramètre
-      );
-
+    if (response['success']) {
       // Dédure le crédit
       await _deductPrintCredit();
 
-      _showSuccessSnackbar(_getTranslatedText('تم إنشاء التقرير الكامل بنجاح',
-          'Rapport complet généré avec succès'));
-    } catch (e) {
-      _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء التقرير الكامل',
-              'Erreur lors de la génération du rapport complet') +
-          ': $e');
-    } finally {
-      setState(() {
-        _isGeneratingReport = false;
-      });
-      Navigator.of(context).pop();
+      _showSuccessSnackbar(_getTranslatedText(
+        'تم إنشاء التقرير الكامل بنجاح',
+        'Rapport complet généré avec succès'
+      ));
+    } else {
+      _showErrorSnackbar(response['message']);
     }
+  } catch (e) {
+    _showErrorSnackbar(_getTranslatedText(
+      'خطأ في إنشاء التقرير الكامل',
+      'Erreur lors de la génération du rapport complet'
+    ) + ': $e');
+  } finally {
+    setState(() {
+      _isGeneratingReport = false;
+    });
+    Navigator.of(context).pop();
   }
+}
 
+// NOUVELLE MÉTHODE: Envoyer les données légères à Flask
+//
+// NOUVELLE MÉTHODE: Envoyer les données légères à Flask
+
+// Dans votre fichier Flutter, modifiez la fonction principale:
+
+Future<Map<String, dynamic>> _sendLightDataToFlaskForCompleteReport({
+  required String classId,
+  required String matiereId,
+  required String className,
+  required String matiereName,
+  required String performanceAttendue,
+}) async {
+  try {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      return {'success': false, 'message': 'Utilisateur non connecté'};
+    }
+
+    // Préparer les données essentielles
+    final Map<String, dynamic> lightData = {
+      'userId': currentUser.uid,
+      'user': {
+        'profName': _profName,
+        'schoolName': _schoolName,
+      },
+      'class': {
+        'id': classId,
+        'name': className,
+      },
+      'matiere': {
+        'id': matiereId,
+        'name': matiereName,
+      },
+      'performanceAttendue': performanceAttendue,
+      'period': {
+        'trimestre': _selectedTrimestre,
+        'periode': _selectedPeriode,
+        'evaluationType': _selectedEvaluationType,
+      },
+      'isFrenchInterface': _isFrenchInterface,
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+
+    print('📤 Envoi des données à Flask...');
+    
+    // Tester d'abord la connexion
+    final testUrl = Uri.parse('https://mohamedtsou-taqyem-imprission.hf.space/health');
+    try {
+      final testResponse = await http.get(testUrl).timeout(Duration(seconds: 5));
+      print('✅ Serveur Flask accessible');
+    } catch (e) {
+      print('❌ Impossible de se connecter au serveur Flask: $e');
+      return {
+        'success': false,
+        'message': 'Serveur Flask non démarré. Veuillez le démarrer sur https://mohamedtsou-taqyem-imprission.hf.space/'
+      };
+    }
+
+    // Envoyer la requête principale
+    final url = Uri.parse('https://mohamedtsou-taqyem-imprission.hf.space/generate-complete-report');
+    
+    print('⏳ Génération du rapport en cours...');
+    
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Accept': 'application/json',
+      },
+      body: json.encode(lightData),
+    ).timeout(const Duration(seconds: 120));
+
+    print('✅ Réponse reçue: ${response.statusCode}');
+
+    if (response.statusCode == 200) {
+      final responseData = json.decode(response.body);
+      
+      if (responseData['success'] == true) {
+        // NOUVEAU: Récupérer l'URL de téléchargement depuis Firebase Storage
+        if (responseData.containsKey('downloadUrl')) {
+          print('📥 URL de téléchargement disponible');
+          
+          // Télécharger le fichier depuis Firebase Storage
+          await _downloadReportFromUrl(
+            responseData['downloadUrl'],
+            responseData['filename'] ?? 'rapport.pdf',
+            responseData['reportId']
+          );
+          
+          // Enregistrer les métadonnées dans Firestore (optionnel)
+          await _saveReportMetadata(
+            currentUser.uid,
+            responseData['reportId'],
+            responseData,
+            className,
+            matiereName
+          );
+          
+          return {
+            'success': true,
+            'message': 'Rapport généré et téléchargé avec succès',
+            'reportId': responseData['reportId']
+          };
+        } else if (responseData.containsKey('htmlContent')) {
+          // Fallback: télécharger le HTML
+          print('⚠️ Pas de PDF, téléchargement HTML...');
+          await _downloadHTMLContent(responseData['htmlContent']);
+          return {'success': true, 'message': 'Rapport HTML généré'};
+        } else {
+          return {'success': false, 'message': 'Aucun contenu disponible'};
+        }
+      } else {
+        return {'success': false, 'message': responseData['message'] ?? 'Erreur inconnue'};
+      }
+    } else {
+      return {'success': false, 'message': 'Erreur HTTP ${response.statusCode}'};
+    }
+  } on TimeoutException {
+    return {
+      'success': false,
+      'message': 'Timeout: Le serveur a mis trop de temps à répondre'
+    };
+  } on SocketException catch (e) {
+    return {
+      'success': false,
+      'message': 'Impossible de se connecter au serveur: ${e.message}'
+    };
+  } catch (e) {
+    print('💥 Erreur inattendue: $e');
+    return {
+      'success': false,
+      'message': 'Erreur technique: $e'
+    };
+  }
+}
+
+// NOUVELLE FONCTION: Télécharger le rapport depuis Firebase Storage
+Future<void> _downloadReportFromUrl(String downloadUrl, String filename, String reportId) async {
+  try {
+    print('📥 Téléchargement depuis: $downloadUrl');
+    
+    if (kIsWeb) {
+      // Pour le web: ouvrir dans un nouvel onglet
+      html.window.open(downloadUrl, '_blank');
+      
+      // Afficher un message de confirmation
+      _showSuccessSnackbar('Le rapport est en cours de téléchargement...');
+    } else {
+      // Pour mobile/desktop
+      final response = await http.get(Uri.parse(downloadUrl));
+      
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+        final directory = await getTemporaryDirectory();
+        final file = File('${directory.path}/$filename');
+        await file.writeAsBytes(bytes);
+        
+        // Ouvrir le fichier
+        await OpenFile.open(file.path);
+        
+        _showSuccessSnackbar('Rapport téléchargé avec succès');
+      } else {
+        throw Exception('Erreur de téléchargement: ${response.statusCode}');
+      }
+    }
+  } catch (e) {
+    print('❌ Erreur téléchargement: $e');
+    _showErrorSnackbar('Erreur lors du téléchargement: $e');
+    rethrow;
+  }
+}
+
+// NOUVELLE FONCTION: Sauvegarder les métadonnées dans Firestore
+Future<void> _saveReportMetadata(
+  String userId,
+  String reportId,
+  Map<String, dynamic> reportData,
+  String className,
+  String matiereName
+) async {
+  try {
+    await FirebaseFirestore.instance
+        .collection('user_reports')
+        .doc(userId)
+        .collection('rapports')
+        .doc(reportId)
+        .set({
+          'reportId': reportId,
+          'className': className,
+          'matiereName': matiereName,
+          'downloadUrl': reportData['downloadUrl'],
+          'generatedAt': DateTime.now().toIso8601String(),
+          'profName': _profName,
+          'schoolName': _schoolName,
+          'trimestre': _selectedTrimestre,
+          'periode': _selectedPeriode,
+          'status': 'downloaded'
+        });
+    
+    print('✅ Métadonnées sauvegardées dans Firestore');
+  } catch (e) {
+    print('⚠️ Erreur sauvegarde métadonnées: $e');
+    // Ne pas bloquer l'utilisateur pour cette erreur
+  }
+}
+
+// NOUVELLE FONCTION: Récupérer l'historique des rapports
+Future<List<Map<String, dynamic>>> _getUserReportsHistory() async {
+  try {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return [];
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('user_reports')
+        .doc(currentUser.uid)
+        .collection('rapports')
+        .orderBy('generatedAt', descending: true)
+        .get();
+
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      return {
+        'id': doc.id,
+        ...data,
+        'date': DateTime.parse(data['generatedAt']).toLocal()
+      };
+    }).toList();
+  } catch (e) {
+    print('❌ Erreur récupération historique: $e');
+    return [];
+  }
+}
+
+// NOUVELLE FONCTION: Afficher l'historique des rapports
+// NOUVELLE FONCTION: Afficher l'historique des rapports avec suppression
+void _showReportsHistory() {
+  showDialog(
+    context: context,
+    builder: (context) {
+      return FutureBuilder<List<Map<String, dynamic>>>(
+        future: _getUserReportsHistory(),
+        builder: (context, snapshot) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.history, color: Colors.blue),
+                SizedBox(width: 10),
+                Text(_getTranslatedText('التقارير السابقة', 'Historique des rapports')),
+              ],
+            ),
+            content: Container(
+              width: double.maxFinite,
+              height: MediaQuery.of(context).size.height * 0.6,
+              child: snapshot.connectionState == ConnectionState.waiting
+                  ? Center(child: CircularProgressIndicator())
+                  : snapshot.hasData && snapshot.data!.isNotEmpty
+                      ? ListView.builder(
+                          itemCount: snapshot.data!.length,
+                          itemBuilder: (context, index) {
+                            final report = snapshot.data![index];
+                            return Card(
+                              margin: EdgeInsets.symmetric(vertical: 4),
+                              child: ListTile(
+                                leading: Icon(Icons.picture_as_pdf, color: Colors.red),
+                                title: Text(
+                                  '${report['className']} - ${report['matiereName']}',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      DateFormat('dd/MM/yyyy HH:mm').format(report['date']),
+                                    ),
+                                    if (report['downloadUrl'] != null)
+                                      Text(
+                                        _getTranslatedText('حجم الملف', 'Taille fichier') + 
+                                        ': ${_formatFileSize(report['fileSize'] ?? 0)}',
+                                        style: TextStyle(fontSize: 10, color: Colors.grey),
+                                      ),
+                                  ],
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(Icons.download),
+                                      tooltip: _getTranslatedText('تحميل', 'Télécharger'),
+                                      onPressed: () {
+                                        if (report['downloadUrl'] != null) {
+                                          _downloadReportFromUrl(
+                                            report['downloadUrl'],
+                                            '${report['className']}_${report['matiereName']}_${DateFormat('yyyyMMdd_HHmm').format(report['date'])}.pdf',
+                                            report['reportId']
+                                          );
+                                        }
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: Icon(Icons.delete, color: Colors.red),
+                                      tooltip: _getTranslatedText('حذف', 'Supprimer'),
+                                      onPressed: () {
+                                        _showDeleteReportDialog(report);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        )
+                      : Center(
+                          child: Text(
+                            _getTranslatedText('لا توجد تقارير سابقة', 'Aucun rapport précédent'),
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(_getTranslatedText('إغلاق', 'Fermer')),
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+// NOUVELLE FONCTION: Afficher le dialogue de confirmation de suppression
+void _showDeleteReportDialog(Map<String, dynamic> report) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.warning, color: Colors.orange),
+          SizedBox(width: 10),
+          Text(_getTranslatedText('تأكيد الحذف', 'Confirmation suppression')),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _getTranslatedText(
+              'هل أنت متأكد من حذف هذا التقرير؟',
+              'Êtes-vous sûr de vouloir supprimer ce rapport ?'
+            ),
+          ),
+          SizedBox(height: 10),
+          Container(
+            padding: EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${report['className']} - ${report['matiereName']}',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  DateFormat('dd/MM/yyyy HH:mm').format(report['date']),
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 10),
+          Text(
+            _getTranslatedText(
+              'سيتم حذف التقرير نهائياً ولا يمكن استرجاعه.',
+              'Le rapport sera définitivement supprimé et ne pourra pas être récupéré.'
+            ),
+            style: TextStyle(fontSize: 12, color: Colors.red),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(_getTranslatedText('إلغاء', 'Annuler')),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context); // Fermer le dialogue de confirmation
+            _deleteReport(report['id']);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+          ),
+          child: Text(_getTranslatedText('حذف', 'Supprimer')),
+        ),
+      ],
+    ),
+  );
+}
+
+// NOUVELLE FONCTION: Supprimer un rapport
+Future<void> _deleteReport(String reportId) async {
+  try {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      _showErrorSnackbar(_getTranslatedText('يجب تسجيل الدخول', 'Connectez-vous d\'abord'));
+      return;
+    }
+
+    // Afficher un indicateur de chargement
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 20),
+            Text(_getTranslatedText('جاري الحذف...', 'Suppression en cours...')),
+          ],
+        ),
+      ),
+    );
+
+    // Appeler l'API Flask pour supprimer le rapport
+    final response = await http.delete(
+      Uri.parse('https://mohamedtsou-taqyem-imprission.hf.space/delete-report/$reportId'),
+      headers: {'Content-Type': 'application/json'},
+    ).timeout(const Duration(seconds: 30));
+
+    // Fermer le dialogue de chargement
+    Navigator.pop(context);
+
+    if (response.statusCode == 200) {
+      final result = json.decode(response.body);
+      
+      if (result['success'] == true) {
+        _showSuccessSnackbar(_getTranslatedText('تم حذف التقرير', 'Rapport supprimé avec succès'));
+        
+        // Rafraîchir la liste des rapports
+        if (Navigator.of(context).canPop()) {
+          Navigator.pop(context); // Fermer le dialogue d'historique
+        }
+        
+        // Réafficher l'historique mis à jour
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showReportsHistory();
+        });
+      } else {
+        _showErrorSnackbar(result['message'] ?? _getTranslatedText('فشل الحذف', 'Échec de la suppression'));
+      }
+    } else {
+      _showErrorSnackbar(_getTranslatedText('خطأ في الاتصال', 'Erreur de connexion'));
+    }
+  } on TimeoutException {
+    Navigator.pop(context);
+    _showErrorSnackbar(_getTranslatedText('انتهت المهلة', 'Timeout'));
+  } catch (e) {
+    if (Navigator.of(context).canPop()) Navigator.pop(context);
+    _showErrorSnackbar(_getTranslatedText('خطأ تقني', 'Erreur technique') + ': $e');
+  }
+}
+
+// NOUVELLE FONCTION: Formater la taille du fichier
+String _formatFileSize(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+}
+// MODIFIEZ votre menu d'impression pour ajouter l'historique
+Widget _buildPrintButton() {
+  return PopupMenuButton<String>(
+    icon: Container(
+      padding: EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withOpacity(0.2),
+        border: Border.all(color: Colors.white, width: 1),
+      ),
+      child: Icon(
+        Icons.print,
+        color: Colors.white,
+        size: 20,
+      ),
+    ),
+    onSelected: _isGeneratingReport
+        ? null
+        : (value) {
+            if (value == 'complete_report') {
+              _showCompleteReportDialog();
+            } else if (value == 'baremes_table') {
+              _showClassAndMatiereSelectionDialog();
+            } else if (value == 'history') {
+              _showReportsHistory();
+            } else {
+              _showEvaluationInfoDialog(() {
+                if (value == 'html') {
+                  _generateHTMLReport(downloadAsPDF: false);
+                } else if (value == 'pdf') {
+                  _generateHTMLReport(downloadAsPDF: true);
+                }
+              });
+            }
+          },
+    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+      PopupMenuItem<String>(
+        value: 'html',
+        child: Row(
+          children: [
+            Icon(Icons.description, color: Colors.blue),
+            SizedBox(width: 8),
+            Text(_getTranslatedText('طباعة الجدول (HTML)', 'Imprimer le tableau (HTML)')),
+          ],
+        ),
+      ),
+      PopupMenuItem<String>(
+        value: 'pdf',
+        child: Row(
+          children: [
+            Icon(Icons.picture_as_pdf, color: Colors.red),
+            SizedBox(width: 8),
+            Text(_getTranslatedText('طباعة الجدول (PDF)', 'Imprimer le tableau (PDF)')),
+          ],
+        ),
+      ),
+      PopupMenuDivider(),
+      PopupMenuItem<String>(
+        value: 'baremes_table',
+        child: Row(
+          children: [
+            Icon(Icons.table_chart, color: Colors.green),
+            SizedBox(width: 8),
+            Text(_getTranslatedText('طباعة جدول المعايير', 'Imprimer tableau des critères')),
+          ],
+        ),
+      ),
+      PopupMenuDivider(),
+      PopupMenuItem<String>(
+        value: 'complete_report',
+        child: Row(
+          children: [
+            Icon(Icons.book, color: Colors.purple),
+            SizedBox(width: 8),
+            Text(_getTranslatedText('تقرير كامل', 'Rapport Complet')),
+          ],
+        ),
+      ),
+      PopupMenuDivider(),
+      PopupMenuItem<String>(
+        value: 'history',
+        child: Row(
+          children: [
+            Icon(Icons.history, color: Colors.orange),
+            SizedBox(width: 8),
+            Text(_getTranslatedText('التقارير السابقة', 'Historique')),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+// 
+// //
+//
+Future<void> _downloadPdfFromBase64(String pdfBase64) async {
+  try {
+    final bytes = base64Decode(pdfBase64);
+    
+    if (kIsWeb) {
+      // Pour le web
+      final blob = html.Blob([bytes], 'application/pdf');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', 'rapport_complet_${DateTime.now().millisecondsSinceEpoch}.pdf')
+        ..click();
+      Future.delayed(const Duration(seconds: 2), () {
+        html.Url.revokeObjectUrl(url);
+      });
+    } else {
+      // Pour mobile/desktop
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.pdf');
+      await file.writeAsBytes(bytes);
+      await OpenFile.open(file.path);
+    }
+  } catch (e) {
+    print('Erreur téléchargement PDF base64: $e');
+    rethrow;
+  }
+}
+// Méthode pour télécharger le rapport généré
+Future<void> _downloadGeneratedReport(String pdfUrl) async {
+  try {
+    if (kIsWeb) {
+      html.window.open(pdfUrl, '_blank');
+    } else {
+      final response = await http.get(Uri.parse(pdfUrl));
+      final bytes = response.bodyBytes;
+      
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.pdf');
+      await file.writeAsBytes(bytes);
+      await OpenFile.open(file.path);
+    }
+  } catch (e) {
+    print('Erreur téléchargement rapport: $e');
+    rethrow;
+  }
+}
+
+// Méthode pour télécharger le contenu HTML
+Future<void> _downloadHTMLContent(String htmlContent) async {
+  try {
+    if (kIsWeb) {
+      final blob = html.Blob([htmlContent], 'text/html; charset=utf-8');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute('download', 'rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html')
+        ..click();
+      Future.delayed(const Duration(seconds: 2), () {
+        html.Url.revokeObjectUrl(url);
+      });
+    } else {
+      final directory = await getTemporaryDirectory();
+      final file = File('${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html');
+      await file.writeAsString(htmlContent, flush: true);
+      await OpenFile.open(file.path);
+    }
+  } catch (e) {
+    print('Erreur téléchargement HTML: $e');
+    rethrow;
+  }
+}
 // Méthode pour récupérer les barèmes POUR LE RAPPORT COMPLET
   Future<List<dynamic>> _getBaremesForCompleteReport(
       String classId, String matiereId) async {
@@ -4231,93 +4815,8 @@ Future<void> fetchMarks() async {
       onPressed: _showEditDialog,
     );
   }
-
-  Widget _buildPrintButton() {
-    return PopupMenuButton<String>(
-      icon: Container(
-        padding: EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withOpacity(0.2),
-          border: Border.all(color: Colors.white, width: 1),
-        ),
-        child: Icon(
-          Icons.print,
-          color: Colors.white,
-          size: 20,
-        ),
-      ),
-      onSelected: _isGeneratingReport
-          ? null
-          : (value) {
-              if (value == 'complete_report') {
-                // NOUVELLE OPTION: Rapport complet
-                _showCompleteReportDialog();
-              } else if (value == 'baremes_table') {
-                // Option existante: Tableau des barèmes
-                _showClassAndMatiereSelectionDialog();
-              } else {
-                // Options existantes
-                _showEvaluationInfoDialog(() {
-                  if (value == 'html') {
-                    _generateHTMLReport(downloadAsPDF: false);
-                  } else if (value == 'pdf') {
-                    _generateHTMLReport(downloadAsPDF: true);
-                  }
-                });
-              }
-            },
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        PopupMenuItem<String>(
-          value: 'html',
-          child: Row(
-            children: [
-              Icon(Icons.description, color: Colors.blue),
-              SizedBox(width: 8),
-              Text(_getTranslatedText(
-                  'طباعة الجدول (HTML)', 'Imprimer le tableau (HTML)')),
-            ],
-          ),
-        ),
-        PopupMenuItem<String>(
-          value: 'pdf',
-          child: Row(
-            children: [
-              Icon(Icons.picture_as_pdf, color: Colors.red),
-              SizedBox(width: 8),
-              Text(_getTranslatedText(
-                  'طباعة الجدول (PDF)', 'Imprimer le tableau (PDF)')),
-            ],
-          ),
-        ),
-        PopupMenuDivider(),
-        PopupMenuItem<String>(
-          value: 'baremes_table',
-          child: Row(
-            children: [
-              Icon(Icons.table_chart, color: Colors.green),
-              SizedBox(width: 8),
-              Text(_getTranslatedText(
-                  'طباعة جدول المعايير', 'Imprimer tableau des critères')),
-            ],
-          ),
-        ),
-        PopupMenuDivider(),
-        // NOUVELLE OPTION: Rapport complet
-        PopupMenuItem<String>(
-          value: 'complete_report',
-          child: Row(
-            children: [
-              Icon(Icons.book, color: Colors.purple),
-              SizedBox(width: 8),
-              Text(_getTranslatedText('تقرير كامل', 'Rapport Complet')),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
+  
+  
   Widget _buildUpgradeButton() {
     if (_isAccountActive) return SizedBox();
 

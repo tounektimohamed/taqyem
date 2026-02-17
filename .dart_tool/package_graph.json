@@ -57,6 +57,7 @@
         "localstorage",
         "lottie",
         "maps_launcher",
+        "msgpack_dart",
         "multi_dropdown",
         "open_file",
         "path_provider",
@@ -145,6 +146,11 @@
         "test_api",
         "vector_math"
       ]
+    },
+    {
+      "name": "msgpack_dart",
+      "version": "1.0.1",
+      "dependencies": []
     },
     {
       "name": "js",

@@ -1154,6 +1154,12 @@
       "languageVersion": "3.2"
     },
     {
+      "name": "msgpack_dart",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/msgpack_dart-1.0.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "multi_dropdown",
       "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/multi_dropdown-3.0.1",
       "packageUri": "lib/",
