@@ -806,21 +806,7 @@ static String _buildCriteriaTableHTML({
             }
         }
         
-        /* Responsive */
-        @media (max-width: 768px) {
-            .info-grid, .period-grid, .summary-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .period-card {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .table-container {
-                font-size: 12px;
-            }
-        }
+        
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -1801,29 +1787,39 @@ static String _buildCriteriaTableHTML({
   }
 
   static Future<void> _downloadHTMLFile(String htmlContent) async {
-    try {
-      if (kIsWeb) {
-        final blob = html.Blob([htmlContent], 'text/html; charset=utf-8');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: url)
-          ..setAttribute('download',
-              'rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html')
-          ..click();
-        Future.delayed(const Duration(seconds: 2), () {
-          html.Url.revokeObjectUrl(url);
-        });
-      } else {
-        final directory = await getTemporaryDirectory();
-        final file = File(
-            '${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html');
-        await file.writeAsString(htmlContent, flush: true);
-        await OpenFile.open(file.path);
-      }
-      print('Fichier généré avec succès');
-    } catch (e) {
-      print('Erreur génération fichier: $e');
-      rethrow;
+  try {
+    if (kIsWeb) {
+      final blob = html.Blob(
+        [utf8.encode(htmlContent)],
+        'application/octet-stream',
+      );
+
+      final url = html.Url.createObjectUrlFromBlob(blob);
+
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute(
+          'download',
+          'rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html',
+        )
+        ..click();
+
+      Future.delayed(const Duration(seconds: 2), () {
+        html.Url.revokeObjectUrl(url);
+      });
+    } else {
+      final directory = await getTemporaryDirectory();
+      final file = File(
+        '${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html',
+      );
+      await file.writeAsString(htmlContent, flush: true);
+      await OpenFile.open(file.path);
     }
+
+    print('Fichier généré avec succès');
+  } catch (e) {
+    print('Erreur génération fichier: $e');
+    rethrow;
+  }
   }
 
   static Future<Uint8List> _loadImage(String path) async {
