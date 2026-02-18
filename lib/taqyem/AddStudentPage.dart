@@ -1865,13 +1865,17 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                         );
                                         return;
                                       }
-
-                                    //   // Sauvegarder les notes globales
-                                    //   await _saveSousBaremeCustomNotes(
-                                    //     classId,
-                                    //     matiereId,
-                                    //     globalNotes,
-                                    //   );
+                                      // ✅ حفظ global custom notes في نفس collection التي تقرأ منها
+                                      await FirebaseFirestore.instance
+                                          .collection('users')
+                                          .doc(currentUser!.uid)
+                                          .collection('bareme_custom_notes')
+                                          .doc('$classId-$matiereId')
+                                          .set({
+                                        'notes': globalNotes,
+                                        'updatedAt':
+                                            FieldValue.serverTimestamp(),
+                                      });
 
                                       // Mettre à jour tous les barèmes avec les notes globales
                                       setStateDialog(() {
@@ -3068,7 +3072,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       if (storedValue == '( + + + )') return customNotes.last;
       return customNotes[0];
     }
-    
+
     switch (system) {
       case 'character':
         return storedValue;
@@ -3597,7 +3601,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   }
 
   // Fonction pour sauvegarder les notes personnalisées d'un sous-barème
- Future<void> _saveSousBaremeCustomNotes(
+  Future<void> _saveSousBaremeCustomNotes(
     String classId,
     String matiereId,
     String baremeId,
@@ -3615,7 +3619,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
         'parentBaremeId': baremeId,
         'parentMatiereId': matiereId,
         'parentClassId': classId,
-        'sousBaremeId': sousBaremeId,  // Ajout du champ
+        'sousBaremeId': sousBaremeId, // Ajout du champ
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
@@ -3623,6 +3627,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       rethrow;
     }
   }
+
   Future<bool> _hasCustomNotes(
     String classId,
     String matiereId,

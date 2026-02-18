@@ -259,6 +259,7 @@ class DynamicTablePage extends StatefulWidget {
 class _DynamicTablePageState extends State<DynamicTablePage> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
   String _profName = '';
+
   String _selectedEvaluationDisplay = 'character'; // Par défaut: caractère
   String _schoolName = '';
   bool _isDialogCompleted = false;
@@ -461,14 +462,14 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
   String _getDisplayEvaluation(String storedValue, String system,
       {List<String>? customNotes}) {
+    // DEBUG
+    print('🎯 Conversion: $storedValue -> système: $system');
+
     // Vérifier si c'est "غائب"
     if (storedValue == 'غائب') {
+      print('📝 Élève absent');
       return 'غائب';
     }
-
-    // DEBUG
-    print(
-        '🎯 Conversion: $storedValue -> système: $system, notes: ${customNotes?.length ?? 0}');
 
     if (system == 'custom') {
       if (customNotes == null || customNotes.isEmpty) {
@@ -476,7 +477,6 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         return storedValue;
       }
 
-      // Mapping avec les notes personnalisées
       final Map<String, String> mapping = {
         '( - - - )': customNotes[0],
         '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
@@ -485,58 +485,50 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       };
 
       final result = mapping[storedValue] ?? customNotes[0];
-      print('✅ Résultat conversion custom: $result');
+      print('✅ Résultat custom: $result');
       return result;
     }
 
-    // Systèmes standard
     switch (system) {
       case 'character':
+        print('✅ Système character: $storedValue');
         return storedValue;
 
       case 'note_0_1_5':
-        switch (storedValue) {
-          case '( - - - )':
-            return '0';
-          case '( + - - )':
-            return '0.5';
-          case '( + + - )':
-            return '1';
-          case '( + + + )':
-            return '1.5';
-          default:
-            return '0';
-        }
+        final result = {
+              '( - - - )': '0',
+              '( + - - )': '0.5',
+              '( + + - )': '1',
+              '( + + + )': '1.5',
+            }[storedValue] ??
+            '0';
+        print('✅ Système 0-1.5: $result');
+        return result;
 
       case 'note_0_3':
-        switch (storedValue) {
-          case '( - - - )':
-            return '0';
-          case '( + - - )':
-            return '1';
-          case '( + + - )':
-            return '2';
-          case '( + + + )':
-            return '3';
-          default:
-            return '0';
-        }
+        final result = {
+              '( - - - )': '0',
+              '( + - - )': '1',
+              '( + + - )': '2',
+              '( + + + )': '3',
+            }[storedValue] ??
+            '0';
+        print('✅ Système 0-3: $result');
+        return result;
 
       case 'note_0_6':
-        switch (storedValue) {
-          case '( - - - )':
-            return '0';
-          case '( + - - )':
-            return '2';
-          case '( + + - )':
-            return '4';
-          case '( + + + )':
-            return '6';
-          default:
-            return '0';
-        }
+        final result = {
+              '( - - - )': '0',
+              '( + - - )': '2',
+              '( + + - )': '4',
+              '( + + + )': '6',
+            }[storedValue] ??
+            '0';
+        print('✅ Système 0-6: $result');
+        return result;
 
       default:
+        print('⚠️ Système inconnu: $system, fallback: $storedValue');
         return storedValue;
     }
   }
@@ -547,20 +539,83 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       User? currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) return 'character';
 
+      // Format: classId-matiereId
+      final docId = '$classId-$matiereId';
+
+      print('🔍 Recherche système pour: $docId');
+
       final systemDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser.uid)
           .collection('evaluation_systems')
-          .doc('$classId-$matiereId')
+          .doc(docId)
           .get();
 
       if (systemDoc.exists) {
-        return systemDoc['system'] ?? 'character';
+        final system = systemDoc.data()?['system'] ?? 'character';
+        print('✅ Système récupéré: $system');
+        return system;
       }
+
+      // Si pas trouvé avec l'ID composé, essayer de chercher dans tous les documents
+      print('⚠️ Document non trouvé avec ID: $docId');
+
+      // Chercher tous les systèmes pour debug
+      final allSystems = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('evaluation_systems')
+          .get();
+
+      print('📋 Tous les systèmes disponibles:');
+      for (final doc in allSystems.docs) {
+        print('   - ${doc.id}: ${doc.data()}');
+      }
+
+      print('ℹ️ Système par défaut: character');
       return 'character';
     } catch (e) {
-      print('Erreur lors de la récupération du système: $e');
+      print('❌ Erreur récupération système: $e');
       return 'character';
+    }
+  }
+
+  Future<void> _debugAllEvaluationSystems() async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+
+      print('=== DÉBOGAGE SYSTÈMES D\'ÉVALUATION ===');
+
+      final systemsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('evaluation_systems')
+          .get();
+
+      print('📋 Systèmes trouvés: ${systemsSnapshot.docs.length}');
+      for (final doc in systemsSnapshot.docs) {
+        print('   📄 ${doc.id} -> ${doc.data()}');
+      }
+
+      // Vérifier spécifiquement pour la classe et matière actuelles
+      final docId = '${widget.selectedClass}-${widget.selectedMatiere}';
+      final specificDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('evaluation_systems')
+          .doc(docId)
+          .get();
+
+      if (specificDoc.exists) {
+        print('✅ Système pour $docId: ${specificDoc.data()}');
+      } else {
+        print('❌ Aucun système trouvé pour $docId');
+      }
+
+      print('=== FIN DÉBOGAGE ===');
+    } catch (e) {
+      print('❌ Erreur débogage: $e');
     }
   }
 
@@ -1261,140 +1316,142 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 // NOUVELLE MÉTHODE: Envoyer les données légères à Flask
 
 // Dans votre fichier Flutter, modifiez la fonction principale:
+Future<Map<String, dynamic>> _sendLightDataToFlaskForCompleteReport({
+  required String classId,
+  required String matiereId,
+  required String className,
+  required String matiereName,
+  required String performanceAttendue,
+}) async {
+  try {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) {
+      return {'success': false, 'message': 'Utilisateur non connecté'};
+    }
 
-  Future<Map<String, dynamic>> _sendLightDataToFlaskForCompleteReport({
-    required String classId,
-    required String matiereId,
-    required String className,
-    required String matiereName,
-    required String performanceAttendue,
-  }) async {
+    // 🔥 IMPORTANT : utiliser classId + matiereId
+    final String evaluationSystem =
+        await _getEvaluationSystem(classId, matiereId);
+
+    print('📤 SYSTEM ENVOYÉ À FLASK: $evaluationSystem');
+
+    final Map<String, dynamic> lightData = {
+      'userId': currentUser.uid,
+      'user': {
+        'profName': _profName,
+        'schoolName': _schoolName,
+      },
+      'class': {
+        'id': classId,
+        'name': className,
+      },
+      'matiere': {
+        'id': matiereId,
+        'name': matiereName,
+      },
+      'performanceAttendue': performanceAttendue,
+      'period': {
+        'trimestre': _selectedTrimestre,
+        'periode': _selectedPeriode,
+        'evaluationType': _selectedEvaluationType,
+      },
+      'isFrenchInterface': _isFrenchInterface,
+      'timestamp': DateTime.now().toIso8601String(),
+
+      // ✅ On envoie uniquement le système
+      'evaluationSystem': evaluationSystem,
+    };
+
+    print('📤 Envoi des données à Flask...');
+
+    final testUrl =
+        Uri.parse('https://mohamedtsou-taqyem-imprission.hf.space/health');
+
     try {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        return {'success': false, 'message': 'Utilisateur non connecté'};
-      }
-
-      // Préparer les données essentielles
-      final Map<String, dynamic> lightData = {
-        'userId': currentUser.uid,
-        'user': {
-          'profName': _profName,
-          'schoolName': _schoolName,
-        },
-        'class': {
-          'id': classId,
-          'name': className,
-        },
-        'matiere': {
-          'id': matiereId,
-          'name': matiereName,
-        },
-        'performanceAttendue': performanceAttendue,
-        'period': {
-          'trimestre': _selectedTrimestre,
-          'periode': _selectedPeriode,
-          'evaluationType': _selectedEvaluationType,
-        },
-        'isFrenchInterface': _isFrenchInterface,
-        'timestamp': DateTime.now().toIso8601String(),
+      await http.get(testUrl).timeout(const Duration(seconds: 5));
+      print('✅ Serveur Flask accessible');
+    } catch (e) {
+      print('❌ Serveur Flask inaccessible: $e');
+      return {
+        'success': false,
+        'message': 'Serveur Flask non démarré sur HF Space'
       };
+    }
 
-      print('📤 Envoi des données à Flask...');
+    final url = Uri.parse(
+        'https://mohamedtsou-taqyem-imprission.hf.space/generate-complete-report');
 
-      // Tester d'abord la connexion
-      final testUrl =
-          Uri.parse('https://mohamedtsou-taqyem-imprission.hf.space/health');
-      try {
-        final testResponse =
-            await http.get(testUrl).timeout(Duration(seconds: 5));
-        print('✅ Serveur Flask accessible');
-      } catch (e) {
-        print('❌ Impossible de se connecter au serveur Flask: $e');
-        return {
-          'success': false,
-          'message':
-              'Serveur Flask non démarré. Veuillez le démarrer sur https://mohamedtsou-taqyem-imprission.hf.space/'
-        };
-      }
+    print('⏳ Génération du rapport...');
 
-      // Envoyer la requête principale
-      final url = Uri.parse(
-          'https://mohamedtsou-taqyem-imprission.hf.space/generate-complete-report');
+    final response = await http
+        .post(
+          url,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Accept': 'application/json',
+          },
+          body: json.encode(lightData),
+        )
+        .timeout(const Duration(seconds: 120));
 
-      print('⏳ Génération du rapport en cours...');
+    print('✅ Status HTTP: ${response.statusCode}');
 
-      final response = await http
-          .post(
-            url,
-            headers: {
-              'Content-Type': 'application/json; charset=utf-8',
-              'Accept': 'application/json',
-            },
-            body: json.encode(lightData),
-          )
-          .timeout(const Duration(seconds: 120));
+    if (response.statusCode == 200) {
+      final responseData = json.decode(response.body);
 
-      print('✅ Réponse reçue: ${response.statusCode}');
+      if (responseData['success'] == true) {
+        if (responseData.containsKey('downloadUrl')) {
+          await _downloadReportFromUrl(
+              responseData['downloadUrl'],
+              responseData['filename'] ?? 'rapport.pdf',
+              responseData['reportId']);
 
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
+          await _saveReportMetadata(
+              currentUser.uid,
+              responseData['reportId'],
+              responseData,
+              className,
+              matiereName);
 
-        if (responseData['success'] == true) {
-          // NOUVEAU: Récupérer l'URL de téléchargement depuis Firebase Storage
-          if (responseData.containsKey('downloadUrl')) {
-            print('📥 URL de téléchargement disponible');
-
-            // Télécharger le fichier depuis Firebase Storage
-            await _downloadReportFromUrl(
-                responseData['downloadUrl'],
-                responseData['filename'] ?? 'rapport.pdf',
-                responseData['reportId']);
-
-            // Enregistrer les métadonnées dans Firestore (optionnel)
-            await _saveReportMetadata(currentUser.uid, responseData['reportId'],
-                responseData, className, matiereName);
-
-            return {
-              'success': true,
-              'message': 'Rapport généré et téléchargé avec succès',
-              'reportId': responseData['reportId']
-            };
-          } else if (responseData.containsKey('htmlContent')) {
-            // Fallback: télécharger le HTML
-            print('⚠️ Pas de PDF, téléchargement HTML...');
-            await _downloadHTMLContent(responseData['htmlContent']);
-            return {'success': true, 'message': 'Rapport HTML généré'};
-          } else {
-            return {'success': false, 'message': 'Aucun contenu disponible'};
-          }
-        } else {
           return {
-            'success': false,
-            'message': responseData['message'] ?? 'Erreur inconnue'
+            'success': true,
+            'message': 'Rapport généré avec succès',
+            'reportId': responseData['reportId']
           };
+        } else if (responseData.containsKey('htmlContent')) {
+          await _downloadHTMLContent(responseData['htmlContent']);
+          return {'success': true, 'message': 'Rapport HTML généré'};
+        } else {
+          return {'success': false, 'message': 'Aucun contenu disponible'};
         }
       } else {
         return {
           'success': false,
-          'message': 'Erreur HTTP ${response.statusCode}'
+          'message': responseData['message'] ?? 'Erreur inconnue'
         };
       }
-    } on TimeoutException {
+    } else {
       return {
         'success': false,
-        'message': 'Timeout: Le serveur a mis trop de temps à répondre'
+        'message': 'Erreur HTTP ${response.statusCode}'
       };
-    } on SocketException catch (e) {
-      return {
-        'success': false,
-        'message': 'Impossible de se connecter au serveur: ${e.message}'
-      };
-    } catch (e) {
-      print('💥 Erreur inattendue: $e');
-      return {'success': false, 'message': 'Erreur technique: $e'};
     }
+  } on TimeoutException {
+    return {
+      'success': false,
+      'message': 'Timeout serveur'
+    };
+  } on SocketException catch (e) {
+    return {
+      'success': false,
+      'message': 'Erreur connexion: ${e.message}'
+    };
+  } catch (e) {
+    print('💥 Erreur inattendue: $e');
+    return {'success': false, 'message': 'Erreur technique: $e'};
   }
+}
+
 
 // NOUVELLE FONCTION: Télécharger le rapport depuis Firebase Storage
   Future<void> _downloadReportFromUrl(
@@ -2322,6 +2379,25 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     _startTimer();
     _setupUserListener();
     _detectLanguage();
+    _loadEvaluationSystem(); // AJOUTEZ CETTE LIGNE
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _debugAllEvaluationSystems(); // Pour debug
+    });
+  }
+
+  Future<void> _loadEvaluationSystem() async {
+    try {
+      final system = await _getEvaluationSystem(
+          widget.selectedClass, widget.selectedMatiere);
+      if (_isMounted) {
+        setState(() {
+          _selectedEvaluationDisplay = system;
+        });
+        print('✅ Système d\'évaluation chargé: $system');
+      }
+    } catch (e) {
+      print('❌ Erreur chargement système: $e');
+    }
   }
 
   void _showClassAndMatiereSelectionDialog() {
@@ -3888,30 +3964,63 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
   Future<bool> _sendDataToFlask(Map<String, dynamic> data) async {
     try {
-      // IMPORTANT: S'assurer que les données envoyées au serveur sont en arabe
-      // Créer une copie des données avec les valeurs originales arabes
-      Map<String, dynamic> dataForServer = Map.from(data);
+      // Récupérer le système d'évaluation
+      final String evaluationSystem = await _getEvaluationSystem(
+          widget.selectedClass, widget.selectedMatiere);
 
-      // Remplacer les valeurs affichées par les valeurs originales arabes
-      if (data['baremes'] != null) {
-        List<dynamic> originalBaremes = [];
-        for (var bareme in data['baremes']) {
-          Map<String, dynamic> originalBareme = Map.from(bareme);
-          // Utiliser la valeur originale arabe pour le serveur
-          if (bareme['originalValue'] != null) {
-            originalBareme['value'] = bareme['originalValue'];
-          }
-          originalBaremes.add(originalBareme);
-        }
-        dataForServer['baremes'] = originalBaremes;
+      // Récupérer les notes personnalisées
+      List<String> customNotes = [];
+      if (evaluationSystem == 'custom') {
+        customNotes = await _loadCustomNotes(
+            widget.selectedClass, widget.selectedMatiere);
+        print('📝 Notes custom chargées: $customNotes');
       }
 
-      // Ajouter les informations du dialogue (elles sont déjà en arabe)
-      dataForServer['trimestre'] = _selectedTrimestre;
-      dataForServer['periode'] = _selectedPeriode;
-      dataForServer['evaluationType'] = _selectedEvaluationType;
+      print('📤 ENVOI À FLASK - SYSTÈME: $evaluationSystem');
+      print('📤 Notes custom: $customNotes');
 
-      final url = Uri.parse('https://imprission.onrender.com/generate_pdf');
+      // IMPORTANT: Ne pas convertir ici, laisser les notes en format caractère
+      // car la conversion se fera dans le serveur Flask
+
+      Map<String, dynamic> finalData = {
+        "userId": data['userId'],
+        "user": {
+          "profName": data['profName'],
+          "schoolName": data['schoolName'],
+        },
+        "class": {
+          "name": data['className'],
+        },
+        "matiere": {
+          "name": data['matiereName'],
+        },
+        "period": {
+          "trimestre": _selectedTrimestre,
+          "periode": _selectedPeriode,
+          "evaluationType": _selectedEvaluationType,
+        },
+        "performanceAttendue": data['performanceAttendue'],
+        "isFrenchInterface": _isFrenchInterface,
+        "evaluationSystem": evaluationSystem,
+        "customNotes": customNotes,
+      };
+
+      // Debug: Afficher un exemple de note
+      if (data['students'] != null && data['students'].isNotEmpty) {
+        final firstStudent = data['students'][0];
+        final firstBareme =
+            data['baremes'] != null && data['baremes'].isNotEmpty
+                ? data['baremes'][0]['id']
+                : null;
+        if (firstBareme != null) {
+          print(
+              '📝 Exemple note brute: ${firstStudent['baremes'][firstBareme]}');
+        }
+      }
+
+      final url = Uri.parse(
+          'https://mohamedtsou-taqyem-imprission.hf.space/generate_pdf');
+
       final response = await http
           .post(
             url,
@@ -3919,7 +4028,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
             },
-            body: json.encode(dataForServer),
+            body: json.encode(finalData),
           )
           .timeout(const Duration(seconds: 30));
 
@@ -3941,14 +4050,11 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         return false;
       }
     } on TimeoutException {
-      _showErrorSnackbar(_getTranslatedText(
-          'انتهت المهلة - استغرق الخادم وقتًا طويلاً للرد',
-          'Timeout - Le serveur a mis trop de temps à répondre'));
+      _showErrorSnackbar(_getTranslatedText('انتهت المهلة', 'Timeout'));
       return false;
     } on SocketException {
-      _showErrorSnackbar(_getTranslatedText(
-          'خطأ في الاتصال - تحقق من اتصالك بالإنترنت',
-          'Erreur de connexion - Vérifiez votre internet'));
+      _showErrorSnackbar(
+          _getTranslatedText('خطأ في الاتصال', 'Erreur de connexion'));
       return false;
     } catch (e) {
       _showErrorSnackbar(_getTranslatedText('خطأ تقني:', 'Erreur technique:') +
@@ -3957,12 +4063,130 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
+  String _getDisplayEvaluationForExport(String storedValue, String system,
+      {List<String>? customNotes}) {
+    // Vérifier si c'est "غائب"
+    if (storedValue == 'غائب') {
+      return 'غائب';
+    }
+
+    // Si c'est déjà un nombre, le retourner tel quel
+    if (double.tryParse(storedValue) != null) {
+      return storedValue;
+    }
+
+    if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
+      final Map<String, String> mapping = {
+        '( - - - )': customNotes[0],
+        '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
+        '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
+        '( + + + )': customNotes.last,
+      };
+      return mapping[storedValue] ?? customNotes[0];
+    }
+
+    switch (system) {
+      case 'character':
+        return storedValue;
+
+      case 'note_0_1_5':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '0.5';
+          case '( + + - )':
+            return '1';
+          case '( + + + )':
+            return '1.5';
+          default:
+            return storedValue;
+        }
+
+      case 'note_0_3':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '1';
+          case '( + + - )':
+            return '2';
+          case '( + + + )':
+            return '3';
+          default:
+            return storedValue;
+        }
+
+      case 'note_0_6':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '2';
+          case '( + + - )':
+            return '4';
+          case '( + + + )':
+            return '6';
+          default:
+            return storedValue;
+        }
+
+      default:
+        return storedValue;
+    }
+  }
+
   Future<bool> _sendHTMLDataToFlask(Map<String, dynamic> data) async {
     try {
-      // Ajouter les informations du dialogue
-      data['trimestre'] = _selectedTrimestre;
-      data['periode'] = _selectedPeriode;
-      data['evaluationType'] = _selectedEvaluationType;
+      // Récupérer le système d'évaluation
+      final String evaluationSystem = await _getEvaluationSystem(
+          widget.selectedClass, widget.selectedMatiere);
+
+      List<String> customNotes = [];
+      if (evaluationSystem == 'custom') {
+        customNotes = await _loadCustomNotes(
+            widget.selectedClass, widget.selectedMatiere);
+      }
+
+      // Préparer les données des étudiants avec conversion
+      List<Map<String, dynamic>> processedStudents = [];
+
+      for (var student in data['students']) {
+        Map<String, dynamic> processedStudent = {
+          'id': student['id'],
+          'name': student['name'],
+          'baremes': {},
+        };
+
+        student['baremes'].forEach((key, value) {
+          String convertedValue = _getDisplayEvaluationForExport(
+            value.toString(),
+            evaluationSystem,
+            customNotes: customNotes,
+          );
+          processedStudent['baremes'][key] = convertedValue;
+        });
+
+        processedStudents.add(processedStudent);
+      }
+
+      Map<String, dynamic> finalData = {
+        'profName': data['profName'],
+        'matiereName': data['matiereName'],
+        'className': data['className'],
+        'schoolName': data['schoolName'],
+        'baremes': data['baremes'],
+        'students': processedStudents,
+        'sumCriteriaMaxPerBareme': data['sumCriteriaMaxPerBareme'],
+        'totalStudents': data['totalStudents'],
+        'selectedClass': data['selectedClass'],
+        'isFrenchInterface': _isFrenchInterface,
+        'trimestre': _selectedTrimestre,
+        'periode': _selectedPeriode,
+        'evaluationType': _selectedEvaluationType,
+        'evaluationSystem': evaluationSystem,
+        'customNotes': customNotes,
+      };
 
       final url =
           Uri.parse('https://imprission.onrender.com/generate-html-report');
@@ -3974,7 +4198,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
             },
-            body: json.encode(data),
+            body: json.encode(finalData),
           )
           .timeout(const Duration(seconds: 60));
 
@@ -3986,22 +4210,19 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
         _showSuccessSnackbar(_getTranslatedText(
             'تم إنشاء التقرير بنجاح', 'Rapport généré avec succès'));
-        return true; // SUCCÈS
+        return true;
       } else {
         _showErrorSnackbar(_getTranslatedText('خطأ في إنشاء التقرير HTML:',
                 'Erreur lors de la génération du rapport HTML:') +
             ' ${response.statusCode}');
-        return false; // ÉCHEC
+        return false;
       }
     } on TimeoutException {
-      _showErrorSnackbar(_getTranslatedText(
-          'انتهت المهلة - استغرق الخادم وقتًا طويلاً للرد. يرجى المحاولة مرة أخرى.',
-          'Timeout - Le serveur a mis trop de temps à répondre. Veuillez réessayer.'));
+      _showErrorSnackbar(_getTranslatedText('انتهت المهلة', 'Timeout'));
       return false;
     } on SocketException {
-      _showErrorSnackbar(_getTranslatedText(
-          'خطأ في الاتصال - تحقق من اتصالك بالإنترنت',
-          'Erreur de connexion - Vérifiez votre connexion internet'));
+      _showErrorSnackbar(
+          _getTranslatedText('خطأ في الاتصال', 'Erreur de connexion'));
       return false;
     } catch (e) {
       _showErrorSnackbar(_getTranslatedText('خطأ تقني:', 'Erreur technique:') +
@@ -4224,7 +4445,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           final customNotes = await _getCustomNotesForBareme(
               widget.selectedClass, widget.selectedMatiere, baremeId);
 
-          // Convertir selon le système
+          // ✅ Convertir selon le système POUR L'AFFICHAGE DANS L'APP
           final displayValue = _getDisplayEvaluation(
             storedValue,
             evaluationSystem,
@@ -4242,7 +4463,6 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             final sousStoredValue =
                 _getFieldSafe(sousBaremeDoc, 'Marks', '( - - - )');
 
-            // Charger les notes personnalisées du sous-barème
             final sousCustomNotes = await _getSousBaremeCustomNotes(
               widget.selectedClass,
               widget.selectedMatiere,
@@ -4250,7 +4470,6 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               sousBaremeId,
             );
 
-            // Convertir selon le système
             final sousDisplayValue = _getDisplayEvaluation(
               sousStoredValue,
               evaluationSystem,
@@ -4264,7 +4483,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         students.add({
           'id': studentId,
           'name': studentName,
-          'baremes': baremes,
+          'baremes': baremes, // ✅ Notes déjà converties pour l'affichage
         });
       }
 
@@ -4282,7 +4501,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
       return students;
     } catch (e) {
-      print('Erreur récupération étudiants: $e');
+      print('❌ Erreur récupération étudiants: $e');
       return [];
     }
   }
@@ -5428,7 +5647,8 @@ class _StudentsTableState extends State<StudentsTable> {
   ];
   final Map<String, Map<String, String>> _selectedValues = {};
   final Map<String, Color> _headerColors = {};
-
+  String? _currentEvaluationSystem;
+  bool _isLoadingSystem = true;
   // États pour gérer le loading des boutons
   final Map<String, bool> _classificationLoadingStates = {};
   final Map<String, bool> _treatmentPlanLoadingStates = {};
@@ -5439,7 +5659,6 @@ class _StudentsTableState extends State<StudentsTable> {
   bool _isMounted = false;
 
   // NOUVEAU: Variable pour stocker le système d'évaluation
-  String? _currentEvaluationSystem;
 
   // Couleurs modernes pour l'UI
   final Color _primaryColor = const Color(0xFF2E7D32);
@@ -5659,28 +5878,9 @@ class _StudentsTableState extends State<StudentsTable> {
 
   // NOUVELLE MÉTHODE: Charger le système d'évaluation
 
-  Future<void> _loadEvaluationSystem() async {
-    try {
-      final system = await _getEvaluationSystem(
-          widget.selectedClass, widget.selectedMatiere);
-      if (_isMounted) {
-        setState(() {
-          _currentEvaluationSystem = system;
-          print('✅ Système d\'évaluation chargé: $system');
-        });
-      }
-    } catch (e) {
-      print('❌ Erreur chargement système d\'évaluation: $e');
-      if (_isMounted) {
-        setState(() {
-          _currentEvaluationSystem = 'character'; // Valeur par défaut
-        });
-      }
-    }
-  }
-
   // NOUVELLE MÉTHODE: Déterminer si on doit afficher la colonne de somme
   Future<bool> _shouldDisplaySumColumn() async {
+    // Attendre que le système soit chargé
     if (_currentEvaluationSystem == null) {
       await _loadEvaluationSystem();
       if (_currentEvaluationSystem == null) {
@@ -5692,12 +5892,7 @@ class _StudentsTableState extends State<StudentsTable> {
         '🔍 Vérification affichage colonne somme pour système: $_currentEvaluationSystem');
 
     // Systèmes qui utilisent des notes numériques
-    final numericSystems = [
-      'note_0_1_5',
-      'note_0_3',
-      'note_0_6',
-      'custom' // Le système custom PEUT être numérique
-    ];
+    final numericSystems = ['note_0_1_5', 'note_0_3', 'note_0_6', 'custom'];
 
     // Vérifier si c'est un système numérique
     if (numericSystems.contains(_currentEvaluationSystem)) {
@@ -5746,15 +5941,11 @@ class _StudentsTableState extends State<StudentsTable> {
     _loadSelectionsOnce();
     _loadEvaluationSystem().then((_) {
       // Rafraîchir après avoir chargé le système
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_isMounted) {
-          setState(() {});
-        }
-      });
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _debugAllCustomNotes();
-      _checkCustomNotesType();
+      if (_isMounted) {
+        setState(() {
+          _isLoadingSystem = false;
+        });
+      }
     });
   }
 
@@ -5762,6 +5953,26 @@ class _StudentsTableState extends State<StudentsTable> {
   void dispose() {
     _isMounted = false;
     super.dispose();
+  }
+
+  Future<void> _loadEvaluationSystem() async {
+    try {
+      final system = await _getEvaluationSystem(
+          widget.selectedClass, widget.selectedMatiere);
+      if (_isMounted) {
+        setState(() {
+          _currentEvaluationSystem = system;
+        });
+        print('✅ _StudentsTableState - Système chargé: $system');
+      }
+    } catch (e) {
+      print('❌ Erreur chargement système dans _StudentsTableState: $e');
+      if (_isMounted) {
+        setState(() {
+          _currentEvaluationSystem = 'character';
+        });
+      }
+    }
   }
 
   Future<void> _checkCustomNotesType() async {
@@ -6131,23 +6342,33 @@ class _StudentsTableState extends State<StudentsTable> {
 
   Widget _buildDataTable(List<QueryDocumentSnapshot> studentsDocs,
       List<Map<String, dynamic>> baremesValues) {
+    if (_isLoadingSystem) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text(_getTranslatedText('جاري تحميل نظام التقييم...',
+                'Chargement du système d\'évaluation...')),
+          ],
+        ),
+      );
+    }
+
     _debugBaremesStructure(baremesValues);
 
-    // CORRECTION: Organiser correctement les barèmes et sous-barèmes
     final Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
 
-    // Séparer les barèmes principaux et les sous-barèmes
     final mainBaremes =
         baremesValues.where((b) => b['type'] == 'bareme').toList();
     final sousBaremes =
         baremesValues.where((b) => b['type'] == 'sousBareme').toList();
 
-    // Pour chaque barème principal, regrouper avec ses sous-barèmes
     for (final bareme in mainBaremes) {
       final baremeId = bareme['id'];
       groupedBaremes[baremeId] = [bareme];
 
-      // Ajouter les sous-barèmes de ce barème
       final sousBaremesOfThisBareme =
           sousBaremes.where((s) => s['parentBaremeId'] == baremeId).toList();
 
@@ -6156,7 +6377,6 @@ class _StudentsTableState extends State<StudentsTable> {
       }
     }
 
-    // Ajouter les sous-barèmes orphelins (sans parent dans la liste)
     final orphanSousBaremes = sousBaremes
         .where((s) => !groupedBaremes.containsKey(s['parentBaremeId']))
         .toList();
@@ -6164,8 +6384,6 @@ class _StudentsTableState extends State<StudentsTable> {
     if (orphanSousBaremes.isNotEmpty) {
       groupedBaremes['orphans'] = orphanSousBaremes;
     }
-
-    _debugGroupedBaremesStructure(groupedBaremes);
 
     return FutureBuilder<bool>(
       future: _shouldDisplaySumColumn(),
@@ -7323,30 +7541,23 @@ class _StudentsTableState extends State<StudentsTable> {
 
   Future<String> _getSelectedValue(String studentId, String baremeKey) async {
     try {
-      // Récupérer le système d'évaluation
-      final String evaluationSystem = await _getEvaluationSystem(
-          widget.selectedClass, widget.selectedMatiere);
+      // S'assurer que le système est chargé
+      if (_currentEvaluationSystem == null) {
+        await _loadEvaluationSystem();
+      }
 
+      final String evaluationSystem = _currentEvaluationSystem ?? 'character';
       String storedValue = _dropdownValues[0];
       List<String> customNotes = [];
-
-      // DÉTECTION CORRECTE DES SOUS-BARÈMES
-      // Les sous-barèmes sont détectés par leur structure, pas par "-"
-      // Vérifier si c'est un sous-barème en regardant dans les sélections
 
       final isSousBareme = await _isSousBareme(baremeKey);
 
       if (isSousBareme) {
-        // C'EST UN SOUS-BARÈME
         print('🔍 SOUS-BARÈME détecté: $baremeKey');
 
-        // Trouver le parentBaremeId pour ce sous-barème
         final parentInfo = await _getParentBaremeInfo(baremeKey);
         final baremeId = parentInfo['parentBaremeId'];
         final sousBaremeId = baremeKey;
-
-        print('   Parent baremeId: $baremeId');
-        print('   Sous-baremeId: $sousBaremeId');
 
         var sousBaremeDoc = await FirebaseFirestore.instance
             .collection('users')
@@ -7362,26 +7573,20 @@ class _StudentsTableState extends State<StudentsTable> {
             .get();
 
         if (sousBaremeDoc.exists) {
-          // Vérifier si l'élève est marqué absent
           if (sousBaremeDoc.data()?['isAbsent'] == true) {
             return 'غائب';
           }
           storedValue =
               sousBaremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
 
-          // Charger les notes personnalisées du SOUS-BARÈME
           customNotes = await _getSousBaremeCustomNotes(
             widget.selectedClass,
             widget.selectedMatiere,
             baremeId!,
             sousBaremeId,
           );
-
-          print(
-              '📝 Notes sous-barème chargées: ${customNotes.length} notes: $customNotes');
         }
       } else {
-        // C'EST UN BARÈME PRINCIPAL
         print('🔍 BARÈME PRINCIPAL détecté: $baremeKey');
 
         var baremeDoc = await FirebaseFirestore.instance
@@ -7396,26 +7601,19 @@ class _StudentsTableState extends State<StudentsTable> {
             .get();
 
         if (baremeDoc.exists) {
-          // Vérifier si l'élève est marqué absent
           if (baremeDoc.data()?['isAbsent'] == true) {
             return 'غائب';
           }
           storedValue = baremeDoc.data()?['Marks']?.toString() ?? '( - - - )';
 
-          // Charger les notes personnalisées du BARÈME
           customNotes = await _getCustomNotesForBareme(
               widget.selectedClass, widget.selectedMatiere, baremeKey);
-
-          print(
-              '📝 Notes barème chargées: ${customNotes.length} notes: $customNotes');
         }
       }
 
-      // DEBUG: Afficher ce qu'on a trouvé
       print(
           '🎯 Conversion: $storedValue -> système: $evaluationSystem, notes: $customNotes');
 
-      // Convertir selon le système
       final result = _getDisplayEvaluation(
         storedValue,
         evaluationSystem,
@@ -7427,6 +7625,75 @@ class _StudentsTableState extends State<StudentsTable> {
     } catch (e) {
       print('❌ Erreur récupération valeur pour $baremeKey: $e');
       return _dropdownValues[0];
+    }
+  }
+
+  // COPIEZ cette méthode depuis _DynamicTablePageState
+  String _getDisplayEvaluation(String storedValue, String system,
+      {List<String>? customNotes}) {
+    // Vérifier si c'est "غائب"
+    if (storedValue == 'غائب') {
+      return 'غائب';
+    }
+
+    if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
+      final Map<String, String> mapping = {
+        '( - - - )': customNotes[0],
+        '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
+        '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
+        '( + + + )': customNotes.last,
+      };
+      return mapping[storedValue] ?? customNotes[0];
+    }
+
+    switch (system) {
+      case 'character':
+        return storedValue;
+
+      case 'note_0_1_5':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '0.5';
+          case '( + + - )':
+            return '1';
+          case '( + + + )':
+            return '1.5';
+          default:
+            return '0';
+        }
+
+      case 'note_0_3':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '1';
+          case '( + + - )':
+            return '2';
+          case '( + + + )':
+            return '3';
+          default:
+            return '0';
+        }
+
+      case 'note_0_6':
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '2';
+          case '( + + - )':
+            return '4';
+          case '( + + + )':
+            return '6';
+          default:
+            return '0';
+        }
+
+      default:
+        return storedValue;
     }
   }
 
@@ -7839,9 +8106,10 @@ class _StudentsTableState extends State<StudentsTable> {
 
   Future<String> _getEvaluationSystem(String classId, String matiereId) async {
     try {
+      // Même format que dans _DynamicTablePageState
       final docId = '$classId-$matiereId';
 
-      print('🔍 Chargement système pour: $docId');
+      print('🔍 _StudentsTableState - Recherche système pour: $docId');
 
       final systemDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -7851,131 +8119,51 @@ class _StudentsTableState extends State<StudentsTable> {
           .get();
 
       if (systemDoc.exists) {
-        final system = systemDoc['system'] ?? 'character';
-        print('✅ Système trouvé: $system');
+        final system = systemDoc.data()?['system'] ?? 'character';
+        print('✅ _StudentsTableState - Système trouvé: $system');
         return system;
-      } else {
-        // Vérifier s'il y a un document avec un ID différent
-        print('⚠️ Document non trouvé avec ID: $docId');
-
-        final allDocs = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(widget.currentUser.uid)
-            .collection('evaluation_systems')
-            .get();
-
-        print('📋 Documents disponibles:');
-        for (final doc in allDocs.docs) {
-          print('   ${doc.id} -> ${doc.data()}');
-        }
       }
 
-      print('↪️ Système par défaut: character');
+      print('⚠️ _StudentsTableState - Système par défaut: character');
       return 'character';
     } catch (e) {
-      print('❌ Erreur récupération système: $e');
+      print('❌ _StudentsTableState - Erreur récupération système: $e');
       return 'character';
     }
   }
+Future<List<String>> _loadCustomNotes(
+    String classId, String matiereId) async {
+  try {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return [];
 
-  Future<List<String>> _loadCustomNotes(
-      String classId, String matiereId) async {
-    try {
-      // Même ID que pour _hasCustomNotes
-      final docId = '$classId-$matiereId';
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('bareme_custom_notes')
+        .where(FieldPath.documentId,
+            isGreaterThanOrEqualTo: '$classId-$matiereId-')
+        .where(FieldPath.documentId,
+            isLessThan: '$classId-$matiereId-\uf8ff')
+        .limit(1)
+        .get();
 
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(widget.currentUser.uid)
-          .collection('bareme_custom_notes')
-          .doc(docId)
-          .get();
-
-      if (doc.exists && doc.data()?['notes'] != null) {
-        return List<String>.from(doc.data()!['notes']);
+    if (snapshot.docs.isNotEmpty) {
+      final data = snapshot.docs.first.data();
+      if (data['notes'] != null) {
+        print("🔥 CUSTOM NOTES LOADED: ${data['notes']}");
+        return List<String>.from(data['notes']);
       }
-      return [];
-    } catch (e) {
-      print('Erreur lors du chargement des notes personnalisées: $e');
-      return [];
     }
+
+    print("⚠️ NO MATCHING CUSTOM NOTES");
+    return [];
+  } catch (e) {
+    print('Erreur lors du chargement des notes personnalisées: $e');
+    return [];
   }
+}
 
-  String _getDisplayEvaluation(String storedValue, String system,
-      {List<String>? customNotes}) {
-    // Vérifier si c'est "غائب"
-    if (storedValue == 'غائب') {
-      return 'غائب';
-    }
-
-    // CORRECTION: Si système custom mais pas de notes, utiliser character
-    if (system == 'custom' && (customNotes == null || customNotes.isEmpty)) {
-      print('⚠️ Système custom mais notes vides, fallback sur character');
-      return storedValue; // Retourner direct (+++, ++-, etc.)
-    }
-
-    if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
-      final Map<String, String> mapping = {
-        '( - - - )': customNotes[0],
-        '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
-        '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
-        '( + + + )': customNotes.last,
-      };
-      final result = mapping[storedValue] ?? customNotes[0];
-      print('🎯 Conversion custom: $storedValue -> $result');
-      return result;
-    }
-
-    switch (system) {
-      case 'character':
-        return storedValue;
-
-      case 'note_0_1_5':
-        switch (storedValue) {
-          case '( - - - )':
-            return '0';
-          case '( + - - )':
-            return '0.5';
-          case '( + + - )':
-            return '1';
-          case '( + + + )':
-            return '1.5';
-          default:
-            return '0';
-        }
-
-      case 'note_0_3':
-        switch (storedValue) {
-          case '( - - - )':
-            return '0';
-          case '( + - - )':
-            return '1';
-          case '( + + - )':
-            return '2';
-          case '( + + + )':
-            return '3';
-          default:
-            return '0';
-        }
-
-      case 'note_0_6':
-        switch (storedValue) {
-          case '( - - - )':
-            return '0';
-          case '( + - - )':
-            return '2';
-          case '( + + - )':
-            return '4';
-          case '( + + + )':
-            return '6';
-          default:
-            return '0';
-        }
-
-      default:
-        return storedValue;
-    }
-  }
 
   Future<List<String>> _getDropdownValuesForBareme(String baremeKey) async {
     try {
