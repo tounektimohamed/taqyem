@@ -19,6 +19,7 @@ import 'package:google_maps_flutter_web/google_maps_flutter_web.dart';
 import 'package:google_sign_in_web/google_sign_in_web.dart';
 import 'package:image_cropper_for_web/image_cropper_for_web.dart';
 import 'package:image_picker_for_web/image_picker_for_web.dart';
+import 'package:image_picker_web/image_picker_web.dart';
 import 'package:just_audio_web/just_audio_web.dart';
 import 'package:maps_launcher/maps_launcher_web.dart';
 import 'package:open_file_web/open_file_web.dart';
@@ -47,6 +48,7 @@ void registerPlugins([final Registrar? pluginRegistrar]) {
   GoogleSignInPlugin.registerWith(registrar);
   ImageCropperPlugin.registerWith(registrar);
   ImagePickerPlugin.registerWith(registrar);
+  ImagePickerWeb.registerWith(registrar);
   JustAudioPlugin.registerWith(registrar);
   MapsLauncherWeb.registerWith(registrar);
   OpenFilePlugin.registerWith(registrar);

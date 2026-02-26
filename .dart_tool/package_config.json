@@ -548,6 +548,12 @@
       "languageVersion": "3.7"
     },
     {
+      "name": "flutter_screenutil",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/flutter_screenutil-5.9.3",
+      "packageUri": "lib/",
+      "languageVersion": "2.17"
+    },
+    {
       "name": "flutter_svg",
       "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/flutter_svg-2.2.1",
       "packageUri": "lib/",

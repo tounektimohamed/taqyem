@@ -151,44 +151,57 @@ class DataTranslator {
   };
 
   static final Map<String, String> _baremeTranslations = {
+    // Main bareme (1 to 7)
     "مع 1": "C1",
     "مع 2": "C2",
     "مع 3": "C3",
     "مع 4": "C4",
     "مع 5": "C5",
-    // Ajoutez ces nouvelles traductions pour les sous-barèmes avec lettres arabes
-    "مع 1.ا": "C1.a",
-    "مع 1.ب": "C1.b",
-    "مع 1.ج": "C1.c",
-    "مع 2.ا": "C2.a",
-    "مع 2.ب": "C2.b",
-    "مع 2.ج": "C2.c",
-    "مع 3.ا": "C3.a",
-    "مع 3.ب": "C3.b",
-    "مع 3.ج": "C3.c",
-    "مع 4.ا": "C4.a",
-    "مع 4.ب": "C4.b",
-    "مع 4.ج": "C4.c",
-    "مع 5.ا": "C5.a",
-    "مع 5.ب": "C5.b",
-    "مع 5.ج": "C5.c",
+    "مع 6": "C6",
+    "مع 7": "C7",
 
-    // Gardez aussi les anciennes traductions numériques au cas où
-    "مع 1.1": "C1.1",
-    "مع 1.2": "C1.2",
-    "مع 1.3": "C1.3",
-    "مع 2.1": "C2.1",
-    "مع 2.2": "C2.2",
-    "مع 2.3": "C2.3",
-    "مع 3.1": "C3.1",
-    "مع 3.2": "C3.2",
-    "مع 3.3": "C3.3",
-    "مع 4.1": "C4.1",
-    "مع 4.2": "C4.2",
-    "مع 4.3": "C4.3",
-    "مع 5.1": "C5.1",
-    "مع 5.2": "C5.2",
-    "مع 5.3": "C5.3"
+    // Sub-bareme for each (1 to 7 with أ، ب، ج، د)
+    // Bareme 1 sub-levels
+    "مع 1.أ": "C1.A",
+    "مع 1.ب": "C1.B",
+    "مع 1.ج": "C1.C",
+    "مع 1.د": "C1.D",
+
+    // Bareme 2 sub-levels
+    "مع 2.أ": "C2.A",
+    "مع 2.ب": "C2.B",
+    "مع 2.ج": "C2.C",
+    "مع 2.د": "C2.D",
+
+    // Bareme 3 sub-levels
+    "مع 3.أ": "C3.A",
+    "مع 3.ب": "C3.B",
+    "مع 3.ج": "C3.C",
+    "مع 3.د": "C3.D",
+
+    // Bareme 4 sub-levels
+    "مع 4.أ": "C4.A",
+    "مع 4.ب": "C4.B",
+    "مع 4.ج": "C4.C",
+    "مع 4.د": "C4.D",
+
+    // Bareme 5 sub-levels
+    "مع 5.أ": "C5.A",
+    "مع 5.ب": "C5.B",
+    "مع 5.ج": "C5.C",
+    "مع 5.د": "C5.D",
+
+    // Bareme 6 sub-levels
+    "مع 6.أ": "C6.A",
+    "مع 6.ب": "C6.B",
+    "مع 6.ج": "C6.C",
+    "مع 6.د": "C6.D",
+
+    // Bareme 7 sub-levels
+    "مع 7.أ": "C7.A",
+    "مع 7.ب": "C7.B",
+    "مع 7.ج": "C7.C",
+    "مع 7.د": "C7.D"
   };
 
   // Liste des matières considérées comme étrangères (doivent être en français)

@@ -66,30 +66,59 @@ class DataTranslator {
     "الجغرافيا": "Géographie",
     "التربية المدنية": "Éducation civique"
   };
-
   static final Map<String, String> _baremeTranslations = {
+    // Main bareme (1 to 7)
     "مع 1": "C1",
     "مع 2": "C2",
     "مع 3": "C3",
     "مع 4": "C4",
     "مع 5": "C5",
-    "مع 1.1": "C1.1",
-    "مع 1.2": "C1.2",
-    "مع 1.3": "C1.3",
-    "مع 2.1": "C2.1",
-    "مع 2.2": "C2.2",
-    "مع 2.3": "C2.3",
-    "مع 3.1": "C3.1",
-    "مع 3.2": "C3.2",
-    "مع 3.3": "C3.3",
-    "مع 4.1": "C4.1",
-    "مع 4.2": "C4.2",
-    "مع 4.3": "C4.3",
-    "مع 5.1": "C5.1",
-    "مع 5.2": "C5.2",
-    "مع 5.3": "C5.3"
-  };
+    "مع 6": "C6",
+    "مع 7": "C7",
 
+    // Sub-bareme for each (1 to 7 with أ، ب، ج، د)
+    // Bareme 1 sub-levels
+    "مع 1.أ": "C1.A",
+    "مع 1.ب": "C1.B",
+    "مع 1.ج": "C1.C",
+    "مع 1.د": "C1.D",
+
+    // Bareme 2 sub-levels
+    "مع 2.أ": "C2.A",
+    "مع 2.ب": "C2.B",
+    "مع 2.ج": "C2.C",
+    "مع 2.د": "C2.D",
+
+    // Bareme 3 sub-levels
+    "مع 3.أ": "C3.A",
+    "مع 3.ب": "C3.B",
+    "مع 3.ج": "C3.C",
+    "مع 3.د": "C3.D",
+
+    // Bareme 4 sub-levels
+    "مع 4.أ": "C4.A",
+    "مع 4.ب": "C4.B",
+    "مع 4.ج": "C4.C",
+    "مع 4.د": "C4.D",
+
+    // Bareme 5 sub-levels
+    "مع 5.أ": "C5.A",
+    "مع 5.ب": "C5.B",
+    "مع 5.ج": "C5.C",
+    "مع 5.د": "C5.D",
+
+    // Bareme 6 sub-levels
+    "مع 6.أ": "C6.A",
+    "مع 6.ب": "C6.B",
+    "مع 6.ج": "C6.C",
+    "مع 6.د": "C6.D",
+
+    // Bareme 7 sub-levels
+    "مع 7.أ": "C7.A",
+    "مع 7.ب": "C7.B",
+    "مع 7.ج": "C7.C",
+    "مع 7.د": "C7.D"
+  };
   // Liste des matières considérées comme étrangères (doivent être en français)
   static final List<String> _foreignMatieres = [
     "Expression orale et récitation",
@@ -210,7 +239,8 @@ class _BaremesPageState extends State<BaremesPage> {
       _isFrenchInterface = DataTranslator.isForeignMatiere(widget.matiereName);
     });
   }
- Future<void> _configureOCRLevels() async {
+
+  Future<void> _configureOCRLevels() async {
     // Liste prédéfinie des niveaux arabes
     List<String> predefinedLevels = [
       'انعدام التملك ( - - - )',
@@ -278,7 +308,8 @@ class _BaremesPageState extends State<BaremesPage> {
           .doc('${widget.selectedClass}-${widget.selectedMatiere}')
           .set({
         'levels': levels,
-        'mappedToSystem': 'character', // Car vous utilisez le système de caractères
+        'mappedToSystem':
+            'character', // Car vous utilisez le système de caractères
         'createdAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
@@ -452,29 +483,30 @@ class _BaremesPageState extends State<BaremesPage> {
     }
   }
 
-void _toggleSousBaremeSelection(String baremeId, String sousBaremeId) {
-  setState(() {
-    if (!_selectedSousBaremes.containsKey(baremeId)) {
-      _selectedSousBaremes[baremeId] = {};
-    }
-    _selectedSousBaremes[baremeId]![sousBaremeId] =
-        !(_selectedSousBaremes[baremeId]![sousBaremeId] ?? false);
-
-    if (_selectedSousBaremes[baremeId]![sousBaremeId] ?? false) {
-      _selectedBaremes[baremeId] = false;
-    } else {
-      bool allSousBaremesUnselected = _selectedSousBaremes[baremeId]!
-          .values
-          .every((isSelected) => !isSelected);
-      if (allSousBaremesUnselected) {
-        _selectedBaremes[baremeId] = true;
+  void _toggleSousBaremeSelection(String baremeId, String sousBaremeId) {
+    setState(() {
+      if (!_selectedSousBaremes.containsKey(baremeId)) {
+        _selectedSousBaremes[baremeId] = {};
       }
-    }
-    
-    // Garder le dropdown ouvert après la sélection
-    _isExpanded[baremeId] = true;
-  });
-}
+      _selectedSousBaremes[baremeId]![sousBaremeId] =
+          !(_selectedSousBaremes[baremeId]![sousBaremeId] ?? false);
+
+      if (_selectedSousBaremes[baremeId]![sousBaremeId] ?? false) {
+        _selectedBaremes[baremeId] = false;
+      } else {
+        bool allSousBaremesUnselected = _selectedSousBaremes[baremeId]!
+            .values
+            .every((isSelected) => !isSelected);
+        if (allSousBaremesUnselected) {
+          _selectedBaremes[baremeId] = true;
+        }
+      }
+
+      // Garder le dropdown ouvert après la sélection
+      _isExpanded[baremeId] = true;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -723,20 +755,21 @@ void _toggleSousBaremeSelection(String baremeId, String sousBaremeId) {
                               Transform.scale(
                                 scale: 1.2,
                                 child: Checkbox(
-  value: _selectedBaremes[baremeId] ?? false,
-  onChanged: (_selectedSousBaremes[baremeId]
-              ?.values
-              .any((isSelected) => isSelected) ??
-          false)
-      ? null
-      : (bool? value) {
-          _toggleBaremeSelection(baremeId);
-        },
-  activeColor: Colors.blue.shade700,
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(4),
-  ),
-),
+                                  value: _selectedBaremes[baremeId] ?? false,
+                                  onChanged: (_selectedSousBaremes[baremeId]
+                                              ?.values
+                                              .any(
+                                                  (isSelected) => isSelected) ??
+                                          false)
+                                      ? null
+                                      : (bool? value) {
+                                          _toggleBaremeSelection(baremeId);
+                                        },
+                                  activeColor: Colors.blue.shade700,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
                               ),
                               SizedBox(width: 8),
                               Expanded(
@@ -897,367 +930,373 @@ void _toggleSousBaremeSelection(String baremeId, String sousBaremeId) {
     );
   }
 
-Future<void> _saveSelections() async {
-  // Vérifier d'abord si des sélections existent
-  int totalSelections = _selectedBaremes.values.where((v) => v).length;
-  _selectedSousBaremes.forEach((key, value) {
-    totalSelections += value.values.where((v) => v).length;
-  });
+  Future<void> _saveSelections() async {
+    // Vérifier d'abord si des sélections existent
+    int totalSelections = _selectedBaremes.values.where((v) => v).length;
+    _selectedSousBaremes.forEach((key, value) {
+      totalSelections += value.values.where((v) => v).length;
+    });
 
-  if (totalSelections == 0) {
-    // Afficher un message si aucune sélection
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _isFrenchInterface
-              ? 'Veuillez sélectionner au moins un critère ou indicateur'
-              : 'يرجى تحديد معيار أو مؤشر واحد على الأقل',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: Colors.orange.shade600,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        duration: Duration(seconds: 2),
-      ),
-    );
-    return;
-  }
-
-  // Créer et afficher l'indicateur de chargement
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (BuildContext context) {
-      return Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.blue.shade700),
-                        strokeWidth: 4,
-                      ),
-                      Icon(
-                        Icons.save,
-                        size: 24,
-                        color: Colors.blue.shade700,
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 20),
-                  Text(
-                    _isFrenchInterface
-                        ? 'Enregistrement des barèmes...'
-                        : 'جاري حفظ المعايير...',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade800,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    _isFrenchInterface
-                        ? 'Veuillez patienter'
-                        : 'يرجى الانتظار',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-
-  try {
-    String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
-
-    if (userId.isEmpty) {
-      throw Exception(_isFrenchInterface
-          ? 'Utilisateur non connecté'
-          : 'المستخدم غير مسجل الدخول');
-    }
-
-    // Référence à la collection des sélections
-    CollectionReference selectionsRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('selections')
-        .doc(widget.selectedClass)
-        .collection(widget.selectedMatiere);
-
-    // 1. D'abord, récupérer les sélections existantes pour savoir ce qu'il faut supprimer
-    var existingSelections = await selectionsRef.get();
-    Map<String, bool> baremesToKeep = {};
-    Map<String, Set<String>> sousBaremesToKeep = {};
-
-    // 2. Compter ce que nous allons sauvegarder
-    int savedCount = 0;
-
-    // 3. Préparer les barèmes à conserver
-    for (var entry in _selectedBaremes.entries) {
-      if (entry.value) {
-        baremesToKeep[entry.key] = true;
-        savedCount++;
-      }
-    }
-
-    // 4. Préparer les sous-barèmes à conserver
-    for (var baremeEntry in _selectedSousBaremes.entries) {
-      for (var sousEntry in baremeEntry.value.entries) {
-        if (sousEntry.value) {
-          if (!sousBaremesToKeep.containsKey(baremeEntry.key)) {
-            sousBaremesToKeep[baremeEntry.key] = {};
-          }
-          sousBaremesToKeep[baremeEntry.key]!.add(sousEntry.key);
-          savedCount++;
-          
-          // Si un sous-barème est sélectionné, on garde aussi le barème parent
-          baremesToKeep[baremeEntry.key] = false; // false car ce n'est pas le barème qui est sélectionné
-        }
-      }
-    }
-
-    // 5. Créer un batch pour les opérations de suppression
-    WriteBatch batch = FirebaseFirestore.instance.batch();
-    
-    for (var existingDoc in existingSelections.docs) {
-      String baremeId = existingDoc.id;
-      
-      // Si le barème n'est plus dans nos sélections, le supprimer
-      if (!baremesToKeep.containsKey(baremeId)) {
-        // D'abord supprimer tous ses sous-barèmes
-        var sousBaremesSnapshot = await existingDoc.reference.collection('sousBaremes').get();
-        for (var sousDoc in sousBaremesSnapshot.docs) {
-          batch.delete(sousDoc.reference);
-        }
-        // Puis supprimer le barème
-        batch.delete(existingDoc.reference);
-      } else {
-        // Le barème existe encore, vérifier ses sous-barèmes
-        var sousBaremesSnapshot = await existingDoc.reference.collection('sousBaremes').get();
-        for (var sousDoc in sousBaremesSnapshot.docs) {
-          // Si ce sous-barème n'est plus dans nos sélections, le supprimer
-          if (!sousBaremesToKeep.containsKey(baremeId) || 
-              !sousBaremesToKeep[baremeId]!.contains(sousDoc.id)) {
-            batch.delete(sousDoc.reference);
-          }
-        }
-      }
-    }
-
-    // 6. Appliquer les suppressions
-    await batch.commit();
-
-    // 7. Sauvegarder les nouvelles sélections
-    for (var baremeId in baremesToKeep.keys) {
-      try {
-        String baremeName = await _getBaremeName(baremeId);
-        
-        // Vérifier si ce barème a des sous-barèmes sélectionnés
-        bool hasSelectedSousBaremes = sousBaremesToKeep.containsKey(baremeId) && 
-                                     sousBaremesToKeep[baremeId]!.isNotEmpty;
-
-        // Créer ou mettre à jour le document du barème
-        await selectionsRef.doc(baremeId).set({
-          'baremeId': baremeId,
-          'baremeName': baremeName,
-          'classId': widget.selectedClass,
-          'matiereId': widget.selectedMatiere,
-          'selected': baremesToKeep[baremeId] ?? false, // true si barème sélectionné, false si seulement sous-barèmes
-          'hasSousBaremes': hasSelectedSousBaremes,
-          'selectedAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
-
-        // Sauvegarder les sous-barèmes de ce barème
-        if (sousBaremesToKeep.containsKey(baremeId)) {
-          for (var sousBaremeId in sousBaremesToKeep[baremeId]!) {
-            try {
-              String sousBaremeName = await _getSousBaremeName(baremeId, sousBaremeId);
-              
-              await selectionsRef
-                  .doc(baremeId)
-                  .collection('sousBaremes')
-                  .doc(sousBaremeId)
-                  .set({
-                'sousBaremeId': sousBaremeId,
-                'sousBaremeName': sousBaremeName,
-                'baremeId': baremeId,
-                'selected': true,
-                'selectedAt': FieldValue.serverTimestamp(),
-                'updatedAt': FieldValue.serverTimestamp(),
-              }, SetOptions(merge: true));
-              
-              print('Sous-barème sauvegardé: $sousBaremeName');
-            } catch (e) {
-              print('Erreur lors de la sauvegarde du sous-barème $sousBaremeId: $e');
-            }
-          }
-        }
-        
-        print('Barème sauvegardé: $baremeName');
-      } catch (e) {
-        print('Erreur lors de la sauvegarde du barème $baremeId: $e');
-      }
-    }
-
-    print('Total sauvegardé: $savedCount éléments');
-
-    // Fermer l'indicateur de chargement
-    if (context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-    }
-
-    // Afficher le message de succès
-    if (context.mounted) {
+    if (totalSelections == 0) {
+      // Afficher un message si aucune sélection
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Row(
+          content: Text(
+            _isFrenchInterface
+                ? 'Veuillez sélectionner au moins un critère ou indicateur'
+                : 'يرجى تحديد معيار أو مؤشر واحد على الأقل',
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.orange.shade600,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Créer et afficher l'indicateur de chargement
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 24,
-                height: 24,
+                padding: EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ],
                 ),
-                child: Icon(
-                  Icons.check,
-                  size: 18,
-                  color: Colors.green.shade600,
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.blue.shade700),
+                          strokeWidth: 4,
+                        ),
+                        Icon(
+                          Icons.save,
+                          size: 24,
+                          color: Colors.blue.shade700,
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 20),
                     Text(
                       _isFrenchInterface
-                          ? 'Sauvegarde réussie !'
-                          : 'تم الحفظ بنجاح!',
+                          ? 'Enregistrement des barèmes...'
+                          : 'جاري حفظ المعايير...',
                       style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade800,
                       ),
                     ),
+                    SizedBox(height: 8),
                     Text(
                       _isFrenchInterface
-                          ? '$savedCount sélections enregistrées'
-                          : 'تم حفظ $savedCount عنصر',
-                      style: TextStyle(fontSize: 13),
+                          ? 'Veuillez patienter'
+                          : 'يرجى الانتظار',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          backgroundColor: Colors.green.shade600,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          duration: Duration(seconds: 3),
-        ),
-      );
+        );
+      },
+    );
 
-      // Naviguer vers la page des barèmes sélectionnés
-      await Future.delayed(Duration(milliseconds: 500));
+    try {
+      String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
+      if (userId.isEmpty) {
+        throw Exception(_isFrenchInterface
+            ? 'Utilisateur non connecté'
+            : 'المستخدم غير مسجل الدخول');
+      }
+
+      // Référence à la collection des sélections
+      CollectionReference selectionsRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere);
+
+      // 1. D'abord, récupérer les sélections existantes pour savoir ce qu'il faut supprimer
+      var existingSelections = await selectionsRef.get();
+      Map<String, bool> baremesToKeep = {};
+      Map<String, Set<String>> sousBaremesToKeep = {};
+
+      // 2. Compter ce que nous allons sauvegarder
+      int savedCount = 0;
+
+      // 3. Préparer les barèmes à conserver
+      for (var entry in _selectedBaremes.entries) {
+        if (entry.value) {
+          baremesToKeep[entry.key] = true;
+          savedCount++;
+        }
+      }
+
+      // 4. Préparer les sous-barèmes à conserver
+      for (var baremeEntry in _selectedSousBaremes.entries) {
+        for (var sousEntry in baremeEntry.value.entries) {
+          if (sousEntry.value) {
+            if (!sousBaremesToKeep.containsKey(baremeEntry.key)) {
+              sousBaremesToKeep[baremeEntry.key] = {};
+            }
+            sousBaremesToKeep[baremeEntry.key]!.add(sousEntry.key);
+            savedCount++;
+
+            // Si un sous-barème est sélectionné, on garde aussi le barème parent
+            baremesToKeep[baremeEntry.key] =
+                false; // false car ce n'est pas le barème qui est sélectionné
+          }
+        }
+      }
+
+      // 5. Créer un batch pour les opérations de suppression
+      WriteBatch batch = FirebaseFirestore.instance.batch();
+
+      for (var existingDoc in existingSelections.docs) {
+        String baremeId = existingDoc.id;
+
+        // Si le barème n'est plus dans nos sélections, le supprimer
+        if (!baremesToKeep.containsKey(baremeId)) {
+          // D'abord supprimer tous ses sous-barèmes
+          var sousBaremesSnapshot =
+              await existingDoc.reference.collection('sousBaremes').get();
+          for (var sousDoc in sousBaremesSnapshot.docs) {
+            batch.delete(sousDoc.reference);
+          }
+          // Puis supprimer le barème
+          batch.delete(existingDoc.reference);
+        } else {
+          // Le barème existe encore, vérifier ses sous-barèmes
+          var sousBaremesSnapshot =
+              await existingDoc.reference.collection('sousBaremes').get();
+          for (var sousDoc in sousBaremesSnapshot.docs) {
+            // Si ce sous-barème n'est plus dans nos sélections, le supprimer
+            if (!sousBaremesToKeep.containsKey(baremeId) ||
+                !sousBaremesToKeep[baremeId]!.contains(sousDoc.id)) {
+              batch.delete(sousDoc.reference);
+            }
+          }
+        }
+      }
+
+      // 6. Appliquer les suppressions
+      await batch.commit();
+
+      // 7. Sauvegarder les nouvelles sélections
+      for (var baremeId in baremesToKeep.keys) {
+        try {
+          String baremeName = await _getBaremeName(baremeId);
+
+          // Vérifier si ce barème a des sous-barèmes sélectionnés
+          bool hasSelectedSousBaremes =
+              sousBaremesToKeep.containsKey(baremeId) &&
+                  sousBaremesToKeep[baremeId]!.isNotEmpty;
+
+          // Créer ou mettre à jour le document du barème
+          await selectionsRef.doc(baremeId).set({
+            'baremeId': baremeId,
+            'baremeName': baremeName,
+            'classId': widget.selectedClass,
+            'matiereId': widget.selectedMatiere,
+            'selected': baremesToKeep[baremeId] ??
+                false, // true si barème sélectionné, false si seulement sous-barèmes
+            'hasSousBaremes': hasSelectedSousBaremes,
+            'selectedAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+
+          // Sauvegarder les sous-barèmes de ce barème
+          if (sousBaremesToKeep.containsKey(baremeId)) {
+            for (var sousBaremeId in sousBaremesToKeep[baremeId]!) {
+              try {
+                String sousBaremeName =
+                    await _getSousBaremeName(baremeId, sousBaremeId);
+
+                await selectionsRef
+                    .doc(baremeId)
+                    .collection('sousBaremes')
+                    .doc(sousBaremeId)
+                    .set({
+                  'sousBaremeId': sousBaremeId,
+                  'sousBaremeName': sousBaremeName,
+                  'baremeId': baremeId,
+                  'selected': true,
+                  'selectedAt': FieldValue.serverTimestamp(),
+                  'updatedAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
+
+                print('Sous-barème sauvegardé: $sousBaremeName');
+              } catch (e) {
+                print(
+                    'Erreur lors de la sauvegarde du sous-barème $sousBaremeId: $e');
+              }
+            }
+          }
+
+          print('Barème sauvegardé: $baremeName');
+        } catch (e) {
+          print('Erreur lors de la sauvegarde du barème $baremeId: $e');
+        }
+      }
+
+      print('Total sauvegardé: $savedCount éléments');
+
+      // Fermer l'indicateur de chargement
       if (context.mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SelectedBaremesPage(
-              selectedClass: widget.selectedClass,
-              selectedMatiere: widget.selectedMatiere,
-              matiereName: widget.matiereName,
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      // Afficher le message de succès
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.check,
+                    size: 18,
+                    color: Colors.green.shade600,
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _isFrenchInterface
+                            ? 'Sauvegarde réussie !'
+                            : 'تم الحفظ بنجاح!',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        _isFrenchInterface
+                            ? '$savedCount sélections enregistrées'
+                            : 'تم حفظ $savedCount عنصر',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+
+        // Naviguer vers la page des barèmes sélectionnés
+        await Future.delayed(Duration(milliseconds: 500));
+
+        if (context.mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SelectedBaremesPage(
+                selectedClass: widget.selectedClass,
+                selectedMatiere: widget.selectedMatiere,
+                matiereName: widget.matiereName,
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Erreur lors de la sauvegarde: $e');
+
+      // Fermer l'indicateur de chargement en cas d'erreur
+      if (context.mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      // Afficher le message d'erreur
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white, size: 24),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _isFrenchInterface
+                            ? 'Erreur lors de la sauvegarde'
+                            : 'حدث خطأ أثناء الحفظ',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        e.toString(),
+                        style: TextStyle(fontSize: 12),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: Duration(seconds: 4),
           ),
         );
       }
     }
-  } catch (e) {
-    print('Erreur lors de la sauvegarde: $e');
-
-    // Fermer l'indicateur de chargement en cas d'erreur
-    if (context.mounted) {
-      Navigator.of(context, rootNavigator: true).pop();
-    }
-
-    // Afficher le message d'erreur
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.error_outline, color: Colors.white, size: 24),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _isFrenchInterface
-                          ? 'Erreur lors de la sauvegarde'
-                          : 'حدث خطأ أثناء الحفظ',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                    Text(
-                      e.toString(),
-                      style: TextStyle(fontSize: 12),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          backgroundColor: Colors.red.shade600,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          duration: Duration(seconds: 4),
-        ),
-      );
-    }
   }
-}
-
 
   Future<void> _navigateToStudentList() async {
     try {
@@ -2385,79 +2424,77 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
     );
   }
 
-void _toggleBaremeSelection(String baremeId) {
-  setState(() {
-    // Vérifier si des sous-barèmes sont sélectionnés
-    bool hasSelectedSousBaremes = false;
-    if (_selectedSousBaremes.containsKey(baremeId)) {
-      hasSelectedSousBaremes = _selectedSousBaremes[baremeId]!
-          .values
-          .any((isSelected) => isSelected);
-    }
-    
-    // Si des sous-barèmes sont sélectionnés, ne pas permettre la sélection du barème parent
-    if (hasSelectedSousBaremes) {
-      // Afficher un message d'avertissement
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isFrenchInterface
-                ? 'Veuillez d\'abord désélectionner tous les indicateurs'
-                : 'يرجى إلغاء تحديد جميع المؤشرات أولاً',
-          ),
-          backgroundColor: Colors.orange.shade600,
-          duration: Duration(seconds: 2),
-        ),
-      );
-      return;
-    }
-    
-    // Sinon, procéder normalement
-    if (_selectedBaremes[baremeId] ?? false) {
-      _selectedBaremes[baremeId] = false;
+  void _toggleBaremeSelection(String baremeId) {
+    setState(() {
+      // Vérifier si des sous-barèmes sont sélectionnés
+      bool hasSelectedSousBaremes = false;
       if (_selectedSousBaremes.containsKey(baremeId)) {
-        _selectedSousBaremes[baremeId]!.forEach((sousBaremeId, isSelected) {
-          _selectedSousBaremes[baremeId]![sousBaremeId] = false;
-        });
-      }
-    } else {
-      _selectedBaremes[baremeId] = true;
-    }
-  });
-}
-  
-  
-  void _toggleSousBaremeSelection(String baremeId, String sousBaremeId) {
-  setState(() {
-    if (!_selectedSousBaremes.containsKey(baremeId)) {
-      _selectedSousBaremes[baremeId] = {};
-    }
-    _selectedSousBaremes[baremeId]![sousBaremeId] =
-        !(_selectedSousBaremes[baremeId]![sousBaremeId] ?? false);
-
-    // Désactiver le barème parent si un sous-barème est sélectionné
-    if (_selectedSousBaremes[baremeId]![sousBaremeId] ?? false) {
-      _selectedBaremes[baremeId] = false;
-    } else {
-      // Vérifier si tous les sous-barèmes sont désélectionnés
-      bool allSousBaremesUnselected = true;
-      if (_selectedSousBaremes.containsKey(baremeId)) {
-        allSousBaremesUnselected = _selectedSousBaremes[baremeId]!
+        hasSelectedSousBaremes = _selectedSousBaremes[baremeId]!
             .values
-            .every((isSelected) => !isSelected);
+            .any((isSelected) => isSelected);
       }
-      
-      // Réactiver le barème parent seulement si aucun sous-barème n'est sélectionné
-      if (allSousBaremesUnselected) {
+
+      // Si des sous-barèmes sont sélectionnés, ne pas permettre la sélection du barème parent
+      if (hasSelectedSousBaremes) {
+        // Afficher un message d'avertissement
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isFrenchInterface
+                  ? 'Veuillez d\'abord désélectionner tous les indicateurs'
+                  : 'يرجى إلغاء تحديد جميع المؤشرات أولاً',
+            ),
+            backgroundColor: Colors.orange.shade600,
+            duration: Duration(seconds: 2),
+          ),
+        );
+        return;
+      }
+
+      // Sinon, procéder normalement
+      if (_selectedBaremes[baremeId] ?? false) {
+        _selectedBaremes[baremeId] = false;
+        if (_selectedSousBaremes.containsKey(baremeId)) {
+          _selectedSousBaremes[baremeId]!.forEach((sousBaremeId, isSelected) {
+            _selectedSousBaremes[baremeId]![sousBaremeId] = false;
+          });
+        }
+      } else {
         _selectedBaremes[baremeId] = true;
       }
-    }
-    
-    // Garder le dropdown ouvert après la sélection
-   // _isExpanded[baremeId] = true;
-  });
-}
+    });
+  }
 
+  void _toggleSousBaremeSelection(String baremeId, String sousBaremeId) {
+    setState(() {
+      if (!_selectedSousBaremes.containsKey(baremeId)) {
+        _selectedSousBaremes[baremeId] = {};
+      }
+      _selectedSousBaremes[baremeId]![sousBaremeId] =
+          !(_selectedSousBaremes[baremeId]![sousBaremeId] ?? false);
+
+      // Désactiver le barème parent si un sous-barème est sélectionné
+      if (_selectedSousBaremes[baremeId]![sousBaremeId] ?? false) {
+        _selectedBaremes[baremeId] = false;
+      } else {
+        // Vérifier si tous les sous-barèmes sont désélectionnés
+        bool allSousBaremesUnselected = true;
+        if (_selectedSousBaremes.containsKey(baremeId)) {
+          allSousBaremesUnselected = _selectedSousBaremes[baremeId]!
+              .values
+              .every((isSelected) => !isSelected);
+        }
+
+        // Réactiver le barème parent seulement si aucun sous-barème n'est sélectionné
+        if (allSousBaremesUnselected) {
+          _selectedBaremes[baremeId] = true;
+        }
+      }
+
+      // Garder le dropdown ouvert après la sélection
+      // _isExpanded[baremeId] = true;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

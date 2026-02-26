@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:typed_data';
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_html_to_pdf/flutter_html_to_pdf.dart';
@@ -21,6 +22,7 @@ class PDFClassificationGenerator {
     required String sousBaremeName,
     required Map<String, List<Map<String, dynamic>>> groupedStudents,
     required Map<String, List<Map<String, dynamic>>> groupSelections,
+    required Map<String, List<Map<String, dynamic>>> aiExercises, // NOUVEAU PARAMÈTRE
     required bool isFrenchInterface,
     required bool isCompleteReport,
     String? singleGroupName,
@@ -48,6 +50,7 @@ class PDFClassificationGenerator {
         sousBaremeName: sousBaremeName,
         groupedStudents: groupedStudents,
         groupSelections: groupSelections,
+        aiExercises: aiExercises, // TRANSMETTRE AU HTML
         isFrenchInterface: isFrenchInterface,
         isCompleteReport: isCompleteReport,
         singleGroupName: singleGroupName,
@@ -72,6 +75,7 @@ class PDFClassificationGenerator {
     required String sousBaremeName,
     required Map<String, List<Map<String, dynamic>>> groupedStudents,
     required Map<String, List<Map<String, dynamic>>> groupSelections,
+    required Map<String, List<Map<String, dynamic>>> aiExercises, // NOUVEAU PARAMÈTRE
     required bool isFrenchInterface,
     required bool isCompleteReport,
     String? singleGroupName,
@@ -104,12 +108,12 @@ class PDFClassificationGenerator {
             --primary-color: #075260;
             --secondary-color: #2E7D32;
             --accent-color: #FF9800;
+            --ai-color: #9C27B0;
             --light-bg: #f8f9fa;
             --white: #ffffff;
             --text-color: #333333;
             --border-radius: 8px;
             --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            --transition: all 0.3s ease;
             
             /* Couleurs des groupes */
             --treatment-color: #e74c3c;
@@ -145,16 +149,6 @@ class PDFClassificationGenerator {
             display: flex;
             flex-direction: column;
             justify-content: center;
-        }
-        
-        .cover-page::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            ${isFrenchInterface ? 'left' : 'right'}: 0;
-            width: 100%;
-            height: 5px;
-            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
         }
         
         .cover-header {
@@ -202,17 +196,6 @@ class PDFClassificationGenerator {
             position: relative;
         }
         
-        .school-info::before {
-            content: '🏫';
-            position: absolute;
-            top: -15px;
-            ${isFrenchInterface ? 'left' : 'right'}: 20px;
-            background: var(--white);
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 20px;
-        }
-        
         .info-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -225,16 +208,10 @@ class PDFClassificationGenerator {
             border-radius: var(--border-radius);
             padding: 20px;
             border: 1px solid #e0e0e0;
-            transition: var(--transition);
+            transition: all 0.3s ease;
             display: flex;
             align-items: center;
             gap: 15px;
-        }
-        
-        .info-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--box-shadow);
-            border-color: var(--primary-color);
         }
         
         .info-icon {
@@ -294,23 +271,69 @@ class PDFClassificationGenerator {
             font-weight: bold;
         }
         
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
+        /* Styles pour les sections AI */
+        .ai-section {
+            margin-top: 30px;
             margin-bottom: 30px;
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            border: 2px solid var(--ai-color);
         }
         
-        .info-table td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-        
-        .info-label-cell {
-            width: 25%;
-            background-color: var(--light-bg);
+        .ai-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            color: var(--ai-color);
+            font-size: 18px;
             font-weight: bold;
-            color: var(--primary-color);
+        }
+        
+        .ai-exercise-card {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .ai-exercise-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--ai-color);
+        }
+        
+        .ai-badge {
+            background: var(--ai-color);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .ai-exercise-content {
+            font-size: 14px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            background: #fafafa;
+            padding: 15px;
+            border-radius: var(--border-radius);
+            border: 1px solid #e0e0e0;
+        }
+        
+        .ai-metadata {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #666;
+            font-style: italic;
+            text-align: right;
         }
         
         /* Pages des groupes */
@@ -354,7 +377,36 @@ class PDFClassificationGenerator {
             font-size: 14px;
         }
         
-        .students-section, .solutions-section, .problems-section {
+        .students-list-container {
+            margin: 15px 0;
+        }
+        
+        .list-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .item-number {
+            width: 30px;
+            height: 30px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .item-name {
+            font-weight: 500;
+        }
+        
+        .students-section, .solutions-section, .problems-section, .ai-exercises-section {
             margin-bottom: 30px;
         }
         
@@ -381,29 +433,9 @@ class PDFClassificationGenerator {
             color: var(--treatment-color);
         }
         
-        .students-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-            margin: 15px 0;
-        }
-        
-        .students-table th {
-            background-color: var(--light-bg);
-            padding: 12px 10px;
-            text-align: center;
-            border: 1px solid #ddd;
-            font-weight: bold;
-        }
-        
-        .students-table td {
-            padding: 10px 8px;
-            border: 1px solid #ddd;
-            text-align: center;
-        }
-        
-        .students-table tr:nth-child(even) {
-            background-color: #fafafa;
+        .ai-exercises-section .section-subtitle {
+            border-color: var(--ai-color);
+            color: var(--ai-color);
         }
         
         .items-list {
@@ -418,12 +450,7 @@ class PDFClassificationGenerator {
             background: var(--light-bg);
             border-${isFrenchInterface ? 'left' : 'right'}: 4px solid;
             position: relative;
-            transition: var(--transition);
-        }
-        
-        .item-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
         }
         
         .solution-item {
@@ -448,85 +475,6 @@ class PDFClassificationGenerator {
             font-style: italic;
         }
         
-        .source-badge {
-            display: inline-block;
-            padding: 3px 8px;
-            background: rgba(0, 0, 0, 0.1);
-            border-radius: 12px;
-            font-size: 11px;
-            margin-top: 5px;
-        }
-        
-        /* Page de vue d'ensemble */
-        .overview-page {
-            background: var(--white);
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            padding: 30px;
-            margin-top: 40px;
-            page-break-before: always;
-        }
-        
-        .overview-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-            margin: 25px 0;
-        }
-        
-        .overview-card {
-            padding: 25px;
-            border-radius: var(--border-radius);
-            color: white;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .overview-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.1);
-        }
-        
-        .overview-treatment {
-            background: linear-gradient(135deg, var(--treatment-color), #c0392b);
-        }
-        
-        .overview-support {
-            background: linear-gradient(135deg, var(--support-color), #e67e22);
-        }
-        
-        .overview-excellence {
-            background: linear-gradient(135deg, var(--excellence-color), #219653);
-        }
-        
-        .overview-icon {
-            font-size: 40px;
-            margin-bottom: 15px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .overview-title {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .overview-count {
-            font-size: 28px;
-            font-weight: bold;
-            position: relative;
-            z-index: 1;
-        }
-        
         .report-footer {
             text-align: center;
             margin-top: 40px;
@@ -535,49 +483,40 @@ class PDFClassificationGenerator {
             color: #666;
             font-size: 14px;
         }
-        
-        /* STYLES D'IMPRESSION */
-        
-        
-        }
     </style>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="report-container">
-        <!-- 1. Page de garde -->
-       
         
-        <!-- 2. Page des informations générales -->
+        
+        <!-- Page des informations générales -->
         ${_buildGeneralInfoPageHTML(
-      profName: profName,
-      matiereName: matiereName,
-      className: className,
-      schoolName: schoolName,
-      baremeName: baremeName,
-      sousBaremeName: sousBaremeName,
-      isFrenchInterface: isFrenchInterface,
-      groupedStudents: groupedStudents,
-      now: now,
-    )}
+          profName: profName,
+          matiereName: matiereName,
+          className: className,
+          schoolName: schoolName,
+          baremeName: baremeName,
+          sousBaremeName: sousBaremeName,
+          isFrenchInterface: isFrenchInterface,
+          groupedStudents: groupedStudents,
+          now: now,
+        )}
         
-        
-        
-        <!-- 4. Pages des groupes -->
+        <!-- Pages des groupes avec exercices AI -->
         ${_buildGroupsPagesHTML(
-      groupedStudents: groupedStudents,
-      groupSelections: groupSelections,
-      isFrenchInterface: isFrenchInterface,
-      isCompleteReport: isCompleteReport,
-      singleGroupKey: singleGroupKey,
-    )}
+          groupedStudents: groupedStudents,
+          groupSelections: groupSelections,
+          aiExercises: aiExercises, // TRANSMETTRE LES EXERCICES AI
+          isFrenchInterface: isFrenchInterface,
+          isCompleteReport: isCompleteReport,
+          singleGroupKey: singleGroupKey,
+        )}
     </div>
 </body>
 </html>
     ''';
   }
-
-  // ============ MÉTHODES DE CONSTRUCTION DES PAGES ============
 
   // Page de garde
   static String _buildCoverPageHTML({
@@ -709,8 +648,6 @@ class PDFClassificationGenerator {
     <div class="general-info-page">
         <h2 class="section-title">${t['general_info']!} $baremeName $matiereName</h2>
         
-       
-        
         <h3 class="section-subtitle" style="margin-top: 30px;">
             ${t['statistics']!}
         </h3>
@@ -748,6 +685,7 @@ class PDFClassificationGenerator {
   static String _buildGroupsPagesHTML({
     required Map<String, List<Map<String, dynamic>>> groupedStudents,
     required Map<String, List<Map<String, dynamic>>> groupSelections,
+    required Map<String, List<Map<String, dynamic>>> aiExercises, // NOUVEAU PARAMÈTRE
     required bool isFrenchInterface,
     required bool isCompleteReport,
     String? singleGroupKey,
@@ -759,14 +697,12 @@ class PDFClassificationGenerator {
     List<String> groupsToInclude = [];
 
     if (isCompleteReport) {
-      // Pour un rapport complet, inclure tous les groupes qui ont des données
       groupsToInclude = [
         t['group_treatment']!,
         t['group_support']!,
         t['group_excellence']!
       ];
     } else if (singleGroupKey != null) {
-      // Pour un rapport de groupe unique, inclure seulement ce groupe
       switch (singleGroupKey) {
         case 'treatment':
           groupsToInclude = [t['group_treatment']!];
@@ -784,28 +720,28 @@ class PDFClassificationGenerator {
       final students = groupedStudents[groupName] ?? [];
       final selections =
           _getGroupSelectionsForGroup(groupName, groupSelections, t);
+      
+      // Récupérer les exercices AI pour ce groupe
+      final groupKey = _getGroupKeyFromName(groupName, t);
+      final groupAIExercises = aiExercises[groupKey] ?? [];
 
-      if (students.isEmpty && selections.isEmpty) {
-        continue; // Ne pas créer de page pour un groupe vide
+      if (students.isEmpty && selections.isEmpty && groupAIExercises.isEmpty) {
+        continue;
       }
 
-      // Déterminer la classe CSS et les icônes selon le groupe
+      // Déterminer la classe CSS selon le groupe
       String groupClass = '';
       String groupIcon = '';
-      String groupKey = '';
 
       if (groupName == t['group_treatment']!) {
         groupClass = 'group-treatment';
         groupIcon = '🏥';
-        groupKey = 'treatment';
       } else if (groupName == t['group_support']!) {
         groupClass = 'group-support';
         groupIcon = '🤝';
-        groupKey = 'support';
       } else {
         groupClass = 'group-excellence';
         groupIcon = '🏆';
-        groupKey = 'excellence';
       }
 
       final solutions =
@@ -818,7 +754,6 @@ class PDFClassificationGenerator {
           <div class="group-header">
               <div>
                   <div class="group-title">$groupIcon $groupName</div>
-                
               </div>
               <div class="group-stats">
                   ${students.length} ${t['students']!}
@@ -827,26 +762,24 @@ class PDFClassificationGenerator {
           
           <!-- Liste des étudiants -->
           ${students.isNotEmpty ? '''
-         <div class="students-section">
-    <h3 class="section-subtitle">${t['students_list']!}</h3>
-    <div class="students-list-container">
-        ${students.asMap().entries.map((entry) {
-              final index = entry.key + 1;
-              final student = entry.value;
-              return '''
-          <div class="list-item">
-              <span class="item-number">$index.</span>
-              <span class="item-name">${student['name'] ?? t['unknown']!}</span>
-              ${isCompleteReport ? '''
-             
-              ''' : ''}
+          <div class="students-section">
+              <h3 class="section-subtitle">${t['students_list']!}</h3>
+              <div class="students-list-container">
+                  ${students.asMap().entries.map((entry) {
+                    final index = entry.key + 1;
+                    final student = entry.value;
+                    return '''
+                  <div class="list-item">
+                      <span class="item-number">$index.</span>
+                      <span class="item-name">${student['name'] ?? t['unknown']!}</span>
+                  </div>
+                  ''';
+                  }).join('')}
+              </div>
           </div>
-          ''';
-            }).join('')}
-    </div>
-</div>
           ''' : ''}
-           <!-- Problèmes identifiés -->
+          
+          <!-- Problèmes identifiés -->
           ${problems.isNotEmpty ? '''
           <div class="problems-section">
               <h3 class="section-subtitle">${t['problems_title']!} (${problems.length})</h3>
@@ -854,7 +787,6 @@ class PDFClassificationGenerator {
                   ${problems.map((problem) => '''
                   <li class="item-card problem-item">
                       <div class="item-text">${problem['text']}</div>
-                      
                   </li>
                   ''').join('')}
               </ul>
@@ -869,14 +801,38 @@ class PDFClassificationGenerator {
                   ${solutions.map((solution) => '''
                   <li class="item-card solution-item">
                       <div class="item-text">${solution['text']}</div>
-                      
                   </li>
                   ''').join('')}
               </ul>
           </div>
           ''' : ''}
           
-         
+          <!-- Exercices AI -->
+          ${groupAIExercises.isNotEmpty ? '''
+          <div class="ai-exercises-section">
+              <div class="ai-header">
+                  <span>🤖</span>
+                  <span>${t['ai_exercises']!}</span>
+                  <span class="ai-badge">${groupAIExercises.length}</span>
+              </div>
+              
+              ${groupAIExercises.map((exercise) => '''
+              <div class="ai-exercise-card">
+                  <div class="ai-exercise-header">
+                      <span>📝 ${exercise['modifiedBaremeName'] ?? t['ai_exercise']!}</span>
+                      <span class="ai-badge">${t['ai_generated']!}</span>
+                  </div>
+                  <div class="ai-exercise-content">
+                      ${exercise['aiResponse']?.replaceAll('\n', '<br>') ?? ''}
+                  </div>
+                  <div class="ai-metadata">
+                      ${_formatDate(exercise['createdAt'], isFrenchInterface)}
+                  </div>
+              </div>
+              ''').join('')}
+          </div>
+          ''' : ''}
+          
           <div class="report-footer">
               <p class="no-print">${isFrenchInterface ? 'Page - Groupe $groupName' : 'الصفحة - مجموعة $groupName'}</p>
           </div>
@@ -887,7 +843,48 @@ class PDFClassificationGenerator {
     return pagesHTML;
   }
 
-  // ============ MÉTHODES UTILITAIRES ============
+  // Méthode utilitaire pour formater la date
+  static String _formatDate(dynamic timestamp, bool isFrenchInterface) {
+    if (timestamp == null) return '';
+    try {
+      if (timestamp is Timestamp) {
+        final date = timestamp.toDate();
+        return isFrenchInterface
+            ? 'Généré le: ${DateFormat('dd/MM/yyyy HH:mm').format(date)}'
+            : 'تم الإنشاء: ${DateFormat('dd/MM/yyyy HH:mm').format(date)}';
+      }
+    } catch (e) {}
+    return '';
+  }
+
+  // Obtenir la clé du groupe à partir du nom
+  static String _getGroupKeyFromName(String groupName, Map<String, String> t) {
+    if (groupName == t['group_treatment']!) return 'treatment';
+    if (groupName == t['group_support']!) return 'support';
+    if (groupName == t['group_excellence']!) return 'excellence';
+    return '';
+  }
+
+  // Obtenir les sélections pour un groupe spécifique
+  static List<Map<String, dynamic>> _getGroupSelectionsForGroup(
+    String groupName,
+    Map<String, List<Map<String, dynamic>>> groupSelections,
+    Map<String, String> t,
+  ) {
+    if (groupSelections.isEmpty) return [];
+
+    // Déterminer la clé du groupe
+    String groupKey = '';
+    if (groupName == t['group_treatment']!) {
+      groupKey = 'treatment';
+    } else if (groupName == t['group_support']!) {
+      groupKey = 'support';
+    } else if (groupName == t['group_excellence']!) {
+      groupKey = 'excellence';
+    }
+
+    return groupSelections[groupKey] ?? [];
+  }
 
   // Traductions
   static Map<String, String> _getTranslations(bool isFrenchInterface) {
@@ -902,7 +899,7 @@ class PDFClassificationGenerator {
             'professor': 'Professeur',
             'subject': 'Matière',
             'class': 'Classe',
-            'criteria': 'Critère d\'évaluation',
+            'criteria': "Critère d'évaluation",
             'sub_criteria': 'Sous-critère',
             'group': 'Groupe',
             'date': 'Date',
@@ -916,25 +913,19 @@ class PDFClassificationGenerator {
             'group_treatment': 'Groupe de traitement',
             'group_support': 'Groupe de soutien',
             'group_excellence': "Groupe d'excellence",
-            'overview': 'Vue d\'ensemble',
-            'treatment_description':
-                'Élèves nécessitant un traitement pédagogique spécifique',
-            'support_description':
-                'Élèves bénéficiant d\'un soutien pédagogique',
-            'excellence_description': 'Élèves en situation d\'excellence',
-            'report_guide': 'Guide du rapport',
-            'report_guide_text':
-                'Ce rapport présente la classification des élèves selon leurs besoins pédagogiques. Les solutions et problèmes identifiés sont des recommandations pour la différenciation pédagogique.',
+            'overview': "Vue d'ensemble",
             'students_list': 'Liste des élèves',
-            'student_name': 'Nom de l\'élève',
+            'student_name': "Nom de l'élève",
             'treatment_plan': 'Plan de traitement',
-            'error_origin': 'Origine de l\'erreur',
+            'error_origin': "Origine de l'erreur",
             'solutions_title': 'Solutions proposées',
             'problems_title': 'Problèmes identifiés',
+            'ai_exercises': 'Exercices générés par IA',
+            'ai_exercise': 'Exercice IA',
+            'ai_generated': 'Généré par IA',
             'source': 'Source',
             'selected': 'Sélectionné',
             'unknown': 'Inconnu',
-            // Clés optionnelles pour les sources
             'json': 'Recommandé',
             'global': 'Approuvé',
             'personal': 'Personnel',
@@ -963,22 +954,18 @@ class PDFClassificationGenerator {
             'group_support': 'مجموعة الدعم',
             'group_excellence': 'مجموعة التميز',
             'overview': 'نظرة عامة',
-            'treatment_description': 'تلاميذ يحتاجون إلى علاج تربوي خاص',
-            'support_description': 'تلاميذ يستفيدون من دعم تربوي',
-            'excellence_description': 'تلاميذ في حالة تميز',
-            'report_guide': 'دليل التقرير',
-            'report_guide_text':
-                'يعرض هذا التقرير تصنيف التلاميذ حسب احتياجاتهم التربوية. الحلول والمشاكل المحددة هي توصيات للتمايز التربوي.',
             'students_list': 'قائمة التلاميذ',
             'student_name': 'اسم التلميذ',
             'treatment_plan': 'خطة العلاج',
             'error_origin': 'أصل الخطأ',
             'solutions_title': 'الحلول المقترحة',
             'problems_title': 'المشاكل المحددة',
+            'ai_exercises': 'تمارين العلاج',
+            'ai_exercise': 'تمرين ذكي',
+            'ai_generated': ' ',
             'source': 'المصدر',
             'selected': 'محدد',
             'unknown': 'غير معروف',
-            // Clés optionnelles pour les sources
             'json': 'موصى به',
             'global': 'معتمد',
             'personal': 'شخصي',
@@ -986,52 +973,7 @@ class PDFClassificationGenerator {
           };
   }
 
-  // Obtenir les sélections pour un groupe spécifique
-  static List<Map<String, dynamic>> _getGroupSelectionsForGroup(
-    String groupName,
-    Map<String, List<Map<String, dynamic>>> groupSelections,
-    Map<String, String> t,
-  ) {
-    if (groupSelections.isEmpty) return [];
-
-    // Déterminer la clé du groupe
-    String groupKey = '';
-    if (groupName == t['group_treatment']!) {
-      groupKey = 'treatment';
-    } else if (groupName == t['group_support']!) {
-      groupKey = 'support';
-    } else if (groupName == t['group_excellence']!) {
-      groupKey = 'excellence';
-    }
-
-    return groupSelections[groupKey] ?? [];
-  }
-
-  // Description du groupe
-  // static String _getGroupDescription(String groupName, Map<String, String> t) {
-  //   if (groupName == t['group_treatment']!) {
-  //     return t['treatment_description']!;
-  //   } else if (groupName == t['group_support']!) {
-  //     return t['support_description']!;
-  //   } else {
-  //     return t['excellence_description']!;
-  //   }
-  // }
-
-  // Affichage de la source
-  static String _getSourceDisplay(String source, Map<String, String> t) {
-    final sourceMap = {
-      'json': t['json'] ?? 'Recommandé',
-      'global': t['global'] ?? 'Approuvé',
-      'personal': t['personal'] ?? 'Personnel',
-      'new': t['new'] ?? 'Nouveau',
-    };
-
-    return sourceMap[source] ?? source;
-  }
-
-  // ============ MÉTHODES DE GÉNÉRATION DE FICHIER ============
-
+  // Méthodes de génération de fichier
   static Future<void> _generateAndDownloadPDF(
       String htmlContent, String fileNamePrefix) async {
     try {
@@ -1065,7 +1007,6 @@ class PDFClassificationGenerator {
       print('PDF ouvert avec succès');
     } catch (e) {
       print('Erreur lors de la génération du fichier PDF: $e');
-
       print('Fallback: téléchargement HTML...');
       await _downloadHTMLFile(htmlContent, fileNamePrefix);
     }

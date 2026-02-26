@@ -118,6 +118,7 @@ dependencies:
   image_picker_web: ^4.0.0
   js: ^0.7.2
   msgpack_dart: ^1.0.1
+  flutter_screenutil: ^5.9.3
 dev_dependencies:
   flutter_test:
     sdk: flutter

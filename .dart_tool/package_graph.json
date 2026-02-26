@@ -34,6 +34,7 @@
         "flutter_map_geojson",
         "flutter_map_mbtiles",
         "flutter_pdfview",
+        "flutter_screenutil",
         "flutter_svg",
         "flutter_timeline_calendar",
         "flutter_widget_from_html",
@@ -145,6 +146,13 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "flutter_screenutil",
+      "version": "5.9.3",
+      "dependencies": [
+        "flutter"
       ]
     },
     {

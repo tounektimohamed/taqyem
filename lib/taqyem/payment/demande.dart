@@ -1,3 +1,5 @@
+import 'package:Taqyem/taqyem/payment/card_distribution_service.dart';
+import 'package:Taqyem/taqyem/payment/card_management_page.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -17,6 +19,8 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
   DateTime? _activationEndDate;
   String _filterStatus = 'all';
   bool _isLoading = false;
+  final CardDistributionService _cardService = CardDistributionService();
+  bool _showCardStats = true;
 
   final Map<String, String> predefinedMessages = {
     'approved': 'تم تفعيل الحساب بنجاح',
@@ -30,12 +34,160 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
     super.dispose();
   }
 
+  Color _getCardColor(String cardId) {
+    switch (cardId) {
+      case 'A':
+        return Colors.blue;
+      case 'B':
+        return Colors.green;
+      case 'C':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Widget _buildAdminCardStats() {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _cardService.getDetailedStats(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return Center(child: CircularProgressIndicator());
+        }
+
+        final stats = snapshot.data!;
+        final cards = stats['cards'] as List;
+
+        return Card(
+          margin: EdgeInsets.only(bottom: 16),
+          elevation: 2,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.credit_card, color: Colors.blue),
+                    SizedBox(width: 8),
+                    Text(
+                      'إحصائيات البطاقات - ${stats['date']}',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Tajawal',
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 16),
+                ...cards.map((card) => Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: _getCardColor(card['id']),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(
+                                card['id'],
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  card['name'],
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'Tajawal',
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                                LinearProgressIndicator(
+                                  value: card['count'] / card['limit'],
+                                  backgroundColor: Colors.grey.shade200,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    card['count'] >= card['limit']
+                                        ? Colors.red
+                                        : Colors.green,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Text(
+                            '${card['count']}/${card['limit']}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: card['count'] >= card['limit']
+                                  ? Colors.red
+                                  : Colors.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )),
+                Divider(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'الإجمالي اليومي:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'Tajawal',
+                      ),
+                    ),
+                    Text(
+                      '${stats['totalToday']} / ${stats['maxDaily']}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: stats['totalToday'] >= stats['maxDaily']
+                            ? Colors.red
+                            : Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'المتبقي: ${stats['remainingTotal']} مشترك',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontFamily: 'Tajawal',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   // Méthode pour obtenir le stream correct en fonction du filtre
   Stream<QuerySnapshot> _getDemandsStream() {
     if (_filterStatus == 'all') {
       return _firestore.collectionGroup('payments').snapshots();
     } else {
-      return _firestore.collectionGroup('payments')
+      return _firestore
+          .collectionGroup('payments')
           .where('status', isEqualTo: _filterStatus)
           .snapshots();
     }
@@ -46,7 +198,8 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: Text('إدارة طلبات الدفع', 
+        title: Text(
+          'إدارة طلبات الدفع',
           style: TextStyle(
             fontFamily: 'Tajawal',
             fontWeight: FontWeight.bold,
@@ -59,31 +212,52 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
+            icon: Icon(Icons.credit_card),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => CardManagementPage()),
+              );
+            },
+            tooltip: 'إدارة البطاقات',
+          ),
+          IconButton(
             icon: Icon(Icons.refresh),
             onPressed: () => setState(() {}),
             tooltip: 'تحديث',
           ),
         ],
       ),
-      body: Container(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header avec statistiques
-            _buildStatsHeader(),
-            SizedBox(height: 16),
-            
-            // Filtres
-            _buildStatusFilter(),
-            SizedBox(height: 16),
-            
-            // Liste des demandes
-            Expanded(
-              child: _buildDemandsList(),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (_showCardStats) _buildAdminCardStats(),
+                      SizedBox(height: 16),
+                      // Header avec statistiques
+                      _buildStatsHeader(),
+                      SizedBox(height: 16),
+
+                      // Filtres
+                      _buildStatusFilter(),
+                      SizedBox(height: 16),
+
+                      // Liste des demandes
+                      _buildDemandsList(),
+                    ],
+                  ),
+                ),
+              ),
             ),
-          ],
-        ),
+          );
+        }
       ),
     );
   }
@@ -95,18 +269,18 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
         if (!snapshot.hasData) {
           return _buildStatsCard(0, 0, 0);
         }
-        
+
         final demands = snapshot.data!.docs;
         final pending = demands.where((d) {
           final data = d.data() as Map<String, dynamic>;
           return data['status'] == 'pending';
         }).length;
-        
+
         final approved = demands.where((d) {
           final data = d.data() as Map<String, dynamic>;
           return data['status'] == 'approved';
         }).length;
-        
+
         final rejected = demands.where((d) {
           final data = d.data() as Map<String, dynamic>;
           return data['status'] == 'rejected';
@@ -134,8 +308,10 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildStatItem(Icons.pending_actions, 'قيد الانتظار', pending, Colors.orange),
-            _buildStatItem(Icons.check_circle, 'مقبولة', approved, Colors.green),
+            _buildStatItem(
+                Icons.pending_actions, 'قيد الانتظار', pending, Colors.orange),
+            _buildStatItem(
+                Icons.check_circle, 'مقبولة', approved, Colors.green),
             _buildStatItem(Icons.cancel, 'مرفوضة', rejected, Colors.red),
           ],
         ),
@@ -244,129 +420,135 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
   }
 
   Widget _buildDemandsList() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _getDemandsStream(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'جاري تحميل الطلبات...',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey.shade600,
-                    fontFamily: 'Tajawal',
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.5,
+      child: StreamBuilder<QuerySnapshot>(
+        stream: _getDemandsStream(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(Colors.blue.shade700),
                   ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (snapshot.hasError) {
-          print('Error loading demands: ${snapshot.error}');
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.error_outline, color: Colors.red, size: 64),
-                SizedBox(height: 16),
-                Text(
-                  'حدث خطأ في التحميل',
-                  style: TextStyle(fontSize: 18, color: Colors.red, fontFamily: 'Tajawal'),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'الرجاء المحاولة مرة أخرى',
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                ),
-                SizedBox(height: 16),
-                ElevatedButton.icon(
-                  icon: Icon(Icons.refresh),
-                  label: Text('إعادة المحاولة'),
-                  onPressed: () => setState(() {}),
-                ),
-              ],
-            ),
-          );
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.inbox_outlined, color: Colors.blue.shade300, size: 80),
-                SizedBox(height: 16),
-                Text(
-                  _filterStatus == 'all' 
-                    ? 'لا توجد طلبات حالياً'
-                    : 'لا توجد طلبات في هذه الفئة',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.grey.shade600,
-                    fontFamily: 'Tajawal',
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  _filterStatus == 'all'
-                    ? 'سيظهر هنا الطلبات الجديدة عند توفرها'
-                    : 'جرب تغيير الفلتر لعرض المزيد من الطلبات',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                if (_filterStatus != 'all') ...[
                   SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        _filterStatus = 'all';
-                      });
-                    },
-                    child: Text('عرض جميع الطلبات'),
+                  Text(
+                    'جاري تحميل الطلبات...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey.shade600,
+                      fontFamily: 'Tajawal',
+                    ),
                   ),
                 ],
-              ],
-            ),
+              ),
+            );
+          }
+
+          if (snapshot.hasError) {
+            print('Error loading demands: ${snapshot.error}');
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red, size: 64),
+                  SizedBox(height: 16),
+                  Text(
+                    'حدث خطأ في التحميل',
+                    style: TextStyle(
+                        fontSize: 18, color: Colors.red, fontFamily: 'Tajawal'),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'الرجاء المحاولة مرة أخرى',
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  ),
+                  SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    icon: Icon(Icons.refresh),
+                    label: Text('إعادة المحاولة'),
+                    onPressed: () => setState(() {}),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.inbox_outlined,
+                      color: Colors.blue.shade300, size: 80),
+                  SizedBox(height: 16),
+                  Text(
+                    _filterStatus == 'all'
+                        ? 'لا توجد طلبات حالياً'
+                        : 'لا توجد طلبات في هذه الفئة',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey.shade600,
+                      fontFamily: 'Tajawal',
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    _filterStatus == 'all'
+                        ? 'سيظهر هنا الطلبات الجديدة عند توفرها'
+                        : 'جرب تغيير الفلتر لعرض المزيد من الطلبات',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey.shade500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  if (_filterStatus != 'all') ...[
+                    SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _filterStatus = 'all';
+                        });
+                      },
+                      child: Text('عرض جميع الطلبات'),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          }
+
+          final demands = snapshot.data!.docs;
+
+          return ListView.separated(
+            itemCount: demands.length,
+            separatorBuilder: (context, index) => SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final demand = demands[index];
+              final data = demand.data() as Map<String, dynamic>;
+              return _buildDemandCard(demand, data);
+            },
           );
-        }
-
-        final demands = snapshot.data!.docs;
-
-        return ListView.separated(
-          itemCount: demands.length,
-          separatorBuilder: (context, index) => SizedBox(height: 8),
-          itemBuilder: (context, index) {
-            final demand = demands[index];
-            final data = demand.data() as Map<String, dynamic>;
-            return _buildDemandCard(demand, data);
-          },
-        );
-      },
+        },
+      ),
     );
   }
 
-  
-  Widget _buildDemandCard(QueryDocumentSnapshot demand, Map<String, dynamic> data) {
+  Widget _buildDemandCard(
+      QueryDocumentSnapshot demand, Map<String, dynamic> data) {
     final status = data['status'] ?? 'pending';
     final userId = demand.reference.parent.parent!.id;
     final photoUrl = data['photoUrl'];
     final adminMessage = data['adminMessage'] ?? '';
     final forfaitType = data['forfait'];
     final paymentMethod = data['paymentMethod'] ?? 'manual';
-    final createdAt = data['createdAt'] != null 
-        ? (data['createdAt'] as Timestamp).toDate() 
+    final createdAt = data['createdAt'] != null
+        ? (data['createdAt'] as Timestamp).toDate()
         : DateTime.now();
 
     return Card(
@@ -410,14 +592,16 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
                           runSpacing: 8,
                           children: [
                             _buildInfoChip(
-                              Icons.credit_card, 
+                              Icons.credit_card,
                               'الباقة: $forfaitType',
                               Colors.blue.shade100,
                             ),
                             _buildInfoChip(
-                              Icons.payment, 
+                              Icons.payment,
                               paymentMethod == 'online' ? 'إلكتروني' : 'يدوي',
-                              paymentMethod == 'online' ? Colors.green.shade100 : Colors.orange.shade100,
+                              paymentMethod == 'online'
+                                  ? Colors.green.shade100
+                                  : Colors.orange.shade100,
                             ),
                             _buildInfoChip(
                               Icons.calendar_today,
@@ -430,9 +614,16 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
                           SizedBox(height: 8),
                           _buildAdminMessage(adminMessage, status),
                         ],
-                        if (status == 'approved' && data['activationEnd'] != null) ...[
+                        if (status == 'approved' &&
+                            data['activationEnd'] != null) ...[
                           SizedBox(height: 8),
                           _buildActivationDate(data['activationEnd'].toDate()),
+                        ],
+                        
+                        // Ajout d'un bouton pour voir l'image si elle existe
+                        if (photoUrl != null && photoUrl.isNotEmpty && paymentMethod != 'online') ...[
+                          SizedBox(height: 8),
+                          _buildPhotoViewButton(photoUrl),
                         ],
                       ],
                     ),
@@ -454,7 +645,28 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
     );
   }
 
-  Widget _buildUserAvatar(String? photoUrl, String paymentMethod, String status) {
+  // Nouveau widget pour afficher un bouton de visualisation d'image
+  Widget _buildPhotoViewButton(String photoUrl) {
+    return Container(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        icon: Icon(Icons.image, size: 16, color: Colors.blue),
+        label: Text(
+          'عرض إثبات الدفع',
+          style: TextStyle(fontSize: 12, fontFamily: 'Tajawal', color: Colors.blue),
+        ),
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: Colors.blue),
+          padding: EdgeInsets.symmetric(vertical: 6),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        onPressed: () => _showPhotoDialog(context, photoUrl),
+      ),
+    );
+  }
+
+  Widget _buildUserAvatar(
+      String? photoUrl, String paymentMethod, String status) {
     return Stack(
       children: [
         GestureDetector(
@@ -623,7 +835,7 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
   ) {
     return Column(
       children: [
-        if (status == 'pending') 
+        if (status == 'pending')
           _buildPaymentVerificationButton(demandRef, paymentMethod),
         SizedBox(height: 8),
         Row(
@@ -634,7 +846,8 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
                   'رفض',
                   Icons.cancel,
                   Colors.red.shade600,
-                  () => _showMessageDialog(context, demandRef, 'rejected', userId),
+                  () => _showMessageDialog(
+                      context, demandRef, 'rejected', userId),
                 ),
               ),
               SizedBox(width: 8),
@@ -654,7 +867,8 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
                   paymentMethod == 'online' ? 'تفعيل يدوي' : 'تفعيل',
                   Icons.check_circle,
                   Colors.green,
-                  () => _showActivationDialog(context, demandRef, userId, forfaitType),
+                  () => _showActivationDialog(
+                      context, demandRef, userId, forfaitType),
                 ),
               ),
             ] else if (status == 'approved') ...[
@@ -682,7 +896,8 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
     );
   }
 
-  Widget _buildActionButton(String text, IconData icon, Color color, VoidCallback onPressed) {
+  Widget _buildActionButton(
+      String text, IconData icon, Color color, VoidCallback onPressed) {
     return ElevatedButton.icon(
       icon: Icon(icon, size: 18),
       label: Text(
@@ -699,7 +914,8 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
     );
   }
 
-  Widget _buildPaymentVerificationButton(DocumentReference demandRef, String paymentMethod) {
+  Widget _buildPaymentVerificationButton(
+      DocumentReference demandRef, String paymentMethod) {
     if (paymentMethod != 'online') return SizedBox.shrink();
 
     return Container(
@@ -718,20 +934,21 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
         ),
         onPressed: () {
           html.window.open(
-            'https://dashboard.konnect.network/admin/dashboard?filter[status]=success',
-            '_blank'
-          );
+              'https://dashboard.konnect.network/admin/dashboard?filter[status]=success',
+              '_blank');
         },
       ),
     );
   }
 
-  void _showDemandDetails(BuildContext context, Map<String, dynamic> data, String status) {
+  void _showDemandDetails(
+      BuildContext context, Map<String, dynamic> data, String status) {
     showDialog(
       context: context,
       builder: (context) {
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
             padding: EdgeInsets.all(20),
             child: Column(
@@ -762,28 +979,56 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
                         _buildDetailItem('الاسم العائلي', data['nom']),
                         _buildDetailItem('الاسم الشخصي', data['prenom']),
                         _buildDetailItem('الباقة', data['forfait']),
-                        _buildDetailItem('طريقة الدفع', 
-                            data['paymentMethod'] == 'online' ? 'إلكتروني' : 'يدوي'),
+                        _buildDetailItem(
+                            'طريقة الدفع',
+                            data['paymentMethod'] == 'online'
+                                ? 'إلكتروني'
+                                : 'يدوي'),
                         _buildDetailItem('الحالة', _getStatusText(status)),
                         if (data['adminMessage'] != null)
-                          _buildDetailItem('رسالة المسؤول', data['adminMessage']),
-                        if (status == 'approved' && data['activationEnd'] != null)
+                          _buildDetailItem(
+                              'رسالة المسؤول', data['adminMessage']),
+                        if (status == 'approved' &&
+                            data['activationEnd'] != null)
                           _buildDetailItem('صالحة حتى',
                               _formatDate(data['activationEnd'].toDate())),
                         if (data['createdAt'] != null)
-                          _buildDetailItem('تاريخ الطلب',
-                              _formatDate((data['createdAt'] as Timestamp).toDate())),
+                          _buildDetailItem(
+                              'تاريخ الطلب',
+                              _formatDate(
+                                  (data['createdAt'] as Timestamp).toDate())),
                       ],
                     ),
                   ),
                 ),
                 SizedBox(height: 20),
+                
+                // Ajout d'un bouton pour voir l'image dans les détails
+                if (data['photoUrl'] != null && data['photoUrl'].isNotEmpty && data['paymentMethod'] != 'online') ...[
+                  Center(
+                    child: ElevatedButton.icon(
+                      icon: Icon(Icons.image),
+                      label: Text('عرض إثبات الدفع', style: TextStyle(fontFamily: 'Tajawal')),
+                      onPressed: () {
+                        Navigator.pop(context); // Fermer la boîte de dialogue des détails
+                        _showPhotoDialog(context, data['photoUrl']);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                ],
+                
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: Text('إغلاق', style: TextStyle(fontFamily: 'Tajawal')),
+                      child: Text('إغلاق',
+                          style: TextStyle(fontFamily: 'Tajawal')),
                     ),
                   ],
                 ),
@@ -834,7 +1079,8 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
       context: context,
       builder: (context) {
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
             padding: EdgeInsets.all(20),
             child: Column(
@@ -843,7 +1089,8 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.check_circle_outline, color: Colors.green, size: 24),
+                    Icon(Icons.check_circle_outline,
+                        color: Colors.green, size: 24),
                     SizedBox(width: 8),
                     Text(
                       'تفعيل الحساب',
@@ -866,14 +1113,16 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
                     children: [
                       _buildDialogInfoRow('نوع الباقة:', forfaitType),
                       _buildDialogInfoRow('المدة:', '$monthsToAdd أشهر'),
-                      _buildDialogInfoRow('تاريخ الانتهاء:', _formatDate(_activationEndDate!)),
+                      _buildDialogInfoRow(
+                          'تاريخ الانتهاء:', _formatDate(_activationEndDate!)),
                     ],
                   ),
                 ),
                 SizedBox(height: 20),
                 Text(
                   'رسالة (اختيارية)',
-                  style: TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Tajawal'),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w500, fontFamily: 'Tajawal'),
                 ),
                 SizedBox(height: 8),
                 TextField(
@@ -891,8 +1140,9 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
-                      child: Text('إلغاء', 
-                          style: TextStyle(color: Colors.grey[600], fontFamily: 'Tajawal')),
+                      child: Text('إلغاء',
+                          style: TextStyle(
+                              color: Colors.grey[600], fontFamily: 'Tajawal')),
                     ),
                     SizedBox(width: 8),
                     ElevatedButton(
@@ -911,7 +1161,8 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
                         );
                         Navigator.pop(context);
                       },
-                      child: Text('تأكيد التفعيل', style: TextStyle(fontFamily: 'Tajawal')),
+                      child: Text('تأكيد التفعيل',
+                          style: TextStyle(fontFamily: 'Tajawal')),
                     ),
                   ],
                 ),
@@ -930,12 +1181,14 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
         children: [
           Text(
             label,
-            style: TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Tajawal'),
+            style:
+                TextStyle(fontWeight: FontWeight.w500, fontFamily: 'Tajawal'),
           ),
           SizedBox(width: 8),
           Text(
             value,
-            style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Tajawal'),
+            style:
+                TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Tajawal'),
           ),
         ],
       ),
@@ -1001,7 +1254,8 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
     });
 
     int monthsToAdd = forfaitType == 'ثلاثية' ? 3 : 12;
-    DateTime activationEndDate = DateTime.now().add(Duration(days: monthsToAdd * 30));
+    DateTime activationEndDate =
+        DateTime.now().add(Duration(days: monthsToAdd * 30));
 
     try {
       await demandRef.update({
@@ -1019,7 +1273,8 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تم تفعيل الحساب حتى ${_formatDate(activationEndDate)}'),
+          content:
+              Text('تم تفعيل الحساب حتى ${_formatDate(activationEndDate)}'),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
         ),
@@ -1117,72 +1372,172 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
     }
   }
 
+  // Version améliorée de _showPhotoDialog avec meilleure gestion des erreurs
   void _showPhotoDialog(BuildContext context, String photoUrl) {
     showDialog(
       context: context,
+      barrierDismissible: true,
       builder: (context) {
         return Dialog(
           backgroundColor: Colors.transparent,
           insetPadding: EdgeInsets.all(16),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             child: Container(
+              width: MediaQuery.of(context).size.width * 0.9,
               constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.9),
+                maxHeight: MediaQuery.of(context).size.height * 0.8,
+              ),
+              color: Colors.white,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Stack(
-                    children: [
-                      Image.network(
-                        photoUrl,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            height: 200,
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes !=
-                                        null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                    : null,
-                              ),
-                            ),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            height: 200,
-                            color: Colors.grey[200],
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.error,
-                                      color: Colors.red, size: 48),
-                                  Text('خطأ في تحميل الصورة'),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                        fit: BoxFit.contain,
+                  // Barre d'en-tête
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade700,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
                       ),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: CircleAvatar(
-                          radius: 16,
-                          backgroundColor: Colors.black54,
-                          child: IconButton(
-                            icon: Icon(Icons.close,
-                                size: 16, color: Colors.white),
-                            onPressed: () => Navigator.pop(context),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'إثبات الدفع',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Tajawal',
+                          ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.close, color: Colors.white),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Corps avec l'image
+                  Expanded(
+                    child: Container(
+                      padding: EdgeInsets.all(16),
+                      child: Center(
+                        child: InteractiveViewer(
+                          minScale: 0.5,
+                          maxScale: 4.0,
+                          child: Image.network(
+                            photoUrl,
+                            fit: BoxFit.contain,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    CircularProgressIndicator(
+                                      value: loadingProgress.expectedTotalBytes != null
+                                          ? loadingProgress.cumulativeBytesLoaded /
+                                              loadingProgress.expectedTotalBytes!
+                                          : null,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                                    ),
+                                    SizedBox(height: 16),
+                                    Text(
+                                      'جاري تحميل الصورة...',
+                                      style: TextStyle(
+                                        fontFamily: 'Tajawal',
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                            errorBuilder: (context, error, stackTrace) {
+                              print('Error loading image: $error');
+                              return Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.error_outline, color: Colors.red, size: 64),
+                                    SizedBox(height: 16),
+                                    Text(
+                                      'خطأ في تحميل الصورة',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        color: Colors.red,
+                                        fontFamily: 'Tajawal',
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'قد يكون الرابط غير صالح أو الصورة محذوفة',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey.shade600,
+                                        fontFamily: 'Tajawal',
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    SizedBox(height: 16),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        // Essayer d'ouvrir l'image dans un nouvel onglet
+                                        html.window.open(photoUrl, '_blank');
+                                      },
+                                      child: Text('فتح في متصفح', style: TextStyle(fontFamily: 'Tajawal')),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ),
-                    ],
+                    ),
+                  ),
+                  
+                  // Pied de page avec options
+                  Container(
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(16),
+                        bottomRight: Radius.circular(16),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        OutlinedButton.icon(
+                          icon: Icon(Icons.open_in_browser, size: 18),
+                          label: Text(
+                            'فتح في المتصفح',
+                            style: TextStyle(fontFamily: 'Tajawal'),
+                          ),
+                          onPressed: () {
+                            html.window.open(photoUrl, '_blank');
+                          },
+                        ),
+                        ElevatedButton.icon(
+                          icon: Icon(Icons.close, size: 18),
+                          label: Text(
+                            'إغلاق',
+                            style: TextStyle(fontFamily: 'Tajawal'),
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -1208,7 +1563,8 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
         return StatefulBuilder(
           builder: (context, setState) {
             return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
               child: Padding(
                 padding: EdgeInsets.all(20),
                 child: Column(
@@ -1237,7 +1593,8 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
                           value: entry.key,
                           child: Text(
                             entry.value,
-                            style: TextStyle(fontSize: 14, fontFamily: 'Tajawal'),
+                            style:
+                                TextStyle(fontSize: 14, fontFamily: 'Tajawal'),
                           ),
                         );
                       }).toList(),
@@ -1273,7 +1630,9 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
                         TextButton(
                           onPressed: () => Navigator.pop(context),
                           child: Text('إلغاء',
-                              style: TextStyle(color: Colors.grey[600], fontFamily: 'Tajawal')),
+                              style: TextStyle(
+                                  color: Colors.grey[600],
+                                  fontFamily: 'Tajawal')),
                         ),
                         SizedBox(width: 8),
                         ElevatedButton(
@@ -1292,7 +1651,8 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
                             );
                             Navigator.pop(context);
                           },
-                          child: Text('إرسال', style: TextStyle(fontFamily: 'Tajawal')),
+                          child: Text('إرسال',
+                              style: TextStyle(fontFamily: 'Tajawal')),
                         ),
                       ],
                     ),
@@ -1356,35 +1716,49 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'approved': return Colors.green;
-      case 'rejected': return Colors.red;
-      case 'pending': return Colors.orange;
-      default: return Colors.grey;
+      case 'approved':
+        return Colors.green;
+      case 'rejected':
+        return Colors.red;
+      case 'pending':
+        return Colors.orange;
+      default:
+        return Colors.grey;
     }
   }
 
   Color _getMessageBackgroundColor(String status) {
     switch (status) {
-      case 'approved': return Colors.green.shade50;
-      case 'rejected': return Colors.red.shade50;
-      default: return Colors.grey.shade100;
+      case 'approved':
+        return Colors.green.shade50;
+      case 'rejected':
+        return Colors.red.shade50;
+      default:
+        return Colors.grey.shade100;
     }
   }
 
   String _getStatusText(String status) {
     switch (status) {
-      case 'approved': return 'مقبول';
-      case 'rejected': return 'مرفوض';
-      case 'pending': return 'قيد الانتظار';
-      default: return status;
+      case 'approved':
+        return 'مقبول';
+      case 'rejected':
+        return 'مرفوض';
+      case 'pending':
+        return 'قيد الانتظار';
+      default:
+        return status;
     }
   }
 
   Color _getMessageColor(String status) {
     switch (status) {
-      case 'approved': return Colors.green.shade800;
-      case 'rejected': return Colors.red.shade800;
-      default: return Colors.grey.shade800;
+      case 'approved':
+        return Colors.green.shade800;
+      case 'rejected':
+        return Colors.red.shade800;
+      default:
+        return Colors.grey.shade800;
     }
   }
 }

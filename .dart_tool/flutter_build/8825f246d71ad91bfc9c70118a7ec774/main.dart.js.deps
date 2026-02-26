@@ -1599,6 +1599,8 @@ file:///home/tounekti/.pub-cache/hosted/pub.dev/image_picker_platform_interface-
 file:///home/tounekti/.pub-cache/hosted/pub.dev/image_picker_platform_interface-2.11.0/lib/src/types/picked_file/picked_file.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/image_picker_platform_interface-2.11.0/lib/src/types/retrieve_type.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/image_picker_platform_interface-2.11.0/lib/src/types/types.dart
+file:///home/tounekti/.pub-cache/hosted/pub.dev/image_picker_web-4.0.0/lib/image_picker_web.dart
+file:///home/tounekti/.pub-cache/hosted/pub.dev/image_picker_web-4.0.0/lib/src/models/media_info.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/intl-0.20.2/lib/date_symbol_data_custom.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/intl-0.20.2/lib/date_symbols.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/intl-0.20.2/lib/intl.dart
@@ -2851,6 +2853,9 @@ file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/listedeselection.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/ocr_assessment_capture_page.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/ocr_assessment_dialog.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/payment/PaymentPage.dart
+file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/payment/card_distribution_service.dart
+file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/payment/card_management_page.dart
+file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/payment/date_utils.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/payment/demande.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/pdf/ManagePDFPage.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/pdf_generator.dart
