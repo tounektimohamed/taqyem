@@ -107,61 +107,60 @@ class _SignInState extends State<SignIn> {
     }
   }
 
-  Future<void> handleUserNavigation(UserCredential userCredential) async {
-    try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(userCredential.user!.uid)
-          .get();
+Future<void> handleUserNavigation(UserCredential userCredential, {bool isGoogleSignIn = false}) async {
+  try {
+    final userDoc = await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(userCredential.user!.uid)
+        .get();
 
-      if (!userDoc.exists) {
-        throw Exception("User account not found");
-      }
-
-      // Safely get all fields with defaults
-      final userData = userDoc.data() ?? {};
-      final isAgent = userData['isAgent'] ?? false;
-      final isActive = userData['isActive'] ?? false;
-      final accountExpiration = userData['accountExpiration'] as Timestamp?;
-
-      // Check account expiration if it exists
-      if (accountExpiration != null &&
-          accountExpiration.toDate().isBefore(DateTime.now())) {
-        throw Exception("Account has expired");
-      }
-
-      if (!isActive) {
-        throw Exception("Account is not active");
-      }
-
-      // Log access
-      await FirebaseFirestore.instance.collection('access_logs').add({
-        'userId': userCredential.user!.uid,
-        'email': userCredential.user!.email,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-
-      if (!mounted) return;
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              isAgent ? const AdminDashboard() : const Agentdashboard(),
-        ),
-      );
-    } catch (e) {
-      print('Navigation Error: $e');
-      if (!mounted) return;
-      setState(() {
-        _isError = true;
-        errorMsg = e.toString().replaceAll('Exception: ', '');
-      });
-      await FirebaseAuth.instance.signOut();
+    if (!userDoc.exists) {
+      throw Exception("User account not found");
     }
+
+    // Safely get all fields with defaults
+    final userData = userDoc.data() ?? {};
+    final isAgent = userData['isAgent'] ?? false;
+    final isActive = userData['isActive'] ?? false;
+    final accountExpiration = userData['accountExpiration'] as Timestamp?;
+
+    // Check account expiration if it exists
+    if (accountExpiration != null &&
+        accountExpiration.toDate().isBefore(DateTime.now())) {
+      throw Exception("Account has expired");
+    }
+
+    // Pour Google Sign-In, on permet la connexion même si isActive = false (première connexion)
+    if (!isActive && !isGoogleSignIn) {
+      throw Exception("Account is not active");
+    }
+
+    // Log access
+    await FirebaseFirestore.instance.collection('access_logs').add({
+      'userId': userCredential.user!.uid,
+      'email': userCredential.user!.email,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    if (!mounted) return;
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            isAgent ? const AdminDashboard() : const Agentdashboard(),
+      ),
+    );
+  } catch (e) {
+    print('Navigation Error: $e');
+    if (!mounted) return;
+    setState(() {
+      _isError = true;
+      errorMsg = e.toString().replaceAll('Exception: ', '');
+    });
+    await FirebaseAuth.instance.signOut();
   }
-
-
+}
 Future<void> signInWithGoogle() async {
   setState(() {
     isLoadingGoogle = true;
@@ -205,7 +204,7 @@ Future<void> signInWithGoogle() async {
       });
     }
 
-    await handleUserNavigation(userCredential);
+    await handleUserNavigation(userCredential, isGoogleSignIn: true);
   } catch (e) {
     print('Google Sign-In Error: $e');
     if (!mounted) return;
@@ -218,7 +217,6 @@ Future<void> signInWithGoogle() async {
     setState(() => isLoadingGoogle = false);
   }
 }
-
   String getErrorMessage(String errorCode) {
     switch (errorCode) {
       case "ERROR_EMAIL_ALREADY_IN_USE":

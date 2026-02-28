@@ -35,7 +35,7 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
           throw Exception("Utilisateur non connecté");
         }
 
-        String name = user.displayName ?? user.email ?? "Utilisateur anonyme";
+        String name = user.displayName ?? user.email ?? "مستخدم مجهول";
 
         Reference storageRef = _storage
             .ref()
@@ -64,14 +64,14 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Fichier téléchargé avec succès")));
+            SnackBar(content: Text("تم رفع الملف بنجاح")));
       }
     } catch (e) {
       setState(() {
         _uploadProgress = 0.0;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Erreur lors du téléchargement : $e")));
+          SnackBar(content: Text("خطأ في رفع الملف : $e")));
     }
   }
 
@@ -81,19 +81,20 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text("Nom du fichier"),
+          title: Text("اسم الملف", textAlign: TextAlign.right),
           content: TextField(
             controller: controller,
-            decoration: InputDecoration(hintText: "Entrez le nom du fichier"),
+            textAlign: TextAlign.right,
+            decoration: InputDecoration(hintText: "أدخل اسم الملف", hintTextDirection: TextDirection.rtl),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, null),
-              child: Text("Annuler"),
+              child: Text("إلغاء"),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, controller.text.trim()),
-              child: Text("OK"),
+              child: Text("موافق"),
             ),
           ],
         );
@@ -107,11 +108,11 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
         await launch(fileUrl);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Impossible d'ouvrir le fichier PDF")));
+            SnackBar(content: Text("تعذر فتح الملف PDF")));
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Erreur lors de l'ouverture du PDF")));
+          SnackBar(content: Text("خطأ في فتح الملف PDF")));
     }
   }
 
@@ -119,21 +120,84 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Gestion des fichiers PDF',
+        title: Text('إدارة الملفات PDF',
             textDirection: TextDirection.rtl,
             style: TextStyle(color: Colors.white)),
         backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
         elevation: 4,
         actions: [
-          IconButton(
-            icon: Icon(Icons.add),
+          TextButton.icon(
             onPressed: _uploadPDF,
+            icon: Icon(Icons.add, color: Colors.yellowAccent),
+            label: Text(
+              'إضافة',
+              style: TextStyle(color: Colors.yellowAccent),
+            ),
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.transparent,
+            ),
           ),
         ],
       ),
-      
       body: Column(
         children: [
+          // ✅ النص التشجيعي المضاف
+          Container(
+            width: double.infinity,
+            margin: EdgeInsets.all(16),
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color.fromRGBO(7, 82, 96, 0.9),
+                  const Color.fromRGBO(7, 82, 96, 0.7),
+                ],
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+              ),
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  spreadRadius: 2,
+                  blurRadius: 5,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Icon(
+                  Icons.emoji_objects_outlined,
+                  color: Colors.yellowAccent,
+                  size: 30,
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'هنا يمكنك مشاركة ملفات تساعد بها غيرك وتستفيد من خبرات بقية زملائك',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    height: 1.5,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'لتشجيع ثقافة المشاركة والارتقاء بالمستوى التعليمي',
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: Colors.yellowAccent,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
           if (_uploadProgress > 0)
             Padding(
               padding: const EdgeInsets.all(8.0),
@@ -142,7 +206,7 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
                   LinearProgressIndicator(value: _uploadProgress),
                   SizedBox(height: 5),
                   Text(
-                      "Téléchargement : ${(100 * _uploadProgress).toStringAsFixed(2)}%"),
+                      "جاري الرفع : ${(100 * _uploadProgress).toStringAsFixed(2)}%"),
                 ],
               ),
             ),
@@ -179,15 +243,19 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
                         child: ListTile(
                           contentPadding: EdgeInsets.all(12.0),
                           title: Text(fileName,
+                              textAlign: TextAlign.right,
                               style: TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Text('Partagé par: $name',
+                              Text('تمت المشاركة بواسطة: $name',
+                                  textAlign: TextAlign.right,
                                   style: TextStyle(fontSize: 14.0)),
-                              Text('Date: ${time.toLocal()}'),
+                              Text('التاريخ: ${time.toLocal()}',
+                                  textAlign: TextAlign.right),
                               Text(
-                                  'Pour télécharger, cliquez sur le PDF souhaité',
+                                  'لتحميل الملف، انقر على PDF المطلوب',
+                                  textAlign: TextAlign.right,
                                   style: TextStyle(
                                       fontSize: 12,
                                       fontStyle: FontStyle.italic)),
@@ -204,7 +272,7 @@ class _UploadPDFPageState extends State<UploadPDFPage> {
                                     await _storage.refFromURL(fileUrl).delete();
                                     ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
-                                            content: Text("Fichier supprimé")));
+                                            content: Text("تم حذف الملف")));
                                   },
                                 )
                               : null,

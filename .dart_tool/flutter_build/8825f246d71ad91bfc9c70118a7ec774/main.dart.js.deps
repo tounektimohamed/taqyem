@@ -2814,10 +2814,13 @@ file:///home/tounekti/Bureau/taqyem-backup/lib/screens2/app%20option%20setting/o
 file:///home/tounekti/Bureau/taqyem-backup/lib/screens2/app%20option%20setting/termsNconditions.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/screens2/dashboard.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/screens2/homepage2.dart
+file:///home/tounekti/Bureau/taqyem-backup/lib/screens2/login_signup/AboutApp.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/screens2/login_signup/account_settings.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/screens2/login_signup/edit_user_screen.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/screens2/login_signup/email_verify.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/screens2/login_signup/password_reset.dart
+file:///home/tounekti/Bureau/taqyem-backup/lib/screens2/login_signup/rating_page.dart
+file:///home/tounekti/Bureau/taqyem-backup/lib/screens2/login_signup/rating_summary.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/screens2/login_signup/sign_in.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/screens2/login_signup/sign_up.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/screens2/news/add_news_screen.dart

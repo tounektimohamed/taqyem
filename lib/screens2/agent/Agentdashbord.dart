@@ -1,5 +1,6 @@
 import 'package:Taqyem/landing/views/ManageCarouselItemsPage.dart';
 import 'package:Taqyem/screens2/admin/AccessLogsPage.dart';
+import 'package:Taqyem/screens2/login_signup/rating_summary.dart';
 import 'package:Taqyem/screens2/news/add_news_screen.dart';
 import 'package:Taqyem/screens2/news/gerenews.dart';
 import 'package:Taqyem/screens2/users/User%20Management.dart';
@@ -291,19 +292,19 @@ Widget build(BuildContext context) {
                 );
               },
             ),
-            // _buildDrawerItem(
-            //   context,
-            //   Icons.add,
-            //   'Ajouter une classe',
-            //   () {
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(
-            //         builder: (context) => AddClassPage(),
-            //       ),
-            //     );
-            //   },
-            // ),
+            _buildDrawerItem(
+              context,
+              Icons.add,
+              'RatingSummary',
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => RatingSummary(),
+                  ),
+                );
+              },
+            ),
             // _buildDrawerItem(
             //   context,
             //   Icons.class_,

@@ -9,26 +9,27 @@ class UnbordingContent {
     required this.description,
   });
 }
-List<UnbordingContent> contents = [
-  UnbordingContent(
-    title: 'Évaluer les progrès des élèves',
-    image: 'lib/assets/icons/me/progress.gif',
-    description: "Suivez facilement les performances et l'évolution de chaque élève au fil du temps."),
-  UnbordingContent(
-    title: 'Créer des fiches d’évaluation personnalisées',
-    image: 'lib/assets/icons/me/assessment.gif',
-    description: "Permettez aux enseignants de créer des évaluations adaptées aux besoins de chaque élève."),
-  UnbordingContent(
-    title: 'Suivi des résultats et des progrès',
-    image: 'lib/assets/icons/me/results.gif',
-    description: "Affichez les résultats des évaluations et suivez les progrès des élèves dans différentes matières."),
-  UnbordingContent(
-    title: 'Partager des rapports avec les parents',
-    image: 'lib/assets/icons/me/share_report.gif',
-    description: "Générez des rapports détaillés et partagez-les facilement avec les parents des élèves."),
-  UnbordingContent(
-    title: 'Notifier les enseignants et parents',
-    image: 'lib/assets/icons/me/notification.gif',
-    description: "Recevez des rappels pour les évaluations et les progrès des élèves, et informez les parents."),
-];
 
+List<UnbordingContent> contents = [
+   UnbordingContent(
+    title: 'انشاء تمارين علاج تتماشى مع احتياجات التلاميذ',
+    image: 'lib/assets/icons/me/support_woman_16-9.gif',
+    description: 'قدم تمارين علاجية مخصصة تساعد التلاميذ على تجاوز الصعوبات وفق مستوياتهم.'),
+  UnbordingContent(
+    title: 'انشاء ملف تقييم كامل باقل مجهود و اكثر دقة',
+    image: 'lib/assets/icons/me/QZJI.gif',
+    description: 'قم بإعداد تقارير شاملة عن أداء التلاميذ بسرعة ودقة عالية.'),
+  UnbordingContent(
+    title: 'تقييم تقدم التلاميذ',
+    image: 'lib/assets/icons/me/progress.gif',
+    description: 'تابع أداء وتطور كل تلميذ بسهولة على مر الوقت.'),
+  UnbordingContent(
+    title: 'إنشاء بطاقات تقييم مخصصة',
+    image: 'lib/assets/icons/me/assessment.gif',
+    description: 'اسمح للمعلمين بإنشاء تقييمات تتكيف مع احتياجات كل تلميذ.'),
+  UnbordingContent(
+    title: 'متابعة النتائج والتقدم',
+    image: 'lib/assets/icons/me/results.gif',
+    description: 'اعرض نتائج التقييمات وتابع تقدم التلاميذ في مختلف المواد.'),
+ 
+];

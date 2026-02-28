@@ -1329,142 +1329,131 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 // NOUVELLE MÉTHODE: Envoyer les données légères à Flask
 
 // Dans votre fichier Flutter, modifiez la fonction principale:
-Future<Map<String, dynamic>> _sendLightDataToFlaskForCompleteReport({
-  required String classId,
-  required String matiereId,
-  required String className,
-  required String matiereName,
-  required String performanceAttendue,
-}) async {
-  try {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) {
-      return {'success': false, 'message': 'Utilisateur non connecté'};
-    }
-
-    // 🔥 IMPORTANT : utiliser classId + matiereId
-    final String evaluationSystem =
-        await _getEvaluationSystem(classId, matiereId);
-
-    print('📤 SYSTEM ENVOYÉ À FLASK: $evaluationSystem');
-
-    final Map<String, dynamic> lightData = {
-      'userId': currentUser.uid,
-      'user': {
-        'profName': _profName,
-        'schoolName': _schoolName,
-      },
-      'class': {
-        'id': classId,
-        'name': className,
-      },
-      'matiere': {
-        'id': matiereId,
-        'name': matiereName,
-      },
-      'performanceAttendue': performanceAttendue,
-      'period': {
-        'trimestre': _selectedTrimestre,
-        'periode': _selectedPeriode,
-        'evaluationType': _selectedEvaluationType,
-      },
-      'isFrenchInterface': _isFrenchInterface,
-      'timestamp': DateTime.now().toIso8601String(),
-
-      // ✅ On envoie uniquement le système
-      'evaluationSystem': evaluationSystem,
-    };
-
-    print('📤 Envoi des données à Flask...');
-
-    final testUrl =
-        Uri.parse('https://mohamedtsou-taqyem-imprission.hf.space/health');
-
+  Future<Map<String, dynamic>> _sendLightDataToFlaskForCompleteReport({
+    required String classId,
+    required String matiereId,
+    required String className,
+    required String matiereName,
+    required String performanceAttendue,
+  }) async {
     try {
-      await http.get(testUrl).timeout(const Duration(seconds: 5));
-      print('✅ Serveur Flask accessible');
-    } catch (e) {
-      print('❌ Serveur Flask inaccessible: $e');
-      return {
-        'success': false,
-        'message': 'Serveur Flask non démarré sur HF Space'
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        return {'success': false, 'message': 'Utilisateur non connecté'};
+      }
+
+      // 🔥 IMPORTANT : utiliser classId + matiereId
+      final String evaluationSystem =
+          await _getEvaluationSystem(classId, matiereId);
+
+      print('📤 SYSTEM ENVOYÉ À FLASK: $evaluationSystem');
+
+      final Map<String, dynamic> lightData = {
+        'userId': currentUser.uid,
+        'user': {
+          'profName': _profName,
+          'schoolName': _schoolName,
+        },
+        'class': {
+          'id': classId,
+          'name': className,
+        },
+        'matiere': {
+          'id': matiereId,
+          'name': matiereName,
+        },
+        'performanceAttendue': performanceAttendue,
+        'period': {
+          'trimestre': _selectedTrimestre,
+          'periode': _selectedPeriode,
+          'evaluationType': _selectedEvaluationType,
+        },
+        'isFrenchInterface': _isFrenchInterface,
+        'timestamp': DateTime.now().toIso8601String(),
+
+        // ✅ On envoie uniquement le système
+        'evaluationSystem': evaluationSystem,
       };
-    }
 
-    final url = Uri.parse(
-        'https://mohamedtsou-taqyem-imprission.hf.space/generate-complete-report');
+      print('📤 Envoi des données à Flask...');
 
-    print('⏳ Génération du rapport...');
+      final testUrl =
+          Uri.parse('https://mohamedtsou-taqyem-imprission.hf.space/health');
 
-    final response = await http
-        .post(
-          url,
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-            'Accept': 'application/json',
-          },
-          body: json.encode(lightData),
-        )
-        .timeout(const Duration(seconds: 120));
+      try {
+        await http.get(testUrl).timeout(const Duration(seconds: 5));
+        print('✅ Serveur Flask accessible');
+      } catch (e) {
+        print('❌ Serveur Flask inaccessible: $e');
+        return {
+          'success': false,
+          'message': 'Serveur Flask non démarré sur HF Space'
+        };
+      }
 
-    print('✅ Status HTTP: ${response.statusCode}');
+      final url = Uri.parse(
+          'https://mohamedtsou-taqyem-imprission.hf.space/generate-complete-report');
 
-    if (response.statusCode == 200) {
-      final responseData = json.decode(response.body);
+      print('⏳ Génération du rapport...');
 
-      if (responseData['success'] == true) {
-        if (responseData.containsKey('downloadUrl')) {
-          await _downloadReportFromUrl(
-              responseData['downloadUrl'],
-              responseData['filename'] ?? 'rapport.pdf',
-              responseData['reportId']);
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Accept': 'application/json',
+            },
+            body: json.encode(lightData),
+          )
+          .timeout(const Duration(seconds: 120));
 
-          await _saveReportMetadata(
-              currentUser.uid,
-              responseData['reportId'],
-              responseData,
-              className,
-              matiereName);
+      print('✅ Status HTTP: ${response.statusCode}');
 
-          return {
-            'success': true,
-            'message': 'Rapport généré avec succès',
-            'reportId': responseData['reportId']
-          };
-        } else if (responseData.containsKey('htmlContent')) {
-          await _downloadHTMLContent(responseData['htmlContent']);
-          return {'success': true, 'message': 'Rapport HTML généré'};
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          if (responseData.containsKey('downloadUrl')) {
+            await _downloadReportFromUrl(
+                responseData['downloadUrl'],
+                responseData['filename'] ?? 'rapport.pdf',
+                responseData['reportId']);
+
+            await _saveReportMetadata(currentUser.uid, responseData['reportId'],
+                responseData, className, matiereName);
+
+            return {
+              'success': true,
+              'message': 'Rapport généré avec succès',
+              'reportId': responseData['reportId']
+            };
+          } else if (responseData.containsKey('htmlContent')) {
+            await _downloadHTMLContent(responseData['htmlContent']);
+            return {'success': true, 'message': 'Rapport HTML généré'};
+          } else {
+            return {'success': false, 'message': 'Aucun contenu disponible'};
+          }
         } else {
-          return {'success': false, 'message': 'Aucun contenu disponible'};
+          return {
+            'success': false,
+            'message': responseData['message'] ?? 'Erreur inconnue'
+          };
         }
       } else {
         return {
           'success': false,
-          'message': responseData['message'] ?? 'Erreur inconnue'
+          'message': 'Erreur HTTP ${response.statusCode}'
         };
       }
-    } else {
-      return {
-        'success': false,
-        'message': 'Erreur HTTP ${response.statusCode}'
-      };
+    } on TimeoutException {
+      return {'success': false, 'message': 'Timeout serveur'};
+    } on SocketException catch (e) {
+      return {'success': false, 'message': 'Erreur connexion: ${e.message}'};
+    } catch (e) {
+      print('💥 Erreur inattendue: $e');
+      return {'success': false, 'message': 'Erreur technique: $e'};
     }
-  } on TimeoutException {
-    return {
-      'success': false,
-      'message': 'Timeout serveur'
-    };
-  } on SocketException catch (e) {
-    return {
-      'success': false,
-      'message': 'Erreur connexion: ${e.message}'
-    };
-  } catch (e) {
-    print('💥 Erreur inattendue: $e');
-    return {'success': false, 'message': 'Erreur technique: $e'};
   }
-}
-
 
 // NOUVELLE FONCTION: Télécharger le rapport depuis Firebase Storage
   Future<void> _downloadReportFromUrl(
@@ -5154,6 +5143,11 @@ Future<Map<String, dynamic>> _sendLightDataToFlaskForCompleteReport({
       ),
       home: Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+            tooltip: _getTranslatedText('رجوع', 'Retour'),
+          ),
           title: Text(
               _getTranslatedText(
                   'الجدول الجامع للنتائج', 'Tableau Global des Résultats'),
@@ -8144,39 +8138,38 @@ class _StudentsTableState extends State<StudentsTable> {
       return 'character';
     }
   }
-Future<List<String>> _loadCustomNotes(
-    String classId, String matiereId) async {
-  try {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return [];
 
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser.uid)
-        .collection('bareme_custom_notes')
-        .where(FieldPath.documentId,
-            isGreaterThanOrEqualTo: '$classId-$matiereId-')
-        .where(FieldPath.documentId,
-            isLessThan: '$classId-$matiereId-\uf8ff')
-        .limit(1)
-        .get();
+  Future<List<String>> _loadCustomNotes(
+      String classId, String matiereId) async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return [];
 
-    if (snapshot.docs.isNotEmpty) {
-      final data = snapshot.docs.first.data();
-      if (data['notes'] != null) {
-        print("🔥 CUSTOM NOTES LOADED: ${data['notes']}");
-        return List<String>.from(data['notes']);
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .collection('bareme_custom_notes')
+          .where(FieldPath.documentId,
+              isGreaterThanOrEqualTo: '$classId-$matiereId-')
+          .where(FieldPath.documentId, isLessThan: '$classId-$matiereId-\uf8ff')
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        final data = snapshot.docs.first.data();
+        if (data['notes'] != null) {
+          print("🔥 CUSTOM NOTES LOADED: ${data['notes']}");
+          return List<String>.from(data['notes']);
+        }
       }
+
+      print("⚠️ NO MATCHING CUSTOM NOTES");
+      return [];
+    } catch (e) {
+      print('Erreur lors du chargement des notes personnalisées: $e');
+      return [];
     }
-
-    print("⚠️ NO MATCHING CUSTOM NOTES");
-    return [];
-  } catch (e) {
-    print('Erreur lors du chargement des notes personnalisées: $e');
-    return [];
   }
-}
-
 
   Future<List<String>> _getDropdownValuesForBareme(String baremeKey) async {
     try {

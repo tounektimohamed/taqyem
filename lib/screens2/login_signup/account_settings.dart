@@ -1,3 +1,5 @@
+import 'package:Taqyem/screens2/login_signup/AboutApp.dart';
+import 'package:Taqyem/screens2/login_signup/rating_page.dart';
 import 'package:Taqyem/screens2/login_signup/sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -20,7 +22,7 @@ class _SettingPageUIState extends State<SettingsPageUI> {
   bool notificationsEnabled = true;
   bool darkModeEnabled = false;
   User? currentUser = FirebaseAuth.instance.currentUser;
-  
+
   // متغيرات لتخزين بيانات المستخدم
   String? userName;
   String? userEmail;
@@ -39,19 +41,22 @@ class _SettingPageUIState extends State<SettingsPageUI> {
         // جلب بيانات المستخدم من Firestore
         DocumentSnapshot userDoc = await FirebaseFirestore.instance
             .collection('Users')
-            .doc(currentUser!.email) // أو currentUser!.uid حسب كيفية تخزينك للبيانات
+            .doc(currentUser!
+                .email) // أو currentUser!.uid حسب كيفية تخزينك للبيانات
             .get();
 
         if (userDoc.exists) {
-          Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
-          
+          Map<String, dynamic> userData =
+              userDoc.data() as Map<String, dynamic>;
+
           setState(() {
-            userName = userData['name'] ?? currentUser!.displayName ?? 'المستخدم';
+            userName =
+                userData['name'] ?? currentUser!.displayName ?? 'المستخدم';
             userEmail = currentUser!.email ?? 'بريد إلكتروني';
-            userDisplayName = userData['name'] ?? 
-                            currentUser!.displayName ?? 
-                            currentUser!.email?.split('@').first ?? 
-                            'المستخدم';
+            userDisplayName = userData['name'] ??
+                currentUser!.displayName ??
+                currentUser!.email?.split('@').first ??
+                'المستخدم';
             _isLoading = false;
           });
         } else {
@@ -59,9 +64,9 @@ class _SettingPageUIState extends State<SettingsPageUI> {
           setState(() {
             userName = currentUser!.displayName ?? 'المستخدم';
             userEmail = currentUser!.email ?? 'بريد إلكتروني';
-            userDisplayName = currentUser!.displayName ?? 
-                            currentUser!.email?.split('@').first ?? 
-                            'المستخدم';
+            userDisplayName = currentUser!.displayName ??
+                currentUser!.email?.split('@').first ??
+                'المستخدم';
             _isLoading = false;
           });
         }
@@ -71,9 +76,9 @@ class _SettingPageUIState extends State<SettingsPageUI> {
         setState(() {
           userName = currentUser!.displayName ?? 'المستخدم';
           userEmail = currentUser!.email ?? 'بريد إلكتروني';
-          userDisplayName = currentUser!.displayName ?? 
-                          currentUser!.email?.split('@').first ?? 
-                          'المستخدم';
+          userDisplayName = currentUser!.displayName ??
+              currentUser!.email?.split('@').first ??
+              'المستخدم';
           _isLoading = false;
         });
       }
@@ -110,13 +115,14 @@ class _SettingPageUIState extends State<SettingsPageUI> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: _isLoading 
+      body: _isLoading
           ? Center(child: CircularProgressIndicator(color: primaryColor))
           : Column(
               children: [
                 // User Profile Card
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                   child: Card(
                     elevation: 4,
                     shape: RoundedRectangleBorder(
@@ -183,7 +189,8 @@ class _SettingPageUIState extends State<SettingsPageUI> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   SizedBox(height: 5),
-                                  if (userName != null && userName != userDisplayName)
+                                  if (userName != null &&
+                                      userName != userDisplayName)
                                     Text(
                                       'اسم المستخدم: $userName',
                                       style: TextStyle(
@@ -260,7 +267,9 @@ class _SettingPageUIState extends State<SettingsPageUI> {
                               child: Text(
                                 'إعدادات الحساب',
                                 style: TextStyle(
-                                  color: isDarkMode ? Colors.white70 : Colors.grey[700],
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.grey[700],
                                   fontWeight: FontWeight.w600,
                                   fontSize: 14,
                                   letterSpacing: 0.5,
@@ -304,8 +313,6 @@ class _SettingPageUIState extends State<SettingsPageUI> {
                                   });
                                 },
                               ),
-                             
-                             
                             ],
                           ),
 
@@ -316,7 +323,9 @@ class _SettingPageUIState extends State<SettingsPageUI> {
                               child: Text(
                                 'الدعم والمساعدة',
                                 style: TextStyle(
-                                  color: isDarkMode ? Colors.white70 : Colors.grey[700],
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.grey[700],
                                   fontWeight: FontWeight.w600,
                                   fontSize: 14,
                                   letterSpacing: 0.5,
@@ -371,30 +380,10 @@ class _SettingPageUIState extends State<SettingsPageUI> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => const TermsAndConditions(),
+                                      builder: (context) =>
+                                          const TermsAndConditions(),
                                     ),
                                   );
-                                },
-                              ),
-                              SettingsTile.navigation(
-                                leading: Icon(
-                                  Icons.privacy_tip_rounded,
-                                  color: primaryColor,
-                                ),
-                                title: Text(
-                                  'سياسة الخصوصية',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                                trailing: Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  size: 18,
-                                  color: Colors.grey[500],
-                                ),
-                                onPressed: (context) {
-                                  // Add privacy policy navigation
                                 },
                               ),
                             ],
@@ -407,7 +396,9 @@ class _SettingPageUIState extends State<SettingsPageUI> {
                               child: Text(
                                 'حول التطبيق',
                                 style: TextStyle(
-                                  color: isDarkMode ? Colors.white70 : Colors.grey[700],
+                                  color: isDarkMode
+                                      ? Colors.white70
+                                      : Colors.grey[700],
                                   fontWeight: FontWeight.w600,
                                   fontSize: 14,
                                   letterSpacing: 0.5,
@@ -433,7 +424,13 @@ class _SettingPageUIState extends State<SettingsPageUI> {
                                   color: Colors.grey[500],
                                 ),
                                 onPressed: (context) {
-                                  // Add about app navigation
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const AboutApp(),
+                                    ),
+                                  );
                                 },
                               ),
                               SettingsTile.navigation(
@@ -454,8 +451,14 @@ class _SettingPageUIState extends State<SettingsPageUI> {
                                   color: Colors.grey[500],
                                 ),
                                 onPressed: (context) {
-                                  // Add rate app logic
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const RatingPage(),
+                                    ),
+                                  );
                                 },
+                                
                               ),
                               SettingsTile(
                                 leading: Icon(
@@ -494,39 +497,9 @@ class _SettingPageUIState extends State<SettingsPageUI> {
                           SettingsSection(
                             title: Transform.translate(
                               offset: Offset(20, 0),
-                              child: Text(
-                                'الإجراءات الخطرة',
-                                style: TextStyle(
-                                  color: isDarkMode ? Colors.white70 : Colors.grey[700],
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
+                              
                             ),
                             tiles: [
-                              SettingsTile.navigation(
-                                leading: Icon(
-                                  Icons.delete_outline_rounded,
-                                  color: Colors.red,
-                                ),
-                                title: Text(
-                                  'حذف الحساب',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 15,
-                                    color: Colors.red,
-                                  ),
-                                ),
-                                trailing: Icon(
-                                  Icons.arrow_forward_ios_rounded,
-                                  size: 18,
-                                  color: Colors.red.withOpacity(0.7),
-                                ),
-                                onPressed: (context) {
-                                  _showDeleteAccountDialog(context);
-                                },
-                              ),
                               SettingsTile(
                                 leading: Icon(
                                   Icons.logout_rounded,
@@ -677,7 +650,8 @@ class _SettingPageUIState extends State<SettingsPageUI> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: Colors.red, size: 20),
+                    Icon(Icons.warning_amber_rounded,
+                        color: Colors.red, size: 20),
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(

@@ -14,7 +14,47 @@ class CardDistributionService {
   
   // مفتاح التناوب (Rotation)
   String _lastUsedCardId = 'C'; // نبدأ بآخر بطاقة ليكون التالي A
+/// Initialiser les cartes avec leurs informations (à appeler une seule fois)
+Future<void> initializeCards() async {
+  final cards = {
+    'A': {
+      'id': 'A',
+      'name': 'البطاقة الأولى',
+      'qrCodeUrl': 'https://example.com/qr_A.png', // À remplacer par vos QR codes
+      'ribNumber': 'TN59 1234 5678 9012 3456 7890', // À remplacer par vos RIB
+      'bankName': 'البنك التونسي',
+      'createdAt': FieldValue.serverTimestamp(),
+    },
+    'B': {
+      'id': 'B',
+      'name': 'البطاقة الثانية',
+      'qrCodeUrl': 'https://example.com/qr_B.png', // À remplacer
+      'ribNumber': 'TN59 1234 5678 9012 3456 7891', // À remplacer
+      'bankName': 'البنك التونسي',
+      'createdAt': FieldValue.serverTimestamp(),
+    },
+    'C': {
+      'id': 'C',
+      'name': 'البطاقة الثالثة',
+      'qrCodeUrl': 'https://example.com/qr_C.png', // À remplacer
+      'ribNumber': 'TN59 1234 5678 9012 3456 7892', // À remplacer
+      'bankName': 'البنك التونسي',
+      'createdAt': FieldValue.serverTimestamp(),
+    },
+  };
 
+  for (var cardId in cards.keys) {
+    final docRef = _firestore.collection('cards').doc(cardId);
+    final doc = await docRef.get();
+    
+    if (!doc.exists) {
+      await docRef.set(cards[cardId]!);
+      print('✅ Carte $cardId créée avec succès');
+    } else {
+      print('ℹ️ Carte $cardId existe déjà');
+    }
+  }
+}
   /// الحصول على إحصائيات اليوم الحالي
   Future<Map<String, dynamic>> getTodayStats() async {
     final today = DateUtils.formatDate(DateTime.now());
@@ -147,43 +187,73 @@ class CardDistributionService {
 // في كلاس CardDistributionService أضف:
 
   /// الحصول على معلومات البطاقة كاملة (مع QR و RIB)
-  Future<Map<String, dynamic>?> getCardDetails(String cardId) async {
-    try {
-      final doc = await _firestore.collection('cards').doc(cardId).get();
-      if (doc.exists) {
-        return doc.data();
-      }
-      return null;
-    } catch (e) {
-      print('خطأ في جلب معلومات البطاقة: $e');
-      return null;
-    }
-  }
-
-  /// تحديث معلومات البطاقة (للمسؤول)
-  Future<bool> updateCardDetails(String cardId, {
-    required String qrCodeUrl,
-    required String ribNumber,
-    String? bankName,
-  }) async {
-    try {
-      await _firestore.collection('cards').doc(cardId).set({
+ /// الحصول على معلومات البطاقة كاملة (مع QR و RIB)
+Future<Map<String, dynamic>?> getCardDetails(String cardId) async {
+  try {
+    final doc = await _firestore.collection('cards').doc(cardId).get();
+    if (doc.exists) {
+      return doc.data();
+    } else {
+      // Si le document n'existe pas, le créer avec des valeurs par défaut
+      print('📝 Document pour la carte $cardId non trouvé, création...');
+      
+      final defaultData = {
         'id': cardId,
+        'qrCodeUrl': '',
+        'ribNumber': '',
+        'bankName': '',
+        'createdAt': FieldValue.serverTimestamp(),
+      };
+      
+      await _firestore.collection('cards').doc(cardId).set(defaultData);
+      return defaultData;
+    }
+  } catch (e) {
+    print('❌ خطأ في جلب معلومات البطاقة: $e');
+    return null;
+  }
+}
+
+  /// تحديث معلومات البطاقة (للمسؤول)/// تحديث معلومات البطاقة (للمسؤول)
+Future<bool> updateCardDetails(String cardId, {
+  required String qrCodeUrl,
+  required String ribNumber,
+  String? bankName,
+}) async {
+  try {
+    // S'assurer que le document existe
+    final docRef = _firestore.collection('cards').doc(cardId);
+    final doc = await docRef.get();
+    
+    if (!doc.exists) {
+      // Créer le document s'il n'existe pas
+      await docRef.set({
+        'id': cardId,
+        'qrCodeUrl': qrCodeUrl,
+        'ribNumber': ribNumber,
+        'bankName': bankName ?? '',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'updatedBy': 'admin',
+      });
+    } else {
+      // Mettre à jour le document existant
+      await docRef.update({
         'qrCodeUrl': qrCodeUrl,
         'ribNumber': ribNumber,
         'bankName': bankName ?? '',
         'updatedAt': FieldValue.serverTimestamp(),
         'updatedBy': 'admin',
-      }, SetOptions(merge: true));
-      
-      print('✅ تم تحديث معلومات البطاقة $cardId');
-      return true;
-    } catch (e) {
-      print('❌ خطأ في تحديث البطاقة: $e');
-      return false;
+      });
     }
+    
+    print('✅ تم تحديث معلومات البطاقة $cardId');
+    return true;
+  } catch (e) {
+    print('❌ خطأ في تحديث البطاقة: $e');
+    return false;
   }
-
+}
   /// جلب QR Code لبطاقة معينة
   Future<String?> getCardQRCode(String cardId) async {
     final details = await getCardDetails(cardId);

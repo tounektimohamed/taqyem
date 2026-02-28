@@ -33,13 +33,13 @@ class _PaymentPageState extends State<PaymentPage> {
   final List<Map<String, dynamic>> forfaits = [
     {
       'type': 'ثلاثية',
-      'prix': 30,
+      'prix': 40,
       'duration': '3 أشهر',
       'icon': Icons.calendar_today
     },
     {
       'type': 'سنوي',
-      'prix': 60,
+      'prix': 70,
       'duration': '12 شهر',
       'icon': Icons.calendar_today
     },
@@ -54,20 +54,71 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   // Sélectionner automatiquement la meilleure carte
-  Future<void> _selectBestCard() async {
+  
+  // Sélectionner automatiquement la meilleure carte
+Future<void> _selectBestCard() async {
+  try {
     final bestCardId = await _cardService.selectBestCard();
+    print('Meilleure carte sélectionnée: $bestCardId');
+    
     if (bestCardId != null) {
+      // Forcer la création du document si nécessaire
+      await _ensureCardDocument(bestCardId);
+      
       final details = await _cardService.getCardDetails(bestCardId);
+      print('Détails de la carte: $details');
+      
       setState(() {
         _selectedCardId = bestCardId;
         _selectedCardDetails = details;
       });
+      
+      if (details == null) {
+        print('⚠️ Détails de la carte manquants');
+        _showErrorSnackbar('خطأ في تحميل معلومات البطاقة');
+      } else if (details['qrCodeUrl'] == null || details['qrCodeUrl'] == '') {
+        print('⚠️ QR Code manquant pour la carte $bestCardId');
+        _showErrorSnackbar('البطاقة المختارة لا تحتوي على QR Code');
+      }
     } else {
-      // Si aucune carte n'est disponible, afficher un message
+      print('❌ Aucune carte disponible');
+      setState(() {
+        _selectedCardId = null;
+        _selectedCardDetails = null;
+      });
       _showErrorSnackbar('عذراً، لا توجد بطاقات متاحة حالياً');
     }
+  } catch (e) {
+    print('❌ Erreur lors de la sélection de la carte: $e');
+    _showErrorSnackbar('حدث خطأ في اختيار البطاقة');
   }
+}
 
+// Méthode helper pour s'assurer que le document existe
+Future<void> _ensureCardDocument(String cardId) async {
+  try {
+    final doc = await FirebaseFirestore.instance
+        .collection('cards')
+        .doc(cardId)
+        .get();
+    
+    if (!doc.exists) {
+      print('📝 Création du document pour la carte $cardId...');
+      await FirebaseFirestore.instance
+          .collection('cards')
+          .doc(cardId)
+          .set({
+            'id': cardId,
+            'qrCodeUrl': '',
+            'ribNumber': '',
+            'bankName': '',
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+    }
+  } catch (e) {
+    print('❌ Erreur lors de la vérification du document: $e');
+  }
+}
   // Afficher le QR code en grand
   void _showFullQRCode(String qrUrl, String cardId) {
     showDialog(
@@ -134,6 +185,31 @@ class _PaymentPageState extends State<PaymentPage> {
 
   // Widget pour afficher l'image QR (support base64 et URL)
   Widget _buildQRImage(String qrUrl, String cardId, {double height = 100, double width = 100}) {
+    if (qrUrl.isEmpty) {
+      return Container(
+        height: height,
+        width: width,
+        color: Colors.grey.shade200,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.qr_code, size: 40, color: Colors.grey.shade400),
+              SizedBox(height: 8),
+              Text(
+                'QR غير متوفر',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey.shade600,
+                  fontFamily: 'Tajawal',
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     if (qrUrl.startsWith('data:image')) {
       // C'est une image base64
       try {
@@ -145,6 +221,7 @@ class _PaymentPageState extends State<PaymentPage> {
             width: width,
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) {
+              print('Erreur décodage base64: $error');
               return Container(
                 height: height,
                 width: width,
@@ -158,6 +235,14 @@ class _PaymentPageState extends State<PaymentPage> {
         );
       } catch (e) {
         print('Error decoding base64: $e');
+        return Container(
+          height: height,
+          width: width,
+          color: Colors.grey.shade200,
+          child: Center(
+            child: Icon(Icons.error, color: Colors.red),
+          ),
+        );
       }
     }
     
@@ -170,6 +255,7 @@ class _PaymentPageState extends State<PaymentPage> {
         width: width,
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
+          print('Erreur chargement image: $error');
           return Container(
             height: height,
             width: width,
@@ -183,267 +269,356 @@ class _PaymentPageState extends State<PaymentPage> {
     );
   }
 
-  // Widget pour afficher la carte sélectionnée automatiquement
-  Widget _buildSelectedCardInfo() {
-    if (_selectedCardId == null || _selectedCardDetails == null) {
-      return Container(
-        margin: EdgeInsets.only(bottom: 20),
-        padding: EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Colors.orange.shade50,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.orange.shade200),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.warning, color: Colors.orange, size: 30),
-            SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'لا توجد بطاقات متاحة حالياً. الرجاء المحاولة لاحقاً.',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontFamily: 'Tajawal',
-                  color: Colors.orange.shade800,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+  // // Widget pour afficher la carte sélectionnée automatiquement
+  // Widget _buildSelectedCardInfo() {
+  //   if (_selectedCardId == null) {
+  //     return Container(
+  //       margin: EdgeInsets.only(bottom: 20),
+  //       padding: EdgeInsets.all(20),
+  //       decoration: BoxDecoration(
+  //         color: Colors.orange.shade50,
+  //         borderRadius: BorderRadius.circular(16),
+  //         border: Border.all(color: Colors.orange.shade200),
+  //       ),
+  //       child: Row(
+  //         children: [
+  //           Icon(Icons.warning, color: Colors.orange, size: 30),
+  //           SizedBox(width: 12),
+  //           Expanded(
+  //             child: Text(
+  //               'لا توجد بطاقات متاحة حالياً. الرجاء المحاولة لاحقاً.',
+  //               style: TextStyle(
+  //                 fontSize: 16,
+  //                 fontFamily: 'Tajawal',
+  //                 color: Colors.orange.shade800,
+  //               ),
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     );
+  //   }
 
-    final cardId = _selectedCardId!;
-    final cardData = _selectedCardDetails!;
-    final qrUrl = cardData['qrCodeUrl'];
-    final rib = cardData['ribNumber'];
-    final bankName = cardData['bankName'];
+  //   // Même si _selectedCardDetails est null, on affiche un message
+  //   if (_selectedCardDetails == null) {
+  //     return Container(
+  //       margin: EdgeInsets.only(bottom: 20),
+  //       padding: EdgeInsets.all(20),
+  //       decoration: BoxDecoration(
+  //         color: Colors.blue.shade50,
+  //         borderRadius: BorderRadius.circular(16),
+  //         border: Border.all(color: Colors.blue.shade200),
+  //       ),
+  //       child: Column(
+  //         children: [
+  //           Row(
+  //             children: [
+  //               Container(
+  //                 width: 50,
+  //                 height: 50,
+  //                 decoration: BoxDecoration(
+  //                   color: _getCardColor(_selectedCardId!),
+  //                   shape: BoxShape.circle,
+  //                 ),
+  //                 child: Center(
+  //                   child: Text(
+  //                     _selectedCardId!,
+  //                     style: TextStyle(
+  //                       color: Colors.white,
+  //                       fontWeight: FontWeight.bold,
+  //                       fontSize: 20,
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ),
+  //               SizedBox(width: 12),
+  //               Expanded(
+  //                 child: Column(
+  //                   crossAxisAlignment: CrossAxisAlignment.start,
+  //                   children: [
+  //                     Text(
+  //                       'البطاقة المخصصة لك',
+  //                       style: TextStyle(
+  //                         fontSize: 14,
+  //                         color: Colors.grey.shade600,
+  //                         fontFamily: 'Tajawal',
+  //                       ),
+  //                     ),
+  //                     Text(
+  //                       _getCardName(_selectedCardId!),
+  //                       style: TextStyle(
+  //                         fontSize: 18,
+  //                         fontWeight: FontWeight.bold,
+  //                         fontFamily: 'Tajawal',
+  //                         color: _getCardColor(_selectedCardId!),
+  //                       ),
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //           SizedBox(height: 20),
+  //           Container(
+  //             padding: EdgeInsets.all(16),
+  //             decoration: BoxDecoration(
+  //               color: Colors.amber.shade50,
+  //               borderRadius: BorderRadius.circular(12),
+  //               border: Border.all(color: Colors.amber.shade200),
+  //             ),
+  //             child: Row(
+  //               children: [
+  //                 Icon(Icons.info, color: Colors.amber.shade800),
+  //                 SizedBox(width: 12),
+  //                 Expanded(
+  //                   child: Text(
+  //                     'جاري تحميل معلومات البطاقة...',
+  //                     style: TextStyle(
+  //                       fontSize: 14,
+  //                       fontFamily: 'Tajawal',
+  //                       color: Colors.amber.shade800,
+  //                     ),
+  //                   ),
+  //                 ),
+  //               ],
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     );
+  //   }
 
-    return Container(
-      margin: EdgeInsets.only(bottom: 20),
-      padding: EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            _getCardColor(cardId).withOpacity(0.1),
-            Colors.white,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _getCardColor(cardId).withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: _getCardColor(cardId).withOpacity(0.1),
-            blurRadius: 10,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // En-tête de la carte
-          Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      _getCardColor(cardId),
-                      _getCardColor(cardId).withOpacity(0.7),
-                    ],
-                  ),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    cardId,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'البطاقة المخصصة لك',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                        fontFamily: 'Tajawal',
-                      ),
-                    ),
-                    Text(
-                      _getCardName(cardId),
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Tajawal',
-                        color: _getCardColor(cardId),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+  //   final cardId = _selectedCardId!;
+  //   final cardData = _selectedCardDetails!;
+  //   final qrUrl = cardData['qrCodeUrl'] ?? '';
+  //   final rib = cardData['ribNumber'] ?? '';
+  //   final bankName = cardData['bankName'] ?? '';
+
+  //   return Container(
+  //     margin: EdgeInsets.only(bottom: 20),
+  //     padding: EdgeInsets.all(20),
+  //     decoration: BoxDecoration(
+  //       gradient: LinearGradient(
+  //         begin: Alignment.topLeft,
+  //         end: Alignment.bottomRight,
+  //         colors: [
+  //           _getCardColor(cardId).withOpacity(0.1),
+  //           Colors.white,
+  //         ],
+  //       ),
+  //       borderRadius: BorderRadius.circular(16),
+  //       border: Border.all(color: _getCardColor(cardId).withOpacity(0.3)),
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: _getCardColor(cardId).withOpacity(0.1),
+  //           blurRadius: 10,
+  //           offset: Offset(0, 4),
+  //         ),
+  //       ],
+  //     ),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         // En-tête de la carte
+  //         Row(
+  //           children: [
+  //             Container(
+  //               width: 50,
+  //               height: 50,
+  //               decoration: BoxDecoration(
+  //                 gradient: LinearGradient(
+  //                   colors: [
+  //                     _getCardColor(cardId),
+  //                     _getCardColor(cardId).withOpacity(0.7),
+  //                   ],
+  //                 ),
+  //                 shape: BoxShape.circle,
+  //               ),
+  //               child: Center(
+  //                 child: Text(
+  //                   cardId,
+  //                   style: TextStyle(
+  //                     color: Colors.white,
+  //                     fontWeight: FontWeight.bold,
+  //                     fontSize: 20,
+  //                   ),
+  //                 ),
+  //               ),
+  //             ),
+  //             SizedBox(width: 12),
+  //             Expanded(
+  //               child: Column(
+  //                 crossAxisAlignment: CrossAxisAlignment.start,
+  //                 children: [
+  //                   Text(
+  //                     'البطاقة المخصصة لك',
+  //                     style: TextStyle(
+  //                       fontSize: 14,
+  //                       color: Colors.grey.shade600,
+  //                       fontFamily: 'Tajawal',
+  //                     ),
+  //                   ),
+  //                   Text(
+  //                     _getCardName(cardId),
+  //                     style: TextStyle(
+  //                       fontSize: 18,
+  //                       fontWeight: FontWeight.bold,
+  //                       fontFamily: 'Tajawal',
+  //                       color: _getCardColor(cardId),
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ],
+  //         ),
           
-          SizedBox(height: 20),
+  //         SizedBox(height: 20),
 
-          // QR Code
-          if (qrUrl != null && qrUrl.isNotEmpty) ...[
-            Center(
-              child: GestureDetector(
-                onTap: () => _showFullQRCode(qrUrl, cardId),
-                child: Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: _getCardColor(cardId).withOpacity(0.3)),
-                  ),
-                  child: Column(
-                    children: [
-                      _buildQRImage(qrUrl, cardId, height: 150, width: 150),
-                      SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.zoom_in, size: 16, color: _getCardColor(cardId)),
-                          SizedBox(width: 4),
-                          Text(
-                            'اضغط للتكبير',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: _getCardColor(cardId),
-                              fontFamily: 'Tajawal',
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-          ],
+  //         // QR Code
+  //         if (qrUrl.isNotEmpty) ...[
+  //           Center(
+  //             child: GestureDetector(
+  //               onTap: () => _showFullQRCode(qrUrl, cardId),
+  //               child: Container(
+  //                 padding: EdgeInsets.all(12),
+  //                 decoration: BoxDecoration(
+  //                   color: Colors.white,
+  //                   borderRadius: BorderRadius.circular(16),
+  //                   border: Border.all(color: _getCardColor(cardId).withOpacity(0.3)),
+  //                 ),
+  //                 child: Column(
+  //                   children: [
+  //                     _buildQRImage(qrUrl, cardId, height: 150, width: 150),
+  //                     SizedBox(height: 8),
+  //                     Row(
+  //                       mainAxisAlignment: MainAxisAlignment.center,
+  //                       children: [
+  //                         Icon(Icons.zoom_in, size: 16, color: _getCardColor(cardId)),
+  //                         SizedBox(width: 4),
+  //                         Text(
+  //                           'اضغط للتكبير',
+  //                           style: TextStyle(
+  //                             fontSize: 12,
+  //                             color: _getCardColor(cardId),
+  //                             fontFamily: 'Tajawal',
+  //                           ),
+  //                         ),
+  //                       ],
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //             ),
+  //           ),
+  //           SizedBox(height: 20),
+  //         ],
 
-          // RIB
-          if (rib != null && rib.isNotEmpty) ...[
-            Text(
-              'رقم الحساب (RIB):',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'Tajawal',
-                color: _getCardColor(cardId),
-              ),
-            ),
-            SizedBox(height: 8),
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _getCardColor(cardId).withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SelectableText(
-                      rib,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'monospace',
-                        letterSpacing: 1,
-                        color: Colors.grey.shade800,
-                      ),
-                      textAlign: TextAlign.left,
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.copy, color: _getCardColor(cardId), size: 20),
-                    onPressed: () {
-                      html.window.navigator.clipboard?.writeText(rib);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('تم نسخ رقم RIB', style: TextStyle(fontFamily: 'Tajawal')),
-                          backgroundColor: Colors.green,
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            if (bankName != null && bankName.isNotEmpty) ...[
-              SizedBox(height: 8),
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: _getCardColor(cardId).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.account_balance, size: 16, color: _getCardColor(cardId)),
-                    SizedBox(width: 8),
-                    Text(
-                      'البنك: $bankName',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: _getCardColor(cardId).withOpacity(0.8),
-                        fontFamily: 'Tajawal',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
+  //         // RIB
+  //         if (rib.isNotEmpty) ...[
+  //           Text(
+  //             'رقم الحساب (RIB):',
+  //             style: TextStyle(
+  //               fontSize: 16,
+  //               fontWeight: FontWeight.w600,
+  //               fontFamily: 'Tajawal',
+  //               color: _getCardColor(cardId),
+  //             ),
+  //           ),
+  //           SizedBox(height: 8),
+  //           Container(
+  //             padding: EdgeInsets.all(16),
+  //             decoration: BoxDecoration(
+  //               color: Colors.white,
+  //               borderRadius: BorderRadius.circular(12),
+  //               border: Border.all(color: _getCardColor(cardId).withOpacity(0.3)),
+  //             ),
+  //             child: Row(
+  //               children: [
+  //                 Expanded(
+  //                   child: SelectableText(
+  //                     rib,
+  //                     style: TextStyle(
+  //                       fontSize: 18,
+  //                       fontWeight: FontWeight.w500,
+  //                       fontFamily: 'monospace',
+  //                       letterSpacing: 1,
+  //                       color: Colors.grey.shade800,
+  //                     ),
+  //                     textAlign: TextAlign.left,
+  //                   ),
+  //                 ),
+  //                 IconButton(
+  //                   icon: Icon(Icons.copy, color: _getCardColor(cardId), size: 20),
+  //                   onPressed: () {
+  //                     html.window.navigator.clipboard?.writeText(rib);
+  //                     ScaffoldMessenger.of(context).showSnackBar(
+  //                       SnackBar(
+  //                         content: Text('تم نسخ رقم RIB', style: TextStyle(fontFamily: 'Tajawal')),
+  //                         backgroundColor: Colors.green,
+  //                         duration: Duration(seconds: 1),
+  //                       ),
+  //                     );
+  //                   },
+  //                 ),
+  //               ],
+  //             ),
+  //           ),
+  //           if (bankName.isNotEmpty) ...[
+  //             SizedBox(height: 8),
+  //             Container(
+  //               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+  //               decoration: BoxDecoration(
+  //                 color: _getCardColor(cardId).withOpacity(0.1),
+  //                 borderRadius: BorderRadius.circular(8),
+  //               ),
+  //               child: Row(
+  //                 children: [
+  //                   Icon(Icons.account_balance, size: 16, color: _getCardColor(cardId)),
+  //                   SizedBox(width: 8),
+  //                   Text(
+  //                     'البنك: $bankName',
+  //                     style: TextStyle(
+  //                       fontSize: 14,
+  //                       color: _getCardColor(cardId).withOpacity(0.8),
+  //                       fontFamily: 'Tajawal',
+  //                     ),
+  //                   ),
+  //                 ],
+  //               ),
+  //             ),
+  //           ],
+  //         ],
 
-          // Instructions
-          SizedBox(height: 16),
-          Container(
-            padding: EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _getCardColor(cardId).withOpacity(0.05),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, size: 20, color: _getCardColor(cardId)),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'هذه البطاقة مخصصة لك حسب نظام التوزيع. يرجى استخدامها للدفع.',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade700,
-                      fontFamily: 'Tajawal',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  //         // Instructions
+  //         SizedBox(height: 16),
+  //         Container(
+  //           padding: EdgeInsets.all(12),
+  //           decoration: BoxDecoration(
+  //             color: _getCardColor(cardId).withOpacity(0.05),
+  //             borderRadius: BorderRadius.circular(8),
+  //           ),
+  //           child: Row(
+  //             children: [
+  //               Icon(Icons.info_outline, size: 20, color: _getCardColor(cardId)),
+  //               SizedBox(width: 8),
+  //               Expanded(
+  //                 child: Text(
+  //                   'هذه البطاقة مخصصة لك حسب نظام التوزيع. يرجى استخدامها للدفع.',
+  //                   style: TextStyle(
+  //                     fontSize: 14,
+  //                     color: Colors.grey.shade700,
+  //                     fontFamily: 'Tajawal',
+  //                   ),
+  //                 ),
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Color _getCardColor(String cardId) {
     switch (cardId) {
@@ -1071,7 +1246,9 @@ class _PaymentPageState extends State<PaymentPage> {
       },
     );
   }
-Widget _buildPaymentForm() {
+  
+
+  Widget _buildPaymentForm() {
   return SingleChildScrollView(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1143,7 +1320,9 @@ Widget _buildPaymentForm() {
         ),
 
         // عرض معلومات البطاقة المخصصة (يتم اختيارها تلقائياً حسب نظام التوزيع)
-       // _buildSelectedCardInfo(),
+        // ** IMPORTANT: Décommenter cette ligne pour afficher les instructions de paiement **
+      //  _buildSelectedCardInfo(),
+        
         SizedBox(height: 24),
 
         // اختيار الباقة
@@ -1295,8 +1474,9 @@ Widget _buildPaymentForm() {
                       ),
                       SizedBox(width: 8),
                       Text(
-                        'تحويل بنكي / حوالة بريدية',
+                        'تحويل بنكي / حوالة بريدية / D17',
                         style: TextStyle(
+                          fontSize: 12,
                           fontFamily: 'Tajawal',
                           color:
                               !_useOnlinePayment ? Colors.blue : Colors.grey,
@@ -1419,7 +1599,7 @@ Widget _buildPaymentForm() {
                         _buildStepItem('1', 'افتح تطبيق D17 على هاتفك.', Icons.phone_android),
                         _buildStepItem('2', 'اختر "الدفع عبر QR".', Icons.qr_code),
                         _buildStepItem('3', 'قم بمسح رمز الـ QR المعروض أدناه.', Icons.qr_code_scanner),
-                        _buildStepItem('4', 'أدخل مبلغ الاشتراك: ', Icons.attach_money),
+                        _buildStepItem('4', 'أدخل مبلغ الاشتراك: ${selectedForfait == 'ثلاثية' ? '40' : selectedForfait == 'سنوي' ? '70' : '...'} دينار', Icons.attach_money),
                         _buildStepItem('5', 'أكد عملية التحويل.', Icons.check_circle),
                       ],
                     ),
@@ -1479,6 +1659,56 @@ Widget _buildPaymentForm() {
                           ),
                           textAlign: TextAlign.center,
                         ),
+                        
+                        // Ajout des informations RIB pour les autres méthodes
+                        if (_selectedCardDetails!['ribNumber'] != null) ...[
+                          SizedBox(height: 16),
+                          Divider(),
+                          SizedBox(height: 8),
+                          Text(
+                            'معلومات التحويل البنكي:',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Tajawal',
+                              color: Colors.blue.shade800,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: SelectableText(
+                                    _selectedCardDetails!['ribNumber'],
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.copy, size: 20),
+                                  onPressed: () {
+                                    html.window.navigator.clipboard?.writeText(_selectedCardDetails!['ribNumber']);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('تم نسخ رقم RIB', style: TextStyle(fontFamily: 'Tajawal')),
+                                        backgroundColor: Colors.green,
+                                        duration: Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -1642,8 +1872,8 @@ Widget _buildPaymentForm() {
                     padding: EdgeInsets.symmetric(vertical: 16),
                     backgroundColor:
                         _photo != null || _existingPhotoUrl != null
-                            ? Colors.green
-                            : Colors.blue,
+                            ? const Color.fromARGB(255, 204, 191, 16)
+                            : const Color.fromARGB(255, 248, 248, 248),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -1714,7 +1944,7 @@ Widget _buildPaymentForm() {
                             'معاينة الصورة السابقة',
                             style: TextStyle(
                               fontFamily: 'Tajawal',
-                              color: Colors.blue,
+                              color: const Color.fromARGB(255, 101, 165, 144),
                             ),
                           ),
                         ),
@@ -1732,7 +1962,6 @@ Widget _buildPaymentForm() {
     ),
   );
 }
-
 // دالة مساعدة لبناء خطوات التعليمات
 Widget _buildStepItem(String number, String text, IconData icon) {
   return Padding(
