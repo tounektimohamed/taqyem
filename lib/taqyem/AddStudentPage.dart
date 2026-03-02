@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io';
@@ -111,6 +112,334 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
         }
       });
     }
+  }
+
+  Future<void> _addMultipleStudentsDialog(
+      Map<String, dynamic> classData) async {
+    TextEditingController _studentsListController = TextEditingController();
+    bool _isProcessing = false;
+    int _successCount = 0;
+    int _duplicateCount = 0;
+    int _errorCount = 0;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  if (_isProcessing)
+                    Padding(
+                      padding: EdgeInsets.only(left: 8),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  Expanded(
+                    child: Text(
+                      'إضافة قائمة تلاميذ',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                      textDirection: TextDirection.rtl,
+                    ),
+                  ),
+                ],
+              ),
+              content: Container(
+                width: MediaQuery.of(context).size.width * 0.8,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Zone de texte pour coller les noms
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: TextField(
+                        controller: _studentsListController,
+                        maxLines: 8,
+                        textAlign: TextAlign.right,
+                        enabled: !_isProcessing,
+                        decoration: InputDecoration(
+                          hintText: 'أدخل أسماء التلاميذ\nكل اسم في سطر منفصل',
+                          hintStyle: TextStyle(color: Colors.grey.shade400),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          contentPadding: EdgeInsets.all(12),
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: 12),
+
+                    // Exemple
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.info, size: 16, color: Colors.blue),
+                              SizedBox(width: 8),
+                              Text(
+                                'مثال:',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'أحمد محمد\nفاطمة علي\nيوسف عمر\nسارة خالد',
+                            style: TextStyle(
+                              fontFamily: 'monospace',
+                              color: Colors.blue.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: 12),
+
+                    // Statistiques après traitement
+                    if (_successCount > 0 ||
+                        _duplicateCount > 0 ||
+                        _errorCount > 0)
+                      Container(
+                        padding: EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          children: [
+                            if (_successCount > 0)
+                              Text('✅ تمت الإضافة: $_successCount',
+                                  style: TextStyle(color: Colors.green)),
+                            if (_duplicateCount > 0)
+                              Text('⚠️ موجود مسبقاً: $_duplicateCount',
+                                  style: TextStyle(color: Colors.orange)),
+                            if (_errorCount > 0)
+                              Text('❌ خطأ: $_errorCount',
+                                  style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed:
+                      _isProcessing ? null : () => Navigator.pop(context),
+                  child: Text(
+                    'إلغاء',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                ),
+                if (!_isProcessing)
+                  ElevatedButton.icon(
+                    icon: Icon(Icons.paste),
+                    label: Text('لصق من الحافظة'),
+                    onPressed: () async {
+                      // Récupérer le texte du presse-papiers
+                      final clipboardData =
+                          await Clipboard.getData(Clipboard.kTextPlain);
+                      if (clipboardData?.text != null) {
+                        setState(() {
+                          _studentsListController.text = clipboardData!.text!;
+                        });
+                      }
+                    },
+                  ),
+                ElevatedButton.icon(
+                  icon: _isProcessing
+                      ? SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : Icon(Icons.save),
+                  label: Text(_isProcessing ? 'جاري الإضافة...' : 'إضافة الكل'),
+                  onPressed: _isProcessing
+                      ? null
+                      : () async {
+                          final text = _studentsListController.text.trim();
+                          if (text.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('يرجى إدخال أسماء التلاميذ'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                            return;
+                          }
+
+                          // Diviser le texte en lignes et nettoyer
+                          List<String> names = text
+                              .split('\n')
+                              .map((line) => line.trim())
+                              .where((line) => line.isNotEmpty)
+                              .toList();
+
+                          if (names.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('لم يتم العثور على أسماء صالحة'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                            return;
+                          }
+
+                          setState(() {
+                            _isProcessing = true;
+                            _successCount = 0;
+                            _duplicateCount = 0;
+                            _errorCount = 0;
+                          });
+
+                          try {
+                            final studentsCollection = FirebaseFirestore
+                                .instance
+                                .collection('users')
+                                .doc(currentUser!.uid)
+                                .collection('user_classes')
+                                .doc(classData['id'])
+                                .collection('students');
+
+                            // Récupérer les noms existants pour éviter les doublons
+                            final existingStudents =
+                                await studentsCollection.get();
+                            Set<String> existingNames = existingStudents.docs
+                                .map((doc) => doc['name'] as String)
+                                .toSet();
+
+                            List<String> updatedStudents =
+                                List.from(classData['students']);
+
+                            // Traiter chaque nom
+                            for (String name in names) {
+                              try {
+                                // Ignorer les doublons
+                                if (existingNames.contains(name)) {
+                                  setState(() {
+                                    _duplicateCount++;
+                                  });
+                                  continue;
+                                }
+
+                                // Ajouter l'élève
+                                final studentRef =
+                                    await studentsCollection.add({
+                                  'name': name,
+                                  'parentName': '',
+                                  'parentPhone': '',
+                                  'birthDate': '',
+                                  'remarks': '',
+                                  'photoBase64': '',
+                                  'createdAt': FieldValue.serverTimestamp(),
+                                });
+
+                                updatedStudents.add(studentRef.id);
+                                existingNames.add(
+                                    name); // Ajouter à l'ensemble des noms existants
+
+                                setState(() {
+                                  _successCount++;
+                                });
+
+                                // Petite pause pour éviter de surcharger
+                                await Future.delayed(
+                                    Duration(milliseconds: 50));
+                              } catch (e) {
+                                print('Erreur lors de l\'ajout de $name: $e');
+                                setState(() {
+                                  _errorCount++;
+                                });
+                              }
+                            }
+
+                            // Mettre à jour la liste des élèves dans le document de classe
+                            if (_successCount > 0) {
+                              await FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(currentUser!.uid)
+                                  .collection('user_classes')
+                                  .doc(classData['id'])
+                                  .update({
+                                'students': updatedStudents,
+                              });
+
+                              // Mettre à jour localement
+                              setState(() {
+                                classData['students'] = updatedStudents;
+                              });
+                            }
+
+                            // Attendre un peu pour montrer les résultats
+                            await Future.delayed(Duration(seconds: 1));
+
+                            // Fermer la boîte de dialogue
+                            if (mounted) {
+                              Navigator.pop(context);
+                            }
+
+                            // Recharger les élèves si nécessaire
+                            if (_showStudentsList) {
+                              await _loadStudentsForClass();
+                            }
+
+                            // Afficher le résultat
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'تمت الإضافة: $_successCount\nموجود مسبقاً: $_duplicateCount\nأخطاء: $_errorCount',
+                                  textDirection: TextDirection.rtl,
+                                ),
+                                backgroundColor: _successCount > 0
+                                    ? Colors.green
+                                    : Colors.orange,
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          } catch (e) {
+                            print('Erreur lors de l\'ajout multiple: $e');
+                            setState(() {
+                              _isProcessing = false;
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('حدث خطأ أثناء إضافة التلاميذ'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   String _getMappedEvaluation(String displayValue, String system,
@@ -4113,17 +4442,38 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                       ),
                     ],
                   ),
-                  // Dans _buildClassListItem, changer le bouton pour appeler la nouvelle méthode
-                  TextButton.icon(
-                    icon: Icon(Icons.add, size: 16),
-                    label: Text('إضافة تلاميذ'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Theme.of(context).primaryColor,
-                    ),
-                    onPressed: () => _addStudent(
-                        classData), // Garder l'ancienne version pour plusieurs
-                    // OU utiliser la version individuelle :
-                    // onPressed: () => _addStudentIndividual(classData),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Nouveau bouton pour ajout multiple
+                      Container(
+                        margin: EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.purple[50],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            Icons.post_add,
+                            color: Colors.purple[700],
+                            size: 20,
+                          ),
+                          onPressed: () =>
+                              _addMultipleStudentsDialog(classData),
+                          tooltip: 'إضافة قائمة تلاميذ',
+                          padding: EdgeInsets.all(8),
+                        ),
+                      ),
+                      // Bouton existant pour ajout individuel
+                      TextButton.icon(
+                        icon: Icon(Icons.person_add, size: 16),
+                        label: Text('إضافة'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Theme.of(context).primaryColor,
+                        ),
+                        onPressed: () => _addStudent(classData),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -4798,39 +5148,77 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         // Indicateur alphabétique
+                        // Dans _buildStudentsList(), remplacez la section des boutons d'action :
+
+// Boutons d'action
                         Row(
                           children: [
-                            Icon(Icons.sort_by_alpha, color: Colors.blue),
-                            SizedBox(width: 8),
-                            Text(
-                              "مرتب أبجدياً",
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue,
+                            // NOUVEAU BOUTON : Importer une liste
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.purple[50],
+                                border: Border.all(
+                                    color: Colors.purple[100] ?? Colors.purple),
+                              ),
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.post_add,
+                                  color: Colors.purple[700],
+                                  size: 22,
+                                ),
+                                onPressed: () =>
+                                    _addMultipleStudentsDialog(_selectedClass!),
+                                tooltip: 'إضافة قائمة تلاميذ',
+                                padding: EdgeInsets.all(8),
                               ),
                             ),
+
                             SizedBox(width: 8),
+
+                            // Bouton Ajouter un élève (individuel)
                             Container(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .primaryColor
-                                    .withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.green[50],
+                                border: Border.all(
+                                    color: Colors.green[100] ?? Colors.green),
                               ),
-                              child: Text(
-                                "${_students.length} تلميذ",
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Theme.of(context).primaryColor,
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.person_add_alt_1,
+                                  color: Colors.green[700],
+                                  size: 22,
                                 ),
+                                onPressed: () => _addStudent(_selectedClass!),
+                                tooltip: 'إضافة تلميذ جديد',
+                                padding: EdgeInsets.all(8),
+                              ),
+                            ),
+
+                            SizedBox(width: 8),
+
+                            // Bouton Rafraîchir
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.blue[50],
+                                border: Border.all(
+                                    color: Colors.blue[100] ?? Colors.blue),
+                              ),
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.refresh,
+                                  color: Colors.blue[700],
+                                  size: 22,
+                                ),
+                                onPressed: _refreshStudents,
+                                tooltip: 'تحديث القائمة',
+                                padding: EdgeInsets.all(8),
                               ),
                             ),
                           ],
                         ),
-
                         // Boutons d'action
                         Row(
                           children: [

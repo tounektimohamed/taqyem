@@ -43,37 +43,129 @@ class _AddClassPageState extends State<AddClassPage> {
     _searchController.dispose();
     super.dispose();
   }
+Future<void> _loadClassNames() async {
+  try {
+    final classDocs =
+        await FirebaseFirestore.instance.collection('classes').get();
+    
+    // Définir l'ordre personnalisé des classes
+    const List<String> classOrder = [
+      "السنة الأولى ابتدائي",
+      "السنة الأولى ابتدائي أ",
+      "السنة الأولى ابتدائي ب", 
+      "السنة الأولى ابتدائي ج",
+      "السنة الأولى ابتدائي د",
+      "السنة الثانية ابتدائي",
+      "السنة الثانية ابتدائي أ",
+      "السنة الثانية ابتدائي ب",
+      "السنة الثانية ابتدائي ج",
+      "السنة الثانية ابتدائي د",
+      "السنة الثالثة ابتدائي",
+      "السنة الثالثة ابتدائي أ",
+      "السنة الثالثة ابتدائي ب",
+      "السنة الثالثة ابتدائي ج",
+      "السنة الثالثة ابتدائي د",
+      "السنة الرابعة ابتدائي",
+      "السنة الرابعة ابتدائي أ",
+      "السنة الرابعة ابتدائي ب",
+      "السنة الرابعة ابتدائي ج",
+      "السنة الرابعة ابتدائي د",
+      "السنة الخامسة ابتدائي",
+      "السنة الخامسة ابتدائي أ",
+      "السنة الخامسة ابتدائي ب",
+      "السنة الخامسة ابتدائي ج",
+      "السنة الخامسة ابتدائي د",
+      "السنة السادسة ابتدائي",
+      "السنة السادسة ابتدائي أ",
+      "السنة السادسة ابتدائي ب",
+      "السنة السادسة ابتدائي ج",
+      "السنة السادسة ابتدائي د",
+    ];
 
-  Future<void> _loadClassNames() async {
-    try {
-      final classDocs =
-          await FirebaseFirestore.instance.collection('classes').get();
-      setState(() {
-        _classNames = classDocs.docs.map((doc) {
-          return {
-            'id': doc.id,
-            'name': doc['name'] as String,
-          };
-        }).toList();
-        _classNames.sort((a, b) => a['name']!.compareTo(b['name']!));
-        _filteredClassNames = List.from(_classNames);
-      });
-    } catch (e) {
-      print("Erreur lors du chargement des classes : $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur lors du chargement des classes')));
-    }
-  }
-
-  void _filterClassNames() {
-    final query = _searchController.text.toLowerCase();
     setState(() {
-      _filteredClassNames = _classNames.where((classData) {
-        return classData['name']!.toLowerCase().contains(query);
-      }).toList()
-        ..sort((a, b) => a['name']!.compareTo(b['name']!));
+      _classNames = classDocs.docs.map((doc) {
+        return {
+          'id': doc.id,
+          'name': doc['name'] as String,
+        };
+      }).toList();
+      
+      // Trier selon l'ordre personnalisé
+      _classNames.sort((a, b) {
+        final indexA = classOrder.indexOf(a['name']!);
+        final indexB = classOrder.indexOf(b['name']!);
+        
+        // Si le nom n'est pas trouvé dans l'ordre personnalisé,
+        // le mettre à la fin
+        if (indexA == -1) return 1;
+        if (indexB == -1) return -1;
+        
+        return indexA.compareTo(indexB);
+      });
+      
+      _filteredClassNames = List.from(_classNames);
     });
+  } catch (e) {
+    print("Erreur lors du chargement des classes : $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors du chargement des classes')));
   }
+}
+
+ void _filterClassNames() {
+  final query = _searchController.text.toLowerCase();
+  
+  // Définir l'ordre personnalisé des classes
+  const List<String> classOrder = [
+    "السنة الأولى ابتدائي",
+    "السنة الأولى ابتدائي أ",
+    "السنة الأولى ابتدائي ب", 
+    "السنة الأولى ابتدائي ج",
+    "السنة الأولى ابتدائي د",
+    "السنة الثانية ابتدائي",
+    "السنة الثانية ابتدائي أ",
+    "السنة الثانية ابتدائي ب",
+    "السنة الثانية ابتدائي ج",
+    "السنة الثانية ابتدائي د",
+    "السنة الثالثة ابتدائي",
+    "السنة الثالثة ابتدائي أ",
+    "السنة الثالثة ابتدائي ب",
+    "السنة الثالثة ابتدائي ج",
+    "السنة الثالثة ابتدائي د",
+    "السنة الرابعة ابتدائي",
+    "السنة الرابعة ابتدائي أ",
+    "السنة الرابعة ابتدائي ب",
+    "السنة الرابعة ابتدائي ج",
+    "السنة الرابعة ابتدائي د",
+    "السنة الخامسة ابتدائي",
+    "السنة الخامسة ابتدائي أ",
+    "السنة الخامسة ابتدائي ب",
+    "السنة الخامسة ابتدائي ج",
+    "السنة الخامسة ابتدائي د",
+    "السنة السادسة ابتدائي",
+    "السنة السادسة ابتدائي أ",
+    "السنة السادسة ابتدائي ب",
+    "السنة السادسة ابتدائي ج",
+    "السنة السادسة ابتدائي د",
+  ];
+
+  setState(() {
+    _filteredClassNames = _classNames.where((classData) {
+      return classData['name']!.toLowerCase().contains(query);
+    }).toList();
+    
+    // Trier selon l'ordre personnalisé
+    _filteredClassNames.sort((a, b) {
+      final indexA = classOrder.indexOf(a['name']!);
+      final indexB = classOrder.indexOf(b['name']!);
+      
+      if (indexA == -1) return 1;
+      if (indexB == -1) return -1;
+      
+      return indexA.compareTo(indexB);
+    });
+  });
+}
 
   Future<void> _saveClassData(String? newClassName) async {
     User? currentUser = FirebaseAuth.instance.currentUser;
@@ -252,16 +344,16 @@ class _AddClassPageState extends State<AddClassPage> {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        labelText: 'بحث',
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        suffixIcon: Icon(Icons.search),
-                      ),
-                    ),
-                    SizedBox(height: 10),
+                    // TextField(
+                    //   controller: _searchController,
+                    //   decoration: InputDecoration(
+                    //     labelText: 'بحث',
+                    //     border: OutlineInputBorder(
+                    //         borderRadius: BorderRadius.circular(12)),
+                    //     suffixIcon: Icon(Icons.search),
+                    //   ),
+                    // ),
+                    // SizedBox(height: 10),
                     DropdownButtonFormField<String>(
                       value: _selectedClassName,
                       items: _filteredClassNames.asMap().entries.map((entry) {

@@ -263,6 +263,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
     'support': [],
     'excellence': [],
   };
+  
 // Variables pour la gestion des exercices AI sélectionnés
   Map<String, List<AIExerciseSelection>> _selectedAIExercises = {
     'treatment': [],
@@ -290,7 +291,601 @@ class _ClassificationPageState extends State<ClassificationPage> {
     _accountStatusTimer?.cancel();
     super.dispose();
   }
+Future<void> _showModifyExerciseDialog({
+  required String originalExercise,
+  required String groupKey,
+  required String baremeName,
+}) async {
+  TextEditingController modifiedExerciseController = 
+      TextEditingController(text: originalExercise);
+  TextEditingController improvementInstructionsController = 
+      TextEditingController();
 
+  return showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9,
+          padding: EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.edit_note,
+                      color: Colors.purple.shade700,
+                      size: 24,
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _getTranslatedText(
+                        'تعديل التمارين',
+                        'Modifier les exercices'
+                      ),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.purple.shade800,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+
+              // Original exercise preview
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.info_outline, 
+                            size: 16, color: Colors.grey.shade600),
+                        SizedBox(width: 4),
+                        Text(
+                          _getTranslatedText(
+                            'التمرين الأصلي:',
+                            'Exercice original:'
+                          ),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      originalExercise.length > 100
+                          ? '${originalExercise.substring(0, 100)}...'
+                          : originalExercise,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey.shade800,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 20),
+
+              // Modified exercise field
+              Text(
+                _getTranslatedText(
+                  'التمارين المعدلة:',
+                  'Exercices modifiés:'
+                ),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+              SizedBox(height: 8),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.purple.shade200),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: TextField(
+                  controller: modifiedExerciseController,
+                  maxLines: 8,
+                  decoration: InputDecoration(
+                    hintText: _getTranslatedText(
+                      'قم بتعديل التمارين هنا...',
+                      'Modifiez les exercices ici...'
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.all(12),
+                  ),
+                ),
+              ),
+              SizedBox(height: 16),
+
+              // Instructions for ChatGPT (optional)
+            
+              
+              SizedBox(height: 20),
+
+              // Action buttons
+              Row(
+                children: [
+                  // Save modifications locally
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        String modified = modifiedExerciseController.text.trim();
+                        if (modified.isNotEmpty) {
+                          await _saveModifiedExercise(
+                            originalExercise: originalExercise,
+                            modifiedExercise: modified,
+                            groupKey: groupKey,
+                            baremeName: baremeName,
+                          );
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                _getTranslatedText(
+                                  'تم حفظ التعديلات',
+                                  'Modifications enregistrées'
+                                )
+                              ),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      },
+                      icon: Icon(Icons.save),
+                      label: Text(
+                        _getTranslatedText('حفظ محلياً', 'Sauvegarder localement')
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green.shade600,
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  
+                  // Send to ChatGPT
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        String modified = modifiedExerciseController.text.trim();
+                        String instructions = improvementInstructionsController.text.trim();
+                        
+                        _sendToChatGPTForImprovement(
+                          originalExercise: originalExercise,
+                          modifiedExercise: modified.isNotEmpty ? modified : originalExercise,
+                          instructions: instructions,
+                          baremeName: baremeName,
+                          matiereName: widget.matiereName,
+                        );
+                        Navigator.pop(context);
+                      },
+                      icon: Icon(Icons.send),
+                      label: Text(
+                        _getTranslatedText(
+                          'إرسال للتحسين',
+                          'Envoyer pour amélioration'
+                        )
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue.shade600,
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+Future<void> _saveModifiedExercise({
+  required String originalExercise,
+  required String modifiedExercise,
+  required String groupKey,
+  required String baremeName,
+}) async {
+  try {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+    
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('modified_exercises')
+        .add({
+      'originalExercise': originalExercise,
+      'modifiedExercise': modifiedExercise,
+      'groupKey': groupKey,
+      'className': widget.className,
+      'matiereName': widget.matiereName,
+      'baremeName': baremeName,
+      'createdAt': FieldValue.serverTimestamp(),
+      'lastModified': FieldValue.serverTimestamp(),
+      'modificationCount': 1,
+    });
+    
+    print('✅ Modified exercise saved');
+  } catch (e) {
+    print('❌ Error saving modified exercise: $e');
+    rethrow;
+  }
+}
+Future<void> _sendToChatGPTForImprovement({
+  required String originalExercise,
+  required String modifiedExercise,
+  required String instructions,
+  required String baremeName,
+  required String matiereName,
+}) async {
+  try {
+    // Format the content for ChatGPT
+    String prompt = _formatPromptForChatGPT(
+      originalExercise: originalExercise,
+      modifiedExercise: modifiedExercise,
+      instructions: instructions,
+      baremeName: baremeName,
+      matiereName: matiereName,
+    );
+    
+    // Create a shareable text
+   String shareableText = '''
+📚 **EXERCICES À AMÉLIORER - TAQYEM APP**
+Classe: ${widget.className}
+Critère: $baremeName
+Matière: $matiereName
+
+
+**Exercice original:**
+$originalExercise
+
+**Ma modification:**
+$modifiedExercise
+
+**Instructions pour amélioration:**
+${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant le même niveau et le même objectif pédagogique"}
+
+---
+Merci d'améliorer ces exercices ! 🙏
+''';
+    
+    // Copy to clipboard
+    await Clipboard.setData(ClipboardData(text: shareableText));
+    
+    // Show success message with instructions
+    _showChatGPTSendDialog(shareableText);
+    
+  } catch (e) {
+    print('❌ Error preparing for ChatGPT: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _getTranslatedText(
+            'خطأ في التحضير للإرسال',
+            'Erreur lors de la préparation'
+          )
+        ),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+}
+String _formatPromptForChatGPT({
+  required String originalExercise,
+  required String modifiedExercise,
+  required String instructions,
+  required String baremeName,
+  required String matiereName,
+}) {
+  String langInstruction = _isFrenchInterface 
+      ? "Please improve these exercises in French:" 
+      : "الرجاء تحسين هذه التمارين باللغة العربية:";
+  
+  return '''
+$langInstruction
+
+**Critère/Category:** $baremeName
+**Matière/Subject:** $matiereName
+
+**Exercice original/Original exercise:**
+$originalExercise
+
+**Ma modification/My modification:**
+$modifiedExercise
+
+**Instructions supplémentaires/Additional instructions:**
+${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant le même niveau et les mêmes objectifs pédagogiques"}
+
+**Consignes spécifiques:**
+- Gardez le même format et structure
+- Maintenez le niveau de difficulté approprié
+- Assurez la cohérence pédagogique
+- Améliorez la clarté et la pertinence des exercices
+''';
+}
+void _showChatGPTSendDialog(String shareableText) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      title: Row(
+        children: [
+          Icon(Icons.send, color: Colors.blue.shade700),
+          SizedBox(width: 10),
+          Text(
+            _getTranslatedText(
+              'إرسال إلى ChatGPT',
+              'Envoyer à ChatGPT'
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _getTranslatedText(
+              'تم نسخ النص للحافظة!',
+              'Texte copié dans le presse-papiers!'
+            ),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.green.shade700,
+            ),
+          ),
+          SizedBox(height: 16),
+          Text(
+            _getTranslatedText(
+              'الخطوات التالية:',
+              'Prochaines étapes:'
+            ),
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 8),
+          _buildStep(
+            icon: Icons.phone_android,
+            text: _getTranslatedText(
+              '1. افتح تطبيق ChatGPT على هاتفك',
+              '1. Ouvrez l\'application ChatGPT sur votre téléphone'
+            ),
+          ),
+          _buildStep(
+            icon: Icons.paste,
+            text: _getTranslatedText(
+              '2. الصق النص في محادثة جديدة',
+              '2. Collez le texte dans une nouvelle conversation'
+            ),
+          ),
+          _buildStep(
+            icon: Icons.send,
+            text: _getTranslatedText(
+              '3. أرسل وانتظر التحسين',
+              '3. Envoyez et attendez l\'amélioration'
+            ),
+          ),
+          _buildStep(
+            icon: Icons.save_alt,
+            text: _getTranslatedText(
+              '4. انسخ النتيجة المحسنة وأعدها للتطبيق',
+              '4. Copiez le résultat amélioré et revenez à l\'application'
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(
+            _getTranslatedText('حسناً', 'OK'),
+            style: TextStyle(
+              color: Colors.blue.shade700,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        TextButton.icon(
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: shareableText));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  _getTranslatedText(
+                    'تم النسخ مجدداً',
+                    'Recopié dans le presse-papiers'
+                  )
+                ),
+                duration: Duration(seconds: 1),
+              ),
+            );
+          },
+          icon: Icon(Icons.copy, size: 16),
+          label: Text(
+            _getTranslatedText('نسخ مجدداً', 'Recopier')
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildStep({required IconData icon, required String text}) {
+  return Padding(
+    padding: EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      children: [
+        Icon(icon, size: 16, color: Colors.blue.shade600),
+        SizedBox(width: 8),
+        Expanded(child: Text(text, style: TextStyle(fontSize: 12))),
+      ],
+    ),
+  );
+}
+Future<void> _saveImprovedExercise({
+  required String originalExercise,
+  required String improvedExercise,
+  required String groupKey,
+  required String baremeName,
+}) async {
+  try {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+    
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('ai_generated_exercises')
+        .add({
+      'aiResponse': improvedExercise,
+      'originalAiResponse': originalExercise,
+      'modifiedBaremeName': baremeName,
+      'groupKey': groupKey,
+      'className': widget.className,
+      'matiereName': widget.matiereName,
+      'selectedProblems': [], // You might want to preserve these
+      'selectedOrigins': [],   // You might want to preserve these
+      'createdAt': FieldValue.serverTimestamp(),
+      'improvedByChatGPT': true,
+      'improvementDate': FieldValue.serverTimestamp(),
+    });
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _getTranslatedText(
+            'تم حفظ التمارين المحسنة بنجاح',
+            'Exercices améliorés sauvegardés'
+          )
+        ),
+        backgroundColor: Colors.green,
+      ),
+    );
+  } catch (e) {
+    print('❌ Error saving improved exercise: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _getTranslatedText(
+            'خطأ في حفظ التمارين المحسنة',
+            'Erreur lors de la sauvegarde'
+          )
+        ),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+}
+Future<void> _showPasteImprovedDialog({
+  required String groupKey,
+  required String baremeName,
+}) async {
+  TextEditingController pastedExerciseController = TextEditingController();
+  
+  return showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.paste, color: Colors.purple.shade700),
+          SizedBox(width: 10),
+          Text(
+            _getTranslatedText(
+              'لصق تمرين محسن',
+              'Coller un exercice amélioré'
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _getTranslatedText(
+              'الصق التمرين المحسن من ChatGPT هنا:',
+              'Collez l\'exercice amélioré de ChatGPT ici:'
+            ),
+          ),
+          SizedBox(height: 12),
+          TextField(
+            controller: pastedExerciseController,
+            maxLines: 8,
+            decoration: InputDecoration(
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              hintText: _getTranslatedText(
+                'الصق المحتوى هنا...',
+                'Collez le contenu ici...'
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(_getTranslatedText('إلغاء', 'Annuler')),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            String improved = pastedExerciseController.text.trim();
+            if (improved.isNotEmpty) {
+              _saveImprovedExercise(
+                originalExercise: '',
+                improvedExercise: improved,
+                groupKey: groupKey,
+                baremeName: baremeName,
+              );
+              Navigator.pop(context);
+            }
+          },
+          child: Text(_getTranslatedText('حفظ', 'Sauvegarder')),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.purple.shade700,
+          ),
+        ),
+      ],
+    ),
+  );
+}
 // Ajoutez cette méthode dans votre classe _ClassificationPageState
   Future<List<Map<String, dynamic>>> _getSelectedAIExercises({
     required String groupKey,
@@ -410,327 +1005,421 @@ class _ClassificationPageState extends State<ClassificationPage> {
     if (text.length <= maxLength) return text;
     return '${text.substring(0, maxLength)}...';
   }
+Future<void> _showAISelectionDialog({
+  required String groupName,
+  required String groupKey,
+}) async {
+  // Charger les exercices disponibles
+  final availableExercises =
+      await _getAvailableAIExercises(groupKey: groupKey);
 
-  Future<void> _showAISelectionDialog({
-    required String groupName,
-    required String groupKey,
-  }) async {
-    // Charger les exercices disponibles
-    final availableExercises =
-        await _getAvailableAIExercises(groupKey: groupKey);
+  if (availableExercises.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_getTranslatedText(
+            'لا توجد تمارين سابقة لهذه المجموعة',
+            'Aucun exercice précédent pour ce groupe')),
+        backgroundColor: Colors.orange,
+      ),
+    );
+    return;
+  }
 
-    if (availableExercises.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_getTranslatedText(
-              'لا توجد تمارين  سابقة لهذه المجموعة',
-              'Aucun exercice  précédent pour ce groupe')),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
+  // Créer une copie locale des exercices pour la sélection
+  // IMPORTANT: Créer de nouvelles instances pour éviter de modifier l'original directement
+  List<AIExerciseSelection> tempSelections = availableExercises
+      .map((e) => AIExerciseSelection(
+            id: e.id,
+            aiResponse: e.aiResponse,
+            modifiedBaremeName: e.modifiedBaremeName,
+            createdAt: e.createdAt,
+            selectedProblems: e.selectedProblems,
+            selectedOrigins: e.selectedOrigins,
+            isSelected: e.isSelected, // Conserver l'état de sélection actuel
+          ))
+      .toList();
 
-    // Créer une copie locale des exercices pour la sélection
-    // IMPORTANT: Créer de nouvelles instances pour éviter de modifier l'original directement
-    List<AIExerciseSelection> tempSelections = availableExercises
-        .map((e) => AIExerciseSelection(
-              id: e.id,
-              aiResponse: e.aiResponse,
-              modifiedBaremeName: e.modifiedBaremeName,
-              createdAt: e.createdAt,
-              selectedProblems: e.selectedProblems,
-              selectedOrigins: e.selectedOrigins,
-              isSelected: e.isSelected, // Conserver l'état de sélection actuel
-            ))
-        .toList();
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Container(
-                width: MediaQuery.of(context).size.width * 0.9,
-                height: MediaQuery.of(context).size.height * 0.8,
-                padding: EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    // En-tête
-                    Container(
-                      padding: EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(color: Colors.grey.shade300),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.auto_awesome,
-                              color: Colors.purple.shade700),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _getTranslatedText(
-                                  'اختر التمارين  للطباعة - $groupName',
-                                  'Sélectionnez les exercices  à imprimer - $groupName'),
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.purple.shade800,
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.select_all,
-                                color: Colors.purple.shade700),
-                            onPressed: () {
-                              setState(() {
-                                bool allSelected = tempSelections.isEmpty
-                                    ? false
-                                    : tempSelections.every((e) => e.isSelected);
-                                for (var exercise in tempSelections) {
-                                  exercise.isSelected = !allSelected;
-                                }
-                              });
-                            },
-                            tooltip: _getTranslatedText(
-                                'تحديد الكل', 'Tout sélectionner'),
-                          ),
-                        ],
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.9,
+              height: MediaQuery.of(context).size.height * 0.8,
+              padding: EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  // En-tête
+                  Container(
+                    padding: EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey.shade300),
                       ),
                     ),
-
-                    SizedBox(height: 20),
-
-                    // Liste des exercices
-                    Expanded(
-                      child: tempSelections.isEmpty
-                          ? Center(
-                              child: Text(
-                                _getTranslatedText('لا توجد تمارين متاحة',
-                                    'Aucun exercice disponible'),
-                                style: TextStyle(color: Colors.grey),
-                              ),
-                            )
-                          : ListView.builder(
-                              itemCount: tempSelections.length,
-                              itemBuilder: (context, index) {
-                                final exercise = tempSelections[index];
-
-                                return Card(
-                                  margin: EdgeInsets.only(bottom: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    side: BorderSide(
-                                      color: exercise.isSelected
-                                          ? Colors.purple
-                                          : Colors.grey.shade300,
-                                      width: exercise.isSelected ? 2 : 1,
-                                    ),
-                                  ),
-                                  child: InkWell(
-                                    onTap: () {
-                                      setState(() {
-                                        exercise.isSelected =
-                                            !exercise.isSelected;
-                                      });
-                                    },
-                                    child: Padding(
-                                      padding: EdgeInsets.all(16),
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Checkbox(
-                                            value: exercise.isSelected,
-                                            onChanged: (value) {
-                                              setState(() {
-                                                exercise.isSelected = value!;
-                                              });
-                                            },
-                                            activeColor: Colors.purple,
-                                          ),
-                                          SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Container(
-                                                      padding:
-                                                          EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 4,
-                                                      ),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors
-                                                            .purple.shade50,
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(12),
-                                                      ),
-                                                      child: Text(
-                                                        exercise.modifiedBaremeName
-                                                                .isNotEmpty
-                                                            ? exercise
-                                                                .modifiedBaremeName
-                                                            : _getTranslatedText(
-                                                                'تمرين ',
-                                                                'Exercice '),
-                                                        style: TextStyle(
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          color: Colors
-                                                              .purple.shade700,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    SizedBox(width: 8),
-                                                    if (exercise.createdAt !=
-                                                        null)
-                                                      Text(
-                                                        DateFormat('dd/MM/yyyy')
-                                                            .format(exercise
-                                                                .createdAt!
-                                                                .toDate()),
-                                                        style: TextStyle(
-                                                          fontSize: 11,
-                                                          color: Colors
-                                                              .grey.shade600,
-                                                        ),
-                                                      ),
-                                                  ],
-                                                ),
-                                                SizedBox(height: 8),
-                                                Text(
-                                                  _truncateText(
-                                                      exercise.aiResponse, 150),
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: Colors.grey.shade800,
-                                                  ),
-                                                  maxLines: 3,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                                if (exercise.selectedProblems
-                                                    .isNotEmpty) ...[
-                                                  SizedBox(height: 8),
-                                                  Wrap(
-                                                    spacing: 4,
-                                                    runSpacing: 4,
-                                                    children: exercise
-                                                        .selectedProblems
-                                                        .take(2)
-                                                        .map((problem) {
-                                                      return Container(
-                                                        padding: EdgeInsets
-                                                            .symmetric(
-                                                          horizontal: 6,
-                                                          vertical: 2,
-                                                        ),
-                                                        decoration:
-                                                            BoxDecoration(
-                                                          color: Colors
-                                                              .red.shade50,
-                                                          borderRadius:
-                                                              BorderRadius
-                                                                  .circular(4),
-                                                        ),
-                                                        child: Text(
-                                                          problem.length > 20
-                                                              ? '${problem.substring(0, 20)}...'
-                                                              : problem,
-                                                          style: TextStyle(
-                                                            fontSize: 10,
-                                                            color: Colors
-                                                                .red.shade700,
-                                                          ),
-                                                        ),
-                                                      );
-                                                    }).toList(),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-
-                    SizedBox(height: 20),
-
-                    // Boutons d'action
-                    Row(
+                    child: Row(
                       children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              // Mettre à jour les sélections avec les exercices choisis
-                              setState(() {
-                                _selectedAIExercises[groupKey] = tempSelections
-                                    .where((e) => e.isSelected)
-                                    .toList();
-                              });
-
-                              Navigator.pop(context);
-
-                              int selectedCount =
-                                  _selectedAIExercises[groupKey]?.length ?? 0;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(_getTranslatedText(
-                                      'تم حفظ $selectedCount تمرين ',
-                                      '$selectedCount exercice(s)  enregistré(s)')),
-                                  backgroundColor: Colors.purple,
-                                  duration: Duration(seconds: 2),
-                                ),
-                              );
-                            },
-                            icon: Icon(Icons.save),
-                            label: Text(_getTranslatedText(
-                                'حفظ التحديدات', 'Enregistrer')),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.purple.shade700,
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                            ),
-                          ),
-                        ),
+                        Icon(Icons.auto_awesome,
+                            color: Colors.purple.shade700),
                         SizedBox(width: 12),
                         Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => Navigator.pop(context),
-                            icon: Icon(Icons.close),
-                            label: Text(_getTranslatedText('إلغاء', 'Annuler')),
-                            style: OutlinedButton.styleFrom(
-                              padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Text(
+                            _getTranslatedText(
+                                'اختر التمارين للطباعة - $groupName',
+                                'Sélectionnez les exercices à imprimer - $groupName'),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.purple.shade800,
                             ),
                           ),
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.select_all,
+                              color: Colors.purple.shade700),
+                          onPressed: () {
+                            setState(() {
+                              bool allSelected = tempSelections.isEmpty
+                                  ? false
+                                  : tempSelections.every((e) => e.isSelected);
+                              for (var exercise in tempSelections) {
+                                exercise.isSelected = !allSelected;
+                              }
+                            });
+                          },
+                          tooltip: _getTranslatedText(
+                              'تحديد الكل', 'Tout sélectionner'),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  SizedBox(height: 20),
+
+                  // Liste des exercices
+                  Expanded(
+                    child: tempSelections.isEmpty
+                        ? Center(
+                            child: Text(
+                              _getTranslatedText('لا توجد تمارين متاحة',
+                                  'Aucun exercice disponible'),
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          )
+                        : ListView.builder(
+                            itemCount: tempSelections.length,
+                            itemBuilder: (context, index) {
+                              final exercise = tempSelections[index];
+
+                              return Card(
+                                margin: EdgeInsets.only(bottom: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  side: BorderSide(
+                                    color: exercise.isSelected
+                                        ? Colors.purple
+                                        : Colors.grey.shade300,
+                                    width: exercise.isSelected ? 2 : 1,
+                                  ),
+                                ),
+                                child: InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      exercise.isSelected =
+                                          !exercise.isSelected;
+                                    });
+                                  },
+                                  child: Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Checkbox(
+                                          value: exercise.isSelected,
+                                          onChanged: (value) {
+                                            setState(() {
+                                              exercise.isSelected = value!;
+                                            });
+                                          },
+                                          activeColor: Colors.purple,
+                                        ),
+                                        SizedBox(width: 12),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Container(
+                                                    padding:
+                                                        EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors
+                                                          .purple.shade50,
+                                                      borderRadius:
+                                                          BorderRadius
+                                                              .circular(12),
+                                                    ),
+                                                    child: Text(
+                                                      exercise.modifiedBaremeName
+                                                              .isNotEmpty
+                                                          ? exercise
+                                                              .modifiedBaremeName
+                                                          : _getTranslatedText(
+                                                              'تمرين ',
+                                                              'Exercice '),
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: Colors
+                                                            .purple.shade700,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  SizedBox(width: 8),
+                                                  if (exercise.createdAt !=
+                                                      null)
+                                                    Text(
+                                                      DateFormat('dd/MM/yyyy')
+                                                          .format(exercise
+                                                              .createdAt!
+                                                              .toDate()),
+                                                      style: TextStyle(
+                                                        fontSize: 11,
+                                                        color: Colors
+                                                            .grey.shade600,
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                              SizedBox(height: 8),
+                                              Text(
+                                                _truncateText(
+                                                    exercise.aiResponse, 150),
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey.shade800,
+                                                ),
+                                                maxLines: 3,
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                              ),
+                                              if (exercise.selectedProblems
+                                                  .isNotEmpty) ...[
+                                                SizedBox(height: 8),
+                                                Wrap(
+                                                  spacing: 4,
+                                                  runSpacing: 4,
+                                                  children: exercise
+                                                      .selectedProblems
+                                                      .take(2)
+                                                      .map((problem) {
+                                                    return Container(
+                                                      padding: EdgeInsets
+                                                          .symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2,
+                                                      ),
+                                                      decoration:
+                                                          BoxDecoration(
+                                                        color: Colors
+                                                            .red.shade50,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(4),
+                                                      ),
+                                                      child: Text(
+                                                        problem.length > 20
+                                                            ? '${problem.substring(0, 20)}...'
+                                                            : problem,
+                                                        style: TextStyle(
+                                                          fontSize: 10,
+                                                          color: Colors
+                                                              .red.shade700,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }).toList(),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+                                        // Menu à 3 points pour les options de modification
+                                        PopupMenuButton<String>(
+                                          icon: Icon(Icons.more_vert,
+                                              color: Colors.grey.shade600),
+                                          onSelected: (value) {
+                                            if (value == 'modify') {
+                                              _showModifyExerciseDialog(
+                                                originalExercise:
+                                                    exercise.aiResponse,
+                                                groupKey: groupKey,
+                                                baremeName: exercise
+                                                    .modifiedBaremeName,
+                                              );
+                                            } else if (value == 'improve') {
+                                              _sendToChatGPTForImprovement(
+                                                originalExercise:
+                                                    exercise.aiResponse,
+                                                modifiedExercise:
+                                                    exercise.aiResponse,
+                                                instructions: '',
+                                                baremeName: exercise
+                                                    .modifiedBaremeName,
+                                                matiereName:
+                                                    widget.matiereName,
+                                              );
+                                            }
+                                          },
+                                          itemBuilder: (context) => [
+                                            PopupMenuItem(
+                                              value: 'modify',
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.edit,
+                                                    size: 18,
+                                                    color: Colors.blue.shade700,
+                                                  ),
+                                                  SizedBox(width: 8),
+                                                  Text(
+                                                    _getTranslatedText(
+                                                      'تعديل',
+                                                      'Modifier',
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            PopupMenuItem(
+                                              value: 'improve',
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.auto_fix_high,
+                                                    size: 18,
+                                                    color:
+                                                        Colors.purple.shade700,
+                                                  ),
+                                                  SizedBox(width: 8),
+                                                  Text(
+                                                    _getTranslatedText(
+                                                      'تحسين بـ ChatGPT',
+                                                      'Améliorer avec ChatGPT',
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+
+                  SizedBox(height: 20),
+
+                  // Boutons d'action
+                  Row(
+                    children: [
+                      // Bouton pour coller un exercice amélioré
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _showPasteImprovedDialog(
+                              groupKey: groupKey,
+                              baremeName: widget.sousBaremeName ??
+                                  widget.baremeName,
+                            );
+                          },
+                          icon: Icon(Icons.paste, color: Colors.purple.shade700),
+                          label: Text(
+                            _getTranslatedText(
+                              'لصق تمرين محسن',
+                              'Coller exercice amélioré',
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.purple.shade700,
+                            side: BorderSide(color: Colors.purple.shade700),
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            // Mettre à jour les sélections avec les exercices choisis
+                            setState(() {
+                              _selectedAIExercises[groupKey] = tempSelections
+                                  .where((e) => e.isSelected)
+                                  .toList();
+                            });
+
+                            Navigator.pop(context);
+
+                            int selectedCount =
+                                _selectedAIExercises[groupKey]?.length ?? 0;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(_getTranslatedText(
+                                    'تم حفظ $selectedCount تمرين ',
+                                    '$selectedCount exercice(s) enregistré(s)')),
+                                backgroundColor: Colors.purple,
+                                duration: Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          icon: Icon(Icons.save),
+                          label: Text(_getTranslatedText(
+                              'حفظ التحديدات', 'Enregistrer')),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.purple.shade700,
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.pop(context),
+                          icon: Icon(Icons.close),
+                          label: Text(_getTranslatedText('إلغاء', 'Annuler')),
+                          style: OutlinedButton.styleFrom(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            );
-          },
-        );
-      },
-    );
-  }
+            ),
+          );
+        },
+      );
+    },
+  );
+}
 
   Future<void> _generateExercisesFromAI({
     required String groupKey,
@@ -3232,7 +3921,7 @@ Future<List<Map<String, dynamic>>> _getProposals() async {
                         Icon(icon, size: 64, color: color.withOpacity(0.3)),
                         SizedBox(height: 16),
                         Text(
-                          _getTranslatedText('لا توجد طلاب في هذه المجموعة',
+                          _getTranslatedText('لا توجد تلاميذ في هذه المجموعة',
                               'Aucun élève dans ce groupe'),
                           style: TextStyle(
                             fontSize: 16,
@@ -3772,7 +4461,7 @@ Future<List<Map<String, dynamic>>> _getProposals() async {
                               SizedBox(height: 4),
                               Text(
                                 _getTranslatedText(
-                                    'في مادة ${widget.matiereName} في معيار ${widget.sousBaremeName ?? widget.baremeName}',
+                                    'في مادة ${widget.matiereName} ال  ${widget.sousBaremeName ?? widget.baremeName}',
                                     'En ${widget.matiereName} dans le critère ${widget.sousBaremeName ?? widget.baremeName}'),
                                 style: TextStyle(
                                   fontSize: 16,
@@ -3812,7 +4501,7 @@ Future<List<Map<String, dynamic>>> _getProposals() async {
                                           SizedBox(height: 8),
                                           Text(
                                             _getTranslatedText(
-                                                '• تقرير مجموعة واحدة: يطبع مجموعة محددة مع طلابها و أخطائها ',
+                                                '• تقرير مجموعة واحدة: يطبع مجموعة محددة مع تلاميذها و أخطائها ',
                                                 '• Rapport groupe unique: imprime un groupe spécifique avec ses élèves et solutions'),
                                             style: TextStyle(
                                               color: Colors.blue.shade700,
@@ -3822,7 +4511,7 @@ Future<List<Map<String, dynamic>>> _getProposals() async {
                                           SizedBox(height: 4),
                                           Text(
                                             _getTranslatedText(
-                                                '• تقرير كامل: يطبع جميع المجموعات مع طلابها ',
+                                                '• تقرير كامل: يطبع جميع المجموعات مع تلاميذها ',
                                                 '• Rapport complet: imprime tous les groupes avec leurs élèves et solutions'),
                                             style: TextStyle(
                                               color: Colors.blue.shade700,
@@ -3859,7 +4548,7 @@ Future<List<Map<String, dynamic>>> _getProposals() async {
                                 SizedBox(height: 16),
                                 Text(
                                   _getTranslatedText(
-                                      'جاري تحميل قائمة الطلاب...',
+                                      'جاري تحميل قائمة التلاميذ...',
                                       'Chargement de la liste des élèves...'),
                                   style: TextStyle(
                                     color: Colors.grey.shade600,

@@ -1600,33 +1600,74 @@ class _SelectionPageState extends State<SelectionPage> {
       _isLoading = false;
     });
   }
+Future<void> fetchClasses() async {
+  try {
+    QuerySnapshot snapshot =
+        await FirebaseFirestore.instance.collection('classes').get();
 
-  Future<void> fetchClasses() async {
-    try {
-      QuerySnapshot snapshot =
-          await FirebaseFirestore.instance.collection('classes').get();
+    // Définir l'ordre personnalisé des classes
+    const List<String> classOrder = [
+      "السنة الأولى ابتدائي",
+      "السنة الأولى ابتدائي أ",
+      "السنة الأولى ابتدائي ب", 
+      "السنة الأولى ابتدائي ج",
+      "السنة الأولى ابتدائي د",
+      "السنة الثانية ابتدائي",
+      "السنة الثانية ابتدائي أ",
+      "السنة الثانية ابتدائي ب",
+      "السنة الثانية ابتدائي ج",
+      "السنة الثانية ابتدائي د",
+      "السنة الثالثة ابتدائي",
+      "السنة الثالثة ابتدائي أ",
+      "السنة الثالثة ابتدائي ب",
+      "السنة الثالثة ابتدائي ج",
+      "السنة الثالثة ابتدائي د",
+      "السنة الرابعة ابتدائي",
+      "السنة الرابعة ابتدائي أ",
+      "السنة الرابعة ابتدائي ب",
+      "السنة الرابعة ابتدائي ج",
+      "السنة الرابعة ابتدائي د",
+      "السنة الخامسة ابتدائي",
+      "السنة الخامسة ابتدائي أ",
+      "السنة الخامسة ابتدائي ب",
+      "السنة الخامسة ابتدائي ج",
+      "السنة الخامسة ابتدائي د",
+      "السنة السادسة ابتدائي",
+      "السنة السادسة ابتدائي أ",
+      "السنة السادسة ابتدائي ب",
+      "السنة السادسة ابتدائي ج",
+      "السنة السادسة ابتدائي د",
+    ];
 
-      List<Map<String, String>> allClasses = snapshot.docs
-          .map((doc) => {
-                'id': doc.id,
-                'name': doc['name'] as String,
-                'translatedName':
-                    DataTranslator.translateClass(doc['name'] as String)
-              })
-          .toList();
+    List<Map<String, String>> allClasses = snapshot.docs
+        .map((doc) => {
+              'id': doc.id,
+              'name': doc['name'] as String,
+              'translatedName':
+                  DataTranslator.translateClass(doc['name'] as String)
+            })
+        .toList();
 
-      // Trier alphabétiquement par nom original (arabe)
-      allClasses.sort((a, b) => removeArabicDiacritics(a['name']!.toLowerCase())
-          .compareTo(removeArabicDiacritics(b['name']!.toLowerCase())));
+    // Trier selon l'ordre personnalisé
+    allClasses.sort((a, b) {
+      final indexA = classOrder.indexOf(a['name']!);
+      final indexB = classOrder.indexOf(b['name']!);
+      
+      // Si le nom n'est pas trouvé dans l'ordre personnalisé,
+      // le mettre à la fin
+      if (indexA == -1) return 1;
+      if (indexB == -1) return -1;
+      
+      return indexA.compareTo(indexB);
+    });
 
-      setState(() {
-        classes = allClasses;
-      });
-    } catch (e) {
-      print('Erreur lors de la récupération des classes: $e');
-    }
+    setState(() {
+      classes = allClasses;
+    });
+  } catch (e) {
+    print('Erreur lors de la récupération des classes: $e');
   }
-
+}
   Future<void> fetchMatieres(String classId) async {
     try {
       QuerySnapshot snapshot = await FirebaseFirestore.instance

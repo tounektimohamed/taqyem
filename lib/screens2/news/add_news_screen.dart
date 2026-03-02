@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart'; // Ajoutez cette dépendance dans pubspec.yaml
 
 class AddNewsScreen extends StatefulWidget {
   const AddNewsScreen({Key? key}) : super(key: key);
@@ -14,12 +15,15 @@ class _AddNewsScreenState extends State<AddNewsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
+  final _linkController = TextEditingController(); // Nouveau contrôleur pour le lien
   bool isLoading = false;
+  bool _hasLink = false; // Pour afficher/masquer le champ lien
 
   Future<void> _submitNews() async {
     if (_formKey.currentState!.validate()) {
       String title = _titleController.text;
       String content = _contentController.text;
+      String? link = _linkController.text.isNotEmpty ? _linkController.text : null;
       String author = FirebaseAuth.instance.currentUser!.email!;
       String name = FirebaseAuth.instance.currentUser!.displayName ?? '';
 
@@ -31,6 +35,8 @@ class _AddNewsScreenState extends State<AddNewsScreen> {
         await FirebaseFirestore.instance.collection('news').add({
           'title': title,
           'content': content,
+          'link': link, // Ajout du lien
+          'hasLink': link != null, // Indicateur pour savoir si un lien existe
           'author': author,
           'timestamp': FieldValue.serverTimestamp(),
           'name': name,
@@ -50,6 +56,10 @@ class _AddNewsScreenState extends State<AddNewsScreen> {
         // Clear fields after successful submission
         _titleController.clear();
         _contentController.clear();
+        _linkController.clear();
+        setState(() {
+          _hasLink = false;
+        });
       } catch (e) {
         print('Error adding news: $e');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -129,6 +139,68 @@ class _AddNewsScreenState extends State<AddNewsScreen> {
                 },
                 maxLines: 5,
               ),
+              SizedBox(height: 20),
+              
+              // Option pour ajouter un lien
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: _hasLink,
+                      onChanged: (value) {
+                        setState(() {
+                          _hasLink = value ?? false;
+                          if (!_hasLink) {
+                            _linkController.clear();
+                          }
+                        });
+                      },
+                      activeColor: Theme.of(context).colorScheme.primary,
+                    ),
+                    Text(
+                      'Add a link',
+                      style: GoogleFonts.roboto(
+                        fontSize: 16,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Champ lien (affiché seulement si _hasLink est true)
+              if (_hasLink) ...[
+                SizedBox(height: 15),
+                TextFormField(
+                  controller: _linkController,
+                  decoration: InputDecoration(
+                    labelText: 'Link URL',
+                    hintText: 'https://example.com',
+                    labelStyle: GoogleFonts.roboto(
+                      color: const Color.fromARGB(255, 16, 15, 15),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    prefixIcon: Icon(Icons.link, color: Theme.of(context).colorScheme.primary),
+                  ),
+                  keyboardType: TextInputType.url,
+                  validator: (value) {
+                    if (_hasLink && (value == null || value.isEmpty)) {
+                      return 'Please enter a link';
+                    }
+                    if (_hasLink && value!.isNotEmpty) {
+                      // Validation basique d'URL
+                      if (!value.startsWith('http://') && !value.startsWith('https://')) {
+                        return 'Link must start with http:// or https://';
+                      }
+                    }
+                    return null;
+                  },
+                ),
+              ],
+              
               SizedBox(height: 30),
               // Submit Button
               SizedBox(

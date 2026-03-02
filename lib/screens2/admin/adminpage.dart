@@ -22,6 +22,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_timeline_calendar/timeline/flutter_timeline_calendar.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../login_signup/account_settings.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:intl/intl.dart';
@@ -1245,6 +1246,42 @@ class _NewsSectionState extends State<NewsSection> {
         .set({'seen': true});
   }
 
+  Future<void> _launchUrl(String url) async {
+    try {
+      // Ajouter https:// si nécessaire
+      String validUrl = url;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        validUrl = 'https://$url';
+      }
+      
+      final Uri uri = Uri.parse(validUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Impossible d\'ouvrir le lien: $url'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Erreur lors de l\'ouverture du lien: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de l\'ouverture du lien'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1318,6 +1355,8 @@ class _NewsSectionState extends State<NewsSection> {
                   var newsId = newsDoc.id;
                   var title = news['title'] ?? 'Pas de Titre';
                   var content = news['content'] ?? 'Pas de Contenu';
+                  var link = news['link']; // Récupérer le lien
+                  var hasLink = news['hasLink'] ?? false;
                   var category = news['category'] ?? 'Général';
                   var timestamp = news['timestamp'] as Timestamp;
                   var date = timestamp.toDate();
@@ -1326,6 +1365,10 @@ class _NewsSectionState extends State<NewsSection> {
                   return GestureDetector(
                     onTap: () {
                       _markAsSeen(newsId);
+                      // Si l'actualité a un lien, l'ouvrir
+                      if (hasLink && link != null && link.isNotEmpty) {
+                        _launchUrl(link);
+                      }
                     },
                     child: Card(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -1344,11 +1387,12 @@ class _NewsSectionState extends State<NewsSection> {
                             ),
                           ),
                         ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.all(16),
-                          title: Column(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // En-tête avec titre et badge Nouveau
                               Row(
                                 children: [
                                   Expanded(
@@ -1385,10 +1429,13 @@ class _NewsSectionState extends State<NewsSection> {
                                 ],
                               ),
                               const SizedBox(height: 4),
+                              
+                              // Catégorie
                               if (category.isNotEmpty)
                                 Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 2),
+                                  margin: const EdgeInsets.only(bottom: 8),
                                   decoration: BoxDecoration(
                                     color: Colors.grey[100],
                                     borderRadius: BorderRadius.circular(4),
@@ -1401,22 +1448,65 @@ class _NewsSectionState extends State<NewsSection> {
                                     ),
                                   ),
                                 ),
-                            ],
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 8),
+
+                              // Contenu
                               Text(
                                 content,
-                                maxLines: 2,
+                                maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.roboto(
                                   fontSize: 14,
-                                  color: Colors.grey[700],
+                                  color: Colors.grey[800],
+                                  height: 1.4,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 12),
+
+                              // Lien (si présent)
+                              if (hasLink && link != null && link.isNotEmpty)
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue[50],
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.blue[200]!,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.link,
+                                        size: 16,
+                                        color: Colors.blue[700],
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          link,
+                                          style: GoogleFonts.roboto(
+                                            fontSize: 12,
+                                            color: Colors.blue[700],
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Icon(
+                                        Icons.open_in_new,
+                                        size: 14,
+                                        color: Colors.blue[700],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                              // Pied de page avec date
                               Row(
                                 children: [
                                   Icon(
@@ -1436,7 +1526,6 @@ class _NewsSectionState extends State<NewsSection> {
                               ),
                             ],
                           ),
-                          isThreeLine: true,
                         ),
                       ),
                     ),
@@ -1507,7 +1596,6 @@ class _NewsSectionState extends State<NewsSection> {
     );
   }
 }
-
 Widget _buildQuickAccessSection(BuildContext context) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 16),
