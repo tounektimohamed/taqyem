@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
+import 'package:url_launcher/url_launcher.dart';
 
 class PaymentPage extends StatefulWidget {
   @override
@@ -15,6 +16,7 @@ class _PaymentPageState extends State<PaymentPage> {
   String? selectedForfait;
   final TextEditingController _nomController = TextEditingController();
   final TextEditingController _prenomController = TextEditingController();
+  final TextEditingController _whatsappController = TextEditingController(); // جديد: حقل الواتساب
   html.File? _photo;
   bool _hasSubmittedForm = false;
   bool _isLoading = false;
@@ -26,6 +28,9 @@ class _PaymentPageState extends State<PaymentPage> {
   bool _canSubscribe = true;
   String? _selectedCardId;
   Map<String, dynamic> _cardStats = {};
+  
+  // رقم الواتساب المستهدف (رقمك)
+  final String _adminWhatsAppNumber = '99237770';
   
   // Détails de la carte sélectionnée automatiquement
   Map<String, dynamic>? _selectedCardDetails;
@@ -50,76 +55,255 @@ class _PaymentPageState extends State<PaymentPage> {
     super.initState();
     _checkIfFormSubmitted();
     _checkSubscriptionAvailability();
-    _selectBestCard(); // Sélectionner automatiquement la meilleure carte au démarrage
+    _selectBestCard();
   }
 
-  // Sélectionner automatiquement la meilleure carte
-  
-  // Sélectionner automatiquement la meilleure carte
-Future<void> _selectBestCard() async {
-  try {
-    final bestCardId = await _cardService.selectBestCard();
-    print('Meilleure carte sélectionnée: $bestCardId');
-    
-    if (bestCardId != null) {
-      // Forcer la création du document si nécessaire
-      await _ensureCardDocument(bestCardId);
+  Future<void> _selectBestCard() async {
+    try {
+      final bestCardId = await _cardService.selectBestCard();
+      print('Meilleure carte sélectionnée: $bestCardId');
       
-      final details = await _cardService.getCardDetails(bestCardId);
-      print('Détails de la carte: $details');
-      
-      setState(() {
-        _selectedCardId = bestCardId;
-        _selectedCardDetails = details;
-      });
-      
-      if (details == null) {
-        print('⚠️ Détails de la carte manquants');
-        _showErrorSnackbar('خطأ في تحميل معلومات البطاقة');
-      } else if (details['qrCodeUrl'] == null || details['qrCodeUrl'] == '') {
-        print('⚠️ QR Code manquant pour la carte $bestCardId');
-        _showErrorSnackbar('البطاقة المختارة لا تحتوي على QR Code');
+      if (bestCardId != null) {
+        await _ensureCardDocument(bestCardId);
+        final details = await _cardService.getCardDetails(bestCardId);
+        print('Détails de la carte: $details');
+        
+        setState(() {
+          _selectedCardId = bestCardId;
+          _selectedCardDetails = details;
+        });
+        
+        if (details == null) {
+          print('⚠️ Détails de la carte manquants');
+          _showErrorSnackbar('خطأ في تحميل معلومات البطاقة');
+        } else if (details['qrCodeUrl'] == null || details['qrCodeUrl'] == '') {
+          print('⚠️ QR Code manquant pour la carte $bestCardId');
+          _showErrorSnackbar('البطاقة المختارة لا تحتوي على QR Code');
+        }
+      } else {
+        print('❌ Aucune carte disponible');
+        setState(() {
+          _selectedCardId = null;
+          _selectedCardDetails = null;
+        });
+        _showErrorSnackbar('عذراً، لا توجد بطاقات متاحة حالياً');
       }
-    } else {
-      print('❌ Aucune carte disponible');
-      setState(() {
-        _selectedCardId = null;
-        _selectedCardDetails = null;
-      });
-      _showErrorSnackbar('عذراً، لا توجد بطاقات متاحة حالياً');
+    } catch (e) {
+      print('❌ Erreur lors de la sélection de la carte: $e');
+      _showErrorSnackbar('حدث خطأ في اختيار البطاقة');
     }
-  } catch (e) {
-    print('❌ Erreur lors de la sélection de la carte: $e');
-    _showErrorSnackbar('حدث خطأ في اختيار البطاقة');
   }
-}
 
-// Méthode helper pour s'assurer que le document existe
-Future<void> _ensureCardDocument(String cardId) async {
-  try {
-    final doc = await FirebaseFirestore.instance
-        .collection('cards')
-        .doc(cardId)
-        .get();
-    
-    if (!doc.exists) {
-      print('📝 Création du document pour la carte $cardId...');
-      await FirebaseFirestore.instance
+  Future<void> _ensureCardDocument(String cardId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
           .collection('cards')
           .doc(cardId)
-          .set({
-            'id': cardId,
-            'qrCodeUrl': '',
-            'ribNumber': '',
-            'bankName': '',
-            'createdAt': FieldValue.serverTimestamp(),
-          });
+          .get();
+      
+      if (!doc.exists) {
+        print('📝 Création du document pour la carte $cardId...');
+        await FirebaseFirestore.instance
+            .collection('cards')
+            .doc(cardId)
+            .set({
+              'id': cardId,
+              'qrCodeUrl': '',
+              'ribNumber': '',
+              'bankName': '',
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+      }
+    } catch (e) {
+      print('❌ Erreur lors de la vérification du document: $e');
     }
-  } catch (e) {
-    print('❌ Erreur lors de la vérification du document: $e');
   }
-}
-  // Afficher le QR code en grand
+
+  // دالة جديدة لرفع الصورة إلى Firebase Storage
+  Future<String> _uploadImageToStorage(html.File imageFile) async {
+    try {
+      final fileName = 'proof_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final storageRef = FirebaseStorage.instance.ref().child('payment_proofs/$fileName');
+      await storageRef.putBlob(imageFile);
+      return await storageRef.getDownloadURL();
+    } catch (e) {
+      print('خطأ في رفع الصورة: $e');
+      throw Exception('فشل رفع الصورة: $e');
+    }
+  }
+
+  // دالة جديدة لحفظ البيانات في Firebase Firestore
+  Future<void> _savePaymentDataToFirestore({
+    required String nom,
+    required String prenom,
+    required String whatsapp,
+    required String forfait,
+    required String imageUrl,
+  }) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception('المستخدم غير مسجل الدخول');
+
+      final paymentData = {
+        'nom': nom,
+        'prenom': prenom,
+        'whatsapp': whatsapp,
+        'forfait': forfait,
+        'imageUrl': imageUrl,
+        'timestamp': FieldValue.serverTimestamp(),
+        'userId': user.uid,
+        'userEmail': user.email,
+        'status': 'pending',
+        'selectedCard': _selectedCardId,
+      };
+
+      await FirebaseFirestore.instance
+          .collection('payments')
+          .add(paymentData);
+
+      await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user.uid)
+          .collection('payments')
+          .add(paymentData);
+
+      print('✅ تم حفظ البيانات بنجاح في Firestore');
+    } catch (e) {
+      print('❌ خطأ في حفظ البيانات: $e');
+      throw Exception('فشل حفظ البيانات: $e');
+    }
+  }
+
+  // دالة جديدة لفتح WhatsApp برسالة جاهزة
+  Future<void> _openWhatsAppWithMessage({
+    required String nom,
+    required String prenom,
+    required String whatsapp,
+    required String imageUrl,
+    required String forfait,
+  }) async {
+    try {
+      String message = '''
+مرحباً، أود تأكيد طلب الاشتراك:
+
+👤 الاسم: $nom
+👥 اللقب: $prenom
+📱 رقم الواتساب: $whatsapp
+📦 الباقة: $forfait
+🖼️ رابط صورة الإثبات: $imageUrl
+
+يرجى تأكيد الطلب. شكراً
+''';
+
+      String encodedMessage = Uri.encodeFull(message);
+      String targetPhoneNumber = _adminWhatsAppNumber;
+      String whatsappUrl = 'https://wa.me/216$targetPhoneNumber?text=$encodedMessage';
+      
+      if (await canLaunch(whatsappUrl)) {
+        await launch(whatsappUrl);
+        print('✅ تم فتح WhatsApp بنجاح مع الرقم 216$targetPhoneNumber');
+      } else {
+        String webWhatsappUrl = 'https://web.whatsapp.com/send?phone=216$targetPhoneNumber&text=$encodedMessage';
+        if (await canLaunch(webWhatsappUrl)) {
+          await launch(webWhatsappUrl);
+        } else {
+          throw Exception('لا يمكن فتح WhatsApp');
+        }
+      }
+    } catch (e) {
+      print('❌ خطأ في فتح WhatsApp: $e');
+      throw Exception('فشل فتح WhatsApp: $e');
+    }
+  }
+
+  // الدالة الجديدة للتعامل مع إرسال الواتساب
+  Future<void> _handleWhatsAppSubmit() async {
+    if (selectedForfait == null) {
+      _showErrorSnackbar('الرجاء اختيار الباقة');
+      return;
+    }
+
+    if (_nomController.text.isEmpty) {
+      _showErrorSnackbar('الرجاء إدخال الاسم');
+      return;
+    }
+
+    if (_prenomController.text.isEmpty) {
+      _showErrorSnackbar('الرجاء إدخال اللقب');
+      return;
+    }
+
+    if (_whatsappController.text.isEmpty) {
+      _showErrorSnackbar('الرجاء إدخال رقم الواتساب الخاص بك');
+      return;
+    }
+
+    if (_photo == null && _existingPhotoUrl == null) {
+      _showErrorSnackbar('الرجاء إرفاق صورة الإثبات');
+      return;
+    }
+
+    if (_selectedCardId == null) {
+      _showErrorSnackbar('عذراً، لا توجد بطاقات متاحة حالياً');
+      return;
+    }
+
+    if (!_canSubscribe) {
+      _showErrorSnackbar('عذراً، تم بلوغ الحد الأقصى للاشتراكات اليوم');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      String imageUrl;
+      if (_photo != null) {
+        imageUrl = await _uploadImageToStorage(_photo!);
+      } else {
+        imageUrl = _existingPhotoUrl!;
+      }
+
+      String whatsappNumber = _whatsappController.text.trim();
+      whatsappNumber = whatsappNumber.replaceAll(' ', '');
+      if (!whatsappNumber.startsWith('+')) {
+        if (whatsappNumber.startsWith('0')) {
+          whatsappNumber = '+216${whatsappNumber.substring(1)}';
+        } else {
+          whatsappNumber = '+216$whatsappNumber';
+        }
+      }
+
+      await _savePaymentDataToFirestore(
+        nom: _nomController.text,
+        prenom: _prenomController.text,
+        whatsapp: whatsappNumber,
+        forfait: selectedForfait!,
+        imageUrl: imageUrl,
+      );
+
+      await _cardService.updateCardStats(_selectedCardId!);
+
+      await _openWhatsAppWithMessage(
+        nom: _nomController.text,
+        prenom: _prenomController.text,
+        whatsapp: whatsappNumber,
+        imageUrl: imageUrl,
+        forfait: selectedForfait!,
+      );
+
+      setState(() {
+        _hasSubmittedForm = true;
+        _isEditingExistingRequest = false;
+      });
+
+      _showSuccessSnackbar('تم إرسال طلبك بنجاح عبر WhatsApp');
+    } catch (e) {
+      _showErrorSnackbar('حدث خطأ: ${e.toString()}');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   void _showFullQRCode(String qrUrl, String cardId) {
     showDialog(
       context: context,
@@ -183,7 +367,6 @@ Future<void> _ensureCardDocument(String cardId) async {
     );
   }
 
-  // Widget pour afficher l'image QR (support base64 et URL)
   Widget _buildQRImage(String qrUrl, String cardId, {double height = 100, double width = 100}) {
     if (qrUrl.isEmpty) {
       return Container(
@@ -211,7 +394,6 @@ Future<void> _ensureCardDocument(String cardId) async {
     }
 
     if (qrUrl.startsWith('data:image')) {
-      // C'est une image base64
       try {
         return ClipRRect(
           borderRadius: BorderRadius.circular(8),
@@ -246,7 +428,6 @@ Future<void> _ensureCardDocument(String cardId) async {
       }
     }
     
-    // C'est une URL normale
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: Image.network(
@@ -268,357 +449,6 @@ Future<void> _ensureCardDocument(String cardId) async {
       ),
     );
   }
-
-  // // Widget pour afficher la carte sélectionnée automatiquement
-  // Widget _buildSelectedCardInfo() {
-  //   if (_selectedCardId == null) {
-  //     return Container(
-  //       margin: EdgeInsets.only(bottom: 20),
-  //       padding: EdgeInsets.all(20),
-  //       decoration: BoxDecoration(
-  //         color: Colors.orange.shade50,
-  //         borderRadius: BorderRadius.circular(16),
-  //         border: Border.all(color: Colors.orange.shade200),
-  //       ),
-  //       child: Row(
-  //         children: [
-  //           Icon(Icons.warning, color: Colors.orange, size: 30),
-  //           SizedBox(width: 12),
-  //           Expanded(
-  //             child: Text(
-  //               'لا توجد بطاقات متاحة حالياً. الرجاء المحاولة لاحقاً.',
-  //               style: TextStyle(
-  //                 fontSize: 16,
-  //                 fontFamily: 'Tajawal',
-  //                 color: Colors.orange.shade800,
-  //               ),
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //     );
-  //   }
-
-  //   // Même si _selectedCardDetails est null, on affiche un message
-  //   if (_selectedCardDetails == null) {
-  //     return Container(
-  //       margin: EdgeInsets.only(bottom: 20),
-  //       padding: EdgeInsets.all(20),
-  //       decoration: BoxDecoration(
-  //         color: Colors.blue.shade50,
-  //         borderRadius: BorderRadius.circular(16),
-  //         border: Border.all(color: Colors.blue.shade200),
-  //       ),
-  //       child: Column(
-  //         children: [
-  //           Row(
-  //             children: [
-  //               Container(
-  //                 width: 50,
-  //                 height: 50,
-  //                 decoration: BoxDecoration(
-  //                   color: _getCardColor(_selectedCardId!),
-  //                   shape: BoxShape.circle,
-  //                 ),
-  //                 child: Center(
-  //                   child: Text(
-  //                     _selectedCardId!,
-  //                     style: TextStyle(
-  //                       color: Colors.white,
-  //                       fontWeight: FontWeight.bold,
-  //                       fontSize: 20,
-  //                     ),
-  //                   ),
-  //                 ),
-  //               ),
-  //               SizedBox(width: 12),
-  //               Expanded(
-  //                 child: Column(
-  //                   crossAxisAlignment: CrossAxisAlignment.start,
-  //                   children: [
-  //                     Text(
-  //                       'البطاقة المخصصة لك',
-  //                       style: TextStyle(
-  //                         fontSize: 14,
-  //                         color: Colors.grey.shade600,
-  //                         fontFamily: 'Tajawal',
-  //                       ),
-  //                     ),
-  //                     Text(
-  //                       _getCardName(_selectedCardId!),
-  //                       style: TextStyle(
-  //                         fontSize: 18,
-  //                         fontWeight: FontWeight.bold,
-  //                         fontFamily: 'Tajawal',
-  //                         color: _getCardColor(_selectedCardId!),
-  //                       ),
-  //                     ),
-  //                   ],
-  //                 ),
-  //               ),
-  //             ],
-  //           ),
-  //           SizedBox(height: 20),
-  //           Container(
-  //             padding: EdgeInsets.all(16),
-  //             decoration: BoxDecoration(
-  //               color: Colors.amber.shade50,
-  //               borderRadius: BorderRadius.circular(12),
-  //               border: Border.all(color: Colors.amber.shade200),
-  //             ),
-  //             child: Row(
-  //               children: [
-  //                 Icon(Icons.info, color: Colors.amber.shade800),
-  //                 SizedBox(width: 12),
-  //                 Expanded(
-  //                   child: Text(
-  //                     'جاري تحميل معلومات البطاقة...',
-  //                     style: TextStyle(
-  //                       fontSize: 14,
-  //                       fontFamily: 'Tajawal',
-  //                       color: Colors.amber.shade800,
-  //                     ),
-  //                   ),
-  //                 ),
-  //               ],
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //     );
-  //   }
-
-  //   final cardId = _selectedCardId!;
-  //   final cardData = _selectedCardDetails!;
-  //   final qrUrl = cardData['qrCodeUrl'] ?? '';
-  //   final rib = cardData['ribNumber'] ?? '';
-  //   final bankName = cardData['bankName'] ?? '';
-
-  //   return Container(
-  //     margin: EdgeInsets.only(bottom: 20),
-  //     padding: EdgeInsets.all(20),
-  //     decoration: BoxDecoration(
-  //       gradient: LinearGradient(
-  //         begin: Alignment.topLeft,
-  //         end: Alignment.bottomRight,
-  //         colors: [
-  //           _getCardColor(cardId).withOpacity(0.1),
-  //           Colors.white,
-  //         ],
-  //       ),
-  //       borderRadius: BorderRadius.circular(16),
-  //       border: Border.all(color: _getCardColor(cardId).withOpacity(0.3)),
-  //       boxShadow: [
-  //         BoxShadow(
-  //           color: _getCardColor(cardId).withOpacity(0.1),
-  //           blurRadius: 10,
-  //           offset: Offset(0, 4),
-  //         ),
-  //       ],
-  //     ),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         // En-tête de la carte
-  //         Row(
-  //           children: [
-  //             Container(
-  //               width: 50,
-  //               height: 50,
-  //               decoration: BoxDecoration(
-  //                 gradient: LinearGradient(
-  //                   colors: [
-  //                     _getCardColor(cardId),
-  //                     _getCardColor(cardId).withOpacity(0.7),
-  //                   ],
-  //                 ),
-  //                 shape: BoxShape.circle,
-  //               ),
-  //               child: Center(
-  //                 child: Text(
-  //                   cardId,
-  //                   style: TextStyle(
-  //                     color: Colors.white,
-  //                     fontWeight: FontWeight.bold,
-  //                     fontSize: 20,
-  //                   ),
-  //                 ),
-  //               ),
-  //             ),
-  //             SizedBox(width: 12),
-  //             Expanded(
-  //               child: Column(
-  //                 crossAxisAlignment: CrossAxisAlignment.start,
-  //                 children: [
-  //                   Text(
-  //                     'البطاقة المخصصة لك',
-  //                     style: TextStyle(
-  //                       fontSize: 14,
-  //                       color: Colors.grey.shade600,
-  //                       fontFamily: 'Tajawal',
-  //                     ),
-  //                   ),
-  //                   Text(
-  //                     _getCardName(cardId),
-  //                     style: TextStyle(
-  //                       fontSize: 18,
-  //                       fontWeight: FontWeight.bold,
-  //                       fontFamily: 'Tajawal',
-  //                       color: _getCardColor(cardId),
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-          
-  //         SizedBox(height: 20),
-
-  //         // QR Code
-  //         if (qrUrl.isNotEmpty) ...[
-  //           Center(
-  //             child: GestureDetector(
-  //               onTap: () => _showFullQRCode(qrUrl, cardId),
-  //               child: Container(
-  //                 padding: EdgeInsets.all(12),
-  //                 decoration: BoxDecoration(
-  //                   color: Colors.white,
-  //                   borderRadius: BorderRadius.circular(16),
-  //                   border: Border.all(color: _getCardColor(cardId).withOpacity(0.3)),
-  //                 ),
-  //                 child: Column(
-  //                   children: [
-  //                     _buildQRImage(qrUrl, cardId, height: 150, width: 150),
-  //                     SizedBox(height: 8),
-  //                     Row(
-  //                       mainAxisAlignment: MainAxisAlignment.center,
-  //                       children: [
-  //                         Icon(Icons.zoom_in, size: 16, color: _getCardColor(cardId)),
-  //                         SizedBox(width: 4),
-  //                         Text(
-  //                           'اضغط للتكبير',
-  //                           style: TextStyle(
-  //                             fontSize: 12,
-  //                             color: _getCardColor(cardId),
-  //                             fontFamily: 'Tajawal',
-  //                           ),
-  //                         ),
-  //                       ],
-  //                     ),
-  //                   ],
-  //                 ),
-  //               ),
-  //             ),
-  //           ),
-  //           SizedBox(height: 20),
-  //         ],
-
-  //         // RIB
-  //         if (rib.isNotEmpty) ...[
-  //           Text(
-  //             'رقم الحساب (RIB):',
-  //             style: TextStyle(
-  //               fontSize: 16,
-  //               fontWeight: FontWeight.w600,
-  //               fontFamily: 'Tajawal',
-  //               color: _getCardColor(cardId),
-  //             ),
-  //           ),
-  //           SizedBox(height: 8),
-  //           Container(
-  //             padding: EdgeInsets.all(16),
-  //             decoration: BoxDecoration(
-  //               color: Colors.white,
-  //               borderRadius: BorderRadius.circular(12),
-  //               border: Border.all(color: _getCardColor(cardId).withOpacity(0.3)),
-  //             ),
-  //             child: Row(
-  //               children: [
-  //                 Expanded(
-  //                   child: SelectableText(
-  //                     rib,
-  //                     style: TextStyle(
-  //                       fontSize: 18,
-  //                       fontWeight: FontWeight.w500,
-  //                       fontFamily: 'monospace',
-  //                       letterSpacing: 1,
-  //                       color: Colors.grey.shade800,
-  //                     ),
-  //                     textAlign: TextAlign.left,
-  //                   ),
-  //                 ),
-  //                 IconButton(
-  //                   icon: Icon(Icons.copy, color: _getCardColor(cardId), size: 20),
-  //                   onPressed: () {
-  //                     html.window.navigator.clipboard?.writeText(rib);
-  //                     ScaffoldMessenger.of(context).showSnackBar(
-  //                       SnackBar(
-  //                         content: Text('تم نسخ رقم RIB', style: TextStyle(fontFamily: 'Tajawal')),
-  //                         backgroundColor: Colors.green,
-  //                         duration: Duration(seconds: 1),
-  //                       ),
-  //                     );
-  //                   },
-  //                 ),
-  //               ],
-  //             ),
-  //           ),
-  //           if (bankName.isNotEmpty) ...[
-  //             SizedBox(height: 8),
-  //             Container(
-  //               padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-  //               decoration: BoxDecoration(
-  //                 color: _getCardColor(cardId).withOpacity(0.1),
-  //                 borderRadius: BorderRadius.circular(8),
-  //               ),
-  //               child: Row(
-  //                 children: [
-  //                   Icon(Icons.account_balance, size: 16, color: _getCardColor(cardId)),
-  //                   SizedBox(width: 8),
-  //                   Text(
-  //                     'البنك: $bankName',
-  //                     style: TextStyle(
-  //                       fontSize: 14,
-  //                       color: _getCardColor(cardId).withOpacity(0.8),
-  //                       fontFamily: 'Tajawal',
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ),
-  //             ),
-  //           ],
-  //         ],
-
-  //         // Instructions
-  //         SizedBox(height: 16),
-  //         Container(
-  //           padding: EdgeInsets.all(12),
-  //           decoration: BoxDecoration(
-  //             color: _getCardColor(cardId).withOpacity(0.05),
-  //             borderRadius: BorderRadius.circular(8),
-  //           ),
-  //           child: Row(
-  //             children: [
-  //               Icon(Icons.info_outline, size: 20, color: _getCardColor(cardId)),
-  //               SizedBox(width: 8),
-  //               Expanded(
-  //                 child: Text(
-  //                   'هذه البطاقة مخصصة لك حسب نظام التوزيع. يرجى استخدامها للدفع.',
-  //                   style: TextStyle(
-  //                     fontSize: 14,
-  //                     color: Colors.grey.shade700,
-  //                     fontFamily: 'Tajawal',
-  //                   ),
-  //                 ),
-  //               ),
-  //             ],
-  //           ),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
 
   Color _getCardColor(String cardId) {
     switch (cardId) {
@@ -708,6 +538,7 @@ Future<void> _ensureCardDocument(String cardId) async {
         'forfait': selectedForfait,
         'nom': _nomController.text,
         'prenom': _prenomController.text,
+        'whatsapp': _whatsappController.text, // إضافة رقم الواتساب
         'timestamp': FieldValue.serverTimestamp(),
         'status': 'pending',
         'adminMessage': null,
@@ -905,6 +736,9 @@ Future<void> _ensureCardDocument(String cardId) async {
         _existingPaymentId = paymentSnapshot.docs.first.id;
         _existingPhotoUrl = paymentData['photoUrl'];
         _useOnlinePayment = paymentData['paymentMethod'] == 'online';
+        if (paymentData['whatsapp'] != null) {
+          _whatsappController.text = paymentData['whatsapp'];
+        }
       });
     }
   }
@@ -967,6 +801,7 @@ Future<void> _ensureCardDocument(String cardId) async {
       selectedForfait = data['forfait'];
       _nomController.text = data['nom'] ?? '';
       _prenomController.text = data['prenom'] ?? '';
+      _whatsappController.text = data['whatsapp'] ?? ''; // استعادة رقم الواتساب
       _existingPhotoUrl = data['photoUrl'];
       _hasSubmittedForm = false;
       _useOnlinePayment = data['paymentMethod'] == 'online';
@@ -1247,764 +1082,833 @@ Future<void> _ensureCardDocument(String cardId) async {
     );
   }
   
-
   Widget _buildPaymentForm() {
-  return SingleChildScrollView(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // _buildCardStats(), // إحصائيات البطاقات (معلقة حالياً)
-        
-        if (_isEditingExistingRequest)
-          Card(
-            color: Colors.blue[50],
-            margin: EdgeInsets.only(bottom: 20),
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Row(
-                children: [
-                  Icon(Icons.info, color: Colors.blue),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'أنت بصدد تعديل طلبك الذي سبق رفضه. يرجى مراجعة المعلومات المدخلة وتحديثها قبل إعادة الإرسال.',
-                      style: TextStyle(
-                        fontFamily: 'Tajawal',
-                        color: Colors.blue[800],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-        // بطاقة المعلومات التوجيهية
-        Card(
-          elevation: 2,
-          margin: EdgeInsets.only(bottom: 20),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_isEditingExistingRequest)
+            Card(
+              color: Colors.blue[50],
+              margin: EdgeInsets.only(bottom: 20),
+              child: Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Row(
                   children: [
-                    Icon(Icons.info_outline, color: Colors.blue),
-                    SizedBox(width: 8),
-                    Text(
-                      'مرحباً أستاذي الفاضل',
-                      style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Tajawal'),
+                    Icon(Icons.info, color: Colors.blue),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'أنت بصدد تعديل طلبك الذي سبق رفضه. يرجى مراجعة المعلومات المدخلة وتحديثها قبل إعادة الإرسال.',
+                        style: TextStyle(
+                          fontFamily: 'Tajawal',
+                          color: Colors.blue[800],
+                        ),
+                      ),
                     ),
                   ],
                 ),
-                SizedBox(height: 12),
-                Text(
-                  'يمكنك الاشتراك بإحدى الباقتين المتاحتين (ثلاثية أو سنوية) للاستفادة من جميع خدمات التطبيق.',
-                  style: TextStyle(fontSize: 16, fontFamily: 'Tajawal'),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'طرق الدفع المتاحة: إما عبر الحوالة البريدية أو D17 (مع إرفاق صورة الإثبات)، أو عبر الدفع الإلكتروني المباشر.',
-                  style: TextStyle(fontSize: 16, fontFamily: 'Tajawal'),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // عرض معلومات البطاقة المخصصة (يتم اختيارها تلقائياً حسب نظام التوزيع)
-        // ** IMPORTANT: Décommenter cette ligne pour afficher les instructions de paiement **
-      //  _buildSelectedCardInfo(),
-        
-        SizedBox(height: 24),
-
-        // اختيار الباقة
-        Text(
-          'اختر الباقة المناسبة لك:',
-          style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Tajawal'),
-        ),
-        SizedBox(height: 10),
-        Row(
-          children: forfaits.map((forfait) {
-            return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                child: AnimatedContainer(
-                  duration: Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    color: selectedForfait == forfait['type']
-                        ? Colors.blue[50]
-                        : Colors.white,
-                    border: Border.all(
-                      color: selectedForfait == forfait['type']
-                          ? Colors.blue
-                          : Colors.grey[300]!,
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(12),
-                    onTap: () {
-                      setState(() {
-                        selectedForfait = forfait['type'];
-                      });
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        children: [
-                          Container(
-                            padding: EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: selectedForfait == forfait['type']
-                                  ? Colors.blue.withOpacity(0.1)
-                                  : Colors.grey.withOpacity(0.1),
-                            ),
-                            child: Icon(
-                              forfait['icon'],
-                              size: 30,
-                              color: selectedForfait == forfait['type']
-                                  ? Colors.blue
-                                  : Colors.grey,
-                            ),
-                          ),
-                          SizedBox(height: 10),
-                          Text(
-                            forfait['type'],
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              fontFamily: 'Tajawal',
-                              color: selectedForfait == forfait['type']
-                                  ? Colors.blue
-                                  : Colors.black,
-                            ),
-                          ),
-                          SizedBox(height: 5),
-                          Text(
-                            '${forfait['prix']} دينار',
-                            style: TextStyle(
-                                color: selectedForfait == forfait['type']
-                                    ? Colors.blue
-                                    : Colors.blue,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Tajawal'),
-                          ),
-                          SizedBox(height: 5),
-                          Text(
-                            forfait['duration'],
-                            style: TextStyle(
-                                fontSize: 14,
-                                color: selectedForfait == forfait['type']
-                                    ? Colors.blue
-                                    : Colors.grey,
-                                fontFamily: 'Tajawal'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-        SizedBox(height: 30),
-
-        // اختيار طريقة الدفع
-        Text(
-          'اختر طريقة الدفع:',
-          style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Tajawal'),
-        ),
-        SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () {
-                  setState(() {
-                    _useOnlinePayment = false;
-                  });
-                },
-                child: Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: !_useOnlinePayment
-                        ? Colors.blue[50]
-                        : Colors.grey[50],
-                    border: Border.all(
-                      color: !_useOnlinePayment
-                          ? Colors.blue
-                          : Colors.grey[300]!,
-                      width: 2,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.money,
-                        color: !_useOnlinePayment ? Colors.blue : Colors.grey,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        'تحويل بنكي / حوالة بريدية / D17',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontFamily: 'Tajawal',
-                          color:
-                              !_useOnlinePayment ? Colors.blue : Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ),
             ),
-            SizedBox(width: 10),
-            Expanded(
-              child: InkWell(
-                borderRadius: BorderRadius.circular(8),
-                onTap: () {
-                  setState(() {
-                    _useOnlinePayment = true;
-                  });
-                },
-                child: Container(
-                  padding: EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: _useOnlinePayment
-                        ? Colors.green[50]
-                        : Colors.grey[50],
-                    border: Border.all(
-                      color: _useOnlinePayment
-                          ? Colors.green
-                          : Colors.grey[300]!,
-                      width: 2,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.credit_card,
-                        color: _useOnlinePayment ? Colors.green : Colors.grey,
-                      ),
-                      SizedBox(width: 8),
-                      Text(
-                        'دفع إلكتروني (Konnect)',
-                        style: TextStyle(
-                          fontFamily: 'Tajawal',
-                          color:
-                              _useOnlinePayment ? Colors.green : Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 20),
 
-        // Instructions détaillées pour le paiement via D17
-        if (!_useOnlinePayment && _selectedCardDetails != null) ...[
           Card(
-            color: Colors.blue.shade50,
             elevation: 2,
+            margin: EdgeInsets.only(bottom: 20),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.qr_code_scanner,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      SizedBox(width: 12),
+                      Icon(Icons.info_outline, color: Colors.blue),
+                      SizedBox(width: 8),
                       Text(
-                        'طريقة الدفع عبر D17',
+                        'مرحباً أستاذي الفاضل',
                         style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Tajawal',
-                          color: Colors.blue.shade800,
-                        ),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Tajawal'),
                       ),
                     ],
                   ),
-                  SizedBox(height: 16),
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue.shade200),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'يرجى اتباع الخطوات التالية لإتمام عملية الاشتراك:',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'Tajawal',
-                            color: Colors.grey.shade800,
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        
-                        _buildStepItem('1', 'افتح تطبيق D17 على هاتفك.', Icons.phone_android),
-                        _buildStepItem('2', 'اختر "الدفع عبر QR".', Icons.qr_code),
-                        _buildStepItem('3', 'قم بمسح رمز الـ QR المعروض أدناه.', Icons.qr_code_scanner),
-                        _buildStepItem('4', 'أدخل مبلغ الاشتراك: ${selectedForfait == 'ثلاثية' ? '40' : selectedForfait == 'سنوي' ? '70' : '...'} دينار', Icons.attach_money),
-                        _buildStepItem('5', 'أكد عملية التحويل.', Icons.check_circle),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  
-                  // QR Code avec instructions
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue.shade200, width: 2),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'رمز QR للدفع عبر D17',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Tajawal',
-                            color: Colors.blue.shade800,
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        Center(
-                          child: GestureDetector(
-                            onTap: () {
-                              if (_selectedCardDetails != null && 
-                                  _selectedCardDetails!['qrCodeUrl'] != null) {
-                                _showFullQRCode(_selectedCardDetails!['qrCodeUrl'], _selectedCardId!);
-                              }
-                            },
-                            child: Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: _buildQRImage(
-                                _selectedCardDetails!['qrCodeUrl'] ?? '', 
-                                _selectedCardId!,
-                                height: 180,
-                                width: 180,
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          'امسح الرمز باستخدام تطبيق D17',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontFamily: 'Tajawal',
-                            color: Colors.grey.shade600,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        
-                        // Ajout des informations RIB pour les autres méthodes
-                        if (_selectedCardDetails!['ribNumber'] != null) ...[
-                          SizedBox(height: 16),
-                          Divider(),
-                          SizedBox(height: 8),
-                          Text(
-                            'معلومات التحويل البنكي:',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'Tajawal',
-                              color: Colors.blue.shade800,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Container(
-                            padding: EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: SelectableText(
-                                    _selectedCardDetails!['ribNumber'],
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontFamily: 'monospace',
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.copy, size: 20),
-                                  onPressed: () {
-                                    html.window.navigator.clipboard?.writeText(_selectedCardDetails!['ribNumber']);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('تم نسخ رقم RIB', style: TextStyle(fontFamily: 'Tajawal')),
-                                        backgroundColor: Colors.green,
-                                        duration: Duration(seconds: 1),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  
                   SizedBox(height: 12),
-                  
-                  // Note importante
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.amber.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.warning_amber, color: Colors.amber.shade800),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'بعد إتمام عملية الدفع، يرجى تحميل صورة الإثبات في الأسفل لإكمال طلب الاشتراك.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontFamily: 'Tajawal',
-                              color: Colors.amber.shade800,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  Text(
+                    'يمكنك الاشتراك بإحدى الباقتين المتاحتين (ثلاثية أو سنوية) للاستفادة من جميع خدمات التطبيق.',
+                    style: TextStyle(fontSize: 16, fontFamily: 'Tajawal'),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'طرق الدفع المتاحة: إما عبر الحوالة البريدية أو D17 (مع إرفاق صورة الإثبات)، أو عبر الدفع الإلكتروني المباشر.',
+                    style: TextStyle(fontSize: 16, fontFamily: 'Tajawal'),
                   ),
                 ],
               ),
             ),
           ),
-          SizedBox(height: 20),
-        ],
+          
+          SizedBox(height: 24),
 
-        if (_useOnlinePayment) ...[
-          Card(
-            color: Colors.green[50],
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Text(
-                    'الدفع الإلكتروني عبر بوابة Konnect',
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Tajawal',
-                        color: Colors.green[800]),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    'بعد تأكيد معلوماتك، سيتم توجيهك إلى صفحة الدفع الآمنة لإتمام العملية.',
-                    style: TextStyle(
-                        fontSize: 14,
-                        fontFamily: 'Tajawal',
-                        color: Colors.grey[700]),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    'تأكد من صحة جميع البيانات قبل المتابعة إلى الدفع.',
-                    style: TextStyle(
-                        fontSize: 12,
-                        fontFamily: 'Tajawal',
-                        color: Colors.red[700]),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: 20),
-        ],
-
-        // المعلومات الشخصية
-        Text(
-          'البيانات الشخصية:',
-          style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Tajawal'),
-        ),
-        SizedBox(height: 15),
-        TextField(
-          controller: _nomController,
-          decoration: InputDecoration(
-            labelText: 'الاسم العائلي',
-            hintText: 'مثال: أحمد',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            contentPadding:
-                EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            prefixIcon: Icon(Icons.person),
-            filled: true,
-            fillColor: Colors.grey[50],
-          ),
-          textAlign: TextAlign.right,
-        ),
-        SizedBox(height: 20),
-        TextField(
-          controller: _prenomController,
-          decoration: InputDecoration(
-            labelText: 'الاسم الشخصي',
-            hintText: 'مثال: محمد',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            contentPadding:
-                EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            prefixIcon: Icon(Icons.person_outline),
-            filled: true,
-            fillColor: Colors.grey[50],
-          ),
-          textAlign: TextAlign.right,
-        ),
-        SizedBox(height: 20),
-
-        if (!_useOnlinePayment) ...[
           Text(
-            'إرفاق إثبات الدفع:',
+            'اختر الباقة المناسبة لك:',
             style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 fontFamily: 'Tajawal'),
           ),
           SizedBox(height: 10),
-          Text(
-            'يرجى تحميل صورة واضحة للحوالة البريدية أو إيصال التحويل البنكي أو صورة من تطبيق D17:',
-            style: TextStyle(
-                fontSize: 14, color: Colors.grey[700], fontFamily: 'Tajawal'),
-          ),
-          SizedBox(height: 15),
-          AnimatedContainer(
-            duration: Duration(milliseconds: 300),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              color: _photo != null || _existingPhotoUrl != null
-                  ? Colors.green[50]
-                  : Colors.grey[50],
-              border: Border.all(
-                color: _photo != null || _existingPhotoUrl != null
-                    ? Colors.green
-                    : Colors.grey[300]!,
-                width: 1.5,
-              ),
-            ),
-            child: Column(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _pickImage,
-                  icon: Icon(Icons.upload),
-                  label: Text(_photo != null || _existingPhotoUrl != null
-                      ? 'تغيير صورة الإثبات'
-                      : 'اختيار صورة الإثبات'),
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor:
-                        _photo != null || _existingPhotoUrl != null
-                            ? const Color.fromARGB(255, 204, 191, 16)
-                            : const Color.fromARGB(255, 248, 248, 248),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+          Row(
+            children: forfaits.map((forfait) {
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: AnimatedContainer(
+                    duration: Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: selectedForfait == forfait['type']
+                          ? Colors.blue[50]
+                          : Colors.white,
+                      border: Border.all(
+                        color: selectedForfait == forfait['type']
+                            ? Colors.blue
+                            : Colors.grey[300]!,
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        setState(() {
+                          selectedForfait = forfait['type'];
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: selectedForfait == forfait['type']
+                                    ? Colors.blue.withOpacity(0.1)
+                                    : Colors.grey.withOpacity(0.1),
+                              ),
+                              child: Icon(
+                                forfait['icon'],
+                                size: 30,
+                                color: selectedForfait == forfait['type']
+                                    ? Colors.blue
+                                    : Colors.grey,
+                              ),
+                            ),
+                            SizedBox(height: 10),
+                            Text(
+                              forfait['type'],
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                fontFamily: 'Tajawal',
+                                color: selectedForfait == forfait['type']
+                                    ? Colors.blue
+                                    : Colors.black,
+                              ),
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              '${forfait['prix']} دينار',
+                              style: TextStyle(
+                                  color: selectedForfait == forfait['type']
+                                      ? Colors.blue
+                                      : Colors.blue,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Tajawal'),
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              forfait['duration'],
+                              style: TextStyle(
+                                  fontSize: 14,
+                                  color: selectedForfait == forfait['type']
+                                      ? Colors.blue
+                                      : Colors.grey,
+                                  fontFamily: 'Tajawal'),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
-                if (_photo != null)
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            html.Url.createObjectUrl(_photo!),
-                            height: 150,
-                            width: 150,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'صورة الإثبات المرفقة',
-                          style: TextStyle(
-                            fontFamily: 'Tajawal',
-                            color: Colors.green[700],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (_existingPhotoUrl != null && _photo == null)
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        Text(
-                          'يوجد صورة إثبات مرفوعة سابقاً',
-                          style: TextStyle(
-                            fontFamily: 'Tajawal',
-                            color: Colors.grey[700],
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => Dialog(
-                                child: Container(
-                                  padding: EdgeInsets.all(16),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Image.network(_existingPhotoUrl!),
-                                      SizedBox(height: 16),
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context),
-                                        child: Text('إغلاق'),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                          child: Text(
-                            'معاينة الصورة السابقة',
-                            style: TextStyle(
-                              fontFamily: 'Tajawal',
-                              color: const Color.fromARGB(255, 101, 165, 144),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
+              );
+            }).toList(),
           ),
           SizedBox(height: 30),
-        ],
 
-        _buildSubmitButton(),
-      ],
-    ),
-  );
-}
-// دالة مساعدة لبناء خطوات التعليمات
-Widget _buildStepItem(String number, String text, IconData icon) {
-  return Padding(
-    padding: EdgeInsets.symmetric(vertical: 8),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.blue, Colors.blue.shade300],
-            ),
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text(
-              number,
-              style: TextStyle(
-                color: Colors.white,
+          Text(
+            'اختر طريقة الدفع:',
+            style: TextStyle(
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
-                fontSize: 14,
+                fontFamily: 'Tajawal'),
+          ),
+          SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () {
+                    setState(() {
+                      _useOnlinePayment = false;
+                    });
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: !_useOnlinePayment
+                          ? Colors.blue[50]
+                          : Colors.grey[50],
+                      border: Border.all(
+                        color: !_useOnlinePayment
+                            ? Colors.blue
+                            : Colors.grey[300]!,
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.money,
+                          color: !_useOnlinePayment ? Colors.blue : Colors.grey,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'تحويل بنكي / حوالة بريدية / D17',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontFamily: 'Tajawal',
+                            color:
+                                !_useOnlinePayment ? Colors.blue : Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () {
+                    setState(() {
+                      _useOnlinePayment = true;
+                    });
+                  },
+                  child: Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: _useOnlinePayment
+                          ? Colors.green[50]
+                          : Colors.grey[50],
+                      border: Border.all(
+                        color: _useOnlinePayment
+                            ? Colors.green
+                            : Colors.grey[300]!,
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.credit_card,
+                          color: _useOnlinePayment ? Colors.green : Colors.grey,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'دفع إلكتروني (Konnect)',
+                          style: TextStyle(
+                            fontFamily: 'Tajawal',
+                            color:
+                                _useOnlinePayment ? Colors.green : Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 20),
+
+          if (!_useOnlinePayment && _selectedCardDetails != null) ...[
+            Card(
+              color: Colors.blue.shade50,
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.qr_code_scanner,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'طريقة الدفع عبر D17',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Tajawal',
+                            color: Colors.blue.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 16),
+                    Container(
+                      padding: EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'يرجى اتباع الخطوات التالية لإتمام عملية الاشتراك:',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              fontFamily: 'Tajawal',
+                              color: Colors.grey.shade800,
+                            ),
+                          ),
+                          SizedBox(height: 16),
+                          
+                          _buildStepItem('1', 'افتح تطبيق D17 على هاتفك.', Icons.phone_android),
+                          _buildStepItem('2', 'اختر "الدفع عبر QR".', Icons.qr_code),
+                          _buildStepItem('3', 'قم بمسح رمز الـ QR المعروض أدناه.', Icons.qr_code_scanner),
+                          _buildStepItem('4', 'أدخل مبلغ الاشتراك: ${selectedForfait == 'ثلاثية' ? '40' : selectedForfait == 'سنوي' ? '70' : '...'} دينار', Icons.attach_money),
+                          _buildStepItem('5', 'أكد عملية التحويل.', Icons.check_circle),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.shade200, width: 2),
+                      ),
+                      child: Column(
+                        children: [
+                          Text(
+                            'رمز QR للدفع عبر D17',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Tajawal',
+                              color: Colors.blue.shade800,
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          Center(
+                            child: GestureDetector(
+                              onTap: () {
+                                if (_selectedCardDetails != null && 
+                                    _selectedCardDetails!['qrCodeUrl'] != null) {
+                                  _showFullQRCode(_selectedCardDetails!['qrCodeUrl'], _selectedCardId!);
+                                }
+                              },
+                              child: Container(
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: _buildQRImage(
+                                  _selectedCardDetails!['qrCodeUrl'] ?? '', 
+                                  _selectedCardId!,
+                                  height: 180,
+                                  width: 180,
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          Text(
+                            'امسح الرمز باستخدام تطبيق D17',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontFamily: 'Tajawal',
+                              color: Colors.grey.shade600,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          
+                          if (_selectedCardDetails!['ribNumber'] != null) ...[
+                            SizedBox(height: 16),
+                            Divider(),
+                            SizedBox(height: 8),
+                            Text(
+                              'معلومات التحويل البنكي:',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Tajawal',
+                                color: Colors.blue.shade800,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Container(
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: SelectableText(
+                                      _selectedCardDetails!['ribNumber'],
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontFamily: 'monospace',
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(Icons.copy, size: 20),
+                                    onPressed: () {
+                                      html.window.navigator.clipboard?.writeText(_selectedCardDetails!['ribNumber']);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('تم نسخ رقم RIB', style: TextStyle(fontFamily: 'Tajawal')),
+                                          backgroundColor: Colors.green,
+                                          duration: Duration(seconds: 1),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    
+                    SizedBox(height: 12),
+                    
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.amber.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber, color: Colors.amber.shade800),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'بعد إتمام عملية الدفع، يرجى تحميل صورة الإثبات في الأسفل لإكمال طلب الاشتراك.',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontFamily: 'Tajawal',
+                                color: Colors.amber.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 20),
+          ],
+
+          if (_useOnlinePayment) ...[
+            Card(
+              color: Colors.green[50],
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    Text(
+                      'الدفع الإلكتروني عبر بوابة Konnect',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Tajawal',
+                          color: Colors.green[800]),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      'بعد تأكيد معلوماتك، سيتم توجيهك إلى صفحة الدفع الآمنة لإتمام العملية.',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontFamily: 'Tajawal',
+                          color: Colors.grey[700]),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      'تأكد من صحة جميع البيانات قبل المتابعة إلى الدفع.',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontFamily: 'Tajawal',
+                          color: Colors.red[700]),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: 20),
+          ],
+
+          Text(
+            'البيانات الشخصية:',
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Tajawal'),
+          ),
+          SizedBox(height: 15),
+          
+          TextField(
+            controller: _nomController,
+            decoration: InputDecoration(
+              labelText: 'الاسم العائلي',
+              hintText: 'مثال: أحمد',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              prefixIcon: Icon(Icons.person),
+              filled: true,
+              fillColor: Colors.grey[50],
+            ),
+            textAlign: TextAlign.right,
+          ),
+          SizedBox(height: 20),
+          
+          TextField(
+            controller: _prenomController,
+            decoration: InputDecoration(
+              labelText: 'الاسم الشخصي',
+              hintText: 'مثال: محمد',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              prefixIcon: Icon(Icons.person_outline),
+              filled: true,
+              fillColor: Colors.grey[50],
+            ),
+            textAlign: TextAlign.right,
+          ),
+          SizedBox(height: 20),
+          
+          // حقل رقم الواتساب الجديد
+          TextField(
+            controller: _whatsappController,
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              labelText: 'رقم الواتساب الخاص بك',
+              hintText: 'مثال: 50123456',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              prefixIcon: Icon(Icons.phone_android),
+              suffixIcon: Icon(Icons.message, color: Colors.green),
+              filled: true,
+              fillColor: Colors.grey[50],
+            ),
+            textAlign: TextAlign.right,
+          ),
+          SizedBox(height: 20),
+
+          if (!_useOnlinePayment) ...[
+            Text(
+              'إرفاق إثبات الدفع:',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Tajawal'),
+            ),
+            SizedBox(height: 10),
+            Text(
+              'يرجى تحميل صورة واضحة للحوالة البريدية أو إيصال التحويل البنكي أو صورة من تطبيق D17:',
+              style: TextStyle(
+                  fontSize: 14, color: Colors.grey[700], fontFamily: 'Tajawal'),
+            ),
+            SizedBox(height: 15),
+            AnimatedContainer(
+              duration: Duration(milliseconds: 300),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: _photo != null || _existingPhotoUrl != null
+                    ? Colors.green[50]
+                    : Colors.grey[50],
+                border: Border.all(
+                  color: _photo != null || _existingPhotoUrl != null
+                      ? Colors.green
+                      : Colors.grey[300]!,
+                  width: 1.5,
+                ),
+              ),
+              child: Column(
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _pickImage,
+                    icon: Icon(Icons.upload),
+                    label: Text(_photo != null || _existingPhotoUrl != null
+                        ? 'تغيير صورة الإثبات'
+                        : 'اختيار صورة الإثبات'),
+                    style: ElevatedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      backgroundColor:
+                          _photo != null || _existingPhotoUrl != null
+                              ? const Color.fromARGB(255, 204, 191, 16)
+                              : const Color.fromARGB(255, 248, 248, 248),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  if (_photo != null)
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              html.Url.createObjectUrl(_photo!),
+                              height: 150,
+                              width: 150,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'صورة الإثبات المرفقة',
+                            style: TextStyle(
+                              fontFamily: 'Tajawal',
+                              color: Colors.green[700],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (_existingPhotoUrl != null && _photo == null)
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        children: [
+                          Text(
+                            'يوجد صورة إثبات مرفوعة سابقاً',
+                            style: TextStyle(
+                              fontFamily: 'Tajawal',
+                              color: Colors.grey[700],
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          TextButton(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => Dialog(
+                                  child: Container(
+                                    padding: EdgeInsets.all(16),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Image.network(_existingPhotoUrl!),
+                                        SizedBox(height: 16),
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: Text('إغلاق'),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              'معاينة الصورة السابقة',
+                              style: TextStyle(
+                                fontFamily: 'Tajawal',
+                                color: const Color.fromARGB(255, 101, 165, 144),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            SizedBox(height: 20),
+            
+            // الزر الجديد للواتساب (يظهر فقط للدفع اليدوي)
+            _buildWhatsAppButton(),
+            SizedBox(height: 15),
+          ],
+
+          _buildSubmitButton(),
+        ],
+      ),
+    );
+  }
+
+  // دالة مساعدة لبناء خطوات التعليمات
+  Widget _buildStepItem(String number, String text, IconData icon) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blue, Colors.blue.shade300],
+              ),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                number,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
               ),
             ),
           ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 15,
-              fontFamily: 'Tajawal',
-              color: Colors.grey.shade800,
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 15,
+                fontFamily: 'Tajawal',
+                color: Colors.grey.shade800,
+              ),
             ),
           ),
-        ),
-        Icon(icon, color: Colors.blue.shade400, size: 20),
-      ],
-    ),
-  );
-}
+          Icon(icon, color: Colors.blue.shade400, size: 20),
+        ],
+      ),
+    );
+  }
+
+  // الزر الجديد للواتساب
+  Widget _buildWhatsAppButton() {
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300),
+      child: _isLoading
+          ? Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    height: 50,
+                    width: 50,
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation(Colors.green),
+                      strokeWidth: 5,
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'جاري تجهيز طلبك...',
+                    style: TextStyle(
+                      fontFamily: 'Tajawal',
+                      fontSize: 16,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : ElevatedButton.icon(
+              onPressed: _handleWhatsAppSubmit,
+              icon: Icon(Icons.phone, size: 24, color: const Color.fromARGB(255, 116, 235, 5)),
+              label: Text(
+                'تأكيد وإرسال عبر واتساب',
+                style: TextStyle(fontSize: 16, fontFamily: 'Tajawal', fontWeight: FontWeight.bold),
+              ),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: Colors.green[700],
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 3,
+                minimumSize: Size(double.infinity, 50),
+              ),
+            ),
+    );
+  }
+
   Widget _buildSubmitButton() {
     return AnimatedContainer(
       duration: Duration(milliseconds: 300),
