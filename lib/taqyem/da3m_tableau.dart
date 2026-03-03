@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
-
+import 'dart:convert' as json;
+import 'dart:math';
 import 'package:Taqyem/taqyem/header.dart';
 import 'package:Taqyem/taqyem/pdf_generator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -263,7 +265,7 @@ class _ClassificationPageState extends State<ClassificationPage> {
     'support': [],
     'excellence': [],
   };
-  
+
 // Variables pour la gestion des exercices AI sélectionnés
   Map<String, List<AIExerciseSelection>> _selectedAIExercises = {
     'treatment': [],
@@ -291,278 +293,269 @@ class _ClassificationPageState extends State<ClassificationPage> {
     _accountStatusTimer?.cancel();
     super.dispose();
   }
-Future<void> _showModifyExerciseDialog({
-  required String originalExercise,
-  required String groupKey,
-  required String baremeName,
-}) async {
-  TextEditingController modifiedExerciseController = 
-      TextEditingController(text: originalExercise);
-  TextEditingController improvementInstructionsController = 
-      TextEditingController();
 
-  return showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.9,
-          padding: EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.purple.shade50,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      Icons.edit_note,
-                      color: Colors.purple.shade700,
-                      size: 24,
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _getTranslatedText(
-                        'تعديل التمارين',
-                        'Modifier les exercices'
-                      ),
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.purple.shade800,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
+  Future<void> _showModifyExerciseDialog({
+    required String originalExercise,
+    required String groupKey,
+    required String baremeName,
+  }) async {
+    TextEditingController modifiedExerciseController =
+        TextEditingController(text: originalExercise);
+    TextEditingController improvementInstructionsController =
+        TextEditingController();
 
-              // Original exercise preview
-              Container(
-                padding: EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.info_outline, 
-                            size: 16, color: Colors.grey.shade600),
-                        SizedBox(width: 4),
-                        Text(
-                          _getTranslatedText(
-                            'التمرين الأصلي:',
-                            'Exercice original:'
-                          ),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade700,
-                          ),
-                        ),
-                      ],
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.edit_note,
+                        color: Colors.purple.shade700,
+                        size: 24,
+                      ),
                     ),
-                    SizedBox(height: 8),
-                    Text(
-                      originalExercise.length > 100
-                          ? '${originalExercise.substring(0, 100)}...'
-                          : originalExercise,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade800,
-                        fontStyle: FontStyle.italic,
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _getTranslatedText(
+                            'تعديل التمارين', 'Modifier les exercices'),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.purple.shade800,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 20),
+
+                // Original exercise preview
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.info_outline,
+                              size: 16, color: Colors.grey.shade600),
+                          SizedBox(width: 4),
+                          Text(
+                            _getTranslatedText(
+                                'التمرين الأصلي:', 'Exercice original:'),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        originalExercise.length > 100
+                            ? '${originalExercise.substring(0, 100)}...'
+                            : originalExercise,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade800,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 20),
+
+                // Modified exercise field
+                Text(
+                  _getTranslatedText(
+                      'التمارين المعدلة:', 'Exercices modifiés:'),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.purple.shade200),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TextField(
+                    controller: modifiedExerciseController,
+                    maxLines: 8,
+                    decoration: InputDecoration(
+                      hintText: _getTranslatedText('قم بتعديل التمارين هنا...',
+                          'Modifiez les exercices ici...'),
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.all(12),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 16),
+
+                // Instructions for ChatGPT (optional)
+
+                SizedBox(height: 20),
+
+                // Action buttons
+                Row(
+                  children: [
+                    // Save modifications locally
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          String modified =
+                              modifiedExerciseController.text.trim();
+                          if (modified.isNotEmpty) {
+                            await _saveModifiedExercise(
+                              originalExercise: originalExercise,
+                              modifiedExercise: modified,
+                              groupKey: groupKey,
+                              baremeName: baremeName,
+                            );
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(_getTranslatedText(
+                                    'تم حفظ التعديلات',
+                                    'Modifications enregistrées')),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        },
+                        icon: Icon(Icons.save),
+                        label: Text(_getTranslatedText(
+                            'حفظ محلياً', 'Sauvegarder localement')),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 12),
+
+                    // Send to ChatGPT
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          String modified =
+                              modifiedExerciseController.text.trim();
+                          String instructions =
+                              improvementInstructionsController.text.trim();
+
+                          _sendToChatGPTForImprovement(
+                            originalExercise: originalExercise,
+                            modifiedExercise: modified.isNotEmpty
+                                ? modified
+                                : originalExercise,
+                            instructions: instructions,
+                            baremeName: baremeName,
+                            matiereName: widget.matiereName,
+                          );
+                          Navigator.pop(context);
+                        },
+                        icon: Icon(Icons.send),
+                        label: Text(_getTranslatedText(
+                            'إرسال للتحسين', 'Envoyer pour amélioration')),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.shade600,
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              SizedBox(height: 20),
-
-              // Modified exercise field
-              Text(
-                _getTranslatedText(
-                  'التمارين المعدلة:',
-                  'Exercices modifiés:'
-                ),
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-              SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.purple.shade200),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: TextField(
-                  controller: modifiedExerciseController,
-                  maxLines: 8,
-                  decoration: InputDecoration(
-                    hintText: _getTranslatedText(
-                      'قم بتعديل التمارين هنا...',
-                      'Modifiez les exercices ici...'
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.all(12),
-                  ),
-                ),
-              ),
-              SizedBox(height: 16),
-
-              // Instructions for ChatGPT (optional)
-            
-              
-              SizedBox(height: 20),
-
-              // Action buttons
-              Row(
-                children: [
-                  // Save modifications locally
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        String modified = modifiedExerciseController.text.trim();
-                        if (modified.isNotEmpty) {
-                          await _saveModifiedExercise(
-                            originalExercise: originalExercise,
-                            modifiedExercise: modified,
-                            groupKey: groupKey,
-                            baremeName: baremeName,
-                          );
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                _getTranslatedText(
-                                  'تم حفظ التعديلات',
-                                  'Modifications enregistrées'
-                                )
-                              ),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                        }
-                      },
-                      icon: Icon(Icons.save),
-                      label: Text(
-                        _getTranslatedText('حفظ محلياً', 'Sauvegarder localement')
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade600,
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 12),
-                  
-                  // Send to ChatGPT
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        String modified = modifiedExerciseController.text.trim();
-                        String instructions = improvementInstructionsController.text.trim();
-                        
-                        _sendToChatGPTForImprovement(
-                          originalExercise: originalExercise,
-                          modifiedExercise: modified.isNotEmpty ? modified : originalExercise,
-                          instructions: instructions,
-                          baremeName: baremeName,
-                          matiereName: widget.matiereName,
-                        );
-                        Navigator.pop(context);
-                      },
-                      icon: Icon(Icons.send),
-                      label: Text(
-                        _getTranslatedText(
-                          'إرسال للتحسين',
-                          'Envoyer pour amélioration'
-                        )
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue.shade600,
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
-    },
-  );
-}
-Future<void> _saveModifiedExercise({
-  required String originalExercise,
-  required String modifiedExercise,
-  required String groupKey,
-  required String baremeName,
-}) async {
-  try {
-    final userId = FirebaseAuth.instance.currentUser!.uid;
-    
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('modified_exercises')
-        .add({
-      'originalExercise': originalExercise,
-      'modifiedExercise': modifiedExercise,
-      'groupKey': groupKey,
-      'className': widget.className,
-      'matiereName': widget.matiereName,
-      'baremeName': baremeName,
-      'createdAt': FieldValue.serverTimestamp(),
-      'lastModified': FieldValue.serverTimestamp(),
-      'modificationCount': 1,
-    });
-    
-    print('✅ Modified exercise saved');
-  } catch (e) {
-    print('❌ Error saving modified exercise: $e');
-    rethrow;
-  }
-}
-Future<void> _sendToChatGPTForImprovement({
-  required String originalExercise,
-  required String modifiedExercise,
-  required String instructions,
-  required String baremeName,
-  required String matiereName,
-}) async {
-  try {
-    // Format the content for ChatGPT
-    String prompt = _formatPromptForChatGPT(
-      originalExercise: originalExercise,
-      modifiedExercise: modifiedExercise,
-      instructions: instructions,
-      baremeName: baremeName,
-      matiereName: matiereName,
+        );
+      },
     );
-    
-    // Create a shareable text
-   String shareableText = '''
+  }
+
+  Future<void> _saveModifiedExercise({
+    required String originalExercise,
+    required String modifiedExercise,
+    required String groupKey,
+    required String baremeName,
+  }) async {
+    try {
+      final userId = FirebaseAuth.instance.currentUser!.uid;
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('modified_exercises')
+          .add({
+        'originalExercise': originalExercise,
+        'modifiedExercise': modifiedExercise,
+        'groupKey': groupKey,
+        'className': widget.className,
+        'matiereName': widget.matiereName,
+        'baremeName': baremeName,
+        'createdAt': FieldValue.serverTimestamp(),
+        'lastModified': FieldValue.serverTimestamp(),
+        'modificationCount': 1,
+      });
+
+      print('✅ Modified exercise saved');
+    } catch (e) {
+      print('❌ Error saving modified exercise: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _sendToChatGPTForImprovement({
+    required String originalExercise,
+    required String modifiedExercise,
+    required String instructions,
+    required String baremeName,
+    required String matiereName,
+  }) async {
+    try {
+      // Format the content for ChatGPT
+      String prompt = _formatPromptForChatGPT(
+        originalExercise: originalExercise,
+        modifiedExercise: modifiedExercise,
+        instructions: instructions,
+        baremeName: baremeName,
+        matiereName: matiereName,
+      );
+
+      // Create a shareable text
+      String shareableText = '''
 📚 **EXERCICES À AMÉLIORER - TAQYEM APP**
 Classe: ${widget.className}
 Critère: $baremeName
@@ -581,40 +574,36 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
 ---
 Merci d'améliorer ces exercices ! 🙏
 ''';
-    
-    // Copy to clipboard
-    await Clipboard.setData(ClipboardData(text: shareableText));
-    
-    // Show success message with instructions
-    _showChatGPTSendDialog(shareableText);
-    
-  } catch (e) {
-    print('❌ Error preparing for ChatGPT: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _getTranslatedText(
-            'خطأ في التحضير للإرسال',
-            'Erreur lors de la préparation'
-          )
+
+      // Copy to clipboard
+      await Clipboard.setData(ClipboardData(text: shareableText));
+
+      // Show success message with instructions
+      _showChatGPTSendDialog(shareableText);
+    } catch (e) {
+      print('❌ Error preparing for ChatGPT: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_getTranslatedText(
+              'خطأ في التحضير للإرسال', 'Erreur lors de la préparation')),
+          backgroundColor: Colors.red,
         ),
-        backgroundColor: Colors.red,
-      ),
-    );
+      );
+    }
   }
-}
-String _formatPromptForChatGPT({
-  required String originalExercise,
-  required String modifiedExercise,
-  required String instructions,
-  required String baremeName,
-  required String matiereName,
-}) {
-  String langInstruction = _isFrenchInterface 
-      ? "Please improve these exercises in French:" 
-      : "الرجاء تحسين هذه التمارين باللغة العربية:";
-  
-  return '''
+
+  String _formatPromptForChatGPT({
+    required String originalExercise,
+    required String modifiedExercise,
+    required String instructions,
+    required String baremeName,
+    required String matiereName,
+  }) {
+    String langInstruction = _isFrenchInterface
+        ? "Please improve these exercises in French:"
+        : "الرجاء تحسين هذه التمارين باللغة العربية:";
+
+    return '''
 $langInstruction
 
 **Critère/Category:** $baremeName
@@ -635,257 +624,225 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
 - Assurez la cohérence pédagogique
 - Améliorez la clarté et la pertinence des exercices
 ''';
-}
-void _showChatGPTSendDialog(String shareableText) {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      title: Row(
-        children: [
-          Icon(Icons.send, color: Colors.blue.shade700),
-          SizedBox(width: 10),
-          Text(
-            _getTranslatedText(
-              'إرسال إلى ChatGPT',
-              'Envoyer à ChatGPT'
-            ),
-          ),
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _getTranslatedText(
-              'تم نسخ النص للحافظة!',
-              'Texte copié dans le presse-papiers!'
-            ),
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.green.shade700,
-            ),
-          ),
-          SizedBox(height: 16),
-          Text(
-            _getTranslatedText(
-              'الخطوات التالية:',
-              'Prochaines étapes:'
-            ),
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 8),
-          _buildStep(
-            icon: Icons.phone_android,
-            text: _getTranslatedText(
-              '1. افتح تطبيق ChatGPT على هاتفك',
-              '1. Ouvrez l\'application ChatGPT sur votre téléphone'
-            ),
-          ),
-          _buildStep(
-            icon: Icons.paste,
-            text: _getTranslatedText(
-              '2. الصق النص في محادثة جديدة',
-              '2. Collez le texte dans une nouvelle conversation'
-            ),
-          ),
-          _buildStep(
-            icon: Icons.send,
-            text: _getTranslatedText(
-              '3. أرسل وانتظر التحسين',
-              '3. Envoyez et attendez l\'amélioration'
-            ),
-          ),
-          _buildStep(
-            icon: Icons.save_alt,
-            text: _getTranslatedText(
-              '4. انسخ النتيجة المحسنة وأعدها للتطبيق',
-              '4. Copiez le résultat amélioré et revenez à l\'application'
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(
-            _getTranslatedText('حسناً', 'OK'),
-            style: TextStyle(
-              color: Colors.blue.shade700,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        TextButton.icon(
-          onPressed: () async {
-            await Clipboard.setData(ClipboardData(text: shareableText));
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  _getTranslatedText(
-                    'تم النسخ مجدداً',
-                    'Recopié dans le presse-papiers'
-                  )
-                ),
-                duration: Duration(seconds: 1),
-              ),
-            );
-          },
-          icon: Icon(Icons.copy, size: 16),
-          label: Text(
-            _getTranslatedText('نسخ مجدداً', 'Recopier')
-          ),
-        ),
-      ],
-    ),
-  );
-}
+  }
 
-Widget _buildStep({required IconData icon, required String text}) {
-  return Padding(
-    padding: EdgeInsets.symmetric(vertical: 4),
-    child: Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.blue.shade600),
-        SizedBox(width: 8),
-        Expanded(child: Text(text, style: TextStyle(fontSize: 12))),
-      ],
-    ),
-  );
-}
-Future<void> _saveImprovedExercise({
-  required String originalExercise,
-  required String improvedExercise,
-  required String groupKey,
-  required String baremeName,
-}) async {
-  try {
-    final userId = FirebaseAuth.instance.currentUser!.uid;
-    
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('ai_generated_exercises')
-        .add({
-      'aiResponse': improvedExercise,
-      'originalAiResponse': originalExercise,
-      'modifiedBaremeName': baremeName,
-      'groupKey': groupKey,
-      'className': widget.className,
-      'matiereName': widget.matiereName,
-      'selectedProblems': [], // You might want to preserve these
-      'selectedOrigins': [],   // You might want to preserve these
-      'createdAt': FieldValue.serverTimestamp(),
-      'improvedByChatGPT': true,
-      'improvementDate': FieldValue.serverTimestamp(),
-    });
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _getTranslatedText(
-            'تم حفظ التمارين المحسنة بنجاح',
-            'Exercices améliorés sauvegardés'
-          )
+  void _showChatGPTSendDialog(String shareableText) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
         ),
-        backgroundColor: Colors.green,
-      ),
-    );
-  } catch (e) {
-    print('❌ Error saving improved exercise: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _getTranslatedText(
-            'خطأ في حفظ التمارين المحسنة',
-            'Erreur lors de la sauvegarde'
-          )
+        title: Row(
+          children: [
+            Icon(Icons.send, color: Colors.blue.shade700),
+            SizedBox(width: 10),
+            Text(
+              _getTranslatedText('إرسال إلى ChatGPT', 'Envoyer à ChatGPT'),
+            ),
+          ],
         ),
-        backgroundColor: Colors.red,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _getTranslatedText('تم نسخ النص للحافظة!',
+                  'Texte copié dans le presse-papiers!'),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.green.shade700,
+              ),
+            ),
+            SizedBox(height: 16),
+            Text(
+              _getTranslatedText('الخطوات التالية:', 'Prochaines étapes:'),
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            _buildStep(
+              icon: Icons.phone_android,
+              text: _getTranslatedText('1. افتح تطبيق ChatGPT على هاتفك',
+                  '1. Ouvrez l\'application ChatGPT sur votre téléphone'),
+            ),
+            _buildStep(
+              icon: Icons.paste,
+              text: _getTranslatedText('2. الصق النص في محادثة جديدة',
+                  '2. Collez le texte dans une nouvelle conversation'),
+            ),
+            _buildStep(
+              icon: Icons.send,
+              text: _getTranslatedText('3. أرسل وانتظر التحسين',
+                  '3. Envoyez et attendez l\'amélioration'),
+            ),
+            _buildStep(
+              icon: Icons.save_alt,
+              text: _getTranslatedText('4. انسخ النتيجة المحسنة وأعدها للتطبيق',
+                  '4. Copiez le résultat amélioré et revenez à l\'application'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              _getTranslatedText('حسناً', 'OK'),
+              style: TextStyle(
+                color: Colors.blue.shade700,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: shareableText));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(_getTranslatedText(
+                      'تم النسخ مجدداً', 'Recopié dans le presse-papiers')),
+                  duration: Duration(seconds: 1),
+                ),
+              );
+            },
+            icon: Icon(Icons.copy, size: 16),
+            label: Text(_getTranslatedText('نسخ مجدداً', 'Recopier')),
+          ),
+        ],
       ),
     );
   }
-}
-Future<void> _showPasteImprovedDialog({
-  required String groupKey,
-  required String baremeName,
-}) async {
-  TextEditingController pastedExerciseController = TextEditingController();
-  
-  return showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: Row(
+
+  Widget _buildStep({required IconData icon, required String text}) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
         children: [
-          Icon(Icons.paste, color: Colors.purple.shade700),
-          SizedBox(width: 10),
-          Text(
-            _getTranslatedText(
-              'لصق تمرين محسن',
-              'Coller un exercice amélioré'
+          Icon(icon, size: 16, color: Colors.blue.shade600),
+          SizedBox(width: 8),
+          Expanded(child: Text(text, style: TextStyle(fontSize: 12))),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _saveImprovedExercise({
+    required String originalExercise,
+    required String improvedExercise,
+    required String groupKey,
+    required String baremeName,
+  }) async {
+    try {
+      final userId = FirebaseAuth.instance.currentUser!.uid;
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('ai_generated_exercises')
+          .add({
+        'aiResponse': improvedExercise,
+        'originalAiResponse': originalExercise,
+        'modifiedBaremeName': baremeName,
+        'groupKey': groupKey,
+        'className': widget.className,
+        'matiereName': widget.matiereName,
+        'selectedProblems': [], // You might want to preserve these
+        'selectedOrigins': [], // You might want to preserve these
+        'createdAt': FieldValue.serverTimestamp(),
+        'improvedByChatGPT': true,
+        'improvementDate': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_getTranslatedText('تم حفظ التمارين المحسنة بنجاح',
+              'Exercices améliorés sauvegardés')),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      print('❌ Error saving improved exercise: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_getTranslatedText(
+              'خطأ في حفظ التمارين المحسنة', 'Erreur lors de la sauvegarde')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showPasteImprovedDialog({
+    required String groupKey,
+    required String baremeName,
+  }) async {
+    TextEditingController pastedExerciseController = TextEditingController();
+
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.paste, color: Colors.purple.shade700),
+            SizedBox(width: 10),
+            Text(
+              _getTranslatedText(
+                  'لصق تمرين محسن', 'Coller un exercice amélioré'),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _getTranslatedText('الصق التمرين المحسن من ChatGPT هنا:',
+                  'Collez l\'exercice amélioré de ChatGPT ici:'),
+            ),
+            SizedBox(height: 12),
+            TextField(
+              controller: pastedExerciseController,
+              maxLines: 8,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                hintText: _getTranslatedText(
+                    'الصق المحتوى هنا...', 'Collez le contenu ici...'),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(_getTranslatedText('إلغاء', 'Annuler')),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              String improved = pastedExerciseController.text.trim();
+              if (improved.isNotEmpty) {
+                _saveImprovedExercise(
+                  originalExercise: '',
+                  improvedExercise: improved,
+                  groupKey: groupKey,
+                  baremeName: baremeName,
+                );
+                Navigator.pop(context);
+              }
+            },
+            child: Text(_getTranslatedText('حفظ', 'Sauvegarder')),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.purple.shade700,
             ),
           ),
         ],
       ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            _getTranslatedText(
-              'الصق التمرين المحسن من ChatGPT هنا:',
-              'Collez l\'exercice amélioré de ChatGPT ici:'
-            ),
-          ),
-          SizedBox(height: 12),
-          TextField(
-            controller: pastedExerciseController,
-            maxLines: 8,
-            decoration: InputDecoration(
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              hintText: _getTranslatedText(
-                'الصق المحتوى هنا...',
-                'Collez le contenu ici...'
-              ),
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(_getTranslatedText('إلغاء', 'Annuler')),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            String improved = pastedExerciseController.text.trim();
-            if (improved.isNotEmpty) {
-              _saveImprovedExercise(
-                originalExercise: '',
-                improvedExercise: improved,
-                groupKey: groupKey,
-                baremeName: baremeName,
-              );
-              Navigator.pop(context);
-            }
-          },
-          child: Text(_getTranslatedText('حفظ', 'Sauvegarder')),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.purple.shade700,
-          ),
-        ),
-      ],
-    ),
-  );
-}
+    );
+  }
+
 // Ajoutez cette méthode dans votre classe _ClassificationPageState
   Future<List<Map<String, dynamic>>> _getSelectedAIExercises({
     required String groupKey,
@@ -1005,421 +962,423 @@ Future<void> _showPasteImprovedDialog({
     if (text.length <= maxLength) return text;
     return '${text.substring(0, maxLength)}...';
   }
-Future<void> _showAISelectionDialog({
-  required String groupName,
-  required String groupKey,
-}) async {
-  // Charger les exercices disponibles
-  final availableExercises =
-      await _getAvailableAIExercises(groupKey: groupKey);
 
-  if (availableExercises.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_getTranslatedText(
-            'لا توجد تمارين سابقة لهذه المجموعة',
-            'Aucun exercice précédent pour ce groupe')),
-        backgroundColor: Colors.orange,
-      ),
-    );
-    return;
-  }
+  Future<void> _showAISelectionDialog({
+    required String groupName,
+    required String groupKey,
+  }) async {
+    // Charger les exercices disponibles
+    final availableExercises =
+        await _getAvailableAIExercises(groupKey: groupKey);
 
-  // Créer une copie locale des exercices pour la sélection
-  // IMPORTANT: Créer de nouvelles instances pour éviter de modifier l'original directement
-  List<AIExerciseSelection> tempSelections = availableExercises
-      .map((e) => AIExerciseSelection(
-            id: e.id,
-            aiResponse: e.aiResponse,
-            modifiedBaremeName: e.modifiedBaremeName,
-            createdAt: e.createdAt,
-            selectedProblems: e.selectedProblems,
-            selectedOrigins: e.selectedOrigins,
-            isSelected: e.isSelected, // Conserver l'état de sélection actuel
-          ))
-      .toList();
+    if (availableExercises.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_getTranslatedText('لا توجد تمارين سابقة لهذه المجموعة',
+              'Aucun exercice précédent pour ce groupe')),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return StatefulBuilder(
-        builder: (context, setState) {
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.9,
-              height: MediaQuery.of(context).size.height * 0.8,
-              padding: EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  // En-tête
-                  Container(
-                    padding: EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: Colors.grey.shade300),
+    // Créer une copie locale des exercices pour la sélection
+    // IMPORTANT: Créer de nouvelles instances pour éviter de modifier l'original directement
+    List<AIExerciseSelection> tempSelections = availableExercises
+        .map((e) => AIExerciseSelection(
+              id: e.id,
+              aiResponse: e.aiResponse,
+              modifiedBaremeName: e.modifiedBaremeName,
+              createdAt: e.createdAt,
+              selectedProblems: e.selectedProblems,
+              selectedOrigins: e.selectedOrigins,
+              isSelected: e.isSelected, // Conserver l'état de sélection actuel
+            ))
+        .toList();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.9,
+                height: MediaQuery.of(context).size.height * 0.8,
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    // En-tête
+                    Container(
+                      padding: EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.grey.shade300),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.auto_awesome,
+                              color: Colors.purple.shade700),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              _getTranslatedText(
+                                  'اختر التمارين للطباعة - $groupName',
+                                  'Sélectionnez les exercices à imprimer - $groupName'),
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.purple.shade800,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.select_all,
+                                color: Colors.purple.shade700),
+                            onPressed: () {
+                              setState(() {
+                                bool allSelected = tempSelections.isEmpty
+                                    ? false
+                                    : tempSelections.every((e) => e.isSelected);
+                                for (var exercise in tempSelections) {
+                                  exercise.isSelected = !allSelected;
+                                }
+                              });
+                            },
+                            tooltip: _getTranslatedText(
+                                'تحديد الكل', 'Tout sélectionner'),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Row(
+
+                    SizedBox(height: 20),
+
+                    // Liste des exercices
+                    Expanded(
+                      child: tempSelections.isEmpty
+                          ? Center(
+                              child: Text(
+                                _getTranslatedText('لا توجد تمارين متاحة',
+                                    'Aucun exercice disponible'),
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            )
+                          : ListView.builder(
+                              itemCount: tempSelections.length,
+                              itemBuilder: (context, index) {
+                                final exercise = tempSelections[index];
+
+                                return Card(
+                                  margin: EdgeInsets.only(bottom: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    side: BorderSide(
+                                      color: exercise.isSelected
+                                          ? Colors.purple
+                                          : Colors.grey.shade300,
+                                      width: exercise.isSelected ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        exercise.isSelected =
+                                            !exercise.isSelected;
+                                      });
+                                    },
+                                    child: Padding(
+                                      padding: EdgeInsets.all(16),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Checkbox(
+                                            value: exercise.isSelected,
+                                            onChanged: (value) {
+                                              setState(() {
+                                                exercise.isSelected = value!;
+                                              });
+                                            },
+                                            activeColor: Colors.purple,
+                                          ),
+                                          SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Container(
+                                                      padding:
+                                                          EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                        vertical: 4,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors
+                                                            .purple.shade50,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(12),
+                                                      ),
+                                                      child: Text(
+                                                        exercise.modifiedBaremeName
+                                                                .isNotEmpty
+                                                            ? exercise
+                                                                .modifiedBaremeName
+                                                            : _getTranslatedText(
+                                                                'تمرين ',
+                                                                'Exercice '),
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color: Colors
+                                                              .purple.shade700,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    SizedBox(width: 8),
+                                                    if (exercise.createdAt !=
+                                                        null)
+                                                      Text(
+                                                        DateFormat('dd/MM/yyyy')
+                                                            .format(exercise
+                                                                .createdAt!
+                                                                .toDate()),
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          color: Colors
+                                                              .grey.shade600,
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                                SizedBox(height: 8),
+                                                Text(
+                                                  _truncateText(
+                                                      exercise.aiResponse, 150),
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.grey.shade800,
+                                                  ),
+                                                  maxLines: 3,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                                if (exercise.selectedProblems
+                                                    .isNotEmpty) ...[
+                                                  SizedBox(height: 8),
+                                                  Wrap(
+                                                    spacing: 4,
+                                                    runSpacing: 4,
+                                                    children: exercise
+                                                        .selectedProblems
+                                                        .take(2)
+                                                        .map((problem) {
+                                                      return Container(
+                                                        padding: EdgeInsets
+                                                            .symmetric(
+                                                          horizontal: 6,
+                                                          vertical: 2,
+                                                        ),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: Colors
+                                                              .red.shade50,
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(4),
+                                                        ),
+                                                        child: Text(
+                                                          problem.length > 20
+                                                              ? '${problem.substring(0, 20)}...'
+                                                              : problem,
+                                                          style: TextStyle(
+                                                            fontSize: 10,
+                                                            color: Colors
+                                                                .red.shade700,
+                                                          ),
+                                                        ),
+                                                      );
+                                                    }).toList(),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                          // Menu à 3 points pour les options de modification
+                                          PopupMenuButton<String>(
+                                            icon: Icon(Icons.more_vert,
+                                                color: Colors.grey.shade600),
+                                            onSelected: (value) {
+                                              if (value == 'modify') {
+                                                _showModifyExerciseDialog(
+                                                  originalExercise:
+                                                      exercise.aiResponse,
+                                                  groupKey: groupKey,
+                                                  baremeName: exercise
+                                                      .modifiedBaremeName,
+                                                );
+                                              } else if (value == 'improve') {
+                                                _sendToChatGPTForImprovement(
+                                                  originalExercise:
+                                                      exercise.aiResponse,
+                                                  modifiedExercise:
+                                                      exercise.aiResponse,
+                                                  instructions: '',
+                                                  baremeName: exercise
+                                                      .modifiedBaremeName,
+                                                  matiereName:
+                                                      widget.matiereName,
+                                                );
+                                              }
+                                            },
+                                            itemBuilder: (context) => [
+                                              PopupMenuItem(
+                                                value: 'modify',
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.edit,
+                                                      size: 18,
+                                                      color:
+                                                          Colors.blue.shade700,
+                                                    ),
+                                                    SizedBox(width: 8),
+                                                    Text(
+                                                      _getTranslatedText(
+                                                        'تعديل',
+                                                        'Modifier',
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              PopupMenuItem(
+                                                value: 'improve',
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.auto_fix_high,
+                                                      size: 18,
+                                                      color: Colors
+                                                          .purple.shade700,
+                                                    ),
+                                                    SizedBox(width: 8),
+                                                    Text(
+                                                      _getTranslatedText(
+                                                        'تحسين بـ ChatGPT',
+                                                        'Améliorer avec ChatGPT',
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+
+                    SizedBox(height: 20),
+
+                    // Boutons d'action
+                    Row(
                       children: [
-                        Icon(Icons.auto_awesome,
-                            color: Colors.purple.shade700),
-                        SizedBox(width: 12),
+                        // Bouton pour coller un exercice amélioré
                         Expanded(
-                          child: Text(
-                            _getTranslatedText(
-                                'اختر التمارين للطباعة - $groupName',
-                                'Sélectionnez les exercices à imprimer - $groupName'),
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.purple.shade800,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _showPasteImprovedDialog(
+                                groupKey: groupKey,
+                                baremeName:
+                                    widget.sousBaremeName ?? widget.baremeName,
+                              );
+                            },
+                            icon: Icon(Icons.paste,
+                                color: Colors.purple.shade700),
+                            label: Text(
+                              _getTranslatedText(
+                                'لصق تمرين محسن',
+                                'Coller exercice amélioré',
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.purple.shade700,
+                              side: BorderSide(color: Colors.purple.shade700),
+                              padding: EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
                         ),
-                        IconButton(
-                          icon: Icon(Icons.select_all,
-                              color: Colors.purple.shade700),
-                          onPressed: () {
-                            setState(() {
-                              bool allSelected = tempSelections.isEmpty
-                                  ? false
-                                  : tempSelections.every((e) => e.isSelected);
-                              for (var exercise in tempSelections) {
-                                exercise.isSelected = !allSelected;
-                              }
-                            });
-                          },
-                          tooltip: _getTranslatedText(
-                              'تحديد الكل', 'Tout sélectionner'),
-                        ),
-                      ],
-                    ),
-                  ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              // Mettre à jour les sélections avec les exercices choisis
+                              setState(() {
+                                _selectedAIExercises[groupKey] = tempSelections
+                                    .where((e) => e.isSelected)
+                                    .toList();
+                              });
 
-                  SizedBox(height: 20),
+                              Navigator.pop(context);
 
-                  // Liste des exercices
-                  Expanded(
-                    child: tempSelections.isEmpty
-                        ? Center(
-                            child: Text(
-                              _getTranslatedText('لا توجد تمارين متاحة',
-                                  'Aucun exercice disponible'),
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          )
-                        : ListView.builder(
-                            itemCount: tempSelections.length,
-                            itemBuilder: (context, index) {
-                              final exercise = tempSelections[index];
-
-                              return Card(
-                                margin: EdgeInsets.only(bottom: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  side: BorderSide(
-                                    color: exercise.isSelected
-                                        ? Colors.purple
-                                        : Colors.grey.shade300,
-                                    width: exercise.isSelected ? 2 : 1,
-                                  ),
-                                ),
-                                child: InkWell(
-                                  onTap: () {
-                                    setState(() {
-                                      exercise.isSelected =
-                                          !exercise.isSelected;
-                                    });
-                                  },
-                                  child: Padding(
-                                    padding: EdgeInsets.all(16),
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Checkbox(
-                                          value: exercise.isSelected,
-                                          onChanged: (value) {
-                                            setState(() {
-                                              exercise.isSelected = value!;
-                                            });
-                                          },
-                                          activeColor: Colors.purple,
-                                        ),
-                                        SizedBox(width: 12),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Container(
-                                                    padding:
-                                                        EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 4,
-                                                    ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors
-                                                          .purple.shade50,
-                                                      borderRadius:
-                                                          BorderRadius
-                                                              .circular(12),
-                                                    ),
-                                                    child: Text(
-                                                      exercise.modifiedBaremeName
-                                                              .isNotEmpty
-                                                          ? exercise
-                                                              .modifiedBaremeName
-                                                          : _getTranslatedText(
-                                                              'تمرين ',
-                                                              'Exercice '),
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color: Colors
-                                                            .purple.shade700,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  SizedBox(width: 8),
-                                                  if (exercise.createdAt !=
-                                                      null)
-                                                    Text(
-                                                      DateFormat('dd/MM/yyyy')
-                                                          .format(exercise
-                                                              .createdAt!
-                                                              .toDate()),
-                                                      style: TextStyle(
-                                                        fontSize: 11,
-                                                        color: Colors
-                                                            .grey.shade600,
-                                                      ),
-                                                    ),
-                                                ],
-                                              ),
-                                              SizedBox(height: 8),
-                                              Text(
-                                                _truncateText(
-                                                    exercise.aiResponse, 150),
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  color: Colors.grey.shade800,
-                                                ),
-                                                maxLines: 3,
-                                                overflow:
-                                                    TextOverflow.ellipsis,
-                                              ),
-                                              if (exercise.selectedProblems
-                                                  .isNotEmpty) ...[
-                                                SizedBox(height: 8),
-                                                Wrap(
-                                                  spacing: 4,
-                                                  runSpacing: 4,
-                                                  children: exercise
-                                                      .selectedProblems
-                                                      .take(2)
-                                                      .map((problem) {
-                                                    return Container(
-                                                      padding: EdgeInsets
-                                                          .symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2,
-                                                      ),
-                                                      decoration:
-                                                          BoxDecoration(
-                                                        color: Colors
-                                                            .red.shade50,
-                                                        borderRadius:
-                                                            BorderRadius
-                                                                .circular(4),
-                                                      ),
-                                                      child: Text(
-                                                        problem.length > 20
-                                                            ? '${problem.substring(0, 20)}...'
-                                                            : problem,
-                                                        style: TextStyle(
-                                                          fontSize: 10,
-                                                          color: Colors
-                                                              .red.shade700,
-                                                        ),
-                                                      ),
-                                                    );
-                                                  }).toList(),
-                                                ),
-                                              ],
-                                            ],
-                                          ),
-                                        ),
-                                        // Menu à 3 points pour les options de modification
-                                        PopupMenuButton<String>(
-                                          icon: Icon(Icons.more_vert,
-                                              color: Colors.grey.shade600),
-                                          onSelected: (value) {
-                                            if (value == 'modify') {
-                                              _showModifyExerciseDialog(
-                                                originalExercise:
-                                                    exercise.aiResponse,
-                                                groupKey: groupKey,
-                                                baremeName: exercise
-                                                    .modifiedBaremeName,
-                                              );
-                                            } else if (value == 'improve') {
-                                              _sendToChatGPTForImprovement(
-                                                originalExercise:
-                                                    exercise.aiResponse,
-                                                modifiedExercise:
-                                                    exercise.aiResponse,
-                                                instructions: '',
-                                                baremeName: exercise
-                                                    .modifiedBaremeName,
-                                                matiereName:
-                                                    widget.matiereName,
-                                              );
-                                            }
-                                          },
-                                          itemBuilder: (context) => [
-                                            PopupMenuItem(
-                                              value: 'modify',
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.edit,
-                                                    size: 18,
-                                                    color: Colors.blue.shade700,
-                                                  ),
-                                                  SizedBox(width: 8),
-                                                  Text(
-                                                    _getTranslatedText(
-                                                      'تعديل',
-                                                      'Modifier',
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            PopupMenuItem(
-                                              value: 'improve',
-                                              child: Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.auto_fix_high,
-                                                    size: 18,
-                                                    color:
-                                                        Colors.purple.shade700,
-                                                  ),
-                                                  SizedBox(width: 8),
-                                                  Text(
-                                                    _getTranslatedText(
-                                                      'تحسين بـ ChatGPT',
-                                                      'Améliorer avec ChatGPT',
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                              int selectedCount =
+                                  _selectedAIExercises[groupKey]?.length ?? 0;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(_getTranslatedText(
+                                      'تم حفظ $selectedCount تمرين ',
+                                      '$selectedCount exercice(s) enregistré(s)')),
+                                  backgroundColor: Colors.purple,
+                                  duration: Duration(seconds: 2),
                                 ),
                               );
                             },
-                          ),
-                  ),
-
-                  SizedBox(height: 20),
-
-                  // Boutons d'action
-                  Row(
-                    children: [
-                      // Bouton pour coller un exercice amélioré
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _showPasteImprovedDialog(
-                              groupKey: groupKey,
-                              baremeName: widget.sousBaremeName ??
-                                  widget.baremeName,
-                            );
-                          },
-                          icon: Icon(Icons.paste, color: Colors.purple.shade700),
-                          label: Text(
-                            _getTranslatedText(
-                              'لصق تمرين محسن',
-                              'Coller exercice amélioré',
+                            icon: Icon(Icons.save),
+                            label: Text(_getTranslatedText(
+                                'حفظ التحديدات', 'Enregistrer')),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.purple.shade700,
+                              padding: EdgeInsets.symmetric(vertical: 12),
                             ),
                           ),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.purple.shade700,
-                            side: BorderSide(color: Colors.purple.shade700),
-                            padding: EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => Navigator.pop(context),
+                            icon: Icon(Icons.close),
+                            label: Text(_getTranslatedText('إلغاء', 'Annuler')),
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                            ),
                           ),
                         ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            // Mettre à jour les sélections avec les exercices choisis
-                            setState(() {
-                              _selectedAIExercises[groupKey] = tempSelections
-                                  .where((e) => e.isSelected)
-                                  .toList();
-                            });
-
-                            Navigator.pop(context);
-
-                            int selectedCount =
-                                _selectedAIExercises[groupKey]?.length ?? 0;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(_getTranslatedText(
-                                    'تم حفظ $selectedCount تمرين ',
-                                    '$selectedCount exercice(s) enregistré(s)')),
-                                backgroundColor: Colors.purple,
-                                duration: Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                          icon: Icon(Icons.save),
-                          label: Text(_getTranslatedText(
-                              'حفظ التحديدات', 'Enregistrer')),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.purple.shade700,
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => Navigator.pop(context),
-                          icon: Icon(Icons.close),
-                          label: Text(_getTranslatedText('إلغاء', 'Annuler')),
-                          style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          );
-        },
-      );
-    },
-  );
-}
+            );
+          },
+        );
+      },
+    );
+  }
 
   Future<void> _generateExercisesFromAI({
     required String groupKey,
@@ -2740,218 +2699,333 @@ Future<void> _showAISelectionDialog({
     await batch.commit();
   }
 
-Future<List<Map<String, dynamic>>> _getProposals() async {
-  final userId = FirebaseAuth.instance.currentUser!.uid;
-  List<Map<String, dynamic>> allProposals = [];
+  Future<List<Map<String, dynamic>>> _getProposals() async {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+    List<Map<String, dynamic>> allProposals = [];
 
-  try {
-    // Correction: 'matiereName' au lieu de 'matieneName'
-    final userQuery = FirebaseFirestore.instance
-        .collection('users_proposals')
-        .doc(userId)
-        .collection('user_proposals')
-        .where('className', isEqualTo: widget.className)
-        .where('matiereName', isEqualTo: widget.matiereName)  // CORRIGÉ
-        .where('baremeName', isEqualTo: widget.baremeName);
+    try {
+      // Correction: 'matiereName' au lieu de 'matieneName'
+      final userQuery = FirebaseFirestore.instance
+          .collection('users_proposals')
+          .doc(userId)
+          .collection('user_proposals')
+          .where('className', isEqualTo: widget.className)
+          .where('matiereName', isEqualTo: widget.matiereName) // CORRIGÉ
+          .where('baremeName', isEqualTo: widget.baremeName);
 
-    if (widget.sousBaremeName != null && widget.sousBaremeName!.isNotEmpty) {
-      userQuery.where('sousBaremeName', isEqualTo: widget.sousBaremeName);
+      if (widget.sousBaremeName != null && widget.sousBaremeName!.isNotEmpty) {
+        userQuery.where('sousBaremeName', isEqualTo: widget.sousBaremeName);
+      }
+
+      final userSnapshot = await userQuery.get();
+
+      for (var doc in userSnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        allProposals.add({
+          'id': doc.id,
+          ...data,
+          'isUserProposal': true,
+          'source': 'personal',
+        });
+      }
+
+      // CORRECTION: même problème ici
+      Query globalQuery = FirebaseFirestore.instance
+          .collection('users_proposals')
+          .doc('global_proposals')
+          .collection('approved_proposals')
+          .where('status', isEqualTo: 'approved')
+          .where('className', isEqualTo: widget.className)
+          .where('matiereName', isEqualTo: widget.matiereName) // CORRIGÉ
+          .where('baremeName', isEqualTo: widget.baremeName);
+
+      if (widget.sousBaremeName != null && widget.sousBaremeName!.isNotEmpty) {
+        globalQuery = globalQuery.where('sousBaremeName',
+            isEqualTo: widget.sousBaremeName);
+      }
+
+      final globalSnapshot = await globalQuery.get();
+
+      for (var doc in globalSnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        allProposals.add({
+          'id': doc.id,
+          ...data,
+          'isUserProposal': false,
+          'source': 'global',
+          'userName':
+              data['userName'] ?? _getTranslatedText('مسؤول', 'Administrateur'),
+        });
+      }
+
+      print('📋 Nombre total de propositions: ${allProposals.length}');
+      print('📋 Personnelles: ${userSnapshot.docs.length}');
+      print('📋 Globales: ${globalSnapshot.docs.length}');
+
+      return allProposals;
+    } catch (e) {
+      print('❌ Erreur lors de la récupération des propositions: $e');
+      return [];
     }
-
-    final userSnapshot = await userQuery.get();
-
-    for (var doc in userSnapshot.docs) {
-      final data = doc.data() as Map<String, dynamic>;
-      allProposals.add({
-        'id': doc.id,
-        ...data,
-        'isUserProposal': true,
-        'source': 'personal',
-      });
-    }
-
-    // CORRECTION: même problème ici
-    Query globalQuery = FirebaseFirestore.instance
-        .collection('users_proposals')
-        .doc('global_proposals')
-        .collection('approved_proposals')
-        .where('status', isEqualTo: 'approved')
-        .where('className', isEqualTo: widget.className)
-        .where('matiereName', isEqualTo: widget.matiereName)  // CORRIGÉ
-        .where('baremeName', isEqualTo: widget.baremeName);
-
-    if (widget.sousBaremeName != null && widget.sousBaremeName!.isNotEmpty) {
-      globalQuery = globalQuery.where('sousBaremeName',
-          isEqualTo: widget.sousBaremeName);
-    }
-
-    final globalSnapshot = await globalQuery.get();
-
-    for (var doc in globalSnapshot.docs) {
-      final data = doc.data() as Map<String, dynamic>;
-      allProposals.add({
-        'id': doc.id,
-        ...data,
-        'isUserProposal': false,
-        'source': 'global',
-        'userName':
-            data['userName'] ?? _getTranslatedText('مسؤول', 'Administrateur'),
-      });
-    }
-
-    print('📋 Nombre total de propositions: ${allProposals.length}');
-    print('📋 Personnelles: ${userSnapshot.docs.length}');
-    print('📋 Globales: ${globalSnapshot.docs.length}');
-
-    return allProposals;
-  } catch (e) {
-    print('❌ Erreur lors de la récupération des propositions: $e');
-    return [];
   }
-}
-  void showSolutionAndProbleme(String groupName, String groupKey) async {
-    print(
-        '🔍 Chargement des propositions pour le groupe: $groupName ($groupKey)');
 
-    final proposals = await _getProposals();
+void showSolutionAndProbleme(String groupName, String groupKey) async {
+  print('🔍 Chargement des propositions pour le groupe: $groupName ($groupKey)');
 
-    List<SolutionSelection> currentSelections =
-        _groupSelections[groupKey] ?? [];
+  final proposals = await _getProposals();
+  List<SolutionSelection> currentSelections =
+      _groupSelections[groupKey] ?? [];
 
-    var jsonResult = jsonData.firstWhere(
-      (item) {
-        String jsonClasse = item['classe'].trim().toLowerCase();
-        String jsonMatiere = item['matiere'].trim().toLowerCase();
-        String jsonBareme = item['bareme'].trim().toLowerCase();
+  // Récupérer les données JSON
+  var jsonResult = jsonData.firstWhere(
+    (item) {
+      String jsonClasse = item['classe'].trim().toLowerCase();
+      String jsonMatiere = item['matiere'].trim().toLowerCase();
+      String jsonBareme = item['bareme'].trim().toLowerCase();
 
-        String selectedClasse = widget.className.trim().toLowerCase();
-        String selectedMatiere = widget.matiereName.trim().toLowerCase();
-        String selectedBareme =
-            (widget.sousBaremeName ?? widget.baremeName).trim().toLowerCase();
+      String selectedClasse = widget.className.trim().toLowerCase();
+      String selectedMatiere = widget.matiereName.trim().toLowerCase();
+      String selectedBareme =
+          (widget.sousBaremeName ?? widget.baremeName).trim().toLowerCase();
 
-        return jsonClasse == selectedClasse &&
-            jsonMatiere == selectedMatiere &&
-            jsonBareme == selectedBareme;
-      },
-      orElse: () => null,
-    );
+      return jsonClasse == selectedClasse &&
+          jsonMatiere == selectedMatiere &&
+          jsonBareme == selectedBareme;
+    },
+    orElse: () => null,
+  );
 
-    List<SolutionSelection> allSelections = [];
+  List<SolutionSelection> allSelections = [];
 
-    if (jsonResult != null) {
-      if (jsonResult['solution']?.isNotEmpty == true) {
-        allSelections.add(SolutionSelection(
-          text: jsonResult['solution'],
-          type: 'json',
-          isProblem: false,
-          isSelected: currentSelections
-              .any((s) => s.text == jsonResult['solution'] && s.type == 'json'),
-        ));
-      }
-      if (jsonResult['probleme']?.isNotEmpty == true) {
-        allSelections.add(SolutionSelection(
-          text: jsonResult['probleme'],
-          type: 'json',
-          isProblem: true,
-          isSelected: currentSelections
-              .any((s) => s.text == jsonResult['probleme'] && s.type == 'json'),
-        ));
-      }
+  // Ajouter les propositions JSON
+  if (jsonResult != null) {
+    if (jsonResult['solution']?.isNotEmpty == true) {
+      allSelections.add(SolutionSelection(
+        text: jsonResult['solution'],
+        type: 'json',
+        isProblem: false,
+        isSelected: currentSelections
+            .any((s) => s.text == jsonResult['solution'] && s.type == 'json'),
+      ));
     }
-
-    final globalProposals =
-        proposals.where((p) => p['source'] == 'global').toList();
-    for (var proposal in globalProposals) {
-      if (proposal['solution']?.isNotEmpty == true) {
-        allSelections.add(SolutionSelection(
-          text: proposal['solution'],
-          type: 'global',
-          isProblem: false,
-          isSelected: currentSelections
-              .any((s) => s.text == proposal['solution'] && s.type == 'global'),
-        ));
-      }
-      if (proposal['probleme']?.isNotEmpty == true) {
-        allSelections.add(SolutionSelection(
-          text: proposal['probleme'],
-          type: 'global',
-          isProblem: true,
-          isSelected: currentSelections
-              .any((s) => s.text == proposal['probleme'] && s.type == 'global'),
-        ));
-      }
+    if (jsonResult['probleme']?.isNotEmpty == true) {
+      allSelections.add(SolutionSelection(
+        text: jsonResult['probleme'],
+        type: 'json',
+        isProblem: true,
+        isSelected: currentSelections
+            .any((s) => s.text == jsonResult['probleme'] && s.type == 'json'),
+      ));
     }
+  }
 
-    final personalProposals =
-        proposals.where((p) => p['source'] == 'personal').toList();
-    for (var proposal in personalProposals) {
-      if (proposal['solution']?.isNotEmpty == true) {
-        allSelections.add(SolutionSelection(
-          text: proposal['solution'],
-          type: 'personal',
-          isProblem: false,
-          isSelected: currentSelections.any(
-              (s) => s.text == proposal['solution'] && s.type == 'personal'),
-        ));
-      }
-      if (proposal['probleme']?.isNotEmpty == true) {
-        allSelections.add(SolutionSelection(
-          text: proposal['probleme'],
-          type: 'personal',
-          isProblem: true,
-          isSelected: currentSelections.any(
-              (s) => s.text == proposal['probleme'] && s.type == 'personal'),
-        ));
-      }
+  // Ajouter les propositions globales
+  final globalProposals =
+      proposals.where((p) => p['source'] == 'global').toList();
+  for (var proposal in globalProposals) {
+    if (proposal['solution']?.isNotEmpty == true) {
+      allSelections.add(SolutionSelection(
+        text: proposal['solution'],
+        type: 'global',
+        isProblem: false,
+        isSelected: currentSelections
+            .any((s) => s.text == proposal['solution'] && s.type == 'global'),
+      ));
     }
+    if (proposal['probleme']?.isNotEmpty == true) {
+      allSelections.add(SolutionSelection(
+        text: proposal['probleme'],
+        type: 'global',
+        isProblem: true,
+        isSelected: currentSelections
+            .any((s) => s.text == proposal['probleme'] && s.type == 'global'),
+      ));
+    }
+  }
 
-    TextEditingController solutionController = TextEditingController();
-    TextEditingController problemeController = TextEditingController();
+  // Ajouter les propositions personnelles
+  final personalProposals =
+      proposals.where((p) => p['source'] == 'personal').toList();
+  for (var proposal in personalProposals) {
+    if (proposal['solution']?.isNotEmpty == true) {
+      allSelections.add(SolutionSelection(
+        text: proposal['solution'],
+        type: 'personal',
+        isProblem: false,
+        isSelected: currentSelections.any(
+            (s) => s.text == proposal['solution'] && s.type == 'personal'),
+      ));
+    }
+    if (proposal['probleme']?.isNotEmpty == true) {
+      allSelections.add(SolutionSelection(
+        text: proposal['probleme'],
+        type: 'personal',
+        isProblem: true,
+        isSelected: currentSelections.any(
+            (s) => s.text == proposal['probleme'] && s.type == 'personal'),
+      ));
+    }
+  }
 
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.0),
-              ),
-              elevation: 8,
-              child: Container(
-                padding: EdgeInsets.all(20.0),
-                width: MediaQuery.of(context).size.width * 0.9,
-                height: MediaQuery.of(context).size.height * 0.8,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: EdgeInsets.only(bottom: 16.0),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(color: Colors.grey.shade300),
-                        ),
+  // Contrôleurs pour les nouveaux champs
+  TextEditingController solutionController = TextEditingController();
+  TextEditingController problemeController = TextEditingController();
+
+  // État pour la génération AI
+  bool isGeneratingAI = false;
+  bool _showAIPairs = true;
+  List<Map<String, String>> aiGeneratedPairs = [];
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20.0),
+            ),
+            elevation: 8,
+            insetPadding: EdgeInsets.all(20),
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.95,
+              height: MediaQuery.of(context).size.height * 0.9,
+              padding: EdgeInsets.all(16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // En-tête compact
+                  Container(
+                    padding: EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: Colors.grey.shade300),
                       ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.assignment, color: Colors.blue.shade700),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              _getTranslatedText(
-                                  'تحديد الخطأ  و أصل  الخطأ لـ $groupName',
-                                  'Sélection des solutions et problèmes pour $groupName'),
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade800,
+                    ),
+                    child: Row(
+                      children: [
+                        // Icône
+                        Container(
+                          padding: EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Icons.assignment,
+                            color: Colors.blue.shade700,
+                            size: 18,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        
+                        // Titre
+                        Expanded(
+                          child: Text(
+                            _getTranslatedText(
+                                'تحديد الأخطاء - $groupName',
+                                'Sélection - $groupName'),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue.shade800,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        
+                        // Bouton AI
+                        Container(
+                          margin: EdgeInsets.only(right: 4),
+                          child: Material(
+                            color: Colors.purple.shade700,
+                            borderRadius: BorderRadius.circular(8),
+                            child: InkWell(
+                              onTap: isGeneratingAI ? null : () async {
+                                setState(() => isGeneratingAI = true);
+                                try {
+                                  final generated = await _generateAIPairs(
+                                    groupName: groupName,
+                                  );
+                                  if (generated.isNotEmpty) {
+                                    setState(() {
+                                      aiGeneratedPairs = generated;
+                                      _showAIPairs = true;
+                                      for (var pair in generated) {
+                                        if (pair['problem']?.isNotEmpty == true) {
+                                          allSelections.add(SolutionSelection(
+                                            text: pair['problem']!,
+                                            type: 'ai',
+                                            isProblem: true,
+                                            isSelected: false,
+                                          ));
+                                        }
+                                        if (pair['solution']?.isNotEmpty == true) {
+                                          allSelections.add(SolutionSelection(
+                                            text: pair['solution']!,
+                                            type: 'ai',
+                                            isProblem: false,
+                                            isSelected: false,
+                                          ));
+                                        }
+                                      }
+                                    });
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          '✅ ${generated.length}',
+                                          style: TextStyle(fontSize: 12),
+                                        ),
+                                        backgroundColor: Colors.purple,
+                                        duration: Duration(seconds: 1),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  print('Erreur: $e');
+                                } finally {
+                                  setState(() => isGeneratingAI = false);
+                                }
+                              },
+                              child: Container(
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 6),
+                                child: isGeneratingAI
+                                    ? SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  Colors.white),
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.auto_awesome,
+                                        color: Colors.white,
+                                        size: 14,
+                                      ),
                               ),
                             ),
                           ),
-                          IconButton(
-                            icon: Icon(Icons.select_all,
-                                color: Colors.blue.shade700),
+                        ),
+                        
+                        // Bouton sélectionner tout
+                        Container(
+                          margin: EdgeInsets.only(right: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.select_all,
+                              color: Colors.blue.shade700,
+                              size: 16,
+                            ),
                             onPressed: () {
                               bool allSelected =
                                   allSelections.every((s) => s.isSelected);
@@ -2961,45 +3035,289 @@ Future<List<Map<String, dynamic>>> _getProposals() async {
                                 }
                               });
                             },
-                            tooltip: _getTranslatedText('تحديد/إلغاء الكل',
-                                'Tout sélectionner/désélectionner'),
+                            padding: EdgeInsets.all(6),
+                            constraints: BoxConstraints(
+                              minWidth: 28,
+                              minHeight: 28,
+                            ),
+                            iconSize: 16,
                           ),
+                        ),
+                        
+                        // Bouton fermer
+                        Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.close,
+                              color: Colors.grey.shade700,
+                              size: 16,
+                            ),
+                            onPressed: () => Navigator.pop(context),
+                            padding: EdgeInsets.all(6),
+                            constraints: BoxConstraints(
+                              minWidth: 28,
+                              minHeight: 28,
+                            ),
+                            iconSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  SizedBox(height: 12),
+
+                  // Section AI avec bouton de bascule
+                  if (aiGeneratedPairs.isNotEmpty) ...[
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.purple.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.purple.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.auto_awesome,
+                                color: Colors.purple.shade700,
+                                size: 16,
+                              ),
+                              SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  _getTranslatedText(
+                                    'AI (${aiGeneratedPairs.length})',
+                                    'AI (${aiGeneratedPairs.length})',
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.purple.shade800,
+                                  ),
+                                ),
+                              ),
+                              // Bouton de bascule compact
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                      color: Colors.purple.shade300),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          _showAIPairs = false;
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: !_showAIPairs
+                                              ? Colors.purple.shade100
+                                              : Colors.transparent,
+                                          borderRadius: BorderRadius.only(
+                                            topLeft: Radius.circular(16),
+                                            bottomLeft: Radius.circular(16),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          _getTranslatedText('إخفاء', 'Cacher'),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: !_showAIPairs
+                                                ? Colors.purple.shade700
+                                                : Colors.purple.shade400,
+                                            fontWeight: !_showAIPairs
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      height: 20,
+                                      color: Colors.purple.shade300,
+                                    ),
+                                    InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          _showAIPairs = true;
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: _showAIPairs
+                                              ? Colors.purple.shade100
+                                              : Colors.transparent,
+                                          borderRadius: BorderRadius.only(
+                                            topRight: Radius.circular(16),
+                                            bottomRight: Radius.circular(16),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          _getTranslatedText('عرض', 'Afficher'),
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            color: _showAIPairs
+                                                ? Colors.purple.shade700
+                                                : Colors.purple.shade400,
+                                            fontWeight: _showAIPairs
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (_showAIPairs) ...[
+                            SizedBox(height: 10),
+                            ...aiGeneratedPairs.asMap().entries.map((entry) {
+                              int index = entry.key + 1;
+                              Map<String, String> pair = entry.value;
+                              return Container(
+                                margin: EdgeInsets.only(bottom: 6),
+                                padding: EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          width: 18,
+                                          height: 18,
+                                          decoration: BoxDecoration(
+                                            color: Colors.red.shade50,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              '$index',
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.red.shade700,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            pair['problem'] ?? '',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.red.shade800,
+                                              height: 1.2,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    SizedBox(height: 6),
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(Icons.lightbulb_outline,
+                                            size: 14,
+                                            color: Colors.green.shade700),
+                                        SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            pair['solution'] ?? '',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.green.shade800,
+                                              height: 1.2,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ],
                         ],
                       ),
                     ),
-                    SizedBox(height: 20),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                    SizedBox(height: 12),
+                  ],
+
+                  // Liste des sélections
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Column(
+                        children: [
+                          // Compteur
+                          Container(
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade50,
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(10),
+                                topRight: Radius.circular(10),
+                              ),
+                            ),
+                            child: Row(
                               children: [
                                 Icon(Icons.checklist,
-                                    color: Colors.blue.shade700, size: 20),
-                                SizedBox(width: 8),
+                                    color: Colors.blue.shade700, size: 16),
+                                SizedBox(width: 6),
                                 Text(
                                   _getTranslatedText(
-                                      'اختر ما يناسب هذه المجموعة:',
-                                      'Sélectionnez ce qui convient à ce groupe:'),
+                                    'المحدد:',
+                                    'Sélection:',
+                                  ),
                                   style: TextStyle(
+                                    fontSize: 11,
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 12,
                                     color: Colors.blue.shade800,
                                   ),
                                 ),
-                                SizedBox(width: 8),
+                                Spacer(),
                                 Container(
                                   padding: EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
+                                      horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: Colors.blue.shade50,
-                                    borderRadius: BorderRadius.circular(12),
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
                                     '${allSelections.where((s) => s.isSelected).length}/${allSelections.length}',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 10,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.blue.shade700,
                                     ),
@@ -3007,328 +3325,605 @@ Future<List<Map<String, dynamic>>> _getProposals() async {
                                 ),
                               ],
                             ),
-                            SizedBox(height: 12),
-                            ...allSelections.map((selection) {
-                              Color color;
-                              IconData icon;
-                              String prefix;
+                          ),
+                          
+                          // Liste
+                          Expanded(
+                            child: allSelections.isEmpty
+                                ? Center(
+                                    child: Text(
+                                      _getTranslatedText(
+                                        'لا توجد اقتراحات',
+                                        'Aucune proposition',
+                                      ),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    padding: EdgeInsets.all(6),
+                                    itemCount: allSelections.length,
+                                    itemBuilder: (context, index) {
+                                      final selection = allSelections[index];
+                                      Color color;
+                                      IconData icon;
+                                      
+                                      switch (selection.type) {
+                                        case 'json':
+                                          color = Colors.orange;
+                                          icon = selection.isProblem
+                                              ? Icons.warning_amber
+                                              : Icons.lightbulb;
+                                          break;
+                                        case 'global':
+                                          color = Colors.green;
+                                          icon = selection.isProblem
+                                              ? Icons.analytics
+                                              : Icons.check_circle;
+                                          break;
+                                        case 'ai':
+                                          color = Colors.purple;
+                                          icon = selection.isProblem
+                                              ? Icons.auto_awesome
+                                              : Icons.auto_awesome;
+                                          break;
+                                        default:
+                                          color = Colors.blue;
+                                          icon = selection.isProblem
+                                              ? Icons.person_outline
+                                              : Icons.person;
+                                      }
 
-                              if (selection.type == 'json') {
-                                color = Colors.orange;
-                                icon = selection.isProblem
-                                    ? Icons.warning_amber_outlined
-                                    : Icons.lightbulb_outline;
-                                prefix =
-                                    _getTranslatedText('موصى به', 'Recommandé');
-                              } else if (selection.type == 'global') {
-                                color = Colors.green;
-                                icon = selection.isProblem
-                                    ? Icons.analytics
-                                    : Icons.check_circle;
-                                prefix =
-                                    _getTranslatedText('معتمد', 'Approuvé');
-                              } else {
-                                color = Colors.blue;
-                                icon = selection.isProblem
-                                    ? Icons.analytics_outlined
-                                    : Icons.check_circle_outline;
-                                prefix =
-                                    _getTranslatedText('شخصي', 'Personnel');
-                              }
-
-                              return Card(
-                                elevation: 2,
-                                margin: EdgeInsets.only(bottom: 8),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  side: BorderSide(
-                                    color: selection.isSelected
-                                        ? color
-                                        : Colors.grey.shade300,
-                                    width: selection.isSelected ? 2 : 1,
-                                  ),
-                                ),
-                                child: InkWell(
-                                  onTap: () {
-                                    setState(() {
-                                      selection.isSelected =
-                                          !selection.isSelected;
-                                    });
-                                  },
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Checkbox(
-                                          value: selection.isSelected,
-                                          onChanged: (value) {
-                                            setState(() {
-                                              selection.isSelected = value!;
-                                            });
-                                          },
-                                          activeColor: color,
-                                          checkColor: Colors.white,
-                                        ),
-                                        SizedBox(width: 8),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Container(
-                                                    padding:
-                                                        EdgeInsets.symmetric(
-                                                            horizontal: 8,
-                                                            vertical: 2),
-                                                    decoration: BoxDecoration(
-                                                      color: color
-                                                          .withOpacity(0.1),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              12),
-                                                      border: Border.all(
-                                                          color:
-                                                              color.withOpacity(
-                                                                  0.3)),
-                                                    ),
-                                                    child: Row(
-                                                      mainAxisSize:
-                                                          MainAxisSize.min,
-                                                      children: [
-                                                        Icon(icon,
-                                                            size: 12,
-                                                            color: color),
-                                                        SizedBox(width: 4),
-                                                        Text(
-                                                          '$prefix • ${selection.isProblem ? _getTranslatedText('أصل الخطأ', 'Problème') : _getTranslatedText('خطأ', 'Solution')}',
-                                                          style: TextStyle(
-                                                            fontSize: 10,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                            color: color,
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              SizedBox(height: 8),
-                                              Text(
-                                                selection.text,
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  height: 1.4,
-                                                ),
-                                              ),
-                                            ],
+                                      return Card(
+                                        margin: EdgeInsets.only(bottom: 4),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                          side: BorderSide(
+                                            color: selection.isSelected
+                                                ? color
+                                                : Colors.grey.shade200,
+                                            width: selection.isSelected ? 1.5 : 1,
                                           ),
                                         ),
-                                      ],
-                                    ),
+                                        child: InkWell(
+                                          onTap: () {
+                                            setState(() {
+                                              selection.isSelected =
+                                                  !selection.isSelected;
+                                            });
+                                          },
+                                          child: Padding(
+                                            padding: EdgeInsets.all(8),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Checkbox(
+                                                  value: selection.isSelected,
+                                                  onChanged: (value) {
+                                                    setState(() {
+                                                      selection.isSelected =
+                                                          value!;
+                                                    });
+                                                  },
+                                                  activeColor: color,
+                                                  materialTapTargetSize:
+                                                      MaterialTapTargetSize
+                                                          .shrinkWrap,
+                                                  visualDensity:
+                                                      VisualDensity.compact,
+                                                ),
+                                                SizedBox(width: 6),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment.start,
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          Container(
+                                                            padding:
+                                                                EdgeInsets
+                                                                    .symmetric(
+                                                              horizontal: 4,
+                                                              vertical: 1,
+                                                            ),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: color
+                                                                  .withOpacity(
+                                                                      0.1),
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          10),
+                                                            ),
+                                                            child: Row(
+                                                              mainAxisSize:
+                                                                  MainAxisSize
+                                                                      .min,
+                                                              children: [
+                                                                Icon(icon,
+                                                                    size: 10,
+                                                                    color:
+                                                                        color),
+                                                                SizedBox(
+                                                                    width: 2),
+                                                                Text(
+                                                                  selection.type ==
+                                                                          'ai'
+                                                                      ? 'AI'
+                                                                      : selection
+                                                                          .type,
+                                                                  style: TextStyle(
+                                                                    fontSize: 8,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                    color: color,
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                          SizedBox(width: 4),
+                                                          Container(
+                                                            padding:
+                                                                EdgeInsets
+                                                                    .symmetric(
+                                                              horizontal: 4,
+                                                              vertical: 1,
+                                                            ),
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: selection
+                                                                      .isProblem
+                                                                  ? Colors.red
+                                                                      .shade50
+                                                                  : Colors.green
+                                                                      .shade50,
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          10),
+                                                            ),
+                                                            child: Text(
+                                                              selection.isProblem
+                                                                  ? _getTranslatedText(
+                                                                      'خطأ',
+                                                                      'Err')
+                                                                  : _getTranslatedText(
+                                                                      'أصل الخطأ',
+                                                                      'Sol'),
+                                                              style: TextStyle(
+                                                                fontSize: 8,
+                                                                color: selection
+                                                                        .isProblem
+                                                                    ? Colors.red
+                                                                        .shade700
+                                                                    : Colors
+                                                                        .green
+                                                                        .shade700,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      SizedBox(height: 4),
+                                                      Text(
+                                                        selection.text,
+                                                        style: TextStyle(
+                                                          fontSize: 11,
+                                                          height: 1.2,
+                                                        ),
+                                                        maxLines: 3,
+                                                        overflow:
+                                                            TextOverflow.ellipsis,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                ),
-                              );
-                            }).toList(),
-                            SizedBox(height: 24),
-                            Row(
-                              children: [
-                                Icon(Icons.add_circle_outline,
-                                    color: Colors.blue.shade700, size: 20),
-                                SizedBox(width: 8),
-                                Text(
-                                  _getTranslatedText(
-                                      'أضف مقترحات جديدة لهذا المجموعة:',
-                                      'Ajouter de nouvelles propositions pour ce groupe:'),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.blue.shade800,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 16),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _getTranslatedText(
-                                      'خطأ جديد:', 'Nouvelle solution:'),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.grey.shade700,
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                TextField(
-                                  controller: solutionController,
-                                  decoration: InputDecoration(
-                                    hintText: _getTranslatedText(
-                                        'أدخل اقتراحك للخطأ...',
-                                        'Entrez votre suggestion de solution...'),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(
-                                          color: Colors.grey.shade400),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(
-                                          color: Colors.blue.shade600),
-                                    ),
-                                    contentPadding: EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 12),
-                                  ),
-                                  maxLines: 3,
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 16),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _getTranslatedText(
-                                      'أصل الخطأ الجديد:', 'Nouveau problème:'),
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.grey.shade700,
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                TextField(
-                                  controller: problemeController,
-                                  decoration: InputDecoration(
-                                    hintText: _getTranslatedText(
-                                        'أدخل اقتراحك  لأصل الخطأ...',
-                                        'Entrez votre suggestion pour l\'origine du problème...'),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(
-                                          color: Colors.grey.shade400),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(
-                                          color: Colors.blue.shade600),
-                                    ),
-                                    contentPadding: EdgeInsets.symmetric(
-                                        horizontal: 16, vertical: 12),
-                                  ),
-                                  maxLines: 3,
-                                ),
-                              ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(height: 12),
+
+                  // Section ajout
+                  Container(
+                    padding: EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.add_circle_outline,
+                                color: Colors.blue.shade700, size: 16),
+                            SizedBox(width: 6),
+                            Text(
+                              _getTranslatedText(
+                                'إضافة',
+                                'Ajouter',
+                              ),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue.shade800,
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              _groupSelections[groupKey] = allSelections
-                                  .where((s) => s.isSelected)
-                                  .toList();
-
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(_getTranslatedText(
-                                      'تم حفظ التحديدات لهذا المجموعة',
-                                      'Sélections enregistrées pour ce groupe')),
-                                  backgroundColor: Colors.green,
-                                ),
-                              );
-
-                              Navigator.of(context).pop();
-                            },
-                            icon: Icon(Icons.save, size: 20),
-                            label: Text(
-                              _getTranslatedText('حفظ التحديدات',
-                                  'Enregistrer les sélections'),
-                              style: TextStyle(fontSize: 16),
+                        SizedBox(height: 8),
+                        TextField(
+                          controller: solutionController,
+                          decoration: InputDecoration(
+                            hintText: _getTranslatedText(
+                              'خطأ...',
+                              'Solution...',
                             ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color.fromARGB(255, 207, 210, 25),
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(6),
+                              borderSide: BorderSide.none,
                             ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 6),
                           ),
+                          style: TextStyle(fontSize: 11),
+                          maxLines: 2,
                         ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () async {
-                              if (solutionController.text.isNotEmpty ||
-                                  problemeController.text.isNotEmpty) {
-                                await _saveUserProposal(
-                                  solutionController.text,
-                                  problemeController.text,
-                                  groupName,
-                                );
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(_getTranslatedText(
-                                        'تم حفظ المقترحات بنجاح',
-                                        'Propositions enregistrées avec succès')),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-
-                                Navigator.of(context).pop();
-                                showSolutionAndProbleme(groupName, groupKey);
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(_getTranslatedText(
-                                        'يرجى إدخال خطأ أو أصل الخطأ على الأقل',
-                                        'Veuillez entrer au moins une solution ou un problème')),
-                                    backgroundColor: Colors.orange,
-                                  ),
-                                );
-                              }
-                            },
-                            icon: Icon(Icons.add, size: 20),
-                            label: Text(
-                              _getTranslatedText(
-                                  'حفظ الجديد', 'Sauvegarder nouveau'),
-                              style: TextStyle(fontSize: 16),
+                        SizedBox(height: 6),
+                        TextField(
+                          controller: problemeController,
+                          decoration: InputDecoration(
+                            hintText: _getTranslatedText(
+                              'أصل الخطأ...',
+                              'Origine...',
                             ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color.fromARGB(255, 169, 231, 133),
-                              padding: EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(6),
+                              borderSide: BorderSide.none,
                             ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 6),
                           ),
+                          style: TextStyle(fontSize: 11),
+                          maxLines: 2,
                         ),
                       ],
                     ),
-                  ],
-                ),
+                  ),
+
+                  SizedBox(height: 12),
+
+                  // Boutons d'action
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            _groupSelections[groupKey] = allSelections
+                                .where((s) => s.isSelected)
+                                .toList();
+                            Navigator.pop(context);
+                          },
+                          icon: Icon(Icons.save, size: 14),
+                          label: Text(
+                            _getTranslatedText('حفظ', 'Enreg'),
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green.shade600,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            minimumSize: Size(0, 32),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            if (solutionController.text.isNotEmpty ||
+                                problemeController.text.isNotEmpty) {
+                              await _saveUserProposal(
+                                solutionController.text,
+                                problemeController.text,
+                                groupName,
+                              );
+                              Navigator.pop(context);
+                              showSolutionAndProbleme(groupName, groupKey);
+                            }
+                          },
+                          icon: Icon(Icons.add, size: 14),
+                          label: Text(
+                            _getTranslatedText('إضافة', 'Ajout'),
+                            style: TextStyle(fontSize: 12),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue.shade600,
+                            foregroundColor: Colors.white,
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            minimumSize: Size(0, 32),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+// Méthode pour générer des paires problème-solution avec le nouveau endpoint
+
+Future<List<Map<String, String>>> _generateAIPairs({
+  required String groupName,
+}) async {
+  try {
+    print('🔵 Génération AI pour: $groupName');
+    
+    // URL de votre API Hugging Face
+    const String baseUrl = 'https://mohamedtsou-taqyem-ai-prob-solu.hf.space';
+    
+    final url = Uri.parse('$baseUrl/generate-pairs');
+    print('📡 Connexion à: $url');
+    
+    // Préparer les données
+    final Map<String, dynamic> requestBody = {
+      "classe": widget.className,
+      "matiere": widget.matiereName,
+      "critere": widget.sousBaremeName ?? widget.baremeName,
+      "nombre": 3,
+    };
+    
+    // Ajouter le groupe s'il est spécifié et non vide
+    if (groupName.isNotEmpty) {
+      requestBody["groupe"] = groupName;
+    }
+    
+    print('📦 Corps de la requête: ${jsonEncode(requestBody)}');
+    
+    // Effectuer la requête POST avec un timeout plus long pour Hugging Face
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode(requestBody),
+    ).timeout(const Duration(seconds: 60)); // Timeout plus long (60s)
+
+    print('📥 Statut: ${response.statusCode}');
+    print('📦 Réponse: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = jsonDecode(response.body);
+      
+      if (data['success'] == true) {
+        // Vérifier si data['data'] existe et est une liste
+        if (data.containsKey('data') && data['data'] is List) {
+          List<Map<String, String>> pairs = [];
+          for (var item in data['data']) {
+            if (item['problem'] != null && item['solution'] != null) {
+              pairs.add({
+                'problem': item['problem'].toString(),
+                'solution': item['solution'].toString(),
+              });
+            }
+          }
+          print('✅ ${pairs.length} paires générées avec succès');
+          
+          // Message de succès en arabe
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('✅ تم إنشاء ${pairs.length} مقترحات جديدة'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
               ),
             );
-          },
+          }
+          
+          return pairs;
+        } 
+        // Si data['data'] n'existe pas mais qu'il y a une réponse brute
+        else if (data.containsKey('raw_response')) {
+          print('⚠️ Réponse brute reçue, tentative de parsing...');
+          final parsedPairs = _parseRawResponse(data['raw_response']);
+          if (mounted && parsedPairs.isNotEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('✅ تم استخراج ${parsedPairs.length} مقترحات'),
+                backgroundColor: Colors.purple,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+          return parsedPairs;
+        }
+        else {
+          print('⚠️ Format de réponse inattendu: $data');
+          return [];
+        }
+      } else {
+        // La requête a réussi mais success = false
+        final errorMsg = data['error'] ?? 'Erreur inconnue';
+        print('❌ Erreur retournée par le serveur: $errorMsg');
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('⚠️ $errorMsg'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return [];
+      }
+    } else {
+      // Erreur HTTP
+      print('❌ Erreur HTTP ${response.statusCode}');
+      
+      String errorMsg = 'خطأ في الاتصال (${response.statusCode})';
+      try {
+        final errorData = jsonDecode(response.body);
+        if (errorData['error'] != null) {
+          errorMsg = errorData['error'];
+        }
+      } catch (_) {}
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ $errorMsg'),
+            backgroundColor: Colors.red,
+          ),
         );
-      },
-    );
+      }
+      return [];
+    }
+    
+  } on TimeoutException catch (_) {
+    print('❌ Timeout - Le serveur a mis trop de temps à répondre');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('⏱️ انتهت المهلة - le serveur est lent'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+    return [];
+    
+  } on SocketException catch (e) {
+    print('❌ Erreur de connexion: $e');
+    
+    String errorMessage = '🔌 Impossible de se connecter';
+    if (e.osError != null) {
+      if (e.osError!.message.contains('refused')) {
+        errorMessage = '🔌 Serveur non disponible';
+      }
+    }
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+    return [];
+    
+  } catch (e) {
+    print('❌ Erreur inattendue: $e');
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Erreur: ${e.toString().substring(0, min(50, e.toString().length))}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+    
+    return [];
   }
+}
 
-  // Méthodes modifiées avec la condition d'impression
 
-  // Dans _generateSingleGroupReport
+
+// Méthode helper pour parser la réponse brute si nécessaire
+List<Map<String, String>> _parseRawResponse(String rawResponse) {
+  List<Map<String, String>> pairs = [];
+  
+  try {
+    // Pattern pour extraire les paires du texte brut
+    final RegExp problemRegex = RegExp(
+      r'الخطأ\s*\d*[:\s]+(.*?)(?=أصل\s*الخطأ|\Z)',
+      dotAll: true,
+      unicode: true,
+    );
+    
+    final RegExp solutionRegex = RegExp(
+      r'أصل\s*الخطأ\s*\d*[:\s]+(.*?)(?=الخطأ|\Z)',
+      dotAll: true,
+      unicode: true,
+    );
+    
+    final problemMatches = problemRegex.allMatches(rawResponse);
+    final solutionMatches = solutionRegex.allMatches(rawResponse);
+    
+    for (int i = 0; i < problemMatches.length && i < solutionMatches.length; i++) {
+      final problem = problemMatches.elementAt(i).group(1)?.trim() ?? '';
+      final solution = solutionMatches.elementAt(i).group(1)?.trim() ?? '';
+      
+      if (problem.isNotEmpty && solution.isNotEmpty) {
+        pairs.add({
+          'problem': problem,
+          'solution': solution,
+        });
+      }
+    }
+    
+    print('📊 ${pairs.length} paires extraites de la réponse brute');
+    
+  } catch (e) {
+    print('❌ Erreur lors du parsing de la réponse brute: $e');
+  }
+  
+  return pairs;
+}
+
+// // Méthode utilitaire pour tester la connexion
+// Future<bool> _testFlaskConnection() async {
+//   try {
+//     const String baseUrl = 'http://127.0.0.1:5000';
+//     final response = await http.get(
+//       Uri.parse('$baseUrl/health'),
+//     ).timeout(const Duration(seconds: 5));
+    
+//     if (response.statusCode == 200) {
+//       final data = json.jsonDecode(response.body);
+//       print('✅ Serveur Flask connecté: ${data['status']}');
+//       return true;
+//     }
+//   } catch (e) {
+//     print('❌ Test de connexion échoué: $e');
+//   }
+//   return false;
+// }// Méthode helper pour parser la réponse brute si nécessaire
 
   // Dans _generateSingleGroupReport, utilisez les exercices sélectionnés
   Future<void> _generateSingleGroupReport(
@@ -3812,8 +4407,8 @@ Future<List<Map<String, dynamic>>> _getProposals() async {
                               SizedBox(width: 12),
                               Expanded(
                                 child: Text(
-                                  _getTranslatedText(
-                                      'تحديد التمارين ', 'Sélectionner exercice'),
+                                  _getTranslatedText('تحديد التمارين ',
+                                      'Sélectionner exercice'),
                                   style: TextStyle(fontSize: 14),
                                 ),
                               ),
