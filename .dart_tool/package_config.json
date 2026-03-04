@@ -338,22 +338,46 @@
       "languageVersion": "3.4"
     },
     {
-      "name": "file_selector_linux",
-      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/file_selector_linux-0.9.3+2",
+      "name": "file_selector",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/file_selector-1.1.0",
       "packageUri": "lib/",
-      "languageVersion": "3.3"
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "file_selector_android",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/file_selector_android-0.5.2+4",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "file_selector_ios",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/file_selector_ios-0.5.3+4",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "file_selector_linux",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/file_selector_linux-0.9.4",
+      "packageUri": "lib/",
+      "languageVersion": "3.8"
     },
     {
       "name": "file_selector_macos",
-      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/file_selector_macos-0.9.4+4",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/file_selector_macos-0.9.5",
+      "packageUri": "lib/",
+      "languageVersion": "3.9"
+    },
+    {
+      "name": "file_selector_platform_interface",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/file_selector_platform_interface-2.7.0",
       "packageUri": "lib/",
       "languageVersion": "3.7"
     },
     {
-      "name": "file_selector_platform_interface",
-      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/file_selector_platform_interface-2.6.2",
+      "name": "file_selector_web",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/file_selector_web-0.9.4+2",
       "packageUri": "lib/",
-      "languageVersion": "3.0"
+      "languageVersion": "3.3"
     },
     {
       "name": "file_selector_windows",

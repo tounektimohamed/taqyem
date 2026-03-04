@@ -12,7 +12,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'dart:io';
 import 'package:flutter/foundation.dart' show Uint8List, kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
 
@@ -2091,7 +2090,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                         Text(
                           'تقييم المعايير',
                           style: TextStyle(
-                            fontSize: 20,
+                            fontSize: 13,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -2349,7 +2348,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                       children: [
                                         Icon(Icons.tag, color: Colors.blue),
                                         SizedBox(width: 8),
-                                        Text('نظام الرموز'),
+                                        Text(' نظام الرموز'),
                                       ],
                                     ),
                                   ),
@@ -2412,7 +2411,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                   children: [
                                     Icon(
                                       _getSystemIcon(selectedSystem),
-                                      size: 16,
+                                      size: 12,
                                       color: _getSystemColor(selectedSystem),
                                     ),
                                     SizedBox(width: 4),
@@ -2454,14 +2453,14 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                         children: [
                           Icon(
                             Icons.info_outline,
-                            size: 14,
+                            size: 12,
                             color: _getSystemColor(selectedSystem),
                           ),
                           SizedBox(width: 6),
                           Text(
                             _getSystemDescription(selectedSystem),
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 10,
                               color: _getSystemColor(selectedSystem),
                             ),
                           ),
@@ -2787,14 +2786,44 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                               showDialog(
                                 context: context,
                                 barrierDismissible: false,
-                                builder: (context) => Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      CircularProgressIndicator(),
-                                      SizedBox(height: 16),
-                                      Text('جاري حفظ التقييمات...'),
-                                    ],
+                                builder: (context) => Dialog(
+                                  backgroundColor:
+                                      Colors.transparent, // شفافية الخلفية
+                                  insetPadding: EdgeInsets.all(
+                                      24), // المسافة من حدود الشاشة
+                                  child: Center(
+                                    child: Container(
+                                      padding: EdgeInsets.all(24),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white, // لون البطاقة
+                                        borderRadius: BorderRadius.circular(16),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black26,
+                                            blurRadius: 12,
+                                            offset: Offset(0, 6),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          CircularProgressIndicator(
+                                            color: Colors.purple.shade700,
+                                            strokeWidth: 4,
+                                          ),
+                                          SizedBox(height: 16),
+                                          Text(
+                                            'جاري حفظ التقييمات...',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.grey[800],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
                               );

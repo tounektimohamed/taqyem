@@ -14,9 +14,12 @@ class PaymentPage extends StatefulWidget {
 
 class _PaymentPageState extends State<PaymentPage> {
   String? selectedForfait;
+  String? _base64Image; // Nouvelle variable pour stocker l'image en base64
+
   final TextEditingController _nomController = TextEditingController();
   final TextEditingController _prenomController = TextEditingController();
-  final TextEditingController _whatsappController = TextEditingController(); // جديد: حقل الواتساب
+  final TextEditingController _whatsappController =
+      TextEditingController(); // جديد: حقل الواتساب
   html.File? _photo;
   bool _hasSubmittedForm = false;
   bool _isLoading = false;
@@ -28,10 +31,10 @@ class _PaymentPageState extends State<PaymentPage> {
   bool _canSubscribe = true;
   String? _selectedCardId;
   Map<String, dynamic> _cardStats = {};
-  
+
   // رقم الواتساب المستهدف (رقمك)
   final String _adminWhatsAppNumber = '99237770';
-  
+
   // Détails de la carte sélectionnée automatiquement
   Map<String, dynamic>? _selectedCardDetails;
 
@@ -62,17 +65,17 @@ class _PaymentPageState extends State<PaymentPage> {
     try {
       final bestCardId = await _cardService.selectBestCard();
       print('Meilleure carte sélectionnée: $bestCardId');
-      
+
       if (bestCardId != null) {
         await _ensureCardDocument(bestCardId);
         final details = await _cardService.getCardDetails(bestCardId);
         print('Détails de la carte: $details');
-        
+
         setState(() {
           _selectedCardId = bestCardId;
           _selectedCardDetails = details;
         });
-        
+
         if (details == null) {
           print('⚠️ Détails de la carte manquants');
           _showErrorSnackbar('خطأ في تحميل معلومات البطاقة');
@@ -100,19 +103,16 @@ class _PaymentPageState extends State<PaymentPage> {
           .collection('cards')
           .doc(cardId)
           .get();
-      
+
       if (!doc.exists) {
         print('📝 Création du document pour la carte $cardId...');
-        await FirebaseFirestore.instance
-            .collection('cards')
-            .doc(cardId)
-            .set({
-              'id': cardId,
-              'qrCodeUrl': '',
-              'ribNumber': '',
-              'bankName': '',
-              'createdAt': FieldValue.serverTimestamp(),
-            });
+        await FirebaseFirestore.instance.collection('cards').doc(cardId).set({
+          'id': cardId,
+          'qrCodeUrl': '',
+          'ribNumber': '',
+          'bankName': '',
+          'createdAt': FieldValue.serverTimestamp(),
+        });
       }
     } catch (e) {
       print('❌ Erreur lors de la vérification du document: $e');
@@ -123,7 +123,8 @@ class _PaymentPageState extends State<PaymentPage> {
   Future<String> _uploadImageToStorage(html.File imageFile) async {
     try {
       final fileName = 'proof_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final storageRef = FirebaseStorage.instance.ref().child('payment_proofs/$fileName');
+      final storageRef =
+          FirebaseStorage.instance.ref().child('payment_proofs/$fileName');
       await storageRef.putBlob(imageFile);
       return await storageRef.getDownloadURL();
     } catch (e) {
@@ -157,9 +158,7 @@ class _PaymentPageState extends State<PaymentPage> {
         'selectedCard': _selectedCardId,
       };
 
-      await FirebaseFirestore.instance
-          .collection('payments')
-          .add(paymentData);
+      await FirebaseFirestore.instance.collection('payments').add(paymentData);
 
       await FirebaseFirestore.instance
           .collection('Users')
@@ -197,13 +196,15 @@ class _PaymentPageState extends State<PaymentPage> {
 
       String encodedMessage = Uri.encodeFull(message);
       String targetPhoneNumber = _adminWhatsAppNumber;
-      String whatsappUrl = 'https://wa.me/216$targetPhoneNumber?text=$encodedMessage';
-      
+      String whatsappUrl =
+          'https://wa.me/216$targetPhoneNumber?text=$encodedMessage';
+
       if (await canLaunch(whatsappUrl)) {
         await launch(whatsappUrl);
         print('✅ تم فتح WhatsApp بنجاح مع الرقم 216$targetPhoneNumber');
       } else {
-        String webWhatsappUrl = 'https://web.whatsapp.com/send?phone=216$targetPhoneNumber&text=$encodedMessage';
+        String webWhatsappUrl =
+            'https://web.whatsapp.com/send?phone=216$targetPhoneNumber&text=$encodedMessage';
         if (await canLaunch(webWhatsappUrl)) {
           await launch(webWhatsappUrl);
         } else {
@@ -367,7 +368,8 @@ class _PaymentPageState extends State<PaymentPage> {
     );
   }
 
-  Widget _buildQRImage(String qrUrl, String cardId, {double height = 100, double width = 100}) {
+  Widget _buildQRImage(String qrUrl, String cardId,
+      {double height = 100, double width = 100}) {
     if (qrUrl.isEmpty) {
       return Container(
         height: height,
@@ -427,7 +429,7 @@ class _PaymentPageState extends State<PaymentPage> {
         );
       }
     }
-    
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: Image.network(
@@ -1081,7 +1083,7 @@ class _PaymentPageState extends State<PaymentPage> {
       },
     );
   }
-  
+
   Widget _buildPaymentForm() {
     return SingleChildScrollView(
       child: Column(
@@ -1149,7 +1151,7 @@ class _PaymentPageState extends State<PaymentPage> {
               ),
             ),
           ),
-          
+
           SizedBox(height: 24),
 
           Text(
@@ -1268,7 +1270,7 @@ class _PaymentPageState extends State<PaymentPage> {
           SizedBox(height: 10),
           Row(
             children: [
-              Expanded(
+              Flexible(
                 child: InkWell(
                   borderRadius: BorderRadius.circular(8),
                   onTap: () {
@@ -1277,7 +1279,7 @@ class _PaymentPageState extends State<PaymentPage> {
                     });
                   },
                   child: Container(
-                    padding: EdgeInsets.all(12),
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
                       color: !_useOnlinePayment
@@ -1290,30 +1292,36 @@ class _PaymentPageState extends State<PaymentPage> {
                         width: 2,
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.money,
-                          color: !_useOnlinePayment ? Colors.blue : Colors.grey,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'تحويل بنكي / حوالة بريدية / D17',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontFamily: 'Tajawal',
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.money,
                             color:
                                 !_useOnlinePayment ? Colors.blue : Colors.grey,
                           ),
-                        ),
-                      ],
+                          SizedBox(width: 6),
+                          Text(
+                            'تحويل بنكي / حوالة بريدية / D17',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontFamily: 'Tajawal',
+                              color: !_useOnlinePayment
+                                  ? Colors.blue
+                                  : Colors.grey,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
               SizedBox(width: 10),
-              Expanded(
+              Flexible(
                 child: InkWell(
                   borderRadius: BorderRadius.circular(8),
                   onTap: () {
@@ -1322,7 +1330,7 @@ class _PaymentPageState extends State<PaymentPage> {
                     });
                   },
                   child: Container(
-                    padding: EdgeInsets.all(12),
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(8),
                       color: _useOnlinePayment
@@ -1335,23 +1343,29 @@ class _PaymentPageState extends State<PaymentPage> {
                         width: 2,
                       ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.credit_card,
-                          color: _useOnlinePayment ? Colors.green : Colors.grey,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          'دفع إلكتروني (Konnect)',
-                          style: TextStyle(
-                            fontFamily: 'Tajawal',
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.credit_card,
                             color:
                                 _useOnlinePayment ? Colors.green : Colors.grey,
                           ),
-                        ),
-                      ],
+                          SizedBox(width: 6),
+                          Text(
+                            'دفع إلكتروني (Konnect)',
+                            style: TextStyle(
+                              fontFamily: 'Tajawal',
+                              color: _useOnlinePayment
+                                  ? Colors.green
+                                  : Colors.grey,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1419,23 +1433,31 @@ class _PaymentPageState extends State<PaymentPage> {
                             ),
                           ),
                           SizedBox(height: 16),
-                          
-                          _buildStepItem('1', 'افتح تطبيق D17 على هاتفك.', Icons.phone_android),
-                          _buildStepItem('2', 'اختر "الدفع عبر QR".', Icons.qr_code),
-                          _buildStepItem('3', 'قم بمسح رمز الـ QR المعروض أدناه.', Icons.qr_code_scanner),
-                          _buildStepItem('4', 'أدخل مبلغ الاشتراك: ${selectedForfait == 'ثلاثية' ? '40' : selectedForfait == 'سنوي' ? '70' : '...'} دينار', Icons.attach_money),
-                          _buildStepItem('5', 'أكد عملية التحويل.', Icons.check_circle),
+                          _buildStepItem('1', 'افتح تطبيق D17 على هاتفك.',
+                              Icons.phone_android),
+                          _buildStepItem(
+                              '2', 'اختر "الدفع عبر QR".', Icons.qr_code),
+                          _buildStepItem(
+                              '3',
+                              'قم بمسح رمز الـ QR المعروض أدناه.',
+                              Icons.qr_code_scanner),
+                          _buildStepItem(
+                              '4',
+                              'أدخل مبلغ الاشتراك: ${selectedForfait == 'ثلاثية' ? '40' : selectedForfait == 'سنوي' ? '70' : '...'} دينار',
+                              Icons.attach_money),
+                          _buildStepItem(
+                              '5', 'أكد عملية التحويل.', Icons.check_circle),
                         ],
                       ),
                     ),
                     SizedBox(height: 16),
-                    
                     Container(
                       padding: EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue.shade200, width: 2),
+                        border:
+                            Border.all(color: Colors.blue.shade200, width: 2),
                       ),
                       child: Column(
                         children: [
@@ -1452,9 +1474,12 @@ class _PaymentPageState extends State<PaymentPage> {
                           Center(
                             child: GestureDetector(
                               onTap: () {
-                                if (_selectedCardDetails != null && 
-                                    _selectedCardDetails!['qrCodeUrl'] != null) {
-                                  _showFullQRCode(_selectedCardDetails!['qrCodeUrl'], _selectedCardId!);
+                                if (_selectedCardDetails != null &&
+                                    _selectedCardDetails!['qrCodeUrl'] !=
+                                        null) {
+                                  _showFullQRCode(
+                                      _selectedCardDetails!['qrCodeUrl'],
+                                      _selectedCardId!);
                                 }
                               },
                               child: Container(
@@ -1464,7 +1489,7 @@ class _PaymentPageState extends State<PaymentPage> {
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: _buildQRImage(
-                                  _selectedCardDetails!['qrCodeUrl'] ?? '', 
+                                  _selectedCardDetails!['qrCodeUrl'] ?? '',
                                   _selectedCardId!,
                                   height: 180,
                                   width: 180,
@@ -1482,7 +1507,6 @@ class _PaymentPageState extends State<PaymentPage> {
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          
                           if (_selectedCardDetails!['ribNumber'] != null) ...[
                             SizedBox(height: 16),
                             Divider(),
@@ -1517,10 +1541,15 @@ class _PaymentPageState extends State<PaymentPage> {
                                   IconButton(
                                     icon: Icon(Icons.copy, size: 20),
                                     onPressed: () {
-                                      html.window.navigator.clipboard?.writeText(_selectedCardDetails!['ribNumber']);
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      html.window.navigator.clipboard
+                                          ?.writeText(_selectedCardDetails![
+                                              'ribNumber']);
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
                                         SnackBar(
-                                          content: Text('تم نسخ رقم RIB', style: TextStyle(fontFamily: 'Tajawal')),
+                                          content: Text('تم نسخ رقم RIB',
+                                              style: TextStyle(
+                                                  fontFamily: 'Tajawal')),
                                           backgroundColor: Colors.green,
                                           duration: Duration(seconds: 1),
                                         ),
@@ -1534,9 +1563,7 @@ class _PaymentPageState extends State<PaymentPage> {
                         ],
                       ),
                     ),
-                    
                     SizedBox(height: 12),
-                    
                     Container(
                       padding: EdgeInsets.all(12),
                       decoration: BoxDecoration(
@@ -1546,7 +1573,8 @@ class _PaymentPageState extends State<PaymentPage> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.warning_amber, color: Colors.amber.shade800),
+                          Icon(Icons.warning_amber,
+                              color: Colors.amber.shade800),
                           SizedBox(width: 12),
                           Expanded(
                             child: Text(
@@ -1616,7 +1644,7 @@ class _PaymentPageState extends State<PaymentPage> {
                 fontFamily: 'Tajawal'),
           ),
           SizedBox(height: 15),
-          
+
           TextField(
             controller: _nomController,
             decoration: InputDecoration(
@@ -1634,7 +1662,7 @@ class _PaymentPageState extends State<PaymentPage> {
             textAlign: TextAlign.right,
           ),
           SizedBox(height: 20),
-          
+
           TextField(
             controller: _prenomController,
             decoration: InputDecoration(
@@ -1652,7 +1680,7 @@ class _PaymentPageState extends State<PaymentPage> {
             textAlign: TextAlign.right,
           ),
           SizedBox(height: 20),
-          
+
           // حقل رقم الواتساب الجديد
           TextField(
             controller: _whatsappController,
@@ -1798,7 +1826,7 @@ class _PaymentPageState extends State<PaymentPage> {
               ),
             ),
             SizedBox(height: 20),
-            
+
             // الزر الجديد للواتساب (يظهر فقط للدفع اليدوي)
             _buildWhatsAppButton(),
             SizedBox(height: 15),
@@ -1890,10 +1918,14 @@ class _PaymentPageState extends State<PaymentPage> {
             )
           : ElevatedButton.icon(
               onPressed: _handleWhatsAppSubmit,
-              icon: Icon(Icons.phone, size: 24, color: const Color.fromARGB(255, 116, 235, 5)),
+              icon: Icon(Icons.phone,
+                  size: 24, color: const Color.fromARGB(255, 116, 235, 5)),
               label: Text(
                 'تأكيد وإرسال عبر واتساب',
-                style: TextStyle(fontSize: 16, fontFamily: 'Tajawal', fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontFamily: 'Tajawal',
+                    fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
                 padding: EdgeInsets.symmetric(vertical: 16),

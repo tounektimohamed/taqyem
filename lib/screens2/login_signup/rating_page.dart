@@ -233,7 +233,7 @@ class _RatingPageState extends State<RatingPage> {
                               padding: const EdgeInsets.symmetric(horizontal: 5),
                               child: Icon(
                                 index < _rating ? Icons.star : Icons.star_border,
-                                size: 50,
+                                size: 40,
                                 color: Colors.amber,
                               ),
                             ),

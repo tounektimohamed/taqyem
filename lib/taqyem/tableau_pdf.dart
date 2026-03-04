@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:math' as math;
 import 'dart:typed_data';
-import 'dart:io';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_html_to_pdf/flutter_html_to_pdf.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -1786,12 +1786,13 @@ static String _buildCriteriaTableHTML({
     }
   }
 
-  static Future<void> _downloadHTMLFile(String htmlContent) async {
+static Future<void> _downloadHTMLFile(String htmlContent) async {
   try {
     if (kIsWeb) {
+      // Version Web
       final blob = html.Blob(
         [utf8.encode(htmlContent)],
-        'application/octet-stream',
+        'text/html; charset=utf-8', // Changement du MIME type
       );
 
       final url = html.Url.createObjectUrlFromBlob(blob);
@@ -1806,22 +1807,33 @@ static String _buildCriteriaTableHTML({
       Future.delayed(const Duration(seconds: 2), () {
         html.Url.revokeObjectUrl(url);
       });
+      
+      print('✅ Fichier HTML téléchargé avec succès sur le web');
     } else {
+      // Version Mobile/Desktop (Android, iOS, Windows, macOS, Linux)
       final directory = await getTemporaryDirectory();
-      final file = File(
-        '${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html',
+      final filePath = '${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html';
+      
+      // Utiliser XFile pour écrire le fichier (pas de File)
+      final xFile = XFile.fromData(
+        Uint8List.fromList(utf8.encode(htmlContent)),
+        name: 'rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html',
+        mimeType: 'text/html',
       );
-      await file.writeAsString(htmlContent, flush: true);
-      await OpenFile.open(file.path);
+      
+      // Sauvegarder le fichier
+      await xFile.saveTo(filePath);
+      
+      // Ouvrir le fichier
+      await OpenFile.open(filePath);
+      
+      print('✅ Fichier HTML généré avec succès sur mobile/desktop: $filePath');
     }
-
-    print('Fichier généré avec succès');
   } catch (e) {
-    print('Erreur génération fichier: $e');
+    print('❌ Erreur génération fichier: $e');
     rethrow;
   }
-  }
-
+}
   static Future<Uint8List> _loadImage(String path) async {
     try {
       final data = await rootBundle.load(path);

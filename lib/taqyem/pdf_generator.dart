@@ -1,7 +1,10 @@
+// Supprimez ces imports :
+// import 'dart:io';
+// import 'dart:html' as html;
+
+// Ajoutez/modifiez ces imports :
 import 'dart:convert';
-import 'dart:html' as html;
 import 'dart:typed_data';
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -10,6 +13,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
+import 'package:cross_file/cross_file.dart';
+
+// Imports conditionnels pour le web
+import 'dart:html' as html if (dart.library.html) 'dart:html';
 
 class PDFClassificationGenerator {
   static Future<void> generateAndDownloadClassificationReport({
@@ -22,7 +29,7 @@ class PDFClassificationGenerator {
     required String sousBaremeName,
     required Map<String, List<Map<String, dynamic>>> groupedStudents,
     required Map<String, List<Map<String, dynamic>>> groupSelections,
-    required Map<String, List<Map<String, dynamic>>> aiExercises, // NOUVEAU PARAMÈTRE
+    required Map<String, List<Map<String, dynamic>>> aiExercises,
     required bool isFrenchInterface,
     required bool isCompleteReport,
     String? singleGroupName,
@@ -50,7 +57,7 @@ class PDFClassificationGenerator {
         sousBaremeName: sousBaremeName,
         groupedStudents: groupedStudents,
         groupSelections: groupSelections,
-        aiExercises: aiExercises, // TRANSMETTRE AU HTML
+        aiExercises: aiExercises,
         isFrenchInterface: isFrenchInterface,
         isCompleteReport: isCompleteReport,
         singleGroupName: singleGroupName,
@@ -75,7 +82,7 @@ class PDFClassificationGenerator {
     required String sousBaremeName,
     required Map<String, List<Map<String, dynamic>>> groupedStudents,
     required Map<String, List<Map<String, dynamic>>> groupSelections,
-    required Map<String, List<Map<String, dynamic>>> aiExercises, // NOUVEAU PARAMÈTRE
+    required Map<String, List<Map<String, dynamic>>> aiExercises,
     required bool isFrenchInterface,
     required bool isCompleteReport,
     String? singleGroupName,
@@ -488,7 +495,20 @@ class PDFClassificationGenerator {
 </head>
 <body>
     <div class="report-container">
-        
+        <!-- Page de garde -->
+        ${_buildCoverPageHTML(
+          profName: profName,
+          matiereName: matiereName,
+          className: className,
+          schoolName: schoolName,
+          baremeName: baremeName,
+          sousBaremeName: sousBaremeName,
+          logoBase64: logoBase64,
+          isFrenchInterface: isFrenchInterface,
+          isCompleteReport: isCompleteReport,
+          singleGroupName: singleGroupName,
+          now: now,
+        )}
         
         <!-- Page des informations générales -->
         ${_buildGeneralInfoPageHTML(
@@ -507,7 +527,7 @@ class PDFClassificationGenerator {
         ${_buildGroupsPagesHTML(
           groupedStudents: groupedStudents,
           groupSelections: groupSelections,
-          aiExercises: aiExercises, // TRANSMETTRE LES EXERCICES AI
+          aiExercises: aiExercises,
           isFrenchInterface: isFrenchInterface,
           isCompleteReport: isCompleteReport,
           singleGroupKey: singleGroupKey,
@@ -685,7 +705,7 @@ class PDFClassificationGenerator {
   static String _buildGroupsPagesHTML({
     required Map<String, List<Map<String, dynamic>>> groupedStudents,
     required Map<String, List<Map<String, dynamic>>> groupSelections,
-    required Map<String, List<Map<String, dynamic>>> aiExercises, // NOUVEAU PARAMÈTRE
+    required Map<String, List<Map<String, dynamic>>> aiExercises,
     required bool isFrenchInterface,
     required bool isCompleteReport,
     String? singleGroupKey,
@@ -918,7 +938,7 @@ class PDFClassificationGenerator {
             'student_name': "Nom de l'élève",
             'treatment_plan': 'Plan de traitement',
             'error_origin': "Origine de l'erreur",
-            'solutions_title': 'Solutions proposées',
+            'solutions_title': "Origine de l'erreur",
             'problems_title': 'Problèmes identifiés',
             'ai_exercises': 'Exercices générés par IA',
             'ai_exercise': 'Exercice IA',
@@ -958,7 +978,7 @@ class PDFClassificationGenerator {
             'student_name': 'اسم التلميذ',
             'treatment_plan': 'خطة العلاج',
             'error_origin': 'أصل الخطأ',
-            'solutions_title': 'الحلول المقترحة',
+            'solutions_title': 'أصل الخطأ',
             'problems_title': 'المشاكل المحددة',
             'ai_exercises': 'تمارين العلاج',
             'ai_exercise': 'تمرين ذكي',
@@ -979,7 +999,7 @@ class PDFClassificationGenerator {
     try {
       if (kIsWeb) {
         print('Platforme Web détectée - Téléchargement HTML');
-        await _downloadHTMLFile(htmlContent, fileNamePrefix);
+        await _downloadHTMLFileWeb(htmlContent, fileNamePrefix);
         return;
       }
 
@@ -1000,19 +1020,26 @@ class PDFClassificationGenerator {
       );
 
       print('PDF généré avec succès: ${generatedPdfFile.path}');
-      print('Taille du fichier: ${generatedPdfFile.lengthSync()} bytes');
-
-      await OpenFile.open(generatedPdfFile.path);
+      
+      // Utiliser XFile pour ouvrir le fichier
+      final xFile = XFile(generatedPdfFile.path);
+      await OpenFile.open(xFile.path);
 
       print('PDF ouvert avec succès');
     } catch (e) {
       print('Erreur lors de la génération du fichier PDF: $e');
       print('Fallback: téléchargement HTML...');
-      await _downloadHTMLFile(htmlContent, fileNamePrefix);
+      
+      if (kIsWeb) {
+        await _downloadHTMLFileWeb(htmlContent, fileNamePrefix);
+      } else {
+        await _downloadHTMLFileMobile(htmlContent, fileNamePrefix);
+      }
     }
   }
 
-  static Future<void> _downloadHTMLFile(
+  // Version web du téléchargement HTML
+  static Future<void> _downloadHTMLFileWeb(
       String htmlContent, String fileNamePrefix) async {
     try {
       if (kIsWeb) {
@@ -1027,17 +1054,35 @@ class PDFClassificationGenerator {
         Future.delayed(const Duration(seconds: 2), () {
           html.Url.revokeObjectUrl(url);
         });
-      } else {
-        final directory = await getTemporaryDirectory();
-        final file = File(
-            '${directory.path}/${fileNamePrefix}_${DateTime.now().millisecondsSinceEpoch}.html');
-        await file.writeAsString(htmlContent, flush: true);
-        await OpenFile.open(file.path);
-      }
 
-      print('Fichier généré avec succès');
+        print('Fichier HTML téléchargé avec succès sur le web');
+      }
     } catch (e) {
-      print('Erreur lors de la génération du fichier: $e');
+      print('Erreur lors du téléchargement HTML web: $e');
+      rethrow;
+    }
+  }
+
+  // Version mobile du téléchargement HTML
+  static Future<void> _downloadHTMLFileMobile(
+      String htmlContent, String fileNamePrefix) async {
+    try {
+      final directory = await getTemporaryDirectory();
+      final filePath = '${directory.path}/${fileNamePrefix}_${DateTime.now().millisecondsSinceEpoch}.html';
+      
+      // Utiliser XFile pour écrire le fichier
+      final xFile = XFile.fromData(
+        Uint8List.fromList(htmlContent.codeUnits),
+        name: '${fileNamePrefix}_${DateTime.now().millisecondsSinceEpoch}.html',
+        mimeType: 'text/html',
+      );
+      
+      await xFile.saveTo(filePath);
+      await OpenFile.open(filePath);
+
+      print('Fichier HTML généré avec succès sur mobile');
+    } catch (e) {
+      print('Erreur lors de la génération du fichier HTML mobile: $e');
       rethrow;
     }
   }

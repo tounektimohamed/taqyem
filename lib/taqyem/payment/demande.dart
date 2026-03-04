@@ -1372,182 +1372,188 @@ class _DemandManagementPageState extends State<DemandManagementPage> {
     }
   }
 
-  // Version améliorée de _showPhotoDialog avec meilleure gestion des erreurs
-  void _showPhotoDialog(BuildContext context, String photoUrl) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: EdgeInsets.all(16),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.9,
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(context).size.height * 0.8,
-              ),
-              color: Colors.white,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Barre d'en-tête
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.shade700,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(16),
-                        topRight: Radius.circular(16),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'إثبات الدفع',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Tajawal',
-                          ),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.close, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                  
-                  // Corps avec l'image
-                  Expanded(
-                    child: Container(
-                      padding: EdgeInsets.all(16),
-                      child: Center(
-                        child: InteractiveViewer(
-                          minScale: 0.5,
-                          maxScale: 4.0,
-                          child: Image.network(
-                            photoUrl,
-                            fit: BoxFit.contain,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    CircularProgressIndicator(
-                                      value: loadingProgress.expectedTotalBytes != null
-                                          ? loadingProgress.cumulativeBytesLoaded /
-                                              loadingProgress.expectedTotalBytes!
-                                          : null,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-                                    ),
-                                    SizedBox(height: 16),
-                                    Text(
-                                      'جاري تحميل الصورة...',
-                                      style: TextStyle(
-                                        fontFamily: 'Tajawal',
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) {
-                              print('Error loading image: $error');
-                              return Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.error_outline, color: Colors.red, size: 64),
-                                    SizedBox(height: 16),
-                                    Text(
-                                      'خطأ في تحميل الصورة',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        color: Colors.red,
-                                        fontFamily: 'Tajawal',
-                                      ),
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      'قد يكون الرابط غير صالح أو الصورة محذوفة',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey.shade600,
-                                        fontFamily: 'Tajawal',
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    SizedBox(height: 16),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        // Essayer d'ouvrir l'image dans un nouvel onglet
-                                        html.window.open(photoUrl, '_blank');
-                                      },
-                                      child: Text('فتح في متصفح', style: TextStyle(fontFamily: 'Tajawal')),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  
-                  // Pied de page avec options
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.only(
-                        bottomLeft: Radius.circular(16),
-                        bottomRight: Radius.circular(16),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        OutlinedButton.icon(
-                          icon: Icon(Icons.open_in_browser, size: 18),
-                          label: Text(
-                            'فتح في المتصفح',
-                            style: TextStyle(fontFamily: 'Tajawal'),
-                          ),
-                          onPressed: () {
-                            html.window.open(photoUrl, '_blank');
-                          },
-                        ),
-                        ElevatedButton.icon(
-                          icon: Icon(Icons.close, size: 18),
-                          label: Text(
-                            'إغلاق',
-                            style: TextStyle(fontFamily: 'Tajawal'),
-                          ),
-                          onPressed: () => Navigator.pop(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+void _showPhotoDialog(BuildContext context, String photoUrl) {
+  if (photoUrl.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('رابط الصورة غير صالح', style: TextStyle(fontFamily: 'Tajawal')),
+        backgroundColor: Colors.red,
+      ),
     );
+    return;
   }
 
+  showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (context) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: EdgeInsets.all(16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+            ),
+            color: Colors.white,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade700,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'إثبات الدفع',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'Tajawal',
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Image
+                Expanded(
+                  child: Container(
+                    padding: EdgeInsets.all(16),
+                    child: Center(
+                      child: InteractiveViewer(
+                        minScale: 0.5,
+                        maxScale: 4.0,
+                        child: Image.network(
+                          photoUrl,
+                          fit: BoxFit.contain,
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  CircularProgressIndicator(
+                                    value: loadingProgress.expectedTotalBytes != null
+                                        ? loadingProgress.cumulativeBytesLoaded /
+                                            loadingProgress.expectedTotalBytes!
+                                        : null,
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'جاري تحميل الصورة...',
+                                    style: TextStyle(fontFamily: 'Tajawal'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            print('Error loading image in dialog: $error');
+                            return Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.error_outline, color: Colors.red, size: 64),
+                                  SizedBox(height: 16),
+                                  Text(
+                                    'خطأ في تحميل الصورة',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: Colors.red,
+                                      fontFamily: 'Tajawal',
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'قد يكون الرابط غير صالح',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade600,
+                                      fontFamily: 'Tajawal',
+                                    ),
+                                  ),
+                                  SizedBox(height: 16),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      try {
+                                        html.window.open(photoUrl, '_blank');
+                                      } catch (e) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text('لا يمكن فتح الرابط'),
+                                            backgroundColor: Colors.red,
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    child: Text('فتح في المتصفح'),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // Footer
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      OutlinedButton.icon(
+                        icon: Icon(Icons.open_in_browser, size: 18),
+                        label: Text('فتح في المتصفح'),
+                        onPressed: () {
+                          try {
+                            html.window.open(photoUrl, '_blank');
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('لا يمكن فتح الرابط'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                      ElevatedButton.icon(
+                        icon: Icon(Icons.close, size: 18),
+                        label: Text('إغلاق'),
+                        onPressed: () => Navigator.pop(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
+  );
+}
   void _showMessageDialog(
     BuildContext context,
     DocumentReference demandRef,

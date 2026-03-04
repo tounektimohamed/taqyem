@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
-import 'dart:html' as html;
+import 'dart:html' as html if (dart.library.html) 'dart:html';
+
 import 'dart:math';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -16,6 +16,7 @@ import 'package:Taqyem/taqyem/da3m_tableau.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
@@ -1329,6 +1330,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 // NOUVELLE MÉTHODE: Envoyer les données légères à Flask
 
 // Dans votre fichier Flutter, modifiez la fonction principale:
+
   Future<Map<String, dynamic>> _sendLightDataToFlaskForCompleteReport({
     required String classId,
     required String matiereId,
@@ -1447,52 +1449,57 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       }
     } on TimeoutException {
       return {'success': false, 'message': 'Timeout serveur'};
-    } on SocketException catch (e) {
-      return {'success': false, 'message': 'Erreur connexion: ${e.message}'};
     } catch (e) {
+      // SUPPRIMEZ "on SocketException" et gardez juste catch (e)
       print('💥 Erreur inattendue: $e');
       return {'success': false, 'message': 'Erreur technique: $e'};
     }
   }
 
-// NOUVELLE FONCTION: Télécharger le rapport depuis Firebase Storage
   Future<void> _downloadReportFromUrl(
       String downloadUrl, String filename, String reportId) async {
     try {
       print('📥 Téléchargement depuis: $downloadUrl');
 
       if (kIsWeb) {
-        // Pour le web: ouvrir dans un nouvel onglet
+        // Version Web
         html.window.open(downloadUrl, '_blank');
-
-        // Afficher un message de confirmation
-        _showSuccessSnackbar('Le rapport est en cours de téléchargement...');
+        _showSuccessSnackbar(_getTranslatedText(
+            'جاري تحميل التقرير...', 'Téléchargement du rapport...'));
       } else {
-        // Pour mobile/desktop
+        // Version Mobile/Desktop
         final response = await http.get(Uri.parse(downloadUrl));
 
         if (response.statusCode == 200) {
           final bytes = response.bodyBytes;
           final directory = await getTemporaryDirectory();
-          final file = File('${directory.path}/$filename');
-          await file.writeAsBytes(bytes);
+          final filePath = '${directory.path}/$filename';
 
-          // Ouvrir le fichier
-          await OpenFile.open(file.path);
+          // Utiliser XFile au lieu de File
+          final xFile = XFile.fromData(
+            bytes,
+            name: filename,
+            mimeType: 'application/pdf',
+          );
 
-          _showSuccessSnackbar('Rapport téléchargé avec succès');
+          await xFile.saveTo(filePath);
+          await OpenFile.open(filePath);
+
+          _showSuccessSnackbar(
+              _getTranslatedText('تم تحميل التقرير', 'Rapport téléchargé'));
         } else {
           throw Exception('Erreur de téléchargement: ${response.statusCode}');
         }
       }
     } catch (e) {
       print('❌ Erreur téléchargement: $e');
-      _showErrorSnackbar('Erreur lors du téléchargement: $e');
+      _showErrorSnackbar(
+          _getTranslatedText('خطأ في التحميل', 'Erreur de téléchargement') +
+              ': $e');
       rethrow;
     }
   }
 
-// NOUVELLE FONCTION: Sauvegarder les métadonnées dans Firestore
   Future<void> _saveReportMetadata(
       String userId,
       String reportId,
@@ -1902,36 +1909,51 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 //
 // //
 //
+
   Future<void> _downloadPdfFromBase64(String pdfBase64) async {
     try {
       final bytes = base64Decode(pdfBase64);
 
       if (kIsWeb) {
-        // Pour le web
+        // Version Web
         final blob = html.Blob([bytes], 'application/pdf');
         final url = html.Url.createObjectUrlFromBlob(blob);
+
         final anchor = html.AnchorElement(href: url)
-          ..setAttribute('download',
-              'rapport_complet_${DateTime.now().millisecondsSinceEpoch}.pdf')
+          ..setAttribute(
+            'download',
+            'rapport_${DateTime.now().millisecondsSinceEpoch}.pdf',
+          )
           ..click();
+
         Future.delayed(const Duration(seconds: 2), () {
           html.Url.revokeObjectUrl(url);
         });
+
+        print('✅ PDF téléchargé sur le web');
       } else {
-        // Pour mobile/desktop
+        // Version Mobile/Desktop
         final directory = await getTemporaryDirectory();
-        final file = File(
-            '${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.pdf');
-        await file.writeAsBytes(bytes);
-        await OpenFile.open(file.path);
+        final filePath =
+            '${directory.path}/rapport_${DateTime.now().millisecondsSinceEpoch}.pdf';
+
+        final xFile = XFile.fromData(
+          bytes,
+          name: 'rapport_${DateTime.now().millisecondsSinceEpoch}.pdf',
+          mimeType: 'application/pdf',
+        );
+
+        await xFile.saveTo(filePath);
+        await OpenFile.open(filePath);
+
+        print('✅ PDF sauvegardé: $filePath');
       }
     } catch (e) {
-      print('Erreur téléchargement PDF base64: $e');
+      print('❌ Erreur téléchargement PDF base64: $e');
       rethrow;
     }
   }
 
-// Méthode pour télécharger le rapport généré
   Future<void> _downloadGeneratedReport(String pdfUrl) async {
     try {
       if (kIsWeb) {
@@ -1941,10 +1963,18 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         final bytes = response.bodyBytes;
 
         final directory = await getTemporaryDirectory();
-        final file = File(
-            '${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.pdf');
-        await file.writeAsBytes(bytes);
-        await OpenFile.open(file.path);
+        final filePath =
+            '${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.pdf';
+
+        // Utiliser XFile au lieu de File
+        final xFile = XFile.fromData(
+          bytes,
+          name: 'rapport_complet_${DateTime.now().millisecondsSinceEpoch}.pdf',
+          mimeType: 'application/pdf',
+        );
+
+        await xFile.saveTo(filePath);
+        await OpenFile.open(filePath);
       }
     } catch (e) {
       print('Erreur téléchargement rapport: $e');
@@ -1952,28 +1982,44 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
-// Méthode pour télécharger le contenu HTML
   Future<void> _downloadHTMLContent(String htmlContent) async {
     try {
       if (kIsWeb) {
+        // Version Web
         final blob = html.Blob([htmlContent], 'text/html; charset=utf-8');
         final url = html.Url.createObjectUrlFromBlob(blob);
+
         final anchor = html.AnchorElement(href: url)
-          ..setAttribute('download',
-              'rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html')
+          ..setAttribute(
+            'download',
+            'rapport_${DateTime.now().millisecondsSinceEpoch}.html',
+          )
           ..click();
+
         Future.delayed(const Duration(seconds: 2), () {
           html.Url.revokeObjectUrl(url);
         });
+
+        print('✅ Fichier HTML téléchargé sur le web');
       } else {
+        // Version Mobile/Desktop
         final directory = await getTemporaryDirectory();
-        final file = File(
-            '${directory.path}/rapport_complet_${DateTime.now().millisecondsSinceEpoch}.html');
-        await file.writeAsString(htmlContent, flush: true);
-        await OpenFile.open(file.path);
+        final filePath =
+            '${directory.path}/rapport_${DateTime.now().millisecondsSinceEpoch}.html';
+
+        final xFile = XFile.fromData(
+          Uint8List.fromList(utf8.encode(htmlContent)),
+          name: 'rapport_${DateTime.now().millisecondsSinceEpoch}.html',
+          mimeType: 'text/html',
+        );
+
+        await xFile.saveTo(filePath);
+        await OpenFile.open(filePath);
+
+        print('✅ Fichier HTML sauvegardé: $filePath');
       }
     } catch (e) {
-      print('Erreur téléchargement HTML: $e');
+      print('❌ Erreur téléchargement HTML: $e');
       rethrow;
     }
   }
@@ -2244,45 +2290,34 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       return [];
     }
   }
-
+  
   Future<List<dynamic>> _getBaremesForReport(
-      String classId, String matiereId) async {
-    try {
-      // Récupérer le système et les notes personnalisées
-      final String evaluationSystem =
-          await _getEvaluationSystem(classId, matiereId);
-      final List<String> customNotes =
-          await _loadCustomNotes(classId, matiereId);
+    String classId, String matiereId) async {
+  try {
+    final String evaluationSystem =
+        await _getEvaluationSystem(classId, matiereId);
+    final List<String> customNotes = await _loadCustomNotes(classId, matiereId);
 
-      final baremesSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser!.uid)
-          .collection('selections')
-          .doc(classId)
-          .collection(matiereId)
-          .get();
+    final baremesSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser!.uid)
+        .collection('selections')
+        .doc(classId)
+        .collection(matiereId)
+        .get();
 
-      final List<dynamic> baremes = [];
-      for (final baremeDoc in baremesSnapshot.docs) {
-        final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
-        final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
-        final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
+    final List<dynamic> baremes = [];
+    for (final baremeDoc in baremesSnapshot.docs) {
+      final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
+      final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
+      final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
-        final displayedBaremeName = _isFrenchInterface
-            ? DataTranslator.translateBareme(baremeName)
-            : baremeName;
+      final displayedBaremeName = _isFrenchInterface
+          ? DataTranslator.translateBareme(baremeName)
+          : baremeName;
 
-        if (isBaremeSelected) {
-          baremes.add({
-            'id': baremeId,
-            'value': displayedBaremeName,
-            'originalValue': baremeName,
-            'type': 'bareme',
-            'evaluationSystem': evaluationSystem,
-            'customNotes': customNotes,
-          });
-        }
-
+      if (isBaremeSelected) {
+        // Récupérer les sous-barèmes
         final sousBaremesSnapshot = await FirebaseFirestore.instance
             .collection('users')
             .doc(currentUser!.uid)
@@ -2292,6 +2327,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             .doc(baremeId)
             .collection('sousBaremes')
             .get();
+
+        final List<Map<String, dynamic>> sousBaremesList = [];
 
         for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
           final sousBaremeId = sousBaremeDoc.id;
@@ -2305,7 +2342,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               : sousBaremeName;
 
           if (isSousBaremeSelected) {
-            baremes.add({
+            sousBaremesList.add({
               'id': sousBaremeId,
               'value': displayedSousBaremeName,
               'originalValue': sousBaremeName,
@@ -2316,14 +2353,48 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             });
           }
         }
-      }
 
-      return baremes;
-    } catch (e) {
-      print('Erreur récupération barèmes: $e');
-      return [];
+        // ✅ TRIER les sous-barèmes par ordre alphabétique
+        sousBaremesList.sort((a, b) {
+          String nameA = a['value'] ?? '';
+          String nameB = b['value'] ?? '';
+          
+          if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+            return _arabicStringComparator(nameA, nameB);
+          }
+          return nameA.compareTo(nameB);
+        });
+
+        baremes.add({
+          'id': baremeId,
+          'value': displayedBaremeName,
+          'originalValue': baremeName,
+          'type': 'bareme',
+          'sousBaremes': sousBaremesList,
+          'evaluationSystem': evaluationSystem,
+          'customNotes': customNotes,
+        });
+      }
     }
+
+    // ✅ TRIER les barèmes principaux par ordre alphabétique
+    baremes.sort((a, b) {
+      String nameA = a['value'] ?? '';
+      String nameB = b['value'] ?? '';
+      
+      if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+        return _arabicStringComparator(nameA, nameB);
+      }
+      return nameA.compareTo(nameB);
+    });
+
+    return baremes;
+  } catch (e) {
+    print('Erreur récupération barèmes: $e');
+    return [];
   }
+}
+
 
   Future<Map<String, dynamic>> _getSummaryForReport(
       String classId, String matiereId) async {
@@ -3616,9 +3687,17 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       } else {
         // Pour mobile/desktop
         final directory = await getTemporaryDirectory();
-        final file = File('${directory.path}/tableau_resultats.pdf');
-        await file.writeAsBytes(pdfBytes);
-        await OpenFile.open(file.path);
+        final filePath = '${directory.path}/tableau_resultats.pdf';
+
+        // Utiliser XFile au lieu de File
+        final xFile = XFile.fromData(
+          pdfBytes,
+          name: 'tableau_resultats.pdf',
+          mimeType: 'application/pdf',
+        );
+
+        await xFile.saveTo(filePath);
+        await OpenFile.open(filePath);
       }
     } catch (e) {
       print('Erreur sauvegarde PDF: $e');
@@ -3979,10 +4058,6 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       }
 
       print('📤 ENVOI À FLASK - SYSTÈME: $evaluationSystem');
-      print('📤 Notes custom: $customNotes');
-
-      // IMPORTANT: Ne pas convertir ici, laisser les notes en format caractère
-      // car la conversion se fera dans le serveur Flask
 
       Map<String, dynamic> finalData = {
         "userId": data['userId'],
@@ -4001,24 +4076,11 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           "periode": _selectedPeriode,
           "evaluationType": _selectedEvaluationType,
         },
-        "performanceAttendue": data['performanceAttendue'],
+        "performanceAttendue": data['performanceAttendue'] ?? '',
         "isFrenchInterface": _isFrenchInterface,
         "evaluationSystem": evaluationSystem,
         "customNotes": customNotes,
       };
-
-      // Debug: Afficher un exemple de note
-      if (data['students'] != null && data['students'].isNotEmpty) {
-        final firstStudent = data['students'][0];
-        final firstBareme =
-            data['baremes'] != null && data['baremes'].isNotEmpty
-                ? data['baremes'][0]['id']
-                : null;
-        if (firstBareme != null) {
-          print(
-              '📝 Exemple note brute: ${firstStudent['baremes'][firstBareme]}');
-        }
-      }
 
       final url = Uri.parse(
           'https://mohamedtsou-taqyem-imprission.hf.space/generate_pdf');
@@ -4036,12 +4098,34 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
       if (response.statusCode == 200) {
         final bytes = response.bodyBytes;
-        final blob = html.Blob([bytes], 'application/pdf');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: url)
-          ..setAttribute('download', 'tableau_resultats.pdf')
-          ..click();
-        html.Url.revokeObjectUrl(url);
+
+        if (kIsWeb) {
+          // Version Web
+          final blob = html.Blob([bytes], 'application/pdf');
+          final url = html.Url.createObjectUrlFromBlob(blob);
+
+          final anchor = html.AnchorElement(href: url)
+            ..setAttribute('download',
+                'tableau_resultats_${DateTime.now().millisecondsSinceEpoch}.pdf')
+            ..click();
+
+          html.Url.revokeObjectUrl(url);
+        } else {
+          // Version Mobile/Desktop
+          final directory = await getTemporaryDirectory();
+          final filePath =
+              '${directory.path}/tableau_resultats_${DateTime.now().millisecondsSinceEpoch}.pdf';
+
+          final xFile = XFile.fromData(
+            bytes,
+            name:
+                'tableau_resultats_${DateTime.now().millisecondsSinceEpoch}.pdf',
+            mimeType: 'application/pdf',
+          );
+
+          await xFile.saveTo(filePath);
+          await OpenFile.open(filePath);
+        }
 
         _showSuccessSnackbar(
             _getTranslatedText('تم إنشاء PDF بنجاح', 'PDF généré avec succès'));
@@ -4053,10 +4137,6 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       }
     } on TimeoutException {
       _showErrorSnackbar(_getTranslatedText('انتهت المهلة', 'Timeout'));
-      return false;
-    } on SocketException {
-      _showErrorSnackbar(
-          _getTranslatedText('خطأ في الاتصال', 'Erreur de connexion'));
       return false;
     } catch (e) {
       _showErrorSnackbar(_getTranslatedText('خطأ تقني:', 'Erreur technique:') +
@@ -4140,7 +4220,6 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
   Future<bool> _sendHTMLDataToFlask(Map<String, dynamic> data) async {
     try {
-      // Récupérer le système d'évaluation
       final String evaluationSystem = await _getEvaluationSystem(
           widget.selectedClass, widget.selectedMatiere);
 
@@ -4205,10 +4284,29 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .timeout(const Duration(seconds: 60));
 
       if (response.statusCode == 200) {
-        final blob = html.Blob([response.bodyBytes], 'text/html');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        html.window.open(url, '_blank');
-        html.Url.revokeObjectUrl(url);
+        final htmlContent = utf8.decode(response.bodyBytes);
+
+        if (kIsWeb) {
+          // Version Web
+          final blob = html.Blob([htmlContent], 'text/html; charset=utf-8');
+          final url = html.Url.createObjectUrlFromBlob(blob);
+          html.window.open(url, '_blank');
+          html.Url.revokeObjectUrl(url);
+        } else {
+          // Version Mobile/Desktop
+          final directory = await getTemporaryDirectory();
+          final filePath =
+              '${directory.path}/rapport_${DateTime.now().millisecondsSinceEpoch}.html';
+
+          final xFile = XFile.fromData(
+            Uint8List.fromList(utf8.encode(htmlContent)),
+            name: 'rapport_${DateTime.now().millisecondsSinceEpoch}.html',
+            mimeType: 'text/html',
+          );
+
+          await xFile.saveTo(filePath);
+          await OpenFile.open(filePath);
+        }
 
         _showSuccessSnackbar(_getTranslatedText(
             'تم إنشاء التقرير بنجاح', 'Rapport généré avec succès'));
@@ -4221,10 +4319,6 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       }
     } on TimeoutException {
       _showErrorSnackbar(_getTranslatedText('انتهت المهلة', 'Timeout'));
-      return false;
-    } on SocketException {
-      _showErrorSnackbar(
-          _getTranslatedText('خطأ في الاتصال', 'Erreur de connexion'));
       return false;
     } catch (e) {
       _showErrorSnackbar(_getTranslatedText('خطأ تقني:', 'Erreur technique:') +
@@ -4337,36 +4431,29 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     }
   }
 
-  Future<List<dynamic>> _getBaremes() async {
-    try {
-      final baremesSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser!.uid)
-          .collection('selections')
-          .doc(widget.selectedClass)
-          .collection(widget.selectedMatiere)
-          .get();
+Future<List<dynamic>> _getBaremes() async {
+  try {
+    final baremesSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser!.uid)
+        .collection('selections')
+        .doc(widget.selectedClass)
+        .collection(widget.selectedMatiere)
+        .get();
 
-      final List<dynamic> baremes = [];
-      for (final baremeDoc in baremesSnapshot.docs) {
-        final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
-        final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
-        final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
+    final List<dynamic> baremes = [];
+    for (final baremeDoc in baremesSnapshot.docs) {
+      final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
+      final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
+      final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
-        // IMPORTANT: Garder le nom arabe dans la BD, traduire uniquement pour l'affichage
-        final displayedBaremeName = _isFrenchInterface
-            ? DataTranslator.translateBareme(baremeName)
-            : baremeName;
+      // Traduire si nécessaire
+      final displayedBaremeName = _isFrenchInterface
+          ? DataTranslator.translateBareme(baremeName)
+          : baremeName;
 
-        if (isBaremeSelected) {
-          baremes.add({
-            'id': baremeId,
-            'value': displayedBaremeName, // Affichage traduit
-            'originalValue': baremeName, // Valeur originale arabe pour la BD
-            'type': 'bareme',
-          });
-        }
-
+      if (isBaremeSelected) {
+        // Récupérer les sous-barèmes
         final sousBaremesSnapshot = await FirebaseFirestore.instance
             .collection('users')
             .doc(currentUser!.uid)
@@ -4377,6 +4464,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             .collection('sousBaremes')
             .get();
 
+        final List<Map<String, dynamic>> sousBaremesList = [];
+
         for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
           final sousBaremeId = sousBaremeDoc.id;
           final sousBaremeName =
@@ -4384,29 +4473,59 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           final isSousBaremeSelected =
               _getFieldSafe(sousBaremeDoc, 'selected', false);
 
-          // IMPORTANT: Garder le nom arabe dans la BD, traduire uniquement pour l'affichage
-          final displayedSousBaremeName = _isFrenchInterface
-              ? DataTranslator.translateSousBareme(sousBaremeName)
-              : sousBaremeName;
-
           if (isSousBaremeSelected) {
-            baremes.add({
+            final displayedSousBaremeName = _isFrenchInterface
+                ? DataTranslator.translateSousBareme(sousBaremeName)
+                : sousBaremeName;
+
+            sousBaremesList.add({
               'id': sousBaremeId,
-              'value': displayedSousBaremeName, // Affichage traduit
-              'originalValue':
-                  sousBaremeName, // Valeur originale arabe pour la BD
+              'value': displayedSousBaremeName,
+              'originalValue': sousBaremeName,
               'type': 'sousBareme',
-              'parentBaremeId': baremeId,
             });
           }
         }
-      }
 
-      return baremes;
-    } catch (e) {
-      return [];
+        // ✅ TRIER les sous-barèmes par ordre alphabétique
+        sousBaremesList.sort((a, b) {
+          String nameA = a['value'] ?? '';
+          String nameB = b['value'] ?? '';
+          
+          if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+            return _arabicStringComparator(nameA, nameB);
+          }
+          return nameA.compareTo(nameB);
+        });
+
+        baremes.add({
+          'id': baremeId,
+          'value': displayedBaremeName,
+          'originalValue': baremeName,
+          'type': 'bareme',
+          'sousBaremes': sousBaremesList,
+        });
+      }
     }
+
+    // ✅ TRIER les barèmes principaux par ordre alphabétique
+    baremes.sort((a, b) {
+      String nameA = a['value'] ?? '';
+      String nameB = b['value'] ?? '';
+      
+      if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+        return _arabicStringComparator(nameA, nameB);
+      }
+      return nameA.compareTo(nameB);
+    });
+
+    return baremes;
+  } catch (e) {
+    print('Erreur récupération barèmes: $e');
+    return [];
   }
+}
+
 
   Future<List<dynamic>> _getStudents() async {
     try {
@@ -5652,6 +5771,7 @@ class _StudentsTableState extends State<StudentsTable> {
     '( + + - )',
     '( + + + )'
   ];
+
   final Map<String, Map<String, String>> _selectedValues = {};
   final Map<String, Color> _headerColors = {};
   String? _currentEvaluationSystem;
@@ -5748,17 +5868,27 @@ class _StudentsTableState extends State<StudentsTable> {
     return normalizedA.length - normalizedB.length;
   }
 
-  // Fonction pour trier les barèmes par ordre alphabétique
-  List<Map<String, dynamic>> _sortBaremesAlphabetically(
-      List<Map<String, dynamic>> baremesValues) {
-    baremesValues.sort((a, b) {
-      String nameA = a['value'] ?? '';
-      String nameB = b['value'] ?? '';
-      return nameA.compareTo(nameB);
-    });
-    return baremesValues;
-  }
+//   // Fonction pour trier les barèmes par ordre alphabétique
+// List<Map<String, dynamic>> _sortBaremesAlphabetically(List<Map<String, dynamic>> baremes) {
+//   // Créer une copie de la liste pour ne pas modifier l'originale
+//   List<Map<String, dynamic>> sortedBaremes = List.from(baremes);
 
+//   sortedBaremes.sort((a, b) {
+//     // Récupérer les noms à comparer
+//     String nameA = a['value']?.toString() ?? '';
+//     String nameB = b['value']?.toString() ?? '';
+
+//     // Si l'interface est en arabe, utiliser le comparateur arabe
+//     if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+//       return _arabicStringComparator(nameA, nameB);
+//     }
+
+//     // Sinon, tri alphabétique standard
+//     return nameA.compareTo(nameB);
+//   });
+
+//   return sortedBaremes;
+// }
 // Méthode pour trier les étudiants par ordre alphabétique
   List<QueryDocumentSnapshot> _sortStudentsAlphabetically(
       List<QueryDocumentSnapshot> students) {
@@ -7478,73 +7608,103 @@ class _StudentsTableState extends State<StudentsTable> {
     );
   }
 
-  Future<List<Map<String, dynamic>>> _getBaremesValues(
-      List<QueryDocumentSnapshot> selectedBaremes) async {
-    final List<Map<String, dynamic>> result = [];
-    final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+Future<List<Map<String, dynamic>>> _getBaremesValues(
+    List<QueryDocumentSnapshot> selectedBaremes) async {
+  final List<Map<String, dynamic>> result = [];
+  final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
-    print('🔍 Début _getBaremesValues - ${selectedBaremes.length} barèmes');
+  print('🔍 Début _getBaremesValues - ${selectedBaremes.length} barèmes');
 
-    for (final baremeDoc in selectedBaremes) {
-      final baremeId = baremeDoc['baremeId'] ?? baremeDoc.id;
-      final baremeName = baremeDoc['baremeName'] ?? 'غير معروف';
-      final isBaremeSelected = baremeDoc['selected'] ?? false;
+  for (final baremeDoc in selectedBaremes) {
+    final baremeId = baremeDoc['baremeId'] ?? baremeDoc.id;
+    final baremeName = baremeDoc['baremeName'] ?? 'غير معروف';
+    final isBaremeSelected = baremeDoc['selected'] ?? false;
 
-      print('📌 Barème $baremeId - sélectionné: $isBaremeSelected');
+    // Utiliser widget.isFrenchInterface
+    final displayedBaremeName = widget.isFrenchInterface
+        ? DataTranslator.translateBareme(baremeName)
+        : baremeName;
 
-      // Récupérer les sous-barèmes
-      final sousBaremesSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('selections')
-          .doc(widget.selectedClass)
-          .collection(widget.selectedMatiere)
-          .doc(baremeId)
-          .collection('sousBaremes')
-          .get();
+    // Récupérer les sous-barèmes
+    final sousBaremesSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('selections')
+        .doc(widget.selectedClass)
+        .collection(widget.selectedMatiere)
+        .doc(baremeId)
+        .collection('sousBaremes')
+        .get();
 
-      final List<Map<String, dynamic>> sousBaremesList = [];
+    final List<Map<String, dynamic>> sousBaremesList = [];
 
-      for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-        final isSousBaremeSelected = sousBaremeDoc['selected'] ?? false;
-        final sousBaremeName = sousBaremeDoc['sousBaremeName'] ?? 'غير معروف';
+    for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+      final isSousBaremeSelected = sousBaremeDoc['selected'] ?? false;
+      final sousBaremeName = sousBaremeDoc['sousBaremeName'] ?? 'غير معروف';
 
-        if (isSousBaremeSelected) {
-          sousBaremesList.add({
-            'id': sousBaremeDoc.id,
-            'value': sousBaremeName,
-            'type': 'sousBareme',
-          });
-          print('   ↪️ Sous-barème ${sousBaremeDoc.id} sélectionné');
-        }
-      }
+      if (isSousBaremeSelected) {
+        final displayedSousBaremeName = widget.isFrenchInterface
+            ? DataTranslator.translateSousBareme(sousBaremeName)
+            : sousBaremeName;
 
-      if (isBaremeSelected) {
-        result.add({
-          'id': baremeId,
-          'value': baremeName,
-          'type': 'bareme',
-          'sousBaremes': sousBaremesList,
+        sousBaremesList.add({
+          'id': sousBaremeDoc.id,
+          'value': displayedSousBaremeName,
+          'type': 'sousBareme',
         });
-        print(
-            '   ✅ Barème principal ajouté avec ${sousBaremesList.length} sous-barèmes');
-      } else if (sousBaremesList.isNotEmpty) {
-        // Si seulement les sous-barèmes sont sélectionnés, ajouter les sous-barèmes
-        for (final sousBareme in sousBaremesList) {
-          result.add({
-            'id': sousBareme['id'],
-            'value': sousBareme['value'],
-            'type': 'sousBareme',
-            'parentBaremeId': baremeId,
-          });
-          print('   ↪️ Sous-barème seul ajouté: ${sousBareme['id']}');
-        }
       }
     }
 
-    print('📊 Résultat final: ${result.length} éléments');
-    return result;
+    // ✅ TRIER les sous-barèmes par ordre alphabétique
+    sousBaremesList.sort((a, b) {
+      String nameA = a['value'] ?? '';
+      String nameB = b['value'] ?? '';
+      
+      if (!widget.isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+        return _arabicStringComparator(nameA, nameB);
+      }
+      return nameA.compareTo(nameB);
+    });
+
+    if (isBaremeSelected) {
+      result.add({
+        'id': baremeId,
+        'value': displayedBaremeName,
+        'type': 'bareme',
+        'sousBaremes': sousBaremesList,
+      });
+    } else if (sousBaremesList.isNotEmpty) {
+      for (final sousBareme in sousBaremesList) {
+        result.add({
+          'id': sousBareme['id'],
+          'value': sousBareme['value'],
+          'type': 'sousBareme',
+          'parentBaremeId': baremeId,
+        });
+      }
+    }
   }
+
+  // ✅ TRIER les barèmes principaux par ordre alphabétique
+  result.sort((a, b) {
+    if (a['type'] != b['type']) {
+      if (a['type'] == 'bareme') return -1;
+      if (b['type'] == 'bareme') return 1;
+    }
+    
+    String nameA = a['value'] ?? '';
+    String nameB = b['value'] ?? '';
+    
+    if (!widget.isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+      return _arabicStringComparator(nameA, nameB);
+    }
+    return nameA.compareTo(nameB);
+  });
+
+  return result;
+}
+
+
 
   Future<String> _getSelectedValue(String studentId, String baremeKey) async {
     try {

@@ -1596,69 +1596,119 @@ class _NewsSectionState extends State<NewsSection> {
     );
   }
 }
+
 Widget _buildQuickAccessSection(BuildContext context) {
   return Container(
     padding: const EdgeInsets.symmetric(horizontal: 16),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Accès Rapide',
-          style: GoogleFonts.roboto(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Accès Rapide',
+                style: GoogleFonts.roboto(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              // Indicateur de nombre d'éléments pour grand écran
+              if (MediaQuery.of(context).size.width > 600)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '6 raccourcis',
+                    style: GoogleFonts.roboto(
+                      fontSize: 12,
+                      color: Theme.of(context).primaryColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 16),
         LayoutBuilder(
           builder: (context, constraints) {
-            // Adaptation dynamique du nombre de colonnes
-            final crossAxisCount = constraints.maxWidth > 400 ? 4 : 2;
-            final childAspectRatio = constraints.maxWidth > 600 ? 1.0 : 0.9;
-            final isLargeScreen = constraints.maxWidth > 600;
+            final screenWidth = constraints.maxWidth;
+            
+            // Déterminer le nombre de colonnes basé sur la largeur
+            int crossAxisCount;
+            double childAspectRatio;
+            double horizontalSpacing;
+            
+            if (screenWidth > 1200) {
+              // Très grand écran (PC)
+              crossAxisCount = 6;
+              childAspectRatio = 1.1;
+              horizontalSpacing = 20;
+            } else if (screenWidth > 900) {
+              // Grand écran
+              crossAxisCount = 5;
+              childAspectRatio = 1.0;
+              horizontalSpacing = 16;
+            } else if (screenWidth > 600) {
+              // Tablette
+              crossAxisCount = 4;
+              childAspectRatio = 0.95;
+              horizontalSpacing = 14;
+            } else {
+              // Téléphone
+              crossAxisCount = 2;
+              childAspectRatio = 0.9;
+              horizontalSpacing = 12;
+            }
 
             return GridView.count(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisCount: crossAxisCount,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
+              crossAxisSpacing: horizontalSpacing,
+              mainAxisSpacing: horizontalSpacing,
               childAspectRatio: childAspectRatio,
               padding: EdgeInsets.zero,
               children: [
                 _buildResponsiveQuickAccessCard(
                   context,
-                  Icons.add,
+                  Icons.add_circle_outline,
                   'إضافة قسم',
                   Colors.blue[700]!,
-                  isLargeScreen,
+                  screenWidth,
                   () => Navigator.push(context,
                       MaterialPageRoute(builder: (_) => AddClassPage())),
                 ),
                 _buildResponsiveQuickAccessCard(
                   context,
-                  Icons.manage_accounts,
+                  Icons.folder_special_outlined,
                   'إدارة الأقسام',
                   Colors.green[700]!,
-                  isLargeScreen,
+                  screenWidth,
                   () => Navigator.push(context,
                       MaterialPageRoute(builder: (_) => ManageClassesPage())),
                 ),
                 _buildResponsiveQuickAccessCard(
                   context,
-                  Icons.table_chart,
-                  'إعداد جدول جامع',
+                  Icons.calendar_month_outlined,
+                  'جدول جامع',
                   Colors.orange[700]!,
-                  isLargeScreen,
+                  screenWidth,
                   () => Navigator.push(context,
                       MaterialPageRoute(builder: (_) => SelectionPage())),
                 ),
                 _buildResponsiveQuickAccessCard(
                   context,
-                  Icons.analytics,
+                  Icons.bar_chart_rounded,
                   'الإحصائيات',
-                  Colors.teal, // Nouvelle couleur
-                  isLargeScreen,
+                  Colors.teal[700]!,
+                  screenWidth,
                   () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => StatisticsPage()),
@@ -1666,10 +1716,10 @@ Widget _buildQuickAccessSection(BuildContext context) {
                 ),
                 _buildResponsiveQuickAccessCard(
                   context,
-                  Icons.analytics,
+                  Icons.checklist_rounded,
                   'سجل الحضور',
-                  Colors.teal,
-                  isLargeScreen,
+                  Colors.indigo[700]!,
+                  screenWidth,
                   () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => AttendanceSystemPage()),
@@ -1677,13 +1727,14 @@ Widget _buildQuickAccessSection(BuildContext context) {
                 ),
                 _buildResponsiveQuickAccessCard(
                   context,
-                  Icons.payment,
+                  Icons.payment_rounded,
                   'تفعيل الحساب',
                   Colors.purple[700]!,
-                  isLargeScreen,
+                  screenWidth,
                   () => Navigator.push(context,
                       MaterialPageRoute(builder: (_) => PaymentPage())),
                   showBadge: true,
+                  badgeText: 'NOUVEAU',
                 ),
               ],
             );
@@ -1699,79 +1750,124 @@ Widget _buildResponsiveQuickAccessCard(
   IconData icon,
   String title,
   Color color,
-  bool isLargeScreen,
+  double screenWidth,
   VoidCallback onTap, {
   bool showBadge = false,
+  String badgeText = 'Nouveau',
 }) {
-  return Card(
-    elevation: isLargeScreen ? 3 : 2,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(isLargeScreen ? 16 : 12),
-    ),
-    child: InkWell(
-      borderRadius: BorderRadius.circular(isLargeScreen ? 16 : 12),
-      onTap: onTap,
-      child: Container(
-        constraints: BoxConstraints(
-          minHeight: isLargeScreen ? 140 : 120, // Hauteur minimale ajustée
+  // Détection du type d'appareil
+  bool isPhone = screenWidth <= 600;
+  bool isTablet = screenWidth > 600 && screenWidth <= 900;
+  bool isDesktop = screenWidth > 900;
+
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      return Card(
+        elevation: isDesktop ? 4 : (isTablet ? 3 : 2),
+        shadowColor: color.withOpacity(0.3),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(isDesktop ? 20 : (isTablet ? 16 : 12)),
         ),
-        padding: EdgeInsets.all(isLargeScreen ? 16 : 12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize:
-              MainAxisSize.min, // Important pour éviter le débordement
-          children: [
-            Stack(
-              alignment: Alignment.center,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(isDesktop ? 20 : (isTablet ? 16 : 12)),
+          onTap: onTap,
+          onHover: isDesktop ? (hover) {} : null,
+          child: Container(
+            constraints: BoxConstraints(
+              minHeight: isDesktop ? 160 : (isTablet ? 140 : 120),
+            ),
+            padding: EdgeInsets.all(isDesktop ? 20 : (isTablet ? 16 : 12)),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Container(
-                  padding: EdgeInsets.all(isLargeScreen ? 16 : 12),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    size: isLargeScreen ? 36 : 30,
-                    color: color,
-                  ),
-                ),
-                if (showBadge)
-                  Positioned(
-                    top: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
+                // Icône avec animation
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(isDesktop ? 18 : (isTablet ? 14 : 12)),
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.1),
                         shape: BoxShape.circle,
+                        boxShadow: isDesktop ? [
+                          BoxShadow(
+                            color: color.withOpacity(0.2),
+                            blurRadius: 8,
+                            spreadRadius: 2,
+                          ),
+                        ] : null,
                       ),
-                      child: const Icon(
-                        Icons.star,
-                        size: 12,
-                        color: Colors.white,
+                      child: Icon(
+                        icon,
+                        size: isDesktop ? 36 : (isTablet ? 32 : 28),
+                        color: color,
                       ),
                     ),
+                    if (showBadge)
+                      Positioned(
+                        top: -8,
+                        right: -8,
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isDesktop ? 8 : 6,
+                            vertical: isDesktop ? 4 : 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.red.withOpacity(0.4),
+                                blurRadius: 4,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            badgeText,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: isDesktop ? 10 : (isTablet ? 9 : 8),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                SizedBox(height: isDesktop ? 16 : (isTablet ? 12 : 8)),
+                // Titre avec gestion responsive
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.roboto(
+                    fontSize: isDesktop ? 16 : (isTablet ? 14 : 12),
+                    fontWeight: isDesktop ? FontWeight.w600 : FontWeight.w500,
+                    letterSpacing: isDesktop ? 0.3 : 0,
                   ),
+                  maxLines: isDesktop ? 2 : 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (isDesktop) ...[
+                  const SizedBox(height: 4),
+                  // Ligne décorative pour desktop
+                  Container(
+                    width: 40,
+                    height: 2,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(1),
+                    ),
+                  ),
+                ],
               ],
             ),
-            const SizedBox(height: 8), // Espacement réduit
-            Flexible(
-              // Utilisation de Flexible pour le texte
-              child: Text(
-                title,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.roboto(
-                  fontSize: isLargeScreen ? 16 : 13, // Taille de police réduite
-                  fontWeight: FontWeight.w500,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
-    ),
+      );
+    },
   );
 }
+
+
