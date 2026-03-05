@@ -14,12 +14,11 @@ class PaymentPage extends StatefulWidget {
 
 class _PaymentPageState extends State<PaymentPage> {
   String? selectedForfait;
-  String? _base64Image; // Nouvelle variable pour stocker l'image en base64
+  String? _base64Image;
 
   final TextEditingController _nomController = TextEditingController();
   final TextEditingController _prenomController = TextEditingController();
-  final TextEditingController _whatsappController =
-      TextEditingController(); // جديد: حقل الواتساب
+  final TextEditingController _whatsappController = TextEditingController();
   html.File? _photo;
   bool _hasSubmittedForm = false;
   bool _isLoading = false;
@@ -32,10 +31,7 @@ class _PaymentPageState extends State<PaymentPage> {
   String? _selectedCardId;
   Map<String, dynamic> _cardStats = {};
 
-  // رقم الواتساب المستهدف (رقمك)
   final String _adminWhatsAppNumber = '99237770';
-
-  // Détails de la carte sélectionnée automatiquement
   Map<String, dynamic>? _selectedCardDetails;
 
   final List<Map<String, dynamic>> forfaits = [
@@ -119,7 +115,6 @@ class _PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  // دالة جديدة لرفع الصورة إلى Firebase Storage
   Future<String> _uploadImageToStorage(html.File imageFile) async {
     try {
       final fileName = 'proof_${DateTime.now().millisecondsSinceEpoch}.jpg';
@@ -133,13 +128,12 @@ class _PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  // دالة جديدة لحفظ البيانات في Firebase Firestore
   Future<void> _savePaymentDataToFirestore({
     required String nom,
     required String prenom,
     required String whatsapp,
     required String forfait,
-    required String imageUrl,
+    String? imageUrl,
   }) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -150,16 +144,22 @@ class _PaymentPageState extends State<PaymentPage> {
         'prenom': prenom,
         'whatsapp': whatsapp,
         'forfait': forfait,
-        'imageUrl': imageUrl,
         'timestamp': FieldValue.serverTimestamp(),
         'userId': user.uid,
         'userEmail': user.email,
         'status': 'pending',
         'selectedCard': _selectedCardId,
+        'paymentMethod': _useOnlinePayment ? 'online' : 'manual',
       };
 
-      await FirebaseFirestore.instance.collection('payments').add(paymentData);
+      if (imageUrl != null) {
+        paymentData['photoUrl'] = imageUrl;
+      }
 
+      // Sauvegarder dans la collection principale payments
+      //await FirebaseFirestore.instance.collection('payments').add(paymentData);
+
+      // Sauvegarder dans la sous-collection de l'utilisateur
       await FirebaseFirestore.instance
           .collection('Users')
           .doc(user.uid)
@@ -173,13 +173,12 @@ class _PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  // دالة جديدة لفتح WhatsApp برسالة جاهزة
   Future<void> _openWhatsAppWithMessage({
     required String nom,
     required String prenom,
     required String whatsapp,
-    required String imageUrl,
     required String forfait,
+    String? imageUrl,
   }) async {
     try {
       String message = '''
@@ -189,8 +188,14 @@ class _PaymentPageState extends State<PaymentPage> {
 👥 اللقب: $prenom
 📱 رقم الواتساب: $whatsapp
 📦 الباقة: $forfait
-🖼️ رابط صورة الإثبات: $imageUrl
+💳 طريقة الدفع: ${_useOnlinePayment ? 'إلكتروني' : 'يدوي'}
+''';
 
+      if (imageUrl != null && imageUrl.isNotEmpty) {
+        message += '🖼️ رابط صورة الإثبات: $imageUrl\n';
+      }
+
+      message += '''
 يرجى تأكيد الطلب. شكراً
 ''';
 
@@ -217,8 +222,8 @@ class _PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  // الدالة الجديدة للتعامل مع إرسال الواتساب
-  Future<void> _handleWhatsAppSubmit() async {
+  Future<void> _handleSubmit() async {
+    // Validation commune
     if (selectedForfait == null) {
       _showErrorSnackbar('الرجاء اختيار الباقة');
       return;
@@ -239,11 +244,6 @@ class _PaymentPageState extends State<PaymentPage> {
       return;
     }
 
-    if (_photo == null && _existingPhotoUrl == null) {
-      _showErrorSnackbar('الرجاء إرفاق صورة الإثبات');
-      return;
-    }
-
     if (_selectedCardId == null) {
       _showErrorSnackbar('عذراً، لا توجد بطاقات متاحة حالياً');
       return;
@@ -254,16 +254,27 @@ class _PaymentPageState extends State<PaymentPage> {
       return;
     }
 
+    // Validation spécifique au paiement manuel
+    if (!_useOnlinePayment && _photo == null && _existingPhotoUrl == null) {
+      _showErrorSnackbar('الرجاء إرفاق صورة الإثبات');
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      String imageUrl;
-      if (_photo != null) {
-        imageUrl = await _uploadImageToStorage(_photo!);
-      } else {
-        imageUrl = _existingPhotoUrl!;
+      String? imageUrl;
+      
+      // Upload de l'image seulement pour le paiement manuel
+      if (!_useOnlinePayment) {
+        if (_photo != null) {
+          imageUrl = await _uploadImageToStorage(_photo!);
+        } else if (_existingPhotoUrl != null) {
+          imageUrl = _existingPhotoUrl;
+        }
       }
 
+      // Formater le numéro WhatsApp
       String whatsappNumber = _whatsappController.text.trim();
       whatsappNumber = whatsappNumber.replaceAll(' ', '');
       if (!whatsappNumber.startsWith('+')) {
@@ -274,6 +285,7 @@ class _PaymentPageState extends State<PaymentPage> {
         }
       }
 
+      // Sauvegarder dans Firestore
       await _savePaymentDataToFirestore(
         nom: _nomController.text,
         prenom: _prenomController.text,
@@ -282,25 +294,41 @@ class _PaymentPageState extends State<PaymentPage> {
         imageUrl: imageUrl,
       );
 
+      // Mettre à jour les statistiques des cartes
       await _cardService.updateCardStats(_selectedCardId!);
 
+      // Pour le paiement en ligne, ouvrir le lien
+      if (_useOnlinePayment) {
+        if (selectedForfait == 'ثلاثية') {
+          html.window.open('https://knct.me/Kpli6qsCL', '_blank');
+        } else if (selectedForfait == 'سنوي') {
+          html.window.open('https://knct.me/lPHexB7Ju5', '_blank');
+        }
+      }
+
+      // Ouvrir WhatsApp avec le message (pour les deux types de paiement)
       await _openWhatsAppWithMessage(
         nom: _nomController.text,
         prenom: _prenomController.text,
         whatsapp: whatsappNumber,
-        imageUrl: imageUrl,
         forfait: selectedForfait!,
+        imageUrl: imageUrl,
       );
 
       setState(() {
         _hasSubmittedForm = true;
         _isEditingExistingRequest = false;
+        _isLoading = false;
       });
 
-      _showSuccessSnackbar('تم إرسال طلبك بنجاح عبر WhatsApp');
+      _showSuccessSnackbar(
+        _useOnlinePayment 
+            ? 'تم إرسال طلب الدفع الإلكتروني بنجاح'
+            : 'تم إرسال طلبك بنجاح عبر WhatsApp'
+      );
+      
     } catch (e) {
       _showErrorSnackbar('حدث خطأ: ${e.toString()}');
-    } finally {
       setState(() => _isLoading = false);
     }
   }
@@ -493,101 +521,6 @@ class _PaymentPageState extends State<PaymentPage> {
     }
   }
 
-  Future<void> _submitPayment() async {
-    final selectedCard = await _cardService.selectBestCard();
-    if (selectedCard == null) {
-      _showErrorSnackbar(
-          'عذراً، لا توجد بطاقات متاحة حالياً. الرجاء المحاولة غداً.');
-      setState(() => _isLoading = false);
-      return;
-    }
-
-    setState(() {
-      _selectedCardId = selectedCard;
-    });
-
-    if (selectedForfait == null ||
-        _nomController.text.isEmpty ||
-        _prenomController.text.isEmpty) {
-      _showErrorSnackbar('الرجاء ملء جميع المعطيات واختيار الباقة');
-      return;
-    }
-
-    if (!_useOnlinePayment && _photo == null && _existingPhotoUrl == null) {
-      _showErrorSnackbar('الرجاء إرفاق صورة الحوالة البريدية');
-      return;
-    }
-
-    if (!_canSubscribe) {
-      _showErrorSnackbar('عذراً، تم بلوغ الحد الأقصى للاشتراكات اليوم');
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        _showErrorSnackbar('المستخدم غير مسجل الدخول');
-        return;
-      }
-
-      await _cardService.updateCardStats(selectedCard);
-
-      final paymentData = {
-        'forfait': selectedForfait,
-        'nom': _nomController.text,
-        'prenom': _prenomController.text,
-        'whatsapp': _whatsappController.text, // إضافة رقم الواتساب
-        'timestamp': FieldValue.serverTimestamp(),
-        'status': 'pending',
-        'adminMessage': null,
-        'paymentMethod': _useOnlinePayment ? 'online' : 'manual',
-        'selectedCard': selectedCard,
-        'cardAssignedAt': FieldValue.serverTimestamp(),
-      };
-
-      if (!_useOnlinePayment) {
-        if (_photo != null) {
-          paymentData['photoUrl'] = await _uploadPhoto(_photo!);
-        } else if (_existingPhotoUrl != null) {
-          paymentData['photoUrl'] = _existingPhotoUrl;
-        }
-      }
-
-      if (_isEditingExistingRequest && _existingPaymentId != null) {
-        await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(user.uid)
-            .collection('payments')
-            .doc(_existingPaymentId)
-            .update(paymentData);
-      } else {
-        await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(user.uid)
-            .collection('payments')
-            .add(paymentData);
-      }
-
-      setState(() {
-        _hasSubmittedForm = true;
-        _isEditingExistingRequest = false;
-      });
-
-      _showSuccessSnackbar(
-          'تم تسجيل طلب الدفع بنجاح! ${_useOnlinePayment ? 'يرجى إتمام الدفع الإلكتروني' : ''}');
-    } catch (e) {
-      _showErrorSnackbar('حدث خطأ أثناء إرسال الطلب: ${e.toString()}');
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
   Widget _buildCardStats() {
     if (_cardStats.isEmpty) return SizedBox.shrink();
 
@@ -763,26 +696,6 @@ class _PaymentPageState extends State<PaymentPage> {
     });
   }
 
-  void _validateOnlinePayment() {
-    if (selectedForfait == null) {
-      _showErrorSnackbar('الرجاء اختيار الباقة المفضلة');
-      return;
-    }
-
-    if (_nomController.text.isEmpty || _prenomController.text.isEmpty) {
-      _showErrorSnackbar('الرجاء إدخال الاسم العائلي والاسم الشخصي');
-      return;
-    }
-
-    if (selectedForfait == 'ثلاثية') {
-      html.window.open('https://knct.me/Kpli6qsCL', '_blank');
-    } else if (selectedForfait == 'سنوي') {
-      html.window.open('https://knct.me/lPHexB7Ju5', '_blank');
-    }
-
-    _submitPayment();
-  }
-
   Future<String> _uploadPhoto(html.File photo) async {
     try {
       final storageRef = FirebaseStorage.instance
@@ -803,7 +716,7 @@ class _PaymentPageState extends State<PaymentPage> {
       selectedForfait = data['forfait'];
       _nomController.text = data['nom'] ?? '';
       _prenomController.text = data['prenom'] ?? '';
-      _whatsappController.text = data['whatsapp'] ?? ''; // استعادة رقم الواتساب
+      _whatsappController.text = data['whatsapp'] ?? '';
       _existingPhotoUrl = data['photoUrl'];
       _hasSubmittedForm = false;
       _useOnlinePayment = data['paymentMethod'] == 'online';
@@ -1681,7 +1594,6 @@ class _PaymentPageState extends State<PaymentPage> {
           ),
           SizedBox(height: 20),
 
-          // حقل رقم الواتساب الجديد
           TextField(
             controller: _whatsappController,
             keyboardType: TextInputType.phone,
@@ -1826,19 +1738,16 @@ class _PaymentPageState extends State<PaymentPage> {
               ),
             ),
             SizedBox(height: 20),
-
-            // الزر الجديد للواتساب (يظهر فقط للدفع اليدوي)
-            _buildWhatsAppButton(),
-            SizedBox(height: 15),
           ],
 
+          // Un seul bouton de soumission selon le type de paiement
           _buildSubmitButton(),
+          SizedBox(height: 15),
         ],
       ),
     );
   }
 
-  // دالة مساعدة لبناء خطوات التعليمات
   Widget _buildStepItem(String number, String text, IconData icon) {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8),
@@ -1882,8 +1791,14 @@ class _PaymentPageState extends State<PaymentPage> {
     );
   }
 
-  // الزر الجديد للواتساب
-  Widget _buildWhatsAppButton() {
+  Widget _buildSubmitButton() {
+    String buttonText = _useOnlinePayment 
+        ? 'تأكيد ومتابعة الدفع الإلكتروني'
+        : 'تأكيد وإرسال عبر واتساب';
+    
+    IconData buttonIcon = _useOnlinePayment ? Icons.payment : Icons.phone;
+    Color buttonColor = _useOnlinePayment ? Colors.green[700]! : Colors.green[700]!;
+
     return AnimatedContainer(
       duration: Duration(milliseconds: 300),
       child: _isLoading
@@ -1900,7 +1815,7 @@ class _PaymentPageState extends State<PaymentPage> {
                     height: 50,
                     width: 50,
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation(Colors.green),
+                      valueColor: AlwaysStoppedAnimation(buttonColor),
                       strokeWidth: 5,
                     ),
                   ),
@@ -1917,11 +1832,10 @@ class _PaymentPageState extends State<PaymentPage> {
               ),
             )
           : ElevatedButton.icon(
-              onPressed: _handleWhatsAppSubmit,
-              icon: Icon(Icons.phone,
-                  size: 24, color: const Color.fromARGB(255, 116, 235, 5)),
+              onPressed: _handleSubmit,
+              icon: Icon(buttonIcon, size: 24),
               label: Text(
-                'تأكيد وإرسال عبر واتساب',
+                buttonText,
                 style: TextStyle(
                     fontSize: 16,
                     fontFamily: 'Tajawal',
@@ -1929,72 +1843,13 @@ class _PaymentPageState extends State<PaymentPage> {
               ),
               style: ElevatedButton.styleFrom(
                 padding: EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Colors.green[700],
+                backgroundColor: buttonColor,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
                 elevation: 3,
                 minimumSize: Size(double.infinity, 50),
-              ),
-            ),
-    );
-  }
-
-  Widget _buildSubmitButton() {
-    return AnimatedContainer(
-      duration: Duration(milliseconds: 300),
-      child: _isLoading
-          ? Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    height: 50,
-                    width: 50,
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation(Colors.blue),
-                      strokeWidth: 5,
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'جاري معالجة طلبك...',
-                    style: TextStyle(
-                      fontFamily: 'Tajawal',
-                      fontSize: 16,
-                      color: Colors.grey[700],
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : ElevatedButton(
-              onPressed:
-                  _useOnlinePayment ? _validateOnlinePayment : _submitPayment,
-              child: Text(
-                _isEditingExistingRequest
-                    ? 'تحديث الطلب'
-                    : _useOnlinePayment
-                        ? 'تأكيد ومتابعة الدفع'
-                        : 'إرسال الطلب',
-                style: TextStyle(fontSize: 16, fontFamily: 'Tajawal'),
-              ),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                backgroundColor:
-                    _useOnlinePayment ? Colors.green[700] : Colors.blue[700],
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                elevation: 3,
-                shadowColor: (_useOnlinePayment ? Colors.green : Colors.blue)
-                    .withOpacity(0.3),
               ),
             ),
     );

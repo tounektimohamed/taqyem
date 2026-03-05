@@ -5474,68 +5474,227 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       },
     );
   }
+Future<void> _toggleAbsentStatus(Map<String, dynamic> student) async {
+  try {
+    final isCurrentlyAbsent = student['isAbsent'] ?? false;
+    final newAbsentStatus = !isCurrentlyAbsent;
 
-  Future<void> _toggleAbsentStatus(Map<String, dynamic> student) async {
-    try {
-      final isCurrentlyAbsent = student['isAbsent'] ?? false;
-      final newAbsentStatus = !isCurrentlyAbsent;
+    // Mettre à jour dans Firestore
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser!.uid)
+        .collection('user_classes')
+        .doc(_selectedClass!['id'])
+        .collection('students')
+        .doc(student['id'])
+        .update({
+      'isAbsent': newAbsentStatus,
+      'absenceDate': newAbsentStatus ? Timestamp.now() : null,
+    });
 
-      // Mettre à jour dans Firestore
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser!.uid)
-          .collection('user_classes')
-          .doc(_selectedClass!['id'])
-          .collection('students')
-          .doc(student['id'])
-          .update({
-        'isAbsent': newAbsentStatus,
-        'absenceDate': newAbsentStatus ? Timestamp.now() : null,
-      });
-
-      // Mettre à jour localement
-      setState(() {
-        int index = _students.indexWhere((s) => s['id'] == student['id']);
-        if (index != -1) {
-          _students[index]['isAbsent'] = newAbsentStatus;
-          if (newAbsentStatus) {
-            _students[index]['absenceDate'] = Timestamp.now();
-          } else {
-            _students[index]['absenceDate'] = null;
-          }
+    // Mettre à jour localement
+    setState(() {
+      int index = _students.indexWhere((s) => s['id'] == student['id']);
+      if (index != -1) {
+        _students[index]['isAbsent'] = newAbsentStatus;
+        if (newAbsentStatus) {
+          _students[index]['absenceDate'] = Timestamp.now();
+        } else {
+          _students[index]['absenceDate'] = null;
         }
-      });
+      }
+    });
 
-      // Si l'élève est marqué comme absent, mettre à jour ses évaluations
-      if (newAbsentStatus &&
-          selectedClassId != null &&
-          selectedSubjectId != null) {
+    // Gestion des évaluations selon le statut
+    if (selectedClassId != null && selectedSubjectId != null) {
+      if (newAbsentStatus) {
+        // Marquer comme absent dans tous les barèmes
         await _markStudentAbsentInAllBaremes(
           selectedClassId!,
           selectedSubjectId!,
           student['id'],
         );
+      } else {
+        // IMPORTANT: Supprimer le statut absent de tous les barèmes
+        await _removeAbsentStatusFromAllBaremes(
+          selectedClassId!,
+          selectedSubjectId!,
+          student['id'],
+        );
+      }
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          newAbsentStatus ? 'تم تسجيل التلميذ كغائب' : 'تم إلغاء حالة الغياب',
+        ),
+        backgroundColor: newAbsentStatus ? Colors.orange : Colors.green,
+      ),
+    );
+  } catch (e) {
+    print('Erreur lors du changement du statut d\'absence: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('حدث خطأ أثناء تغيير حالة الغياب'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+}
+
+// NOUVELLE MÉTHODE: Supprimer le statut absent de tous les barèmes
+Future<void> _removeAbsentStatusFromAllBaremes(
+  String classId,
+  String matiereId,
+  String studentId,
+) async {
+  try {
+    // Récupérer tous les barèmes et sous-barèmes
+    final selectionsRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser!.uid)
+        .collection('selections')
+        .doc(classId)
+        .collection(matiereId);
+
+    final selectionsSnapshot = await selectionsRef.get();
+
+    for (final baremeDoc in selectionsSnapshot.docs) {
+      final baremeId = baremeDoc.id;
+      final isBaremeSelected = baremeDoc['selected'] ?? false;
+
+      // Supprimer le statut absent du barème principal
+      if (isBaremeSelected) {
+        await _removeAbsentFromBareme(
+          classId: classId,
+          studentId: studentId,
+          baremeId: baremeId,
+        );
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            newAbsentStatus ? 'تم تسجيل التلميذ كغائب' : 'تم إلغاء حالة الغياب',
-          ),
-          backgroundColor: newAbsentStatus ? Colors.orange : Colors.green,
-        ),
-      );
-    } catch (e) {
-      print('Erreur lors du changement du statut d\'absence: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('حدث خطأ أثناء تغيير حالة الغياب'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
+      // Supprimer le statut absent des sous-barèmes
+      final sousBaremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(classId)
+          .collection(matiereId)
+          .doc(baremeId)
+          .collection('sousBaremes')
+          .get();
 
+      for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+        final sousBaremeId = sousBaremeDoc.id;
+        final isSousBaremeSelected = sousBaremeDoc['selected'] ?? false;
+
+        if (isSousBaremeSelected) {
+          await _removeAbsentFromSousBareme(
+            classId: classId,
+            studentId: studentId,
+            baremeId: baremeId,
+            sousBaremeId: sousBaremeId,
+          );
+        }
+      }
+    }
+
+    print('✅ Statut absent supprimé de tous les barèmes');
+  } catch (e) {
+    print('❌ Erreur lors de la suppression du statut absent: $e');
+  }
+}
+
+// NOUVELLE MÉTHODE: Supprimer le statut absent d'un barème principal
+Future<void> _removeAbsentFromBareme({
+  required String classId,
+  required String studentId,
+  required String baremeId,
+}) async {
+  try {
+    // Récupérer le document du barème
+    final baremeRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser!.uid)
+        .collection('user_classes')
+        .doc(classId)
+        .collection('students')
+        .doc(studentId)
+        .collection('baremes')
+        .doc(baremeId);
+
+    final baremeDoc = await baremeRef.get();
+
+    if (baremeDoc.exists) {
+      // Sauvegarder la note actuelle avant de la modifier
+      final currentMarks = baremeDoc.data()?['Marks'] ?? '( - - - )';
+      
+      // Si la note actuelle est 'غائب', on veut la remettre à la valeur par défaut
+      // Sinon, on garde la note actuelle
+      final marksToKeep = currentMarks == 'غائب' ? '( - - - )' : currentMarks;
+
+      await baremeRef.set({
+        'Marks': marksToKeep,
+        'isAbsent': false,
+        'absenceDate': null,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    }
+  } catch (e) {
+    print('Erreur suppression absent du barème $baremeId: $e');
+  }
+}
+
+// NOUVELLE MÉTHODE: Supprimer le statut absent d'un sous-barème
+Future<void> _removeAbsentFromSousBareme({
+  required String classId,
+  required String studentId,
+  required String baremeId,
+  required String sousBaremeId,
+}) async {
+  try {
+    // Pour les sous-barèmes, deux emplacements possibles
+    final sousBaremeDirectRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser!.uid)
+        .collection('user_classes')
+        .doc(classId)
+        .collection('students')
+        .doc(studentId)
+        .collection('baremes')
+        .doc(sousBaremeId);
+
+    final sousBaremeNestedRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser!.uid)
+        .collection('user_classes')
+        .doc(classId)
+        .collection('students')
+        .doc(studentId)
+        .collection('baremes')
+        .doc(baremeId)
+        .collection('sous_baremes')
+        .doc(sousBaremeId);
+
+    // Mettre à jour dans les deux emplacements
+    await Future.wait([
+      sousBaremeDirectRef.set({
+        'Marks': '( - - - )',
+        'isAbsent': false,
+        'absenceDate': null,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true)),
+      sousBaremeNestedRef.set({
+        'Marks': '( - - - )',
+        'isAbsent': false,
+        'absenceDate': null,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true)),
+    ]);
+  } catch (e) {
+    print('Erreur suppression absent du sous-barème $sousBaremeId: $e');
+  }
+}
   Future<void> _markStudentAbsentInAllBaremes(
     String classId,
     String matiereId,

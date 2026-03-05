@@ -8,6 +8,7 @@ import 'package:Taqyem/taqyem/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
 import 'package:Taqyem/taqyem/AdminProposalsPage.dart';
 import 'package:Taqyem/taqyem/EditPage.dart';
+import 'package:Taqyem/taqyem/data/add_edit_screen.dart';
 import 'package:Taqyem/taqyem/ereur_solution.dart';
 import 'package:Taqyem/taqyem/feedback_management_page.dart';
 import 'package:Taqyem/taqyem/payment/demande.dart';
@@ -29,7 +30,7 @@ class AgentDashboard extends StatefulWidget {
   @override
   _AgentDashboardState createState() => _AgentDashboardState();
 }
- 
+
 class _AgentDashboardState extends State<AgentDashboard> {
   final ValueNotifier<CalendarDateTime> _selectedDate =
       ValueNotifier<CalendarDateTime>(
@@ -43,133 +44,134 @@ class _AgentDashboardState extends State<AgentDashboard> {
   User? currentUser = FirebaseAuth.instance.currentUser;
   bool _isDrawerOpen = false;
 
-@override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: Text(
-        'لوحة التحكم',
-        style: GoogleFonts.roboto(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-      backgroundColor: Theme.of(context).colorScheme.primary,
-      leading: Builder(
-        builder: (context) => IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white),
-          onPressed: () => Scaffold.of(context).openDrawer(),
-        ),
-      ),
-      actions: [
-        GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const SettingsPageUI(),
-              ),
-            );
-          },
-          child: CircleAvatar(
-            radius: 20,
-            backgroundImage: currentUser?.photoURL != null
-                ? NetworkImage(currentUser!.photoURL!)
-                : null,
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            child: currentUser?.photoURL == null
-                ? const Icon(Icons.person_outlined, color: Colors.white)
-                : null,
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'لوحة التحكم',
+          style: GoogleFonts.roboto(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
-        const SizedBox(width: 16),
-      ],
-    ),
-    drawer: _buildModernDrawer(context),
-    body: LayoutBuilder(
-      builder: (context, constraints) {
-        bool isDesktop = constraints.maxWidth > 600;
-
-        return SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Calendrier et date sélectionnée
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isDesktop ? 40 : 20,
-                  vertical: isDesktop ? 30 : 20,
-                ),
-                child: TimelineCalendar(
-                  calendarType: CalendarType.GREGORIAN,
-                  calendarOptions: CalendarOptions(
-                    viewType: ViewType.DAILY,
-                    toggleViewType: true,
-                    headerMonthElevation: 0,
-                    headerMonthBackColor:
-                        const Color.fromARGB(255, 241, 250, 251),
-                  ),
-                  dayOptions: DayOptions(
-                    compactMode: true,
-                    dayFontSize: isDesktop ? 18 : 15,
-                    weekDaySelectedColor:
-                        Theme.of(context).colorScheme.primary,
-                    selectedBackgroundColor:
-                        Theme.of(context).colorScheme.primary,
-                    disableDaysBeforeNow: false,
-                    unselectedBackgroundColor: Colors.white,
-                  ),
-                  headerOptions: HeaderOptions(
-                    weekDayStringType: WeekDayStringTypes.SHORT,
-                    monthStringType: MonthStringTypes.FULL,
-                    backgroundColor: const Color.fromARGB(255, 241, 250, 251),
-                    headerTextColor: Colors.black,
-                  ),
-                  onChangeDateTime: (date) {
-                    setState(() {
-                      _selectedDate.value = date;
-                    });
-                  },
-                  onDateTimeReset: (p0) {
-                    setState(() {
-                      _selectedDate.value = CalendarDateTime(
-                        year: DateTime.now().year,
-                        month: DateTime.now().month,
-                        day: DateTime.now().day,
-                      );
-                    });
-                  },
-                  dateTime: _selectedDate.value,
-                ),
-              ),
-
-              // Texte de la date sélectionnée
-              Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isDesktop ? 40 : 20,
-                  vertical: isDesktop ? 20 : 10,
-                ),
-                child: Text(
-                  _selectedDate.value.toString().substring(0, 10),
-                  style: GoogleFonts.roboto(
-                    fontSize: isDesktop ? 30 : 25,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-
-              // Sections supplémentaires
-              CarouselSection(),
-              NewsSection(),
-            ],
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () => Scaffold.of(context).openDrawer(),
           ),
-        );
-      },
-    ),
-  );
-}
- Widget _buildDrawerSectionHeader(String title) {
+        ),
+        actions: [
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsPageUI(),
+                ),
+              );
+            },
+            child: CircleAvatar(
+              radius: 20,
+              backgroundImage: currentUser?.photoURL != null
+                  ? NetworkImage(currentUser!.photoURL!)
+                  : null,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: currentUser?.photoURL == null
+                  ? const Icon(Icons.person_outlined, color: Colors.white)
+                  : null,
+            ),
+          ),
+          const SizedBox(width: 16),
+        ],
+      ),
+      drawer: _buildModernDrawer(context),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          bool isDesktop = constraints.maxWidth > 600;
+
+          return SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Calendrier et date sélectionnée
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isDesktop ? 40 : 20,
+                    vertical: isDesktop ? 30 : 20,
+                  ),
+                  child: TimelineCalendar(
+                    calendarType: CalendarType.GREGORIAN,
+                    calendarOptions: CalendarOptions(
+                      viewType: ViewType.DAILY,
+                      toggleViewType: true,
+                      headerMonthElevation: 0,
+                      headerMonthBackColor:
+                          const Color.fromARGB(255, 241, 250, 251),
+                    ),
+                    dayOptions: DayOptions(
+                      compactMode: true,
+                      dayFontSize: isDesktop ? 18 : 15,
+                      weekDaySelectedColor:
+                          Theme.of(context).colorScheme.primary,
+                      selectedBackgroundColor:
+                          Theme.of(context).colorScheme.primary,
+                      disableDaysBeforeNow: false,
+                      unselectedBackgroundColor: Colors.white,
+                    ),
+                    headerOptions: HeaderOptions(
+                      weekDayStringType: WeekDayStringTypes.SHORT,
+                      monthStringType: MonthStringTypes.FULL,
+                      backgroundColor: const Color.fromARGB(255, 241, 250, 251),
+                      headerTextColor: Colors.black,
+                    ),
+                    onChangeDateTime: (date) {
+                      setState(() {
+                        _selectedDate.value = date;
+                      });
+                    },
+                    onDateTimeReset: (p0) {
+                      setState(() {
+                        _selectedDate.value = CalendarDateTime(
+                          year: DateTime.now().year,
+                          month: DateTime.now().month,
+                          day: DateTime.now().day,
+                        );
+                      });
+                    },
+                    dateTime: _selectedDate.value,
+                  ),
+                ),
+
+                // Texte de la date sélectionnée
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isDesktop ? 40 : 20,
+                    vertical: isDesktop ? 20 : 10,
+                  ),
+                  child: Text(
+                    _selectedDate.value.toString().substring(0, 10),
+                    style: GoogleFonts.roboto(
+                      fontSize: isDesktop ? 30 : 25,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+
+                // Sections supplémentaires
+                CarouselSection(),
+                NewsSection(),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildDrawerSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
       child: Text(
@@ -236,8 +238,8 @@ Widget build(BuildContext context) {
                 ],
               ),
             ),
-          
-           _buildDrawerSectionHeader('Gestion des Utilisateurs'),
+
+            _buildDrawerSectionHeader('Gestion des Utilisateurs'),
             _buildDrawerItem(
               context,
               Icons.manage_accounts,
@@ -251,7 +253,7 @@ Widget build(BuildContext context) {
                 );
               },
             ),
-              _buildDrawerSectionHeader('Gestion des Paiements'),
+            _buildDrawerSectionHeader('Gestion des Paiements'),
             _buildDrawerItem(
               context,
               Icons.payment,
@@ -278,7 +280,7 @@ Widget build(BuildContext context) {
                 );
               },
             ),
-           
+
             _buildDrawerItem(
               context,
               Icons.people,
@@ -305,19 +307,20 @@ Widget build(BuildContext context) {
                 );
               },
             ),
-            // _buildDrawerItem(
-            //   context,
-            //   Icons.class_,
-            //   'Gestion des Classes',
-            //   () {
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(
-            //         builder: (context) => ManageClassesPage(),
-            //       ),
-            //     );
-            //   },
-            // ),
+            // Dans votre méthode build du Drawer
+            _buildDrawerItem(
+              context,
+              Icons.admin_panel_settings, // Ou Icons.request_page
+              'إدارة الطلبات',
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AdminRequestsPage(),
+                  ),
+                );
+              },
+            ),
             _buildDrawerItem(
               context,
               Icons.admin_panel_settings,
@@ -435,7 +438,7 @@ Widget build(BuildContext context) {
                 );
               },
             ),
-             _buildDrawerItem(
+            _buildDrawerItem(
               context,
               Icons.settings,
               'Manage Carousel',
@@ -447,7 +450,6 @@ Widget build(BuildContext context) {
                   ),
                 );
               },
-              
             ),
             _buildDrawerItem(
               context,
@@ -477,7 +479,8 @@ Widget build(BuildContext context) {
     return InkWell(
       onTap: () {
         Navigator.pop(context); // Fermer le drawer
-        Future.delayed(Duration(milliseconds: 300), onTap); // Délai pour l'animation
+        Future.delayed(
+            Duration(milliseconds: 300), onTap); // Délai pour l'animation
       },
       child: ListTile(
         leading: Icon(icon, color: Colors.white),
@@ -495,7 +498,6 @@ Widget build(BuildContext context) {
     );
   }
 }
-
 
 class CarouselSection extends StatefulWidget {
   @override
@@ -582,7 +584,8 @@ class _CarouselSectionState extends State<CarouselSection> {
                 items: carouselItems.map((item) {
                   final data = item.data() as Map<String, dynamic>;
                   final imageUrl = data['url']?.toString() ?? '';
-                  final title = data['title']?.toString() ?? ''; // Optionnel : pour un titre
+                  final title = data['title']?.toString() ??
+                      ''; // Optionnel : pour un titre
 
                   return Container(
                     margin: EdgeInsets.symmetric(horizontal: 5),
@@ -604,7 +607,7 @@ class _CarouselSectionState extends State<CarouselSection> {
                         children: [
                           // Image principale
                           _buildImageWidget(imageUrl),
-                          
+
                           // Overlay de titre (optionnel)
                           if (title.isNotEmpty)
                             Positioned(
@@ -641,9 +644,9 @@ class _CarouselSectionState extends State<CarouselSection> {
                   );
                 }).toList(),
               ),
-              
+
               const SizedBox(height: 15),
-              
+
               // Indicateur de page
               AnimatedSmoothIndicator(
                 activeIndex: _currentIndex,

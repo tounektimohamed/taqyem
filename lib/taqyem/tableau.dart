@@ -20,7 +20,348 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+
+
+// ============================================================
+// WeeklyWarningService - Gestion de l'affichage hebdomadaire
+// ============================================================
+class WeeklyWarningService {
+  static const String _warningKey = 'last_warning_shown';
+
+  static Future<bool> shouldShowWarning() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastShown = prefs.getInt(_warningKey) ?? 0;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      const oneWeekInMs = 7 * 24 * 60 * 60 * 1000;
+      return lastShown == 0 || (now - lastShown) > oneWeekInMs;
+    } catch (e) {
+      return true;
+    }
+  }
+
+  static Future<void> markWarningShown() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt(_warningKey, DateTime.now().millisecondsSinceEpoch);
+    } catch (e) {
+      print('Erreur sauvegarde avertissement: $e');
+    }
+  }
+}
+
+// ============================================================
+// WeeklyWarningDialog - Dialog moderne et soigné
+// ============================================================
+class WeeklyWarningDialog extends StatefulWidget {
+  final VoidCallback onClose;
+  final bool isFrenchInterface;
+
+  const WeeklyWarningDialog({
+    Key? key,
+    required this.onClose,
+    required this.isFrenchInterface,
+  }) : super(key: key);
+
+  @override
+  State<WeeklyWarningDialog> createState() => _WeeklyWarningDialogState();
+}
+
+class _WeeklyWarningDialogState extends State<WeeklyWarningDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnim;
+  late Animation<Offset> _slideAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 450),
+    );
+    _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  String _t(String ar, String fr) =>
+      widget.isFrenchInterface ? fr : ar;
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: SlideTransition(
+        position: _slideAnim,
+        child: Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 32,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ── Header coloré ─────────────────────────────────────
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF1565C0),
+                        const Color(0xFF42A5F5),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // Icône centrale
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.5),
+                            width: 2,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.computer_rounded,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        _t('نصيحة للاستخدام الأمثل', 'Conseil d\'utilisation'),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Corps ─────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+                  child: Column(
+                    children: [
+                      // Carte principale - PC recommandé
+                      _InfoCard(
+                        icon: Icons.desktop_windows_rounded,
+                        iconColor: const Color(0xFF1565C0),
+                        bgColor: const Color(0xFFE3F2FD),
+                        title: _t(
+                          'استخدام الكمبيوتر أفضل',
+                          'PC recommandé pour l\'évaluation',
+                        ),
+                        subtitle: _t(
+                          'للحصول على تجربة أفضل عند إدخال نتائج التلاميذ وإنشاء التقارير، يُنصح باستخدام الكمبيوتر.',
+                          'Pour saisir les résultats des élèves et générer des rapports dans de meilleures conditions, utilisez de préférence un ordinateur.',
+                        ),
+                        isFrench: widget.isFrenchInterface,
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Carte secondaire - Mobile pour gestion rapide
+                      _InfoCard(
+                        icon: Icons.smartphone_rounded,
+                        iconColor: const Color(0xFF2E7D32),
+                        bgColor: const Color(0xFFE8F5E9),
+                        title: _t(
+                          'الهاتف للإدارة السريعة',
+                          'Téléphone pour la gestion rapide',
+                        ),
+                        subtitle: _t(
+                          'يمكنك استخدام هاتفك لإدارة الأقسام وتفعيل الحساب والاطلاع على النتائج.',
+                          'Votre téléphone reste idéal pour gérer les classes, activer votre compte et consulter rapidement les résultats.',
+                        ),
+                        isFrench: widget.isFrenchInterface,
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Note "une fois par semaine"
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.schedule_rounded,
+                            size: 14,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _t(
+                              'يظهر هذا التنبيه مرة واحدة كل أسبوع',
+                              'Cet avis s\'affiche une fois par semaine',
+                            ),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade400,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Bouton ────────────────────────────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        widget.onClose();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1565C0),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        _t('فهمت، شكراً', 'Compris, merci !'),
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Widget auxiliaire: carte d'info ───────────────────────────
+class _InfoCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final Color bgColor;
+  final String title;
+  final String subtitle;
+  final bool isFrench;
+
+  const _InfoCard({
+    required this.icon,
+    required this.iconColor,
+    required this.bgColor,
+    required this.title,
+    required this.subtitle,
+    required this.isFrench,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: iconColor.withOpacity(0.15),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        textDirection: isFrench ? TextDirection.ltr : TextDirection.rtl,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: iconColor, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: isFrench
+                  ? CrossAxisAlignment.start
+                  : CrossAxisAlignment.end,
+              children: [
+                Text(
+                  title,
+                  textDirection:
+                      isFrench ? TextDirection.ltr : TextDirection.rtl,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: iconColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  textDirection:
+                      isFrench ? TextDirection.ltr : TextDirection.rtl,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade700,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+// N'oubliez pas d'ajouter l'import pour SharedPreferences
+// Ajoutez en haut du fichier avec les autres imports:
+// import 'package:shared_preferences/shared_preferences.dart';
 // Classe utilitaire pour la traduction et la détection de langue
 // Classe utilitaire pour la traduction et la détection de langue
 class DataTranslator {
@@ -471,7 +812,29 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         return '( - - - )';
     }
   }
-
+// Ajouter cette méthode dans _DynamicTablePageState
+Future<void> _checkAndShowWeeklyWarning() async {
+  if (!_isMounted) return;
+  
+  final shouldShow = await WeeklyWarningService.shouldShowWarning();
+  
+  if (shouldShow) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_isMounted) return;
+      
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => WeeklyWarningDialog(
+          isFrenchInterface: _isFrenchInterface,
+          onClose: () async {
+            await WeeklyWarningService.markWarningShown();
+          },
+        ),
+      );
+    });
+  }
+}
 // Fonction pour convertir la valeur stockée en valeur d'affichage selon le système
 
   String _getDisplayEvaluation(String storedValue, String system,
@@ -2452,6 +2815,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     _startTimer();
     _setupUserListener();
     _detectLanguage();
+    _checkAndShowWeeklyWarning();
     _loadEvaluationSystem(); // AJOUTEZ CETTE LIGNE
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _debugAllEvaluationSystems(); // Pour debug
