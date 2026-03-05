@@ -1,0 +1,46 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Zone 1",
+          "description": "Une zone d'intérêt à Tataouine.",
+          "status": 1
+        },
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [10.470703, 33.118407],
+              [10.482666, 33.119782],
+              [10.485229, 33.114941],
+              [10.475235, 33.113577],
+              [10.470703, 33.118407]
+            ]
+          ]
+        }
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Zone 2",
+          "description": "Une autre zone d'intérêt à Tataouine.",
+          "status": 2
+        },
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [10.453186, 33.128257],
+              [10.464149, 33.129806],
+              [10.467834, 33.124126],
+              [10.457443, 33.122118],
+              [10.453186, 33.128257]
+            ]
+          ]
+        }
+      }
+    ]
+  }
+  

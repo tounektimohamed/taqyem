@@ -6,51 +6,47 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
   
-  <!-- AJOUT CRITIQUE POUR iOS -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   
+  <!-- iOS -->
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Taqyem">
   
-  <!-- iOS Icons -->
+  <!-- CORS pour Google Sign In popup -->
+  <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin-allow-popups">
+
+  <!-- Icons -->
   <link rel="apple-touch-icon" href="icons/cigle-meh.png">
   <link rel="icon" type="image/png" href="icons/cigle-meh.png" />
   
   <title>Taqyem</title>
   <link rel="manifest" href="manifest.json">
 
-  <!-- Firebase - Chargement asynchrone -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js" defer></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js" defer></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage.js" defer></script>
+  <!-- Firebase compat (لا تحتاج type="module") -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
-  <script defer>
-    // Initialisation Firebase après chargement du DOM
-    document.addEventListener('DOMContentLoaded', function() {
-      const firebaseConfig = {
-        apiKey: 'AIzaSyCuzZQDt6eBErRHZK3ZAInanLqHE4iw3oE',
-        appId: '1:1027057481100:web:0730b43a791acb845512a9',
-        messagingSenderId: '1027057481100',
-        projectId: 'portfolio-8d8de',
-        authDomain: 'portfolio-8d8de.firebaseapp.com',
-        storageBucket: 'portfolio-8d8de.appspot.com',
-        measurementId: 'G-6F9E00FKLZ',
-      };
-      
-      if (typeof firebase !== 'undefined') {
-        firebase.initializeApp(firebaseConfig);
-        console.log('Firebase initialized successfully');
-      } else {
-        console.error('Firebase SDK not loaded');
-      }
-    });
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: 'AIzaSyCuzZQDt6eBErRHZK3ZAInanLqHE4iw3oE',
+      appId: '1:1027057481100:web:0730b43a791acb845512a9',
+      messagingSenderId: '1027057481100',
+      projectId: 'portfolio-8d8de',
+      authDomain: 'portfolio-8d8de.firebaseapp.com',
+      storageBucket: 'portfolio-8d8de.appspot.com',
+      measurementId: 'G-6F9E00FKLZ',
+    };
+    firebase.initializeApp(firebaseConfig);
+    console.log('Firebase initialized successfully');
   </script>
 
-  <!-- Google Maps API (si nécessaire) -->
-  
   <script>
-    const serviceWorkerVersion = "580821130";
+    const serviceWorkerVersion = "2963349306";
   </script>
   <script src="flutter.js" defer></script>
 </head>
@@ -58,27 +54,18 @@
 <body>
   <script>
     window.addEventListener('load', function (ev) {
-      // Ajout d'un délai pour s'assurer que tout est chargé
-      setTimeout(() => {
-        if (typeof _flutter !== 'undefined' && _flutter.loader) {
-          _flutter.loader.loadEntrypoint({
-            serviceWorker: {
-              serviceWorkerVersion: serviceWorkerVersion,
-            },
-            onEntrypointLoaded: function (engineInitializer) {
-              engineInitializer.initializeEngine().then(function (appRunner) {
-                appRunner.runApp();
-              }).catch(function(error) {
-                console.error('Engine initialization error:', error);
-                // Afficher un message d'erreur visible
-                document.body.innerHTML += '<div style="color: red; padding: 20px;">Error: ' + error.message + '</div>';
-              });
-            }
+      _flutter.loader.loadEntrypoint({
+        serviceWorker: {
+          serviceWorkerVersion: serviceWorkerVersion,
+        },
+        onEntrypointLoaded: function (engineInitializer) {
+          engineInitializer.initializeEngine().then(function (appRunner) {
+            appRunner.runApp();
+          }).catch(function(error) {
+            console.error('Engine initialization error:', error);
           });
-        } else {
-          console.error('Flutter loader not available');
         }
-      }, 100);
+      });
     });
   </script>
 </body>
