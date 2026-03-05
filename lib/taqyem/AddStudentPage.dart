@@ -5474,227 +5474,229 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       },
     );
   }
-Future<void> _toggleAbsentStatus(Map<String, dynamic> student) async {
-  try {
-    final isCurrentlyAbsent = student['isAbsent'] ?? false;
-    final newAbsentStatus = !isCurrentlyAbsent;
 
-    // Mettre à jour dans Firestore
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('user_classes')
-        .doc(_selectedClass!['id'])
-        .collection('students')
-        .doc(student['id'])
-        .update({
-      'isAbsent': newAbsentStatus,
-      'absenceDate': newAbsentStatus ? Timestamp.now() : null,
-    });
+  Future<void> _toggleAbsentStatus(Map<String, dynamic> student) async {
+    try {
+      final isCurrentlyAbsent = student['isAbsent'] ?? false;
+      final newAbsentStatus = !isCurrentlyAbsent;
 
-    // Mettre à jour localement
-    setState(() {
-      int index = _students.indexWhere((s) => s['id'] == student['id']);
-      if (index != -1) {
-        _students[index]['isAbsent'] = newAbsentStatus;
+      // Mettre à jour dans Firestore
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(_selectedClass!['id'])
+          .collection('students')
+          .doc(student['id'])
+          .update({
+        'isAbsent': newAbsentStatus,
+        'absenceDate': newAbsentStatus ? Timestamp.now() : null,
+      });
+
+      // Mettre à jour localement
+      setState(() {
+        int index = _students.indexWhere((s) => s['id'] == student['id']);
+        if (index != -1) {
+          _students[index]['isAbsent'] = newAbsentStatus;
+          if (newAbsentStatus) {
+            _students[index]['absenceDate'] = Timestamp.now();
+          } else {
+            _students[index]['absenceDate'] = null;
+          }
+        }
+      });
+
+      // Gestion des évaluations selon le statut
+      if (selectedClassId != null && selectedSubjectId != null) {
         if (newAbsentStatus) {
-          _students[index]['absenceDate'] = Timestamp.now();
+          // Marquer comme absent dans tous les barèmes
+          await _markStudentAbsentInAllBaremes(
+            selectedClassId!,
+            selectedSubjectId!,
+            student['id'],
+          );
         } else {
-          _students[index]['absenceDate'] = null;
+          // IMPORTANT: Supprimer le statut absent de tous les barèmes
+          await _removeAbsentStatusFromAllBaremes(
+            selectedClassId!,
+            selectedSubjectId!,
+            student['id'],
+          );
         }
       }
-    });
 
-    // Gestion des évaluations selon le statut
-    if (selectedClassId != null && selectedSubjectId != null) {
-      if (newAbsentStatus) {
-        // Marquer comme absent dans tous les barèmes
-        await _markStudentAbsentInAllBaremes(
-          selectedClassId!,
-          selectedSubjectId!,
-          student['id'],
-        );
-      } else {
-        // IMPORTANT: Supprimer le statut absent de tous les barèmes
-        await _removeAbsentStatusFromAllBaremes(
-          selectedClassId!,
-          selectedSubjectId!,
-          student['id'],
-        );
-      }
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          newAbsentStatus ? 'تم تسجيل التلميذ كغائب' : 'تم إلغاء حالة الغياب',
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            newAbsentStatus ? 'تم تسجيل التلميذ كغائب' : 'تم إلغاء حالة الغياب',
+          ),
+          backgroundColor: newAbsentStatus ? Colors.orange : Colors.green,
         ),
-        backgroundColor: newAbsentStatus ? Colors.orange : Colors.green,
-      ),
-    );
-  } catch (e) {
-    print('Erreur lors du changement du statut d\'absence: $e');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('حدث خطأ أثناء تغيير حالة الغياب'),
-        backgroundColor: Colors.red,
-      ),
-    );
+      );
+    } catch (e) {
+      print('Erreur lors du changement du statut d\'absence: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('حدث خطأ أثناء تغيير حالة الغياب'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
-}
 
 // NOUVELLE MÉTHODE: Supprimer le statut absent de tous les barèmes
-Future<void> _removeAbsentStatusFromAllBaremes(
-  String classId,
-  String matiereId,
-  String studentId,
-) async {
-  try {
-    // Récupérer tous les barèmes et sous-barèmes
-    final selectionsRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('selections')
-        .doc(classId)
-        .collection(matiereId);
-
-    final selectionsSnapshot = await selectionsRef.get();
-
-    for (final baremeDoc in selectionsSnapshot.docs) {
-      final baremeId = baremeDoc.id;
-      final isBaremeSelected = baremeDoc['selected'] ?? false;
-
-      // Supprimer le statut absent du barème principal
-      if (isBaremeSelected) {
-        await _removeAbsentFromBareme(
-          classId: classId,
-          studentId: studentId,
-          baremeId: baremeId,
-        );
-      }
-
-      // Supprimer le statut absent des sous-barèmes
-      final sousBaremesSnapshot = await FirebaseFirestore.instance
+  Future<void> _removeAbsentStatusFromAllBaremes(
+    String classId,
+    String matiereId,
+    String studentId,
+  ) async {
+    try {
+      // Récupérer tous les barèmes et sous-barèmes
+      final selectionsRef = FirebaseFirestore.instance
           .collection('users')
           .doc(currentUser!.uid)
           .collection('selections')
           .doc(classId)
-          .collection(matiereId)
-          .doc(baremeId)
-          .collection('sousBaremes')
-          .get();
+          .collection(matiereId);
 
-      for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-        final sousBaremeId = sousBaremeDoc.id;
-        final isSousBaremeSelected = sousBaremeDoc['selected'] ?? false;
+      final selectionsSnapshot = await selectionsRef.get();
 
-        if (isSousBaremeSelected) {
-          await _removeAbsentFromSousBareme(
+      for (final baremeDoc in selectionsSnapshot.docs) {
+        final baremeId = baremeDoc.id;
+        final isBaremeSelected = baremeDoc['selected'] ?? false;
+
+        // Supprimer le statut absent du barème principal
+        if (isBaremeSelected) {
+          await _removeAbsentFromBareme(
             classId: classId,
             studentId: studentId,
             baremeId: baremeId,
-            sousBaremeId: sousBaremeId,
           );
         }
-      }
-    }
 
-    print('✅ Statut absent supprimé de tous les barèmes');
-  } catch (e) {
-    print('❌ Erreur lors de la suppression du statut absent: $e');
+        // Supprimer le statut absent des sous-barèmes
+        final sousBaremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('selections')
+            .doc(classId)
+            .collection(matiereId)
+            .doc(baremeId)
+            .collection('sousBaremes')
+            .get();
+
+        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+          final sousBaremeId = sousBaremeDoc.id;
+          final isSousBaremeSelected = sousBaremeDoc['selected'] ?? false;
+
+          if (isSousBaremeSelected) {
+            await _removeAbsentFromSousBareme(
+              classId: classId,
+              studentId: studentId,
+              baremeId: baremeId,
+              sousBaremeId: sousBaremeId,
+            );
+          }
+        }
+      }
+
+      print('✅ Statut absent supprimé de tous les barèmes');
+    } catch (e) {
+      print('❌ Erreur lors de la suppression du statut absent: $e');
+    }
   }
-}
 
 // NOUVELLE MÉTHODE: Supprimer le statut absent d'un barème principal
-Future<void> _removeAbsentFromBareme({
-  required String classId,
-  required String studentId,
-  required String baremeId,
-}) async {
-  try {
-    // Récupérer le document du barème
-    final baremeRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('user_classes')
-        .doc(classId)
-        .collection('students')
-        .doc(studentId)
-        .collection('baremes')
-        .doc(baremeId);
+  Future<void> _removeAbsentFromBareme({
+    required String classId,
+    required String studentId,
+    required String baremeId,
+  }) async {
+    try {
+      // Récupérer le document du barème
+      final baremeRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(classId)
+          .collection('students')
+          .doc(studentId)
+          .collection('baremes')
+          .doc(baremeId);
 
-    final baremeDoc = await baremeRef.get();
+      final baremeDoc = await baremeRef.get();
 
-    if (baremeDoc.exists) {
-      // Sauvegarder la note actuelle avant de la modifier
-      final currentMarks = baremeDoc.data()?['Marks'] ?? '( - - - )';
-      
-      // Si la note actuelle est 'غائب', on veut la remettre à la valeur par défaut
-      // Sinon, on garde la note actuelle
-      final marksToKeep = currentMarks == 'غائب' ? '( - - - )' : currentMarks;
+      if (baremeDoc.exists) {
+        // Sauvegarder la note actuelle avant de la modifier
+        final currentMarks = baremeDoc.data()?['Marks'] ?? '( - - - )';
 
-      await baremeRef.set({
-        'Marks': marksToKeep,
-        'isAbsent': false,
-        'absenceDate': null,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+        // Si la note actuelle est 'غائب', on veut la remettre à la valeur par défaut
+        // Sinon, on garde la note actuelle
+        final marksToKeep = currentMarks == 'غائب' ? '( - - - )' : currentMarks;
+
+        await baremeRef.set({
+          'Marks': marksToKeep,
+          'isAbsent': false,
+          'absenceDate': null,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+    } catch (e) {
+      print('Erreur suppression absent du barème $baremeId: $e');
     }
-  } catch (e) {
-    print('Erreur suppression absent du barème $baremeId: $e');
   }
-}
 
 // NOUVELLE MÉTHODE: Supprimer le statut absent d'un sous-barème
-Future<void> _removeAbsentFromSousBareme({
-  required String classId,
-  required String studentId,
-  required String baremeId,
-  required String sousBaremeId,
-}) async {
-  try {
-    // Pour les sous-barèmes, deux emplacements possibles
-    final sousBaremeDirectRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('user_classes')
-        .doc(classId)
-        .collection('students')
-        .doc(studentId)
-        .collection('baremes')
-        .doc(sousBaremeId);
+  Future<void> _removeAbsentFromSousBareme({
+    required String classId,
+    required String studentId,
+    required String baremeId,
+    required String sousBaremeId,
+  }) async {
+    try {
+      // Pour les sous-barèmes, deux emplacements possibles
+      final sousBaremeDirectRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(classId)
+          .collection('students')
+          .doc(studentId)
+          .collection('baremes')
+          .doc(sousBaremeId);
 
-    final sousBaremeNestedRef = FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('user_classes')
-        .doc(classId)
-        .collection('students')
-        .doc(studentId)
-        .collection('baremes')
-        .doc(baremeId)
-        .collection('sous_baremes')
-        .doc(sousBaremeId);
+      final sousBaremeNestedRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(classId)
+          .collection('students')
+          .doc(studentId)
+          .collection('baremes')
+          .doc(baremeId)
+          .collection('sous_baremes')
+          .doc(sousBaremeId);
 
-    // Mettre à jour dans les deux emplacements
-    await Future.wait([
-      sousBaremeDirectRef.set({
-        'Marks': '( - - - )',
-        'isAbsent': false,
-        'absenceDate': null,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true)),
-      sousBaremeNestedRef.set({
-        'Marks': '( - - - )',
-        'isAbsent': false,
-        'absenceDate': null,
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true)),
-    ]);
-  } catch (e) {
-    print('Erreur suppression absent du sous-barème $sousBaremeId: $e');
+      // Mettre à jour dans les deux emplacements
+      await Future.wait([
+        sousBaremeDirectRef.set({
+          'Marks': '( - - - )',
+          'isAbsent': false,
+          'absenceDate': null,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true)),
+        sousBaremeNestedRef.set({
+          'Marks': '( - - - )',
+          'isAbsent': false,
+          'absenceDate': null,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true)),
+      ]);
+    } catch (e) {
+      print('Erreur suppression absent du sous-barème $sousBaremeId: $e');
+    }
   }
-}
+
   Future<void> _markStudentAbsentInAllBaremes(
     String classId,
     String matiereId,
@@ -6343,120 +6345,508 @@ Future<void> _removeAbsentFromSousBareme({
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
+// Méthode pour confirmer la réinitialisation de toutes les évaluations
+  Future<void> _confirmResetAllEvaluations() async {
+    if (selectedClassId == null || selectedSubjectId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('يرجى اختيار مادة أولاً'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Compter d'abord le nombre d'élèves pour l'afficher dans la confirmation
+    int studentCount = _students.length;
+
+    bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          '⚠️ تأكيد العملية',
+          style: TextStyle(fontWeight: FontWeight.bold),
+          textDirection: TextDirection.rtl,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Indicateur de chargement combiné
-            if (_isLoadingClasses || _isLoadingSubjects || _isLoadingStudents)
-              Padding(
-                padding: EdgeInsets.only(left: 8),
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                ),
+            Text(
+              'هل أنت متأكد من إعادة تعيين جميع تقييمات هذه المادة؟',
+              textDirection: TextDirection.rtl,
+              style: TextStyle(fontSize: 16),
+            ),
+            SizedBox(height: 16),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red),
               ),
-            Expanded(
-              child: Text(
-                _selectedClass == null
-                    ? 'إدارة الاقسام'
-                    : '${_selectedClass!['class_name']}',
-                style: TextStyle(color: Colors.white),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'تفاصيل العملية:',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                    textDirection: TextDirection.rtl,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    '• القسم: ${_selectedClass!['class_name']}',
+                    textDirection: TextDirection.rtl,
+                  ),
+                  Text(
+                    '• المادة: ${_getSubjectName()}',
+                    textDirection: TextDirection.rtl,
+                  ),
+                  Text(
+                    '• عدد التلاميذ: $studentCount',
+                    textDirection: TextDirection.rtl,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'سيتم حذف جميع التقييمات لهذه المادة لجميع التلاميذ.',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textDirection: TextDirection.rtl,
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
-        elevation: 4,
         actions: [
-          // Bouton "جدول النتائج" - UNIQUEMENT quand on est dans la liste des étudiants
-          if (_selectedClass != null &&
-              _showStudentsList &&
-              selectedSubjectId != null)
-            Container(
-              margin: EdgeInsets.symmetric(horizontal: 4),
-              child: ElevatedButton.icon(
-                icon: Icon(Icons.table_chart, size: 18),
-                label: Text('جدول النتائج'),
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Colors.green,
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'إلغاء',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: Text('نعم، إعادة التعيين'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      await _resetAllEvaluations();
+    }
+  }
+
+// Méthode pour obtenir le nom de la matière
+  String _getSubjectName() {
+    if (selectedSubjectId == null) return 'غير معروفة';
+
+    // Chercher dans les matières de la classe sélectionnée
+    if (_selectedClass != null && _selectedClass!.containsKey('subjects')) {
+      final subjects = _selectedClass!['subjects'] as List;
+      for (var subject in subjects) {
+        if (subject['id'] == selectedSubjectId) {
+          return subject['name'];
+        }
+      }
+    }
+
+    return selectedSubjectId!;
+  }
+
+// Méthode principale pour réinitialiser toutes les évaluations
+  Future<void> _resetAllEvaluations() async {
+    // Afficher un indicateur de chargement
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                color: Colors.red,
+                strokeWidth: 4,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'جاري إعادة تعيين التقييمات...',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
-                onPressed: () => _navigateToDynamicTableFromAppBar(),
+                textDirection: TextDirection.rtl,
               ),
-            ),
-
-          // Bouton "برمجة المعايير" - UNIQUEMENT quand on est dans la liste des étudiants avec une matière sélectionnée
-          if (_selectedClass != null &&
-              _showStudentsList &&
-              selectedSubjectId != null)
-            ElevatedButton.icon(
-              icon: Icon(Icons.table_chart, size: 18),
-              label: Text('برمجة المعايير'),
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: const Color.fromARGB(255, 248, 151, 25),
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              SizedBox(height: 8),
+              Text(
+                'قد تستغرق العملية بضع ثوان',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
+                textDirection: TextDirection.rtl,
               ),
-              onPressed: () => _navigateDirectlyToBaremesSelection(),
-            ),
+            ],
+          ),
+        ),
+      ),
+    );
 
-          // Bouton Rafraîchir global - TOUJOURS VISIBLE
-          Container(
-            margin: EdgeInsets.only(left: 4),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              color: Colors.white.withOpacity(0.1),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
+    try {
+      int successCount = 0;
+      int totalStudents = _students.length;
+
+      // Récupérer tous les barèmes et sous-barèmes pour cette matière
+      final selectionsRef = FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(selectedClassId!)
+          .collection(selectedSubjectId!);
+
+      final selectionsSnapshot = await selectionsRef.get();
+
+      // Collecter tous les IDs de barèmes et sous-barèmes
+      List<String> allBaremeIds = [];
+      Map<String, List<String>> sousBaremesMap = {};
+
+      for (final baremeDoc in selectionsSnapshot.docs) {
+        final baremeId = baremeDoc.id;
+
+        // Ajouter le barème principal
+        allBaremeIds.add(baremeId);
+
+        // Récupérer les sous-barèmes
+        final sousBaremesSnapshot =
+            await baremeDoc.reference.collection('sousBaremes').get();
+
+        if (sousBaremesSnapshot.docs.isNotEmpty) {
+          List<String> sousBaremeIds = [];
+          for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+            sousBaremeIds.add(sousBaremeDoc.id);
+          }
+          sousBaremesMap[baremeId] = sousBaremeIds;
+        }
+      }
+
+      // Pour chaque élève, supprimer toutes les évaluations
+      for (final student in _students) {
+        final studentId = student['id'];
+
+        // Supprimer les barèmes principaux
+        for (final baremeId in allBaremeIds) {
+          try {
+            // Supprimer le barème principal
+            await FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser!.uid)
+                .collection('user_classes')
+                .doc(selectedClassId!)
+                .collection('students')
+                .doc(studentId)
+                .collection('baremes')
+                .doc(baremeId)
+                .delete();
+
+            // Supprimer les sous-barèmes directs
+            if (sousBaremesMap.containsKey(baremeId)) {
+              for (final sousBaremeId in sousBaremesMap[baremeId]!) {
+                await FirebaseFirestore.instance
+                    .collection('users')
+                    .doc(currentUser!.uid)
+                    .collection('user_classes')
+                    .doc(selectedClassId!)
+                    .collection('students')
+                    .doc(studentId)
+                    .collection('baremes')
+                    .doc(sousBaremeId)
+                    .delete();
+              }
+            }
+          } catch (e) {
+            print('Erreur lors de la suppression du barème $baremeId: $e');
+          }
+        }
+
+        successCount++;
+
+        // Mettre à jour le statut de l'élève localement
+        int index = _students.indexWhere((s) => s['id'] == studentId);
+        if (index != -1) {
+          _students[index]['isAbsent'] = false;
+        }
+      }
+
+      // Fermer l'indicateur de chargement
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      // Afficher le résultat
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '✅ تم إعادة تعيين تقييمات $successCount تلميذ بنجاح',
+            textDirection: TextDirection.rtl,
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      // Rafraîchir l'affichage
+      setState(
+          () {}); // Force le rebuild pour mettre à jour les couleurs des indicateurs
+    } catch (e) {
+      // Fermer l'indicateur de chargement en cas d'erreur
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      print('Erreur lors de la réinitialisation des évaluations: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '❌ حدث خطأ أثناء إعادة تعيين التقييمات',
+            textDirection: TextDirection.rtl,
+          ),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: LayoutBuilder(
+          builder: (context, constraints) {
+            final isSmallScreen = MediaQuery.of(context).size.width < 600;
+            final isMediumScreen = MediaQuery.of(context).size.width < 900;
+
+            return Row(
               children: [
-                IconButton(
-                  icon: Icon(
-                    Icons.refresh,
-                    color: Colors.white,
+                // Bouton "Réinitialiser les évaluations" - NOUVEAU BOUTON DANGER
+                if (_selectedClass != null &&
+                    _showStudentsList &&
+                    selectedSubjectId != null)
+                  Container(
+                    margin:
+                        EdgeInsets.symmetric(horizontal: isSmallScreen ? 2 : 4),
+                    child: ElevatedButton.icon(
+                      icon: Icon(Icons.delete_sweep,
+                          size: isSmallScreen ? 16 : 18),
+                      label: Text(
+                        isSmallScreen
+                            ? 'إعادة'
+                            : (isMediumScreen
+                                ? 'إعادة تعيين'
+                                : 'إعادة تعيين التقييمات'),
+                        style: TextStyle(
+                            fontSize: isSmallScreen
+                                ? 11
+                                : (isMediumScreen ? 12 : 14)),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.red,
+                        padding: EdgeInsets.symmetric(
+                          horizontal:
+                              isSmallScreen ? 6 : (isMediumScreen ? 8 : 12),
+                          vertical: isSmallScreen ? 6 : 8,
+                        ),
+                      ),
+                      onPressed: () => _confirmResetAllEvaluations(),
+                    ),
                   ),
-                  onPressed: () {
-                    if (_selectedClass == null) {
-                      _refreshClasses();
-                    } else if (_showStudentsList) {
-                      _refreshStudents();
-                    } else {
-                      _refreshSubjects();
-                    }
-                  },
-                  tooltip: 'تحديث البيانات',
-                ),
-                if (_isRefreshingClasses ||
-                    _isRefreshingSubjects ||
-                    _isRefreshing)
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: Colors.yellow,
-                        shape: BoxShape.circle,
+                // Indicateur de chargement combiné
+                if (_isLoadingClasses ||
+                    _isLoadingSubjects ||
+                    _isLoadingStudents)
+                  Padding(
+                    padding: EdgeInsets.only(left: isSmallScreen ? 4 : 8),
+                    child: SizedBox(
+                      width: isSmallScreen ? 16 : 20,
+                      height: isSmallScreen ? 16 : 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
                       ),
                     ),
                   ),
+                Expanded(
+                  child: Text(
+                    _selectedClass == null
+                        ? 'إدارة الاقسام'
+                        : '${_selectedClass!['class_name']}',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: isSmallScreen ? 14 : 18,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
-            ),
-          ),
+            );
+          },
+        ),
+        backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
+        elevation: 4,
+        actions: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isSmallScreen = MediaQuery.of(context).size.width < 600;
+              final isMediumScreen = MediaQuery.of(context).size.width < 900;
 
-          // Bouton Aide - TOUJOURS VISIBLE
-          IconButton(
-            icon: Icon(Icons.help_outline, color: Colors.white),
-            onPressed: () => _buildHelpSection(context),
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Bouton "جدول النتائج"
+                  if (_selectedClass != null &&
+                      _showStudentsList &&
+                      selectedSubjectId != null)
+                    Container(
+                      margin: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 2 : 4),
+                      child: ElevatedButton.icon(
+                        icon: Icon(Icons.table_chart,
+                            size: isSmallScreen ? 16 : 18),
+                        label: Text(
+                          isSmallScreen
+                              ? 'النتائج'
+                              : (isMediumScreen ? 'النتائج' : 'جدول النتائج'),
+                          style: TextStyle(
+                              fontSize: isSmallScreen
+                                  ? 11
+                                  : (isMediumScreen ? 12 : 14)),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor: Colors.green,
+                          padding: EdgeInsets.symmetric(
+                            horizontal:
+                                isSmallScreen ? 6 : (isMediumScreen ? 8 : 12),
+                            vertical: isSmallScreen ? 6 : 8,
+                          ),
+                        ),
+                        onPressed: () => _navigateToDynamicTableFromAppBar(),
+                      ),
+                    ),
+
+                  // Bouton "برمجة المعايير"
+                  if (_selectedClass != null &&
+                      _showStudentsList &&
+                      selectedSubjectId != null)
+                    Container(
+                      margin: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 2 : 4),
+                      child: ElevatedButton.icon(
+                        icon:
+                            Icon(Icons.settings, size: isSmallScreen ? 16 : 18),
+                        label: Text(
+                          isSmallScreen
+                              ? 'المعايير'
+                              : (isMediumScreen
+                                  ? 'المعايير'
+                                  : 'برمجة المعايير'),
+                          style: TextStyle(
+                              fontSize: isSmallScreen
+                                  ? 11
+                                  : (isMediumScreen ? 12 : 14)),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          backgroundColor:
+                              const Color.fromARGB(255, 248, 151, 25),
+                          padding: EdgeInsets.symmetric(
+                            horizontal:
+                                isSmallScreen ? 6 : (isMediumScreen ? 8 : 12),
+                            vertical: isSmallScreen ? 6 : 8,
+                          ),
+                        ),
+                        onPressed: () => _navigateDirectlyToBaremesSelection(),
+                      ),
+                    ),
+
+                  // Bouton Rafraîchir global
+                  Container(
+                    margin: EdgeInsets.only(left: isSmallScreen ? 2 : 4),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.white.withOpacity(0.1),
+                    ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.refresh,
+                            color: Colors.white,
+                            size: isSmallScreen ? 20 : 24,
+                          ),
+                          onPressed: () {
+                            if (_selectedClass == null) {
+                              _refreshClasses();
+                            } else if (_showStudentsList) {
+                              _refreshStudents();
+                            } else {
+                              _refreshSubjects();
+                            }
+                          },
+                          tooltip: 'تحديث البيانات',
+                        ),
+                        if (_isRefreshingClasses ||
+                            _isRefreshingSubjects ||
+                            _isRefreshing)
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              width: isSmallScreen ? 6 : 8,
+                              height: isSmallScreen ? 6 : 8,
+                              decoration: BoxDecoration(
+                                color: Colors.yellow,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+
+                  // Bouton Aide
+                  IconButton(
+                    icon: Icon(
+                      Icons.help_outline,
+                      color: Colors.white,
+                      size: isSmallScreen ? 20 : 24,
+                    ),
+                    onPressed: () => _buildHelpSection(context),
+                    tooltip: 'مساعدة',
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
