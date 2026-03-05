@@ -28,6 +28,9 @@ class _AddClassPageState extends State<AddClassPage> {
   TextEditingController _adresseEcoleController = TextEditingController();
   TextEditingController _raisonController = TextEditingController();
 
+  // Variable pour stocker la limite de l'utilisateur
+  int _userClassLimit = 4;
+
   final List<Color> groupColors = [
     Colors.blue,
     Colors.green,
@@ -46,6 +49,7 @@ class _AddClassPageState extends State<AddClassPage> {
     super.initState();
     _loadClassNames();
     _searchController.addListener(_filterClassNames);
+    _getUserLimit();
   }
 
   @override
@@ -59,6 +63,27 @@ class _AddClassPageState extends State<AddClassPage> {
     _adresseEcoleController.dispose();
     _raisonController.dispose();
     super.dispose();
+  }
+
+  // Récupérer la limite de l'utilisateur
+  Future<void> _getUserLimit() async {
+    User? currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser != null) {
+      try {
+        DocumentSnapshot userDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .get();
+        
+        if (userDoc.exists) {
+          setState(() {
+            _userClassLimit = userDoc['classLimit'] ?? 4;
+          });
+        }
+      } catch (e) {
+        print("Erreur lors de la récupération de la limite: $e");
+      }
+    }
   }
 
   Future<int> _getUserClassesCount(String userId) async {
@@ -75,7 +100,7 @@ class _AddClassPageState extends State<AddClassPage> {
     }
   }
 
-  Future<bool> _checkUserRequestStatus(String userId) async {
+  Future<Map<String, dynamic>> _checkUserRequestStatus(String userId) async {
     try {
       final requestDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -85,13 +110,16 @@ class _AddClassPageState extends State<AddClassPage> {
           .get();
 
       if (requestDoc.exists) {
-        String status = requestDoc['status'] ?? '';
-        return status == 'pending' || status == 'approved';
+        return {
+          'exists': true,
+          'status': requestDoc['status'] ?? '',
+          'data': requestDoc.data(),
+        };
       }
-      return false;
+      return {'exists': false, 'status': '', 'data': null};
     } catch (e) {
       print("Erreur lors de la vérification du statut : $e");
-      return false;
+      return {'exists': false, 'status': '', 'data': null};
     }
   }
 
@@ -106,7 +134,7 @@ class _AddClassPageState extends State<AddClassPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'لقد وصلت إلى الحد الأقصى المسموح به (4 أقسام). يرجى ملء النموذج التالي لطلب زيادة الحد.',
+                  'لقد وصلت إلى الحد الأقصى المسموح به ($_userClassLimit أقسام). يرجى ملء النموذج التالي لطلب زيادة الحد.',
                   style: TextStyle(color: Colors.blueGrey),
                 ),
                 SizedBox(height: 20),
@@ -192,98 +220,168 @@ class _AddClassPageState extends State<AddClassPage> {
       },
     );
   }
+Future<void> _submitRequest() async {
+  User? currentUser = FirebaseAuth.instance.currentUser;
+  if (currentUser == null) return;
 
-  Future<void> _submitRequest() async {
-    User? currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser == null) return;
-
-    // Vérifier que tous les champs sont remplis
-    if (_nomController.text.isEmpty ||
-        _prenomController.text.isEmpty ||
-        _telephoneController.text.isEmpty ||
-        _emailController.text.isEmpty ||
-        _ecoleController.text.isEmpty ||
-        _adresseEcoleController.text.isEmpty ||
-        _raisonController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('يرجى ملء جميع الحقول'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    try {
-      // Envoyer la demande
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser.uid)
-          .collection('requests')
-          .doc('class_limit_request')
-          .set({
-        'userId': currentUser.uid,
-        'userEmail': currentUser.email,
-        'nom': _nomController.text,
-        'prenom': _prenomController.text,
-        'telephone': _telephoneController.text,
-        'email': _emailController.text,
-        'ecole': _ecoleController.text,
-        'adresseEcole': _adresseEcoleController.text,
-        'raison': _raisonController.text,
-        'status': 'pending',
-        'timestamp': FieldValue.serverTimestamp(),
-        'currentClassCount': await _getUserClassesCount(currentUser.uid),
-      });
-
-      // Ajouter aussi dans une collection globale pour faciliter la gestion par l'admin
-      await FirebaseFirestore.instance
-          .collection('class_limit_requests')
-          .add({
-        'userId': currentUser.uid,
-        'userEmail': currentUser.email,
-        'nom': _nomController.text,
-        'prenom': _prenomController.text,
-        'telephone': _telephoneController.text,
-        'email': _emailController.text,
-        'ecole': _ecoleController.text,
-        'adresseEcole': _adresseEcoleController.text,
-        'raison': _raisonController.text,
-        'status': 'pending',
-        'timestamp': FieldValue.serverTimestamp(),
-        'currentClassCount': await _getUserClassesCount(currentUser.uid),
-      });
-
-      Navigator.pop(context); // Fermer le dialogue
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('تم إرسال طلبك بنجاح. سيتم مراجعته من قبل الإدارة'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 4),
-        ),
-      );
-
-      // Nettoyer les champs
-      _nomController.clear();
-      _prenomController.clear();
-      _telephoneController.clear();
-      _emailController.clear();
-      _ecoleController.clear();
-      _adresseEcoleController.clear();
-      _raisonController.clear();
-
-    } catch (e) {
-      print("Erreur lors de l'envoi de la demande : $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('حدث خطأ أثناء إرسال الطلب'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+  // Vérifier que tous les champs sont remplis
+  if (_nomController.text.isEmpty ||
+      _prenomController.text.isEmpty ||
+      _telephoneController.text.isEmpty ||
+      _emailController.text.isEmpty ||
+      _ecoleController.text.isEmpty ||
+      _adresseEcoleController.text.isEmpty ||
+      _raisonController.text.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('يرجى ملء جميع الحقول'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
   }
 
+  // Afficher un indicateur de chargement
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext context) {
+      return Center(
+        child: CircularProgressIndicator(),
+      );
+    },
+  );
+
+  try {
+    // Récupérer les informations actuelles de l'utilisateur
+    DocumentSnapshot userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .get();
+
+    int currentLimit = userDoc['classLimit'] ?? 4;
+    int currentClassCount = await _getUserClassesCount(currentUser.uid);
+    
+    // Créer un ID unique pour la demande (optionnel)
+    String requestId = 'class_limit_request_${DateTime.now().millisecondsSinceEpoch}';
+
+    // Préparer les données de la demande
+    Map<String, dynamic> requestData = {
+      'userId': currentUser.uid,
+      'userEmail': currentUser.email,
+      'userName': userDoc['name'] ?? '',
+      'nom': _nomController.text,
+      'prenom': _prenomController.text,
+      'telephone': _telephoneController.text,
+      'email': _emailController.text,
+      'ecole': _ecoleController.text,
+      'adresseEcole': _adresseEcoleController.text,
+      'raison': _raisonController.text,
+      'status': 'pending',
+      'timestamp': FieldValue.serverTimestamp(),
+      'currentClassCount': currentClassCount,
+      'currentLimit': currentLimit,
+      'requestedLimit': 20, // Limite demandée (vous pouvez la rendre modifiable)
+      'requestId': requestId,
+      'deviceInfo': {
+        'platform': Theme.of(context).platform.toString(),
+        // Vous pouvez ajouter plus d'informations si nécessaire
+      },
+    };
+
+    // Envoyer la demande dans la collection de l'utilisateur
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .collection('requests')
+        .doc('class_limit_request')
+        .set(requestData);
+
+    // Ajouter aussi dans une collection globale pour l'admin
+    DocumentReference globalRequest = await FirebaseFirestore.instance
+        .collection('class_limit_requests')
+        .add(requestData);
+
+    // Mettre à jour l'utilisateur pour indiquer qu'il a une demande en cours
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(currentUser.uid)
+        .update({
+      'hasPendingRequest': true,
+      'lastRequestDate': FieldValue.serverTimestamp(),
+      'lastRequestId': globalRequest.id,
+    });
+
+    // Fermer le dialogue de chargement
+    Navigator.pop(context); // Fermer le CircularProgressIndicator
+    Navigator.pop(context); // Fermer le formulaire
+
+    // Afficher le message de succès
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('✅ تم إرسال طلبك بنجاح. سيتم مراجعته من قبل الإدارة'),
+        backgroundColor: Colors.green,
+        duration: Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'حسناً',
+          textColor: Colors.white,
+          onPressed: () {},
+        ),
+      ),
+    );
+
+    // Envoyer une notification de confirmation à l'utilisateur
+    await _createLocalNotification(
+      'تم استلام طلبك',
+      'سيتم الرد على طلب زيادة الأقسام في أقرب وقت',
+    );
+
+    // Nettoyer les champs
+    _nomController.clear();
+    _prenomController.clear();
+    _telephoneController.clear();
+    _emailController.clear();
+    _ecoleController.clear();
+    _adresseEcoleController.clear();
+    _raisonController.clear();
+
+  } catch (e) {
+    // Fermer le dialogue de chargement en cas d'erreur
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    }
+
+    print("Erreur lors de l'envoi de la demande : $e");
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('❌ حدث خطأ أثناء إرسال الطلب: ${e.toString()}'),
+        backgroundColor: Colors.red,
+        duration: Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'إعادة المحاولة',
+          textColor: Colors.white,
+          onPressed: _submitRequest,
+        ),
+      ),
+    );
+  }
+}
+
+// Méthode pour créer une notification locale (optionnelle)
+Future<void> _createLocalNotification(String title, String body) async {
+  // Si vous utilisez flutter_local_notifications
+  // Vous pouvez implémenter ici la notification locale
+  
+  // Ou simplement afficher un snackbar
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('$title: $body'),
+      backgroundColor: Colors.blue,
+      duration: Duration(seconds: 2),
+    ),
+  );
+}
   Future<void> _loadClassNames() async {
     try {
       final classDocs =
@@ -405,18 +503,30 @@ class _AddClassPageState extends State<AddClassPage> {
   Future<void> _saveClassData(String? newClassName) async {
     User? currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
+      // Mettre à jour la limite
+      await _getUserLimit();
+      
       // Vérifier le nombre de classes de l'utilisateur
       int userClassesCount = await _getUserClassesCount(currentUser.uid);
       
-      if (userClassesCount >= 4) {
-        // Vérifier si l'utilisateur a déjà une demande en cours
-        bool hasPendingRequest = await _checkUserRequestStatus(currentUser.uid);
+      if (userClassesCount >= _userClassLimit) {
+        // Vérifier si l'utilisateur a une demande en attente
+        var requestStatus = await _checkUserRequestStatus(currentUser.uid);
         
-        if (hasPendingRequest) {
+        if (requestStatus['exists'] && requestStatus['status'] == 'pending') {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('لديك طلب قيد المراجعة. يرجى الانتظار حتى يتم الرد عليه.'),
               backgroundColor: Colors.orange,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        } else if (requestStatus['exists'] && requestStatus['status'] == 'approved') {
+          // La demande a été approuvée, mais la limite n'est pas encore mise à jour
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('تمت الموافقة على طلبك. يرجى تحديث الصفحة للمتابعة.'),
+              backgroundColor: Colors.green,
               duration: Duration(seconds: 3),
             ),
           );
@@ -576,6 +686,27 @@ class _AddClassPageState extends State<AddClassPage> {
         title: Text('إدارة المواد', style: TextStyle(color: Colors.white)),
         backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
         elevation: 4,
+        actions: [
+          // Affichage de la limite
+          Container(
+            margin: EdgeInsets.only(right: 16),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.light, color: Colors.white, size: 18),
+                SizedBox(width: 4),
+                Text(
+                  'الحد: $_userClassLimit',
+                  style: TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
       
       body: SingleChildScrollView(

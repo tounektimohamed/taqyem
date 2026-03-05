@@ -7,6 +7,7 @@ import 'package:Taqyem/screens2/users/User%20Management.dart';
 import 'package:Taqyem/taqyem/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
 import 'package:Taqyem/taqyem/AdminProposalsPage.dart';
+import 'package:Taqyem/taqyem/AdminRequestsPage.dart';
 import 'package:Taqyem/taqyem/EditPage.dart';
 import 'package:Taqyem/taqyem/data/add_edit_screen.dart';
 import 'package:Taqyem/taqyem/ereur_solution.dart';
