@@ -15,7 +15,7 @@ import 'package:intl/intl.dart' show DateFormat;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'dart:typed_data';
-import 'dart:html' as html;
+// import 'dart:html' as html;
 
 // Classe utilitaire pour la traduction et la détection de langue
 class DataTranslator {
@@ -589,17 +589,17 @@ Merci d'améliorer ces exercices ! 🙏
   }
 
 // Méthode helper pour télécharger un fichier sur le web
-  Future<void> _downloadFileWeb(Uint8List bytes, String fileName) async {
-    if (kIsWeb) {
-      final blob = html.Blob([bytes]);
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..target = 'blank'
-        ..download = fileName;
-      anchor.click();
-      html.Url.revokeObjectUrl(url);
-    }
-  }
+  // Future<void> _downloadFileWeb(Uint8List bytes, String fileName) async {
+  //   if (kIsWeb) {
+  //     final blob = html.Blob([bytes]);
+  //     final url = html.Url.createObjectUrlFromBlob(blob);
+  //     final anchor = html.AnchorElement(href: url)
+  //       ..target = 'blank'
+  //       ..download = fileName;
+  //     anchor.click();
+  //     html.Url.revokeObjectUrl(url);
+  //   }
+  // }
 
   String _formatPromptForChatGPT({
     required String originalExercise,

@@ -1,7 +1,5 @@
 import 'dart:convert';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
-import 'package:Taqyem/taqyem/listedeselection.dart';
-import 'package:Taqyem/taqyem/ocr_assessment_capture_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -240,61 +238,61 @@ class _BaremesPageState extends State<BaremesPage> {
     });
   }
 
-  Future<void> _configureOCRLevels() async {
-    // Liste prédéfinie des niveaux arabes
-    List<String> predefinedLevels = [
-      'انعدام التملك ( - - - )',
-      'دون التملك الأدنى ( + - - )',
-      'التملك الأدنى ( + + - )',
-      'التملك الأقصى ( + + + )'
-    ];
+  // Future<void> _configureOCRLevels() async {
+  //   // Liste prédéfinie des niveaux arabes
+  //   List<String> predefinedLevels = [
+  //     'انعدام التملك ( - - - )',
+  //     'دون التملك الأدنى ( + - - )',
+  //     'التملك الأدنى ( + + - )',
+  //     'التملك الأقصى ( + + + )'
+  //   ];
 
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('تهيئة مستويات التقييم للتعرف البصري'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('تأكد أن المستويات التالية مطابقة للجدول في الصورة:'),
-              SizedBox(height: 16),
-              ...predefinedLevels.map((level) {
-                return ListTile(
-                  leading: Icon(Icons.check_circle, color: Colors.green),
-                  title: Text(level),
-                );
-              }).toList(),
-              SizedBox(height: 16),
-              SwitchListTile(
-                title: Text('تمكين التعرف البصري'),
-                value: true,
-                onChanged: (value) {
-                  // Sauvegarder la configuration OCR
-                },
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              // Sauvegarder la configuration OCR
-              await _saveOCRConfiguration(predefinedLevels);
-              Navigator.pop(context);
-              // Naviguer vers la capture OCR
-              _navigateToOCRCapture();
-            },
-            child: Text('تأكيد والمتابعة'),
-          ),
-        ],
-      ),
-    );
-  }
+  //   await showDialog(
+  //     context: context,
+  //     builder: (context) => AlertDialog(
+  //       title: Text('تهيئة مستويات التقييم للتعرف البصري'),
+  //       content: SingleChildScrollView(
+  //         child: Column(
+  //           mainAxisSize: MainAxisSize.min,
+  //           children: [
+  //             Text('تأكد أن المستويات التالية مطابقة للجدول في الصورة:'),
+  //             SizedBox(height: 16),
+  //             ...predefinedLevels.map((level) {
+  //               return ListTile(
+  //                 leading: Icon(Icons.check_circle, color: Colors.green),
+  //                 title: Text(level),
+  //               );
+  //             }).toList(),
+  //             SizedBox(height: 16),
+  //             SwitchListTile(
+  //               title: Text('تمكين التعرف البصري'),
+  //               value: true,
+  //               onChanged: (value) {
+  //                 // Sauvegarder la configuration OCR
+  //               },
+  //             ),
+  //           ],
+  //         ),
+  //       ),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.pop(context),
+  //           child: Text('إلغاء'),
+  //         ),
+  //         ElevatedButton(
+  //           onPressed: () async {
+  //             // Sauvegarder la configuration OCR
+  //             await _saveOCRConfiguration(predefinedLevels);
+  //             Navigator.pop(context);
+  //             // Naviguer vers la capture OCR
+  //             _navigateToOCRCapture();
+  //           },
+  //           child: Text('تأكيد والمتابعة'),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Future<void> _saveOCRConfiguration(List<String> levels) async {
     try {
@@ -317,17 +315,17 @@ class _BaremesPageState extends State<BaremesPage> {
     }
   }
 
-  void _navigateToOCRCapture() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => OCRAssessmentCapturePage(
-          classId: widget.selectedClass,
-          matiereId: widget.selectedMatiere,
-        ),
-      ),
-    );
-  }
+  // void _navigateToOCRCapture() {
+  //   Navigator.push(
+  //     context,
+  //     MaterialPageRoute(
+  //       builder: (context) => OCRAssessmentCapturePage(
+  //         classId: widget.selectedClass,
+  //         matiereId: widget.selectedMatiere,
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Future<void> _showUtilityDialog() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();

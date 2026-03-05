@@ -182,7 +182,7 @@ String _cleanUserId(String userId) {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Tableau de bord',
+          'لوحة التحكم',
           style: GoogleFonts.roboto(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -1293,7 +1293,7 @@ class _NewsSectionState extends State<NewsSection> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Actualités',
+                'الأخبار',
                 style: GoogleFonts.roboto(
                   fontSize: 24,
                   fontWeight: FontWeight.w600,
@@ -1304,7 +1304,7 @@ class _NewsSectionState extends State<NewsSection> {
                   // Navigate to all news page
                 },
                 child: Text(
-                  'Voir tout',
+                  'عرض الكل',
                   style: GoogleFonts.roboto(
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.w500,
@@ -1609,7 +1609,7 @@ Widget _buildQuickAccessSection(BuildContext context) {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Accès Rapide',
+                'اختصارات سريعة',
                 style: GoogleFonts.roboto(
                   fontSize: 24,
                   fontWeight: FontWeight.w600,

@@ -3,8 +3,7 @@ import 'dart:async';
 import 'package:Taqyem/screens2/admin/adminpage.dart';
 import 'package:Taqyem/screens2/agent/Agentdashbord.dart';
 import 'package:Taqyem/screens2/login_signup/account_settings.dart';
-import 'package:alarm/alarm.dart';
-import 'package:alarm/model/alarm_settings.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -26,9 +25,6 @@ class _DashboardState extends State<Agentdashboard> {
   //Floating Action Button
   bool isFABvisible = true;
   bool chatBot = true;
-
-  //alarm list
-  late List<AlarmSettings> alarms;
 
   static StreamSubscription? subscription;
 

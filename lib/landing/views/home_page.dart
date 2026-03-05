@@ -301,7 +301,7 @@ class NewsSection extends StatelessWidget {
           ),
           // Titre pour la section des nouvelles
           Text(
-            'Actualités',
+            'الأخبار',
             selectionColor: Colors.yellow,
             style: GoogleFonts.roboto(
               fontSize: 25,

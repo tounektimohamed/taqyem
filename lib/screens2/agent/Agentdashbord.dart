@@ -48,7 +48,7 @@ Widget build(BuildContext context) {
   return Scaffold(
     appBar: AppBar(
       title: Text(
-        'Tableau de bord',
+        'لوحة التحكم',
         style: GoogleFonts.roboto(
           fontSize: 24,
           fontWeight: FontWeight.bold,
@@ -791,7 +791,7 @@ class _NewsSectionState extends State<NewsSection> {
             children: [
               const SizedBox(height: 10),
               Text(
-                'Actualités',
+                'الأخبار',
                 selectionColor: Colors.yellow,
                 style: GoogleFonts.roboto(
                     fontSize: 25, fontWeight: FontWeight.w600),

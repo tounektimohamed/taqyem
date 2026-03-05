@@ -7,7 +7,6 @@
       "name": "Taqyem",
       "version": "1.0.0+1",
       "dependencies": [
-        "alarm",
         "build_runner",
         "cached_network_image",
         "carousel_slider",
@@ -44,8 +43,6 @@
         "geolocator",
         "get",
         "google_fonts",
-        "google_maps_flutter",
-        "google_ml_kit",
         "google_places_flutter",
         "google_sign_in",
         "http",
@@ -186,27 +183,6 @@
       "dependencies": [
         "flutter",
         "flutter_web_plugins"
-      ]
-    },
-    {
-      "name": "google_ml_kit",
-      "version": "0.20.0",
-      "dependencies": [
-        "flutter",
-        "google_mlkit_barcode_scanning",
-        "google_mlkit_commons",
-        "google_mlkit_digital_ink_recognition",
-        "google_mlkit_entity_extraction",
-        "google_mlkit_face_detection",
-        "google_mlkit_face_mesh_detection",
-        "google_mlkit_image_labeling",
-        "google_mlkit_language_id",
-        "google_mlkit_object_detection",
-        "google_mlkit_pose_detection",
-        "google_mlkit_selfie_segmentation",
-        "google_mlkit_smart_reply",
-        "google_mlkit_text_recognition",
-        "google_mlkit_translation"
       ]
     },
     {
@@ -562,17 +538,6 @@
       ]
     },
     {
-      "name": "google_maps_flutter",
-      "version": "2.13.1",
-      "dependencies": [
-        "flutter",
-        "google_maps_flutter_android",
-        "google_maps_flutter_ios",
-        "google_maps_flutter_platform_interface",
-        "google_maps_flutter_web"
-      ]
-    },
-    {
       "name": "cached_network_image",
       "version": "3.4.1",
       "dependencies": [
@@ -706,21 +671,6 @@
         "watcher",
         "web_socket_channel",
         "yaml"
-      ]
-    },
-    {
-      "name": "alarm",
-      "version": "5.1.5",
-      "dependencies": [
-        "collection",
-        "equatable",
-        "flutter",
-        "flutter_fgbg",
-        "json_annotation",
-        "logging",
-        "plugin_platform_interface",
-        "rxdart",
-        "shared_preferences"
       ]
     },
     {
@@ -1187,115 +1137,6 @@
         "file_selector_platform_interface",
         "flutter",
         "plugin_platform_interface"
-      ]
-    },
-    {
-      "name": "google_mlkit_smart_reply",
-      "version": "0.13.0",
-      "dependencies": [
-        "flutter"
-      ]
-    },
-    {
-      "name": "google_mlkit_translation",
-      "version": "0.13.0",
-      "dependencies": [
-        "flutter",
-        "google_mlkit_commons"
-      ]
-    },
-    {
-      "name": "google_mlkit_language_id",
-      "version": "0.13.0",
-      "dependencies": [
-        "flutter"
-      ]
-    },
-    {
-      "name": "google_mlkit_entity_extraction",
-      "version": "0.15.1",
-      "dependencies": [
-        "flutter",
-        "google_mlkit_commons"
-      ]
-    },
-    {
-      "name": "google_mlkit_text_recognition",
-      "version": "0.15.0",
-      "dependencies": [
-        "flutter",
-        "google_mlkit_commons"
-      ]
-    },
-    {
-      "name": "google_mlkit_selfie_segmentation",
-      "version": "0.10.0",
-      "dependencies": [
-        "flutter",
-        "google_mlkit_commons"
-      ]
-    },
-    {
-      "name": "google_mlkit_pose_detection",
-      "version": "0.14.0",
-      "dependencies": [
-        "flutter",
-        "google_mlkit_commons"
-      ]
-    },
-    {
-      "name": "google_mlkit_object_detection",
-      "version": "0.15.0",
-      "dependencies": [
-        "flutter",
-        "google_mlkit_commons"
-      ]
-    },
-    {
-      "name": "google_mlkit_image_labeling",
-      "version": "0.14.1",
-      "dependencies": [
-        "flutter",
-        "google_mlkit_commons"
-      ]
-    },
-    {
-      "name": "google_mlkit_face_mesh_detection",
-      "version": "0.4.1",
-      "dependencies": [
-        "flutter",
-        "google_mlkit_commons"
-      ]
-    },
-    {
-      "name": "google_mlkit_face_detection",
-      "version": "0.13.1",
-      "dependencies": [
-        "flutter",
-        "google_mlkit_commons"
-      ]
-    },
-    {
-      "name": "google_mlkit_digital_ink_recognition",
-      "version": "0.14.1",
-      "dependencies": [
-        "flutter",
-        "google_mlkit_commons"
-      ]
-    },
-    {
-      "name": "google_mlkit_barcode_scanning",
-      "version": "0.14.1",
-      "dependencies": [
-        "flutter",
-        "google_mlkit_commons"
-      ]
-    },
-    {
-      "name": "google_mlkit_commons",
-      "version": "0.11.0",
-      "dependencies": [
-        "flutter"
       ]
     },
     {
@@ -1806,49 +1647,6 @@
       ]
     },
     {
-      "name": "google_maps_flutter_web",
-      "version": "0.5.14+2",
-      "dependencies": [
-        "collection",
-        "flutter",
-        "flutter_web_plugins",
-        "google_maps",
-        "google_maps_flutter_platform_interface",
-        "sanitize_html",
-        "stream_transform",
-        "web"
-      ]
-    },
-    {
-      "name": "google_maps_flutter_platform_interface",
-      "version": "2.14.0",
-      "dependencies": [
-        "collection",
-        "flutter",
-        "plugin_platform_interface",
-        "stream_transform"
-      ]
-    },
-    {
-      "name": "google_maps_flutter_ios",
-      "version": "2.15.5",
-      "dependencies": [
-        "flutter",
-        "google_maps_flutter_platform_interface",
-        "stream_transform"
-      ]
-    },
-    {
-      "name": "google_maps_flutter_android",
-      "version": "2.18.2",
-      "dependencies": [
-        "flutter",
-        "flutter_plugin_android_lifecycle",
-        "google_maps_flutter_platform_interface",
-        "stream_transform"
-      ]
-    },
-    {
       "name": "octo_image",
       "version": "2.1.0",
       "dependencies": [
@@ -2253,21 +2051,6 @@
         "logging",
         "package_config",
         "path"
-      ]
-    },
-    {
-      "name": "flutter_fgbg",
-      "version": "0.7.1",
-      "dependencies": [
-        "flutter"
-      ]
-    },
-    {
-      "name": "equatable",
-      "version": "2.0.7",
-      "dependencies": [
-        "collection",
-        "meta"
       ]
     },
     {
@@ -2811,22 +2594,6 @@
       "version": "0.0.2+3",
       "dependencies": [
         "collection"
-      ]
-    },
-    {
-      "name": "sanitize_html",
-      "version": "2.1.0",
-      "dependencies": [
-        "html",
-        "meta"
-      ]
-    },
-    {
-      "name": "google_maps",
-      "version": "8.2.0",
-      "dependencies": [
-        "meta",
-        "web"
       ]
     },
     {

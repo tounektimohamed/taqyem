@@ -1,7 +1,7 @@
 import 'package:Taqyem/taqyem/payment/card_distribution_service.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:html' as html;
+// import 'dart:html' as html;
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:image_picker_web/image_picker_web.dart';

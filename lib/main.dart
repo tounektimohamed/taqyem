@@ -1,8 +1,8 @@
 import 'package:Taqyem/l10n/app_localizations.dart';
-import 'package:alarm/alarm.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:Taqyem/auth/main_page.dart';
@@ -11,7 +11,7 @@ import 'package:feedback/feedback.dart'; // Ajout de l'import
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Configuration de l'orientation et de l'interface utilisateur
   await _configureSystemUI();
 
@@ -20,17 +20,16 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     print('Firebase initialized successfully');
-    
-    // Mise à jour des utilisateurs existants
-    await _updateExistingUsers();
   } catch (e) {
     print('Error initializing Firebase: $e');
   }
 
-  await Alarm.init();
-  runApp(
-    BetterFeedback( // Enveloppez votre application ici
-      child: const MyApp(),
+
+  Widget app = const MyApp();
+
+  if (!kIsWeb) {
+    app = BetterFeedback(
+      child: app,
       theme: FeedbackThemeData(
         background: Colors.grey,
         feedbackSheetColor: Colors.white,
@@ -41,15 +40,25 @@ void main() async {
           Colors.yellow,
         ],
       ),
-    ),
-  );
+    );
+  }
+
+  runApp(app);
+
+  // Mise à jour des utilisateurs existants (fonctionne sur Web et natif)
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _updateExistingUsers();
+  });
 }
+
 Future<void> _configureSystemUI() async {
-  // Forcer l'application à s'ouvrir en mode paysage
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
-  ]);
+  // Forcer l'application à s'ouvrir en mode paysage (natif seulement)
+  if (!kIsWeb) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
 
   // Forcer l'interface utilisateur système à rester en mode clair
   SystemChrome.setSystemUIOverlayStyle(
@@ -65,7 +74,7 @@ Future<void> _configureSystemUI() async {
 Future<void> _updateExistingUsers() async {
   try {
     final users = await FirebaseFirestore.instance.collection('Users').get();
-    
+
     final batch = FirebaseFirestore.instance.batch();
     int updates = 0;
 
@@ -87,7 +96,6 @@ Future<void> _updateExistingUsers() async {
     }
   } catch (e) {
     print('Erreur lors de la mise à jour des utilisateurs: $e');
-    // Vous pourriez vouloir relancer l'erreur ou la gérer différemment
   }
 }
 

@@ -1,5 +1,5 @@
 name: Taqyem
-description: Medication Reminder Mobile Application
+description: Taqyem is an educational application designed to assist teachers in evaluating their students' performance and providing personalized feedback. The app offers a comprehensive evaluation system that allows teachers to assess various aspects of their students' learning, including academic performance, behavior, and participation. With Taqyem, teachers can easily track their students' progress, identify areas for improvement, and provide targeted support to help them succeed. The app also includes features for generating reports and sharing feedback with students and parents, making it a valuable tool for enhancing communication and fostering student growth.
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -61,7 +61,7 @@ dependencies:
   flutter_svg: ^2.0.10+1
   day_night_time_picker: 
   text_scroll: ^0.2.0
-  alarm: ^5.1.5
+  #alarm: ^5.1.5
   build_runner: ^2.4.7
   shared_preferences: ^2.2.2
   
@@ -78,7 +78,7 @@ dependencies:
   week_of_year: ^2.2.0
 
   cached_network_image: ^3.3.1
-  google_maps_flutter: ^2.0.6
+ # google_maps_flutter: ^2.0.6
   file_picker: ^10.3.3
   google_fonts: ^6.3.2
   flutter_map: ^7.0.2
@@ -114,7 +114,7 @@ dependencies:
   pull_to_refresh: ^2.0.0
   flutter_html_to_pdf: ^0.7.0
   lottie: ^3.3.2
-  google_ml_kit: ^0.20.0
+ # google_ml_kit: ^0.20.0
   image_picker_web: ^4.0.0
   js: ^0.7.2
   msgpack_dart: ^1.0.1
