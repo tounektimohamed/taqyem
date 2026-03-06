@@ -15,6 +15,24 @@ class PaymentPage extends StatefulWidget {
 class _PaymentPageState extends State<PaymentPage> {
   String? selectedForfait;
   String? _base64Image;
+// دالة للكشف إذا كان الجهاز آيفون
+  bool _isIPhone() {
+    try {
+      final userAgent = html.window.navigator.userAgent.toLowerCase();
+      print('📱 User Agent: $userAgent'); // للتصحيح
+
+      // الكشف عن iPhone/iPad/iOS devices
+      return userAgent.contains('iphone') ||
+          userAgent.contains('ipad') ||
+          (userAgent.contains('mac') &&
+              userAgent.contains('safari') &&
+              !userAgent.contains('android') &&
+              !userAgent.contains('windows'));
+    } catch (e) {
+      print('❌ Erreur détection iPhone: $e');
+      return false;
+    }
+  }
 
   final TextEditingController _nomController = TextEditingController();
   final TextEditingController _prenomController = TextEditingController();
@@ -260,11 +278,19 @@ class _PaymentPageState extends State<PaymentPage> {
       return;
     }
 
+    // ✅ التحقق من آيفون قبل متابعة الدفع
+    if (_isIPhone()) {
+      bool continueToPayment = await _showIPhonePaymentWarning();
+      if (!continueToPayment) {
+        return; // المستخدم اختار الإلغاء
+      }
+    }
+
     setState(() => _isLoading = true);
 
     try {
       String? imageUrl;
-      
+
       // Upload de l'image seulement pour le paiement manuel
       if (!_useOnlinePayment) {
         if (_photo != null) {
@@ -321,16 +347,131 @@ class _PaymentPageState extends State<PaymentPage> {
         _isLoading = false;
       });
 
-      _showSuccessSnackbar(
-        _useOnlinePayment 
-            ? 'تم إرسال طلب الدفع الإلكتروني بنجاح'
-            : 'تم إرسال طلبك بنجاح عبر WhatsApp'
-      );
-      
+      _showSuccessSnackbar(_useOnlinePayment
+          ? 'تم إرسال طلب الدفع الإلكتروني بنجاح'
+          : 'تم إرسال طلبك بنجاح عبر WhatsApp');
     } catch (e) {
       _showErrorSnackbar('حدث خطأ: ${e.toString()}');
       setState(() => _isLoading = false);
     }
+  }
+
+// دالة لإظهار تنبيه آيفون قبل الدفع
+  Future<bool> _showIPhonePaymentWarning() async {
+    final shouldProceed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Row(
+          children: [
+            Icon(Icons.apple, color: Colors.grey.shade800),
+            SizedBox(width: 10),
+            Text(
+              'تنبيه لمستخدمي آيفون',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Tajawal',
+              ),
+            ),
+          ],
+        ),
+        content: Container(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange.shade700,
+                      size: 40,
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'مستخدمي آيفون:',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.shade800,
+                        fontFamily: 'Tajawal',
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'عملية الدفع عبر الإنترنت قد تواجه بعض المشاكل التقنية على أجهزة آيفون. ننصح باستخدام جهاز كمبيوتر أو جهاز أندرويد لإتمام عملية الدفع بسلاسة.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontFamily: 'Tajawal',
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info, color: Colors.blue.shade700),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'إذا واجهت أي مشكلة، يمكنك استخدام طريقة الدفع اليدوي (تحويل بنكي) المتاحة.',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontFamily: 'Tajawal',
+                          color: Colors.blue.shade800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'إلغاء',
+              style: TextStyle(
+                fontFamily: 'Tajawal',
+                color: Colors.grey.shade600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange.shade700,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(
+              'مواصلة على مسؤوليتي',
+              style: TextStyle(
+                fontFamily: 'Tajawal',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    return shouldProceed ?? false;
   }
 
   void _showFullQRCode(String qrUrl, String cardId) {
@@ -1792,12 +1933,13 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   Widget _buildSubmitButton() {
-    String buttonText = _useOnlinePayment 
+    String buttonText = _useOnlinePayment
         ? 'تأكيد ومتابعة الدفع الإلكتروني'
         : 'تأكيد وإرسال عبر واتساب';
-    
+
     IconData buttonIcon = _useOnlinePayment ? Icons.payment : Icons.phone;
-    Color buttonColor = _useOnlinePayment ? Colors.green[700]! : Colors.green[700]!;
+    Color buttonColor =
+        _useOnlinePayment ? Colors.green[700]! : Colors.green[700]!;
 
     return AnimatedContainer(
       duration: Duration(milliseconds: 300),

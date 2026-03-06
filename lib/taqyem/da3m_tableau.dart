@@ -18,6 +18,8 @@ import 'package:open_file/open_file.dart';
 import 'dart:typed_data';
 import 'dart:html' as html;
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 // Classe utilitaire pour la traduction et la détection de langue
 class DataTranslator {
   static final Map<String, String> _classTranslations = {
@@ -265,6 +267,9 @@ class _ClassificationPageState extends State<ClassificationPage> {
     'support': [],
     'excellence': [],
   };
+bool _isFirstTime = true;
+double _pulseScale = 1.0;
+Timer? _pulseTimer;
 
 // Variables pour la gestion des exercices AI sélectionnés
   Map<String, List<AIExerciseSelection>> _selectedAIExercises = {
@@ -285,7 +290,66 @@ class _ClassificationPageState extends State<ClassificationPage> {
     loadJsonData();
     _loadPrintCredit();
     _startTimer();
+      _checkFirstTimeUser(); // Vérifier si c'est la première utilisation
+
   }
+
+Future<void> _checkFirstTimeUser() async {
+  // Vérifier si l'utilisateur a déjà ouvert cette page
+  final prefs = await SharedPreferences.getInstance();
+  _isFirstTime = prefs.getBool('help_shown_${widget.selectedBaremeId}') != true;
+  
+  if (_isFirstTime && _isMounted) {
+    _startPulseAnimation();
+  }
+}
+
+void _startPulseAnimation() {
+  _pulseTimer = Timer.periodic(Duration(milliseconds: 800), (timer) {
+    if (_isMounted) {
+      setState(() {
+        _pulseScale = _pulseScale == 1.0 ? 1.2 : 1.0;
+      });
+    }
+  });
+}
+
+// Widget du bouton avec effet de pulsation
+Widget _buildPulsingHelpButton() {
+  return AnimatedScale(
+    scale: _pulseScale,
+    duration: Duration(milliseconds: 400),
+    curve: Curves.easeInOut,
+    child: Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [
+            const Color.fromARGB(255, 210, 167, 25),
+            const Color.fromARGB(255, 231, 106, 22),
+          ],
+        ),
+      ),
+      child: IconButton(
+        icon: Icon(Icons.help_outline, color: Colors.white),
+        tooltip: _getTranslatedText('مساعدة', 'Aide'),
+        onPressed: () async {
+          // Arrêter l'animation
+          _pulseTimer?.cancel();
+          setState(() {
+            _pulseScale = 1.0;
+          });
+          
+          // Marquer que l'aide a été montrée
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('help_shown_${widget.selectedBaremeId}', true);
+          
+          _showHelpDialog();
+        },
+      ),
+    ),
+  );
+}
 
   @override
   void dispose() {
@@ -293,7 +357,343 @@ class _ClassificationPageState extends State<ClassificationPage> {
     _accountStatusTimer?.cancel();
     super.dispose();
   }
+void _showHelpDialog() {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9,
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          padding: EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // En-tête
+              Container(
+                padding: EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade300),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.help_outline,
+                        color: Colors.blue.shade700,
+                        size: 28,
+                      ),
+                    ),
+                    SizedBox(width: 15),
+                    Expanded(
+                      child: Text(
+                        _getTranslatedText(
+                          'كيفية استخدام الصفحة',
+                          'Comment utiliser cette page',
+                        ),
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade800,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
 
+              SizedBox(height: 20),
+
+              // Contenu du guide
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHelpSection(
+                        icon: Icons.radio_button_checked,
+                        color: Colors.red,
+                        title: _getTranslatedText(
+                          '1. تحديد الأخطاء',
+                          '1. Sélectionner les erreurs',
+                        ),
+                        description: _getTranslatedText(
+                          'اضغط على الزر الأحمر "تحديد" لكل مجموعة. ستظهر لك قائمة بالأخطاء وأصول الأخطاء يمكنك اختيار ما يناسب المجموعة.',
+                          'Appuyez sur le bouton rouge "Sélectionner" pour chaque groupe. Une liste d\'erreurs et d\'origines d\'erreurs s\'affichera pour vous permettre de choisir.',
+                        ),
+                      ),
+                      
+                      _buildHelpSection(
+                        icon: Icons.auto_awesome,
+                        color: Colors.purple,
+                        title: _getTranslatedText(
+                          '2. توليد تمارين بالذكاء الاصطناعي',
+                          '2. Générer des exercices par IA',
+                        ),
+                        description: _getTranslatedText(
+                          'بعد تحديد الأخطاء، اضغط على النقاط الثلاث بجانب زر التحديد واختر "génère ai" لتوليد تمارين علاجية مخصصة.',
+                          'Après avoir sélectionné les erreurs, appuyez sur les trois points à côté du bouton de sélection et choisissez "génère ai" pour générer des exercices de remédiation personnalisés.',
+                        ),
+                      ),
+                      
+                      _buildHelpSection(
+                        icon: Icons.checklist,
+                        color: Colors.green,
+                        title: _getTranslatedText(
+                          '3. اختيار التمارين',
+                          '3. Choisir les exercices',
+                        ),
+                        description: _getTranslatedText(
+                          'اضغط على خيار "تحديد تمارينات" لاختيار التمارين التي أعجبتك من التمارين المولدة سابقاً، ثم احفظها بالزر البرتقالي.',
+                          'Appuyez sur l\'option "Sélectionner exercices" pour choisir les exercices que vous avez aimés parmi ceux générés précédemment, puis enregistrez-les avec le bouton orange.',
+                        ),
+                      ),
+                      
+                      _buildHelpSection(
+                        icon: Icons.print,
+                        color: Colors.orange,
+                        title: _getTranslatedText(
+                          '4. طباعة الملف',
+                          '4. Imprimer le fichier',
+                        ),
+                        description: _getTranslatedText(
+                          'بعد الانتهاء، يصبح ملف تشخيص الأخطاء جاهزاً. اختر خيار الطباعة من أيقونة الطابعة في الأعلى.',
+                          'Une fois terminé, le fichier de diagnostic des erreurs est prêt. Choisissez l\'option d\'impression à partir de l\'icône d\'imprimante en haut.',
+                        ),
+                      ),
+
+                      SizedBox(height: 20),
+
+                      // Résumé en étapes
+                      Container(
+                        padding: EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _getTranslatedText(
+                                '📋 ملخص سريع:',
+                                '📋 Résumé rapide:',
+                              ),
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue.shade800,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            _buildStepItem(
+                              number: '1',
+                              text: _getTranslatedText(
+                                'اضغط على تحديد → اختر الأخطاء → حفظ التحديدات',
+                                'Appuyez sur Sélectionner → Choisissez les erreurs → Enregistrer',
+                              ),
+                            ),
+                            _buildStepItem(
+                              number: '2',
+                              text: _getTranslatedText(
+                                'استخدم النقاط الثلاث لتوليد تمارين AI',
+                                'Utilisez les trois points pour générer des exercices IA',
+                              ),
+                            ),
+                            _buildStepItem(
+                              number: '3',
+                              text: _getTranslatedText(
+                                'حدد التمارين التي تعجبك واحفظها',
+                                'Sélectionnez les exercices que vous aimez et enregistrez',
+                              ),
+                            ),
+                            _buildStepItem(
+                              number: '4',
+                              text: _getTranslatedText(
+                                'اضغط على أيقونة الطباعة',
+                                'Appuyez sur l\'icône d\'impression',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      SizedBox(height: 16),
+
+                      // Note sur le crédit d'impression
+                      Container(
+                        padding: EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.amber.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              color: Colors.amber.shade800,
+                              size: 20,
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                _getTranslatedText(
+                                  '💰 رصيد الطباعة: $_remainingPrints/5. إذا كان حسابك نشطاً، الطباعة مجانية!',
+                                  '💰 Crédit d\'impression: $_remainingPrints/5. Si votre compte est actif, l\'impression est gratuite!',
+                                ),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.amber.shade800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              SizedBox(height: 20),
+
+              // Bouton de fermeture
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(Icons.check),
+                  label: Text(
+                    _getTranslatedText('فهمت', 'J\'ai compris'),
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+Widget _buildHelpSection({
+  required IconData icon,
+  required Color color,
+  required String title,
+  required String description,
+}) {
+  return Container(
+    margin: EdgeInsets.only(bottom: 20),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 24,
+          ),
+        ),
+        SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              SizedBox(height: 4),
+              Text(
+                description,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade700,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildStepItem({required String number, required String text}) {
+  return Padding(
+    padding: EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            color: Colors.blue.shade100,
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text(
+              number,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue.shade800,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey.shade800,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
   Future<void> _showModifyExerciseDialog({
     required String originalExercise,
     required String groupKey,
@@ -5100,105 +5500,109 @@ Future<List<Map<String, String>>> _generateAIPairs({
   //     ),
   //   );
   // }
-
-  @override
-  Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: _isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            _getTranslatedText('خطة العلاج وأصل الخطأ',
-                'Plan de traitement et origine de l\'erreur'),
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
+@override
+Widget build(BuildContext context) {
+  return Directionality(
+    textDirection: _isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
+    child: Scaffold(
+      appBar: AppBar(
+        title: Text(
+          _getTranslatedText('خطة العلاج وأصل الخطأ',
+              'Plan de traitement et origine de l\'erreur'),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.blue.shade700,
+        foregroundColor: Colors.white,
+        elevation: 2,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+         _buildPulsingHelpButton(),
+          // Afficher l'état du crédit d'impression
+          Container(
+            margin: EdgeInsets.symmetric(horizontal: 8),
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: _remainingPrints == 0
+                  ? Colors.red
+                  : _remainingPrints <= 2
+                      ? Colors.orange
+                      : Colors.green,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.print, size: 14, color: Colors.white),
+                SizedBox(width: 4),
+                Text(
+                  '$_remainingPrints/5',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ),
-          centerTitle: true,
-          backgroundColor: Colors.blue.shade700,
-          foregroundColor: Colors.white,
-          elevation: 2,
-          actions: [
-            // Afficher l'état du crédit d'impression
-            Container(
-              margin: EdgeInsets.symmetric(horizontal: 8),
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: _remainingPrints == 0
-                    ? Colors.red
-                    : _remainingPrints <= 2
-                        ? Colors.orange
-                        : Colors.green,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.print, size: 14, color: Colors.white),
-                  SizedBox(width: 4),
-                  Text(
-                    '$_remainingPrints/5',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+          Container(
+            margin: EdgeInsets.only(left: 8),
+            child: PopupMenuButton<String>(
+              icon: _isGeneratingReport
+                  ? SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Icon(Icons.print_outlined),
+              onSelected: (value) {
+                if (value == 'single') {
+                  _showPrintGroupSelection();
+                } else if (value == 'complete') {
+                  _generateCompleteReport();
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'single',
+                  child: Row(
+                    children: [
+                      Icon(Icons.group, color: Colors.blue.shade700),
+                      SizedBox(width: 8),
+                      Text(_getTranslatedText(
+                          'تقرير مجموعة واحدة', 'Rapport groupe unique')),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                PopupMenuItem(
+                  value: 'complete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.description, color: Colors.green.shade700),
+                      SizedBox(width: 8),
+                      Text(_getTranslatedText(
+                          'تقرير كامل', 'Rapport complet')),
+                    ],
+                  ),
+                ),
+              ],
+              tooltip:
+                  _getTranslatedText('طباعة التقرير', 'Imprimer le rapport'),
             ),
-            Container(
-              margin: EdgeInsets.only(left: 8),
-              child: PopupMenuButton<String>(
-                icon: _isGeneratingReport
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : Icon(Icons.print_outlined),
-                onSelected: (value) {
-                  if (value == 'single') {
-                    _showPrintGroupSelection();
-                  } else if (value == 'complete') {
-                    _generateCompleteReport();
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'single',
-                    child: Row(
-                      children: [
-                        Icon(Icons.group, color: Colors.blue.shade700),
-                        SizedBox(width: 8),
-                        Text(_getTranslatedText(
-                            'تقرير مجموعة واحدة', 'Rapport groupe unique')),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'complete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.description, color: Colors.green.shade700),
-                        SizedBox(width: 8),
-                        Text(_getTranslatedText(
-                            'تقرير كامل', 'Rapport complet')),
-                      ],
-                    ),
-                  ),
-                ],
-                tooltip:
-                    _getTranslatedText('طباعة التقرير', 'Imprimer le rapport'),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
+      ),
         body: _isLoading
             ? Center(
                 child: Column(

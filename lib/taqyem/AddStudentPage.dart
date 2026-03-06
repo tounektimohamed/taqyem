@@ -3826,12 +3826,15 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
         );
 
         // Convertir pour l'affichage - UTILISER LES NOTES DU SOUS-BARÈME SI DISPONIBLES
+        // Dans _loadSelectionsData, quand vous créez les sous-barèmes
         String displayValue = _getDisplayEvaluation(
           storedEvaluation ?? '( - - - )',
           selectedSystem,
           customNotes: sousBaremeCustomNotes.isNotEmpty
-              ? sousBaremeCustomNotes
-              : baremeCustomNotes, // Fallback sur les notes du barème
+              ? sousBaremeCustomNotes // Notes spécifiques au sous-barème
+              : baremeCustomNotes, // Sinon notes du barème parent
+          baremeId: doc.id,
+          sousBaremeId: sousDoc.id,
         );
 
         sousBaremes.add({

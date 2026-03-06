@@ -19,84 +19,152 @@ import 'package:cross_file/cross_file.dart';
 import 'dart:html' as html if (dart.library.html) 'dart:html';
 
 class PDFClassificationGenerator {
-  static Future<void> generateAndDownloadClassificationReport({
-    required BuildContext context,
-    required String profName,
-    required String matiereName,
-    required String className,
-    required String schoolName,
-    required String baremeName,
-    required String sousBaremeName,
-    required Map<String, List<Map<String, dynamic>>> groupedStudents,
-    required Map<String, List<Map<String, dynamic>>> groupSelections,
-    required Map<String, List<Map<String, dynamic>>> aiExercises,
-    required bool isFrenchInterface,
-    required bool isCompleteReport,
-    String? singleGroupName,
-    String? singleGroupKey,
-  }) async {
-    try {
-      // Charger le logo en base64
-      String logoBase64 = "";
-      try {
-        final logoBytes = await _loadImage('lib/assets/icons/me/ministere.png');
-        if (logoBytes.isNotEmpty) {
-          logoBase64 = base64Encode(logoBytes);
-        }
-      } catch (e) {
-        print('Logo non trouvé: $e');
-      }
+  
+static Future<void> generateAndDownloadClassificationReport({
+  required BuildContext context,
+  required String profName,
+  required String matiereName,
+  required String className,
+  required String schoolName,
+  required String baremeName,
+  required String sousBaremeName,
+  required Map<String, List<Map<String, dynamic>>> groupedStudents,
+  required Map<String, List<Map<String, dynamic>>> groupSelections,
+  required Map<String, List<Map<String, dynamic>>> aiExercises,
+  required bool isFrenchInterface,
+  required bool isCompleteReport,
+  String? singleGroupName,
+  String? singleGroupKey,
+}) async {
+  try {
+    // Afficher le dialogue de sélection des pages
+    final selectedPages = await _showPageSelectionDialog(
+      context: context,
+      profName: profName,
+      matiereName: matiereName,
+      className: className,
+      schoolName: schoolName,
+      baremeName: baremeName,
+      sousBaremeName: sousBaremeName,
+      groupedStudents: groupedStudents,
+      groupSelections: groupSelections,
+      aiExercises: aiExercises,
+      isFrenchInterface: isFrenchInterface,
+      isCompleteReport: isCompleteReport,
+    );
 
-      // Générer le contenu HTML complet
-      final htmlContent = _buildCompleteClassificationHTMLContent(
-        profName: profName,
-        matiereName: matiereName,
-        className: className,
-        schoolName: schoolName,
-        baremeName: baremeName,
-        sousBaremeName: sousBaremeName,
-        groupedStudents: groupedStudents,
-        groupSelections: groupSelections,
-        aiExercises: aiExercises,
-        isFrenchInterface: isFrenchInterface,
-        isCompleteReport: isCompleteReport,
-        singleGroupName: singleGroupName,
-        singleGroupKey: singleGroupKey,
-        logoBase64: logoBase64,
-      );
-
-      // Générer et télécharger le PDF
-      await _generateAndDownloadPDF(htmlContent, 'classification_report');
-    } catch (e) {
-      print('Erreur génération rapport classification: $e');
-      rethrow;
+    // Si l'utilisateur annule, ne pas générer le PDF
+    if (selectedPages == null) {
+      return;
     }
+
+    // Charger le logo en base64
+    String logoBase64 = "";
+    try {
+      final logoBytes = await _loadImage('lib/assets/icons/me/ministere.png');
+      if (logoBytes.isNotEmpty) {
+        logoBase64 = base64Encode(logoBytes);
+      }
+    } catch (e) {
+      print('Logo non trouvé: $e');
+    }
+
+    // Générer le contenu HTML avec les pages sélectionnées
+    final htmlContent = _buildCompleteClassificationHTMLContent(
+      profName: profName,
+      matiereName: matiereName,
+      className: className,
+      schoolName: schoolName,
+      baremeName: baremeName,
+      sousBaremeName: sousBaremeName,
+      groupedStudents: groupedStudents,
+      groupSelections: groupSelections,
+      aiExercises: aiExercises,
+      isFrenchInterface: isFrenchInterface,
+      isCompleteReport: isCompleteReport,
+      singleGroupName: singleGroupName,
+      singleGroupKey: singleGroupKey,
+      logoBase64: logoBase64,
+      selectedPages: selectedPages, // Nouveau paramètre
+    );
+
+    // Générer et télécharger le PDF
+    await _generateAndDownloadPDF(htmlContent, 'classification_report');
+  } catch (e) {
+    print('Erreur génération rapport classification: $e');
+    rethrow;
   }
+}
+static String _buildCompleteClassificationHTMLContent({
+  required String profName,
+  required String matiereName,
+  required String className,
+  required String schoolName,
+  required String baremeName,
+  required String sousBaremeName,
+  required Map<String, List<Map<String, dynamic>>> groupedStudents,
+  required Map<String, List<Map<String, dynamic>>> groupSelections,
+  required Map<String, List<Map<String, dynamic>>> aiExercises,
+  required bool isFrenchInterface,
+  required bool isCompleteReport,
+  String? singleGroupName,
+  String? singleGroupKey,
+  required String logoBase64,
+  required Map<String, bool> selectedPages, // NOUVEAU PARAMÈTRE
+}) {
+  final direction = isFrenchInterface ? 'ltr' : 'rtl';
+  final textAlign = isFrenchInterface ? 'left' : 'right';
+  final now = DateTime.now();
 
-  static String _buildCompleteClassificationHTMLContent({
-    required String profName,
-    required String matiereName,
-    required String className,
-    required String schoolName,
-    required String baremeName,
-    required String sousBaremeName,
-    required Map<String, List<Map<String, dynamic>>> groupedStudents,
-    required Map<String, List<Map<String, dynamic>>> groupSelections,
-    required Map<String, List<Map<String, dynamic>>> aiExercises,
-    required bool isFrenchInterface,
-    required bool isCompleteReport,
-    String? singleGroupName,
-    String? singleGroupKey,
-    required String logoBase64,
-  }) {
-    final direction = isFrenchInterface ? 'ltr' : 'rtl';
-    final textAlign = isFrenchInterface ? 'left' : 'right';
-    final now = DateTime.now();
+  // Traductions
+  final t = _getTranslations(isFrenchInterface);
 
-    // Traductions
-    final t = _getTranslations(isFrenchInterface);
+  String pagesHTML = '';
 
-    return '''
+  // Page de garde (si sélectionnée)
+  if (selectedPages['cover'] == true) {
+    pagesHTML += _buildCoverPageHTML(
+      profName: profName,
+      matiereName: matiereName,
+      className: className,
+      schoolName: schoolName,
+      baremeName: baremeName,
+      sousBaremeName: sousBaremeName,
+      logoBase64: logoBase64,
+      isFrenchInterface: isFrenchInterface,
+      isCompleteReport: isCompleteReport,
+      singleGroupName: singleGroupName,
+      now: now,
+    );
+  }
+  
+  // Page des informations générales (si sélectionnée)
+  if (selectedPages['general'] == true) {
+    pagesHTML += _buildGeneralInfoPageHTML(
+      profName: profName,
+      matiereName: matiereName,
+      className: className,
+      schoolName: schoolName,
+      baremeName: baremeName,
+      sousBaremeName: sousBaremeName,
+      isFrenchInterface: isFrenchInterface,
+      groupedStudents: groupedStudents,
+      now: now,
+    );
+  }
+  
+  // Pages des groupes (selon les sélections)
+  pagesHTML += _buildGroupsPagesHTML(
+    groupedStudents: groupedStudents,
+    groupSelections: groupSelections,
+    aiExercises: aiExercises,
+    isFrenchInterface: isFrenchInterface,
+    isCompleteReport: isCompleteReport,
+    singleGroupKey: singleGroupKey,
+    selectedPages: selectedPages, // NOUVEAU PARAMÈTRE
+  );
+
+  return '''
 <!DOCTYPE html>
 <html lang="${isFrenchInterface ? 'fr' : 'ar'}" dir="$direction">
 <head>
@@ -495,49 +563,12 @@ class PDFClassificationGenerator {
 </head>
 <body>
     <div class="report-container">
-        <!-- Page de garde -->
-        ${_buildCoverPageHTML(
-          profName: profName,
-          matiereName: matiereName,
-          className: className,
-          schoolName: schoolName,
-          baremeName: baremeName,
-          sousBaremeName: sousBaremeName,
-          logoBase64: logoBase64,
-          isFrenchInterface: isFrenchInterface,
-          isCompleteReport: isCompleteReport,
-          singleGroupName: singleGroupName,
-          now: now,
-        )}
-        
-        <!-- Page des informations générales -->
-        ${_buildGeneralInfoPageHTML(
-          profName: profName,
-          matiereName: matiereName,
-          className: className,
-          schoolName: schoolName,
-          baremeName: baremeName,
-          sousBaremeName: sousBaremeName,
-          isFrenchInterface: isFrenchInterface,
-          groupedStudents: groupedStudents,
-          now: now,
-        )}
-        
-        <!-- Pages des groupes avec exercices AI -->
-        ${_buildGroupsPagesHTML(
-          groupedStudents: groupedStudents,
-          groupSelections: groupSelections,
-          aiExercises: aiExercises,
-          isFrenchInterface: isFrenchInterface,
-          isCompleteReport: isCompleteReport,
-          singleGroupKey: singleGroupKey,
-        )}
+        $pagesHTML
     </div>
 </body>
 </html>
     ''';
-  }
-
+}
   // Page de garde
   static String _buildCoverPageHTML({
     required String profName,
@@ -701,167 +732,176 @@ class PDFClassificationGenerator {
     ''';
   }
 
-  // Pages des groupes
-  static String _buildGroupsPagesHTML({
-    required Map<String, List<Map<String, dynamic>>> groupedStudents,
-    required Map<String, List<Map<String, dynamic>>> groupSelections,
-    required Map<String, List<Map<String, dynamic>>> aiExercises,
-    required bool isFrenchInterface,
-    required bool isCompleteReport,
-    String? singleGroupKey,
-  }) {
-    final t = _getTranslations(isFrenchInterface);
-    String pagesHTML = '';
+static String _buildGroupsPagesHTML({
+  required Map<String, List<Map<String, dynamic>>> groupedStudents,
+  required Map<String, List<Map<String, dynamic>>> groupSelections,
+  required Map<String, List<Map<String, dynamic>>> aiExercises,
+  required bool isFrenchInterface,
+  required bool isCompleteReport,
+  String? singleGroupKey,
+  required Map<String, bool> selectedPages, // NOUVEAU PARAMÈTRE
+}) {
+  final t = _getTranslations(isFrenchInterface);
+  String pagesHTML = '';
 
-    // Déterminer quels groupes inclure
-    List<String> groupsToInclude = [];
+  // Déterminer quels groupes inclure
+  List<String> groupsToInclude = [];
 
-    if (isCompleteReport) {
-      groupsToInclude = [
-        t['group_treatment']!,
-        t['group_support']!,
-        t['group_excellence']!
-      ];
-    } else if (singleGroupKey != null) {
-      switch (singleGroupKey) {
-        case 'treatment':
+  if (isCompleteReport) {
+    // N'inclure que les groupes sélectionnés
+    if (selectedPages['treatment'] == true) {
+      groupsToInclude.add(t['group_treatment']!);
+    }
+    if (selectedPages['support'] == true) {
+      groupsToInclude.add(t['group_support']!);
+    }
+    if (selectedPages['excellence'] == true) {
+      groupsToInclude.add(t['group_excellence']!);
+    }
+  } else if (singleGroupKey != null) {
+    // Pour un rapport simple groupe, n'inclure que le groupe spécifique s'il est sélectionné
+    switch (singleGroupKey) {
+      case 'treatment':
+        if (selectedPages['treatment'] == true) {
           groupsToInclude = [t['group_treatment']!];
-          break;
-        case 'support':
+        }
+        break;
+      case 'support':
+        if (selectedPages['support'] == true) {
           groupsToInclude = [t['group_support']!];
-          break;
-        case 'excellence':
+        }
+        break;
+      case 'excellence':
+        if (selectedPages['excellence'] == true) {
           groupsToInclude = [t['group_excellence']!];
-          break;
-      }
+        }
+        break;
     }
-
-    for (final groupName in groupsToInclude) {
-      final students = groupedStudents[groupName] ?? [];
-      final selections =
-          _getGroupSelectionsForGroup(groupName, groupSelections, t);
-      
-      // Récupérer les exercices AI pour ce groupe
-      final groupKey = _getGroupKeyFromName(groupName, t);
-      final groupAIExercises = aiExercises[groupKey] ?? [];
-
-      if (students.isEmpty && selections.isEmpty && groupAIExercises.isEmpty) {
-        continue;
-      }
-
-      // Déterminer la classe CSS selon le groupe
-      String groupClass = '';
-      String groupIcon = '';
-
-      if (groupName == t['group_treatment']!) {
-        groupClass = 'group-treatment';
-        groupIcon = '🏥';
-      } else if (groupName == t['group_support']!) {
-        groupClass = 'group-support';
-        groupIcon = '🤝';
-      } else {
-        groupClass = 'group-excellence';
-        groupIcon = '🏆';
-      }
-
-      final solutions =
-          selections.where((item) => item['isProblem'] == false).toList();
-      final problems =
-          selections.where((item) => item['isProblem'] == true).toList();
-
-      pagesHTML += '''
-      <div class="group-page $groupClass">
-          <div class="group-header">
-              <div>
-                  <div class="group-title">$groupIcon $groupName</div>
-              </div>
-              <div class="group-stats">
-                  ${students.length} ${t['students']!}
-              </div>
-          </div>
-          
-          <!-- Liste des étudiants -->
-          ${students.isNotEmpty ? '''
-          <div class="students-section">
-              <h3 class="section-subtitle">${t['students_list']!}</h3>
-              <div class="students-list-container">
-                  ${students.asMap().entries.map((entry) {
-                    final index = entry.key + 1;
-                    final student = entry.value;
-                    return '''
-                  <div class="list-item">
-                      <span class="item-number">$index.</span>
-                      <span class="item-name">${student['name'] ?? t['unknown']!}</span>
-                  </div>
-                  ''';
-                  }).join('')}
-              </div>
-          </div>
-          ''' : ''}
-          
-          <!-- Problèmes identifiés -->
-          ${problems.isNotEmpty ? '''
-          <div class="problems-section">
-              <h3 class="section-subtitle">${t['problems_title']!} (${problems.length})</h3>
-              <ul class="items-list">
-                  ${problems.map((problem) => '''
-                  <li class="item-card problem-item">
-                      <div class="item-text">${problem['text']}</div>
-                  </li>
-                  ''').join('')}
-              </ul>
-          </div>
-          ''' : ''}
-          
-          <!-- Solutions proposées -->
-          ${solutions.isNotEmpty ? '''
-          <div class="solutions-section">
-              <h3 class="section-subtitle">${t['solutions_title']!} (${solutions.length})</h3>
-              <ul class="items-list">
-                  ${solutions.map((solution) => '''
-                  <li class="item-card solution-item">
-                      <div class="item-text">${solution['text']}</div>
-                  </li>
-                  ''').join('')}
-              </ul>
-          </div>
-          ''' : ''}
-          
-          <!-- Exercices AI -->
-          ${groupAIExercises.isNotEmpty ? '''
-          <div class="ai-exercises-section">
-              <div class="ai-header">
-                  <span>🤖</span>
-                  <span>${t['ai_exercises']!}</span>
-                  <span class="ai-badge">${groupAIExercises.length}</span>
-              </div>
-              
-              ${groupAIExercises.map((exercise) => '''
-              <div class="ai-exercise-card">
-                  <div class="ai-exercise-header">
-                      <span>📝 ${exercise['modifiedBaremeName'] ?? t['ai_exercise']!}</span>
-                      <span class="ai-badge">${t['ai_generated']!}</span>
-                  </div>
-                  <div class="ai-exercise-content">
-                      ${exercise['aiResponse']?.replaceAll('\n', '<br>') ?? ''}
-                  </div>
-                  <div class="ai-metadata">
-                      ${_formatDate(exercise['createdAt'], isFrenchInterface)}
-                  </div>
-              </div>
-              ''').join('')}
-          </div>
-          ''' : ''}
-          
-          <div class="report-footer">
-              <p class="no-print">${isFrenchInterface ? 'Page - Groupe $groupName' : 'الصفحة - مجموعة $groupName'}</p>
-          </div>
-      </div>
-      ''';
-    }
-
-    return pagesHTML;
   }
+
+  for (final groupName in groupsToInclude) {
+    final students = groupedStudents[groupName] ?? [];
+    final selections = _getGroupSelectionsForGroup(groupName, groupSelections, t);
+    
+    // Récupérer les exercices AI pour ce groupe
+    final groupKey = _getGroupKeyFromName(groupName, t);
+    final groupAIExercises = aiExercises[groupKey] ?? [];
+
+    if (students.isEmpty && selections.isEmpty && groupAIExercises.isEmpty) {
+      continue;
+    }
+
+    // Déterminer la classe CSS selon le groupe
+    String groupClass = '';
+    String groupIcon = '';
+
+    if (groupName == t['group_treatment']!) {
+      groupClass = 'group-treatment';
+      groupIcon = '🏥';
+    } else if (groupName == t['group_support']!) {
+      groupClass = 'group-support';
+      groupIcon = '🤝';
+    } else {
+      groupClass = 'group-excellence';
+      groupIcon = '🏆';
+    }
+
+    final solutions = selections.where((item) => item['isProblem'] == false).toList();
+    final problems = selections.where((item) => item['isProblem'] == true).toList();
+
+    pagesHTML += '''
+    <div class="group-page $groupClass">
+        <div class="group-header">
+            <div>
+                <div class="group-title">$groupIcon $groupName</div>
+            </div>
+            <div class="group-stats">
+                ${students.length} ${t['students']!}
+            </div>
+        </div>
+        
+        <!-- Liste des étudiants -->
+        ${students.isNotEmpty ? '''
+        <div class="students-section">
+            <h3 class="section-subtitle">${t['students_list']!}</h3>
+            <div class="students-list-container">
+                ${students.asMap().entries.map((entry) {
+                  final index = entry.key + 1;
+                  final student = entry.value;
+                  return '''
+                <div class="list-item">
+                    <span class="item-number">$index.</span>
+                    <span class="item-name">${student['name'] ?? t['unknown']!}</span>
+                </div>
+                ''';
+                }).join('')}
+            </div>
+        </div>
+        ''' : ''}
+        
+        <!-- Problèmes identifiés -->
+        ${problems.isNotEmpty ? '''
+        <div class="problems-section">
+            <h3 class="section-subtitle">${t['problems_title']!} (${problems.length})</h3>
+            <ul class="items-list">
+                ${problems.map((problem) => '''
+                <li class="item-card problem-item">
+                    <div class="item-text">${problem['text']}</div>
+                </li>
+                ''').join('')}
+            </ul>
+        </div>
+        ''' : ''}
+        
+        <!-- Solutions proposées -->
+        ${solutions.isNotEmpty ? '''
+        <div class="solutions-section">
+            <h3 class="section-subtitle">${t['solutions_title']!} (${solutions.length})</h3>
+            <ul class="items-list">
+                ${solutions.map((solution) => '''
+                <li class="item-card solution-item">
+                    <div class="item-text">${solution['text']}</div>
+                </li>
+                ''').join('')}
+            </ul>
+        </div>
+        ''' : ''}
+        
+        <!-- Exercices AI -->
+        ${groupAIExercises.isNotEmpty ? '''
+        <div class="ai-exercises-section">
+            <div class="ai-header">
+                <span>🤖</span>
+                <span>${t['ai_exercises']!}</span>
+                <span class="ai-badge">${groupAIExercises.length}</span>
+            </div>
+            
+            ${groupAIExercises.map((exercise) => '''
+            <div class="ai-exercise-card">
+                <div class="ai-exercise-header">
+                    <span>📝 ${exercise['modifiedBaremeName'] ?? t['ai_exercise']!}</span>
+                    <span class="ai-badge">${t['ai_generated']!}</span>
+                </div>
+                <div class="ai-exercise-content">
+                    ${exercise['aiResponse']?.replaceAll('\n', '<br>') ?? ''}
+                </div>
+                <div class="ai-metadata">
+                    ${_formatDate(exercise['createdAt'], isFrenchInterface)}
+                </div>
+            </div>
+            ''').join('')}
+        </div>
+        ''' : ''}
+        
+        <div class="report-footer">
+            <p class="no-print">${isFrenchInterface ? 'Page - Groupe $groupName' : 'الصفحة - مجموعة $groupName'}</p>
+        </div>
+    </div>
+    ''';
+  }
+
+  return pagesHTML;
+}
 
   // Méthode utilitaire pour formater la date
   static String _formatDate(dynamic timestamp, bool isFrenchInterface) {
@@ -1120,5 +1160,522 @@ class PDFClassificationGenerator {
       print('Erreur chargement image $path: $e');
       return Uint8List(0);
     }
+  }
+
+static Future<Map<String, bool>?> _showPageSelectionDialog({
+  required BuildContext context,
+  required String profName,
+  required String matiereName,
+  required String className,
+  required String schoolName,
+  required String baremeName,
+  required String sousBaremeName,
+  required Map<String, List<Map<String, dynamic>>> groupedStudents,
+  required Map<String, List<Map<String, dynamic>>> groupSelections,
+  required Map<String, List<Map<String, dynamic>>> aiExercises,
+  required bool isFrenchInterface,
+  required bool isCompleteReport,
+}) async {
+  return await showDialog<Map<String, bool>>(
+    context: context,
+    builder: (context) => PageSelectionDialog(
+      profName: profName,
+      matiereName: matiereName,
+      className: className,
+      schoolName: schoolName,
+      baremeName: baremeName,
+      sousBaremeName: sousBaremeName,
+      groupedStudents: groupedStudents,
+      groupSelections: groupSelections,
+      aiExercises: aiExercises,
+      isFrenchInterface: isFrenchInterface,
+      isCompleteReport: isCompleteReport,
+    ),
+  );
+}
+
+}
+
+// Ajoutez cette classe après PDFClassificationGenerator
+class PageSelectionDialog extends StatefulWidget {
+  final String profName;
+  final String matiereName;
+  final String className;
+  final String schoolName;
+  final String baremeName;
+  final String sousBaremeName;
+  final Map<String, List<Map<String, dynamic>>> groupedStudents;
+  final Map<String, List<Map<String, dynamic>>> groupSelections;
+  final Map<String, List<Map<String, dynamic>>> aiExercises;
+  final bool isFrenchInterface;
+  final bool isCompleteReport;
+
+  const PageSelectionDialog({
+    Key? key,
+    required this.profName,
+    required this.matiereName,
+    required this.className,
+    required this.schoolName,
+    required this.baremeName,
+    required this.sousBaremeName,
+    required this.groupedStudents,
+    required this.groupSelections,
+    required this.aiExercises,
+    required this.isFrenchInterface,
+    required this.isCompleteReport,
+  }) : super(key: key);
+
+  @override
+  _PageSelectionDialogState createState() => _PageSelectionDialogState();
+}
+
+class _PageSelectionDialogState extends State<PageSelectionDialog> {
+  final Map<String, bool> _selectedPages = {
+    'cover': true,
+    'general': true,
+    'treatment': true,
+    'support': true,
+    'excellence': true,
+  };
+  
+  bool _selectAll = true;
+  late Map<String, String> _translations;
+
+  @override
+  void initState() {
+    super.initState();
+    _translations = _getPageTranslations(widget.isFrenchInterface);
+    
+    // Initialiser les sélections en fonction des groupes disponibles
+    if (widget.isCompleteReport) {
+      _selectedPages['cover'] = true;
+      _selectedPages['general'] = true;
+      
+      // Obtenir les noms des groupes selon la langue
+      final treatmentName = _getGroupNameByKey('treatment', widget.isFrenchInterface);
+      final supportName = _getGroupNameByKey('support', widget.isFrenchInterface);
+      final excellenceName = _getGroupNameByKey('excellence', widget.isFrenchInterface);
+      
+      _selectedPages['treatment'] = widget.groupedStudents.containsKey(treatmentName) || 
+                                    (widget.groupSelections['treatment']?.isNotEmpty ?? false) ||
+                                    (widget.aiExercises['treatment']?.isNotEmpty ?? false);
+                                    
+      _selectedPages['support'] = widget.groupedStudents.containsKey(supportName) ||
+                                 (widget.groupSelections['support']?.isNotEmpty ?? false) ||
+                                 (widget.aiExercises['support']?.isNotEmpty ?? false);
+                                 
+      _selectedPages['excellence'] = widget.groupedStudents.containsKey(excellenceName) ||
+                                    (widget.groupSelections['excellence']?.isNotEmpty ?? false) ||
+                                    (widget.aiExercises['excellence']?.isNotEmpty ?? false);
+    } else {
+      // Pour un rapport simple groupe, ne montrer que les pages pertinentes
+      _selectedPages['cover'] = true;
+      _selectedPages['general'] = true;
+      
+      // Le groupe spécifique sera toujours inclus
+      if (widget.groupSelections.containsKey('treatment') && 
+          widget.groupSelections['treatment']!.isNotEmpty) {
+        _selectedPages['treatment'] = true;
+        _selectedPages['support'] = false;
+        _selectedPages['excellence'] = false;
+      } else if (widget.groupSelections.containsKey('support') && 
+                widget.groupSelections['support']!.isNotEmpty) {
+        _selectedPages['treatment'] = false;
+        _selectedPages['support'] = true;
+        _selectedPages['excellence'] = false;
+      } else {
+        _selectedPages['treatment'] = false;
+        _selectedPages['support'] = false;
+        _selectedPages['excellence'] = true;
+      }
+    }
+    
+    // Mettre à jour selectAll
+    _updateSelectAll();
+  }
+
+  String _getGroupNameByKey(String key, bool isFrench) {
+    if (isFrench) {
+      switch (key) {
+        case 'treatment': return 'Groupe de traitement';
+        case 'support': return 'Groupe de soutien';
+        case 'excellence': return "Groupe d'excellence";
+        default: return '';
+      }
+    } else {
+      switch (key) {
+        case 'treatment': return 'مجموعة العلاج';
+        case 'support': return 'مجموعة الدعم';
+        case 'excellence': return 'مجموعة التميز';
+        default: return '';
+      }
+    }
+  }
+
+  void _updateSelectAll() {
+    _selectAll = _selectedPages.values.every((selected) => selected);
+  }
+
+  void _toggleSelectAll(bool? value) {
+    setState(() {
+      _selectAll = value ?? true;
+      for (var key in _selectedPages.keys) {
+        _selectedPages[key] = _selectAll;
+      }
+    });
+  }
+
+  String _getPageDescription(String pageKey) {
+    switch (pageKey) {
+      case 'cover':
+        return _translations['cover_desc']!;
+      case 'general':
+        return _translations['general_desc']!;
+      case 'treatment':
+        return _translations['treatment_desc']!;
+      case 'support':
+        return _translations['support_desc']!;
+      case 'excellence':
+        return _translations['excellence_desc']!;
+      default:
+        return '';
+    }
+  }
+
+  int _getPageItemCount(String pageKey) {
+    switch (pageKey) {
+      case 'cover':
+        return 1;
+      case 'general':
+        return 1;
+      case 'treatment':
+        int count = widget.groupedStudents[_getGroupNameByKey('treatment', widget.isFrenchInterface)]?.length ?? 0;
+        count += widget.groupSelections['treatment']?.length ?? 0;
+        count += widget.aiExercises['treatment']?.length ?? 0;
+        return count;
+      case 'support':
+        int count = widget.groupedStudents[_getGroupNameByKey('support', widget.isFrenchInterface)]?.length ?? 0;
+        count += widget.groupSelections['support']?.length ?? 0;
+        count += widget.aiExercises['support']?.length ?? 0;
+        return count;
+      case 'excellence':
+        int count = widget.groupedStudents[_getGroupNameByKey('excellence', widget.isFrenchInterface)]?.length ?? 0;
+        count += widget.groupSelections['excellence']?.length ?? 0;
+        count += widget.aiExercises['excellence']?.length ?? 0;
+        return count;
+      default:
+        return 0;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+        ),
+        padding: EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // En-tête
+            Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.blue.shade600, Colors.purple.shade600],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    Icons.pages,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _translations['title']!,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue.shade800,
+                        ),
+                      ),
+                      Text(
+                        _translations['subtitle']!,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+
+            SizedBox(height: 24),
+
+            // Option Tout sélectionner
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                children: [
+                  Checkbox(
+                    value: _selectAll,
+                    onChanged: _toggleSelectAll,
+                    activeColor: Colors.blue.shade700,
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _translations['select_all']!,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade800,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '${_selectedPages.values.where((v) => v).length}/${_selectedPages.length}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 20),
+
+            // Liste des pages
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    _buildPageOption(
+                      key: 'cover',
+                      icon: Icons.article,
+                      color: Colors.purple,
+                    ),
+                    _buildPageOption(
+                      key: 'general',
+                      icon: Icons.info,
+                      color: Colors.blue,
+                    ),
+                    _buildPageOption(
+                      key: 'treatment',
+                      icon: Icons.medical_services,
+                      color: Colors.red,
+                    ),
+                    _buildPageOption(
+                      key: 'support',
+                      icon: Icons.support,
+                      color: Colors.orange,
+                    ),
+                    _buildPageOption(
+                      key: 'excellence',
+                      icon: Icons.emoji_events,
+                      color: Colors.green,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            SizedBox(height: 24),
+
+            // Boutons d'action
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.cancel),
+                    label: Text(_translations['cancel']!),
+                    style: OutlinedButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context, _selectedPages);
+                    },
+                    icon: Icon(Icons.check_circle),
+                    label: Text(_translations['generate']!),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade700,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPageOption({
+    required String key,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: _selectedPages[key]! ? color : Colors.grey.shade300,
+          width: _selectedPages[key]! ? 2 : 1,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        color: _selectedPages[key]! ? color.withOpacity(0.05) : null,
+      ),
+      child: CheckboxListTile(
+        value: _selectedPages[key],
+        onChanged: (value) {
+          setState(() {
+            _selectedPages[key] = value!;
+            _updateSelectAll();
+          });
+        },
+        activeColor: color,
+        checkboxShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _translations[key]!,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: _selectedPages[key]! ? color : Colors.grey.shade700,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    _getPageDescription(key),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${_getPageItemCount(key)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
+        ),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      ),
+    );
+  }
+
+  static Map<String, String> _getPageTranslations(bool isFrench) {
+    return isFrench
+        ? {
+            'title': 'Sélectionner les pages à imprimer',
+            'subtitle': 'Choisissez les sections à inclure dans le rapport',
+            'select_all': 'Tout sélectionner',
+            'cancel': 'Annuler',
+            'generate': 'Générer le PDF',
+            'cover': 'Page de garde',
+            'cover_desc': 'Informations générales et en-tête',
+            'general': 'Informations générales',
+            'general_desc': 'Statistiques et vue d\'ensemble',
+            'treatment': 'Groupe de traitement',
+            'treatment_desc': 'Élèves, problèmes et exercices',
+            'support': 'Groupe de soutien',
+            'support_desc': 'Élèves, problèmes et exercices',
+            'excellence': "Groupe d'excellence",
+            'excellence_desc': 'Élèves, problèmes et exercices',
+          }
+        : {
+            'title': 'اختر الصفحات للطباعة',
+            'subtitle': 'اختر الأقسام التي تريد تضمينها في التقرير',
+            'select_all': 'تحديد الكل',
+            'cancel': 'إلغاء',
+            'generate': 'إنشاء PDF',
+            'cover': 'صفحة الغلاف',
+            'cover_desc': 'معلومات عامة ورأس التقرير',
+            'general': 'معلومات عامة',
+            'general_desc': 'إحصائيات ونظرة عامة',
+            'treatment': 'مجموعة العلاج',
+            'treatment_desc': 'التلاميذ، المشاكل والتمارين',
+            'support': 'مجموعة الدعم',
+            'support_desc': 'التلاميذ، المشاكل والتمارين',
+            'excellence': 'مجموعة التميز',
+            'excellence_desc': 'التلاميذ، المشاكل والتمارين',
+          };
   }
 }

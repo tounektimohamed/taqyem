@@ -5,6 +5,7 @@ import 'dart:html' as html if (dart.library.html) 'dart:html';
 import 'dart:math';
 import 'dart:math' as math;
 import 'dart:typed_data';
+import 'package:Taqyem/taqyem/iphone.dart';
 import 'package:Taqyem/taqyem/payment/PaymentPage.dart';
 import 'package:Taqyem/taqyem/pdf_report_generator.dart';
 import 'package:Taqyem/taqyem/tableau_pdf.dart';
@@ -21,8 +22,6 @@ import 'package:intl/intl.dart' show DateFormat;
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-
 
 // ============================================================
 // WeeklyWarningService - Gestion de l'affichage hebdomadaire
@@ -96,8 +95,7 @@ class _WeeklyWarningDialogState extends State<WeeklyWarningDialog>
     super.dispose();
   }
 
-  String _t(String ar, String fr) =>
-      widget.isFrenchInterface ? fr : ar;
+  String _t(String ar, String fr) => widget.isFrenchInterface ? fr : ar;
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +105,8 @@ class _WeeklyWarningDialogState extends State<WeeklyWarningDialog>
         position: _slideAnim,
         child: Dialog(
           backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+          insetPadding:
+              const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -126,7 +125,8 @@ class _WeeklyWarningDialogState extends State<WeeklyWarningDialog>
                 // ── Header coloré ─────────────────────────────────────
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -326,9 +326,8 @@ class _InfoCard extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment: isFrench
-                  ? CrossAxisAlignment.start
-                  : CrossAxisAlignment.end,
+              crossAxisAlignment:
+                  isFrench ? CrossAxisAlignment.start : CrossAxisAlignment.end,
               children: [
                 Text(
                   title,
@@ -359,6 +358,7 @@ class _InfoCard extends StatelessWidget {
     );
   }
 }
+
 // N'oubliez pas d'ajouter l'import pour SharedPreferences
 // Ajoutez en haut du fichier avec les autres imports:
 // import 'package:shared_preferences/shared_preferences.dart';
@@ -636,6 +636,25 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   String _selectedTrimestre = 'الأول';
   String _selectedPeriode = '';
   String _selectedEvaluationType = 'تقييم';
+  // دالة للكشف إذا كان الجهاز آيفون
+  bool _isIPhone() {
+    // في Flutter web، يمكننا الكشف عن نظام التشغيل
+    if (kIsWeb) {
+      final userAgent = html.window.navigator.userAgent.toLowerCase();
+      // الكشف عن iPhone في متصفح الويب
+      return userAgent.contains('iphone') ||
+          userAgent.contains('ipad') ||
+          (userAgent.contains('mac') &&
+              userAgent.contains('safari') &&
+              !userAgent.contains('android'));
+    } else {
+      // للتطبيقات المحمولة، يمكن استخدام Platform.isIOS
+      // لكن هذا يتطلب إضافة import 'dart:io' show Platform;
+      // return Platform.isIOS;
+      return false; // مؤقتاً، يمكنك تعديله حسب الحاجة
+    }
+  }
+
   String _getDomaineForMatiere(String matiereName, bool isFrenchInterface) {
     // Définir les domaines en arabe
     final Map<String, String> domainesArabic = {
@@ -750,22 +769,76 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 // Fonction pour convertir la valeur d'affichage en valeur stockée selon le système
 // Dans la classe _DynamicTablePageState, ajoutez ces méthodes :
 
-// Fonction pour convertir la valeur d'affichage en valeur stockée selon le système
+// Convertit la valeur affichée en valeur stockée
   String _getMappedEvaluation(String displayValue, String system,
       {List<String>? customNotes}) {
-    if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
-      final index = customNotes.indexOf(displayValue);
-      if (index == -1) return '( - - - )';
-      if (index == 0) return '( - - - )';
-      if (index == customNotes.length - 1) return '( + + + )';
-      if (index <= customNotes.length ~/ 2) return '( + - - )';
-      return '( + + - )';
+    print(
+        '🎯 _getMappedEvaluation - displayValue: "$displayValue", system: "$system", customNotes: $customNotes');
+
+    // Si c'est "غائب"
+    if (displayValue == 'غائب') {
+      return 'غائب';
     }
 
-    switch (system) {
-      case 'character':
-        return displayValue;
+    // SYSTÈME CUSTOM
+    if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
+      // Normaliser les notes comme avant
+      List<String> normalizedNotes = List.from(customNotes);
+      while (normalizedNotes.length < 4) {
+        if (normalizedNotes.length == 2) {
+          normalizedNotes = [
+            normalizedNotes[0],
+            normalizedNotes[0],
+            normalizedNotes[1],
+            normalizedNotes[1],
+          ];
+        } else if (normalizedNotes.length == 3) {
+          normalizedNotes = [
+            normalizedNotes[0],
+            normalizedNotes[1],
+            normalizedNotes[1],
+            normalizedNotes[2],
+          ];
+        } else {
+          normalizedNotes = List.filled(4, normalizedNotes[0]);
+        }
+      }
 
+      // Trouver l'index de la valeur affichée dans les notes normalisées
+      final index = normalizedNotes.indexOf(displayValue);
+
+      if (index != -1) {
+        // Mapper l'index vers la valeur stockée
+        if (index == 0) return '( - - - )';
+        if (index == 1) return '( + - - )';
+        if (index == 2) return '( + + - )';
+        if (index == 3) return '( + + + )';
+      }
+
+      // Si la valeur n'est pas trouvée, essayer de la parser comme nombre
+      final numValue = double.tryParse(displayValue);
+      if (numValue != null) {
+        // Pour les valeurs numériques, mapper proportionnellement
+        final maxNote = double.tryParse(normalizedNotes.last) ?? 1.0;
+        final ratio = numValue / maxNote;
+
+        if (ratio < 0.25) return '( - - - )';
+        if (ratio < 0.5) return '( + - - )';
+        if (ratio < 0.75) return '( + + - )';
+        return '( + + + )';
+      }
+
+      // Par défaut, retourner la plus basse
+      return '( - - - )';
+    }
+
+    // SYSTÈME CHARACTER
+    if (system == 'character') {
+      return displayValue;
+    }
+
+    // SYSTÈMES NUMÉRIQUES STANDARDS
+    switch (system) {
       case 'note_0_1_5':
         switch (displayValue) {
           case '0':
@@ -809,103 +882,237 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         }
 
       default:
-        return '( - - - )';
+        return displayValue;
     }
   }
-// Ajouter cette méthode dans _DynamicTablePageState
-Future<void> _checkAndShowWeeklyWarning() async {
-  if (!_isMounted) return;
-  
-  final shouldShow = await WeeklyWarningService.shouldShowWarning();
-  
-  if (shouldShow) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_isMounted) return;
-      
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => WeeklyWarningDialog(
-          isFrenchInterface: _isFrenchInterface,
-          onClose: () async {
-            await WeeklyWarningService.markWarningShown();
-          },
-        ),
-      );
-    });
+
+// Fonction pour charger TOUTES les notes personnalisées (globales + par barème)
+  Future<Map<String, dynamic>> _loadAllCustomNotesForFlask(
+      String classId, String matiereId) async {
+    Map<String, dynamic> allCustomNotes = {
+      'global': [],
+      'baremes': {}, // Map<baremeId, List<String>>
+      'sousBaremes': {}, // Map<sousBaremeId, List<String>>
+    };
+
+    try {
+      // 1. Charger les notes globales
+      final globalDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('bareme_custom_notes')
+          .doc('$classId-$matiereId')
+          .get();
+
+      if (globalDoc.exists && globalDoc.data()?['notes'] != null) {
+        allCustomNotes['global'] =
+            List<String>.from(globalDoc.data()!['notes']);
+        print('🌍 Notes globales chargées: ${allCustomNotes['global']}');
+      }
+
+      // 2. Charger les notes des barèmes
+      final selectionsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(classId)
+          .collection(matiereId)
+          .get();
+
+      for (final baremeDoc in selectionsSnapshot.docs) {
+        final baremeId = baremeDoc.id;
+
+        // Notes spécifiques au barème
+        final baremeCustomDoc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('bareme_custom_notes')
+            .doc('$classId-$matiereId-$baremeId')
+            .get();
+
+        if (baremeCustomDoc.exists &&
+            baremeCustomDoc.data()?['notes'] != null) {
+          allCustomNotes['baremes'][baremeId] =
+              List<String>.from(baremeCustomDoc.data()!['notes']);
+          print(
+              '📌 Notes barème $baremeId: ${allCustomNotes['baremes'][baremeId]}');
+        }
+
+        // Notes des sous-barèmes
+        final sousBaremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('selections')
+            .doc(classId)
+            .collection(matiereId)
+            .doc(baremeId)
+            .collection('sousBaremes')
+            .get();
+
+        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+          final sousBaremeId = sousBaremeDoc.id;
+
+          final sousCustomDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser!.uid)
+              .collection('sous_bareme_custom_notes')
+              .doc('$classId-$matiereId-$baremeId-$sousBaremeId')
+              .get();
+
+          if (sousCustomDoc.exists && sousCustomDoc.data()?['notes'] != null) {
+            allCustomNotes['sousBaremes'][sousBaremeId] =
+                List<String>.from(sousCustomDoc.data()!['notes']);
+            print(
+                '🔹 Notes sous-barème $sousBaremeId: ${allCustomNotes['sousBaremes'][sousBaremeId]}');
+          }
+        }
+      }
+    } catch (e) {
+      print('❌ Erreur chargement notes custom: $e');
+    }
+
+    return allCustomNotes;
   }
-}
+
+// Ajouter cette méthode dans _DynamicTablePageState
+  Future<void> _checkAndShowWeeklyWarning() async {
+    if (!_isMounted) return;
+
+    final shouldShow = await WeeklyWarningService.shouldShowWarning();
+
+    if (shouldShow) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_isMounted) return;
+
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => WeeklyWarningDialog(
+            isFrenchInterface: _isFrenchInterface,
+            onClose: () async {
+              await WeeklyWarningService.markWarningShown();
+            },
+          ),
+        );
+      });
+    }
+  }
+
 // Fonction pour convertir la valeur stockée en valeur d'affichage selon le système
-
+// VERSION CORRIGÉE - Gère tous les types de notes personnalisées
   String _getDisplayEvaluation(String storedValue, String system,
-      {List<String>? customNotes}) {
-    // DEBUG
-    print('🎯 Conversion: $storedValue -> système: $system');
+      {List<String>? customNotes, String? baremeId, String? sousBaremeId}) {
+    // Debug pour voir ce qui se passe
+    print(
+        '🎯 _getDisplayEvaluation - storedValue: "$storedValue", system: "$system", customNotes: $customNotes');
 
-    // Vérifier si c'est "غائب"
+    // Si c'est "غائب"
     if (storedValue == 'غائب') {
-      print('📝 Élève absent');
       return 'غائب';
     }
 
+    // SYSTÈME CUSTOM - Utiliser les notes personnalisées
     if (system == 'custom') {
-      if (customNotes == null || customNotes.isEmpty) {
-        print('⚠️ Système custom mais notes vides, fallback sur character');
+      if (customNotes != null && customNotes.isNotEmpty) {
+        // IMPORTANT: S'assurer d'avoir exactement 4 notes pour le mapping
+        // Les notes personnalisées peuvent être n'importe quoi (textes ou nombres)
+        List<String> normalizedNotes = List.from(customNotes);
+
+        // Normaliser à 4 notes exactement
+        if (normalizedNotes.length == 1) {
+          // Une seule note : la répéter 4 fois
+          normalizedNotes = List.filled(4, normalizedNotes[0]);
+        } else if (normalizedNotes.length == 2) {
+          // Deux notes : [bas, haut] -> [bas, bas, haut, haut]
+          normalizedNotes = [
+            normalizedNotes[0],
+            normalizedNotes[0],
+            normalizedNotes[1],
+            normalizedNotes[1],
+          ];
+        } else if (normalizedNotes.length == 3) {
+          // Trois notes : [bas, moyen, haut] -> [bas, moyen, moyen, haut]
+          normalizedNotes = [
+            normalizedNotes[0],
+            normalizedNotes[1],
+            normalizedNotes[1],
+            normalizedNotes[2],
+          ];
+        } else if (normalizedNotes.length > 4) {
+          // Plus de 4 notes : prendre les 4 premières
+          normalizedNotes = normalizedNotes.sublist(0, 4);
+        }
+        // Si déjà 4 notes, on garde telles quelles
+
+        // Maintenant on a toujours 4 notes pour le mapping
+        final Map<String, String> mapping = {
+          '( - - - )': normalizedNotes[0], // La plus basse
+          '( + - - )': normalizedNotes[1], // Basse-moyenne
+          '( + + - )': normalizedNotes[2], // Haute-moyenne
+          '( + + + )': normalizedNotes[3], // La plus haute
+        };
+
+        final result = mapping[storedValue] ?? normalizedNotes[0];
+        print(
+            '✅ Custom mapping: $storedValue -> $result (notes: $normalizedNotes)');
+        return result;
+      } else {
+        print(
+            '⚠️ Système custom mais pas de notes personnalisées, fallback sur caractères');
         return storedValue;
       }
-
-      final Map<String, String> mapping = {
-        '( - - - )': customNotes[0],
-        '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
-        '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
-        '( + + + )': customNotes.last,
-      };
-
-      final result = mapping[storedValue] ?? customNotes[0];
-      print('✅ Résultat custom: $result');
-      return result;
     }
 
-    switch (system) {
-      case 'character':
-        print('✅ Système character: $storedValue');
-        return storedValue;
+    // SYSTÈME CHARACTER
+    if (system == 'character' || system == 'ext') {
+      return storedValue;
+    }
 
+    // SYSTÈMES NUMÉRIQUES STANDARDS
+    switch (system) {
       case 'note_0_1_5':
-        final result = {
-              '( - - - )': '0',
-              '( + - - )': '0.5',
-              '( + + - )': '1',
-              '( + + + )': '1.5',
-            }[storedValue] ??
-            '0';
-        print('✅ Système 0-1.5: $result');
-        return result;
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '0.5';
+          case '( + + - )':
+            return '1';
+          case '( + + + )':
+            return '1.5';
+          default:
+            return storedValue;
+        }
 
       case 'note_0_3':
-        final result = {
-              '( - - - )': '0',
-              '( + - - )': '1',
-              '( + + - )': '2',
-              '( + + + )': '3',
-            }[storedValue] ??
-            '0';
-        print('✅ Système 0-3: $result');
-        return result;
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '1';
+          case '( + + - )':
+            return '2';
+          case '( + + + )':
+            return '3';
+          default:
+            return storedValue;
+        }
 
       case 'note_0_6':
-        final result = {
-              '( - - - )': '0',
-              '( + - - )': '2',
-              '( + + - )': '4',
-              '( + + + )': '6',
-            }[storedValue] ??
-            '0';
-        print('✅ Système 0-6: $result');
-        return result;
+        switch (storedValue) {
+          case '( - - - )':
+            return '0';
+          case '( + - - )':
+            return '2';
+          case '( + + - )':
+            return '4';
+          case '( + + + )':
+            return '6';
+          default:
+            return storedValue;
+        }
 
       default:
-        print('⚠️ Système inconnu: $system, fallback: $storedValue');
         return storedValue;
     }
   }
@@ -1693,6 +1900,108 @@ Future<void> _checkAndShowWeeklyWarning() async {
 // NOUVELLE MÉTHODE: Envoyer les données légères à Flask
 
 // Dans votre fichier Flutter, modifiez la fonction principale:
+  Future<List<Map<String, dynamic>>> _getStudentsForFlask(
+      String classId, String matiereId, String evaluationSystem) async {
+    List<Map<String, dynamic>> students = [];
+
+    try {
+      final studentsSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('user_classes')
+          .doc(classId)
+          .collection('students')
+          .get();
+
+      for (final studentDoc in studentsSnapshot.docs) {
+        final studentId = studentDoc.id;
+        final studentName = studentDoc['name'] ?? 'تلميذ غير معروف';
+
+        final Map<String, String> baremes = {};
+
+        // Récupérer les barèmes
+        final baremesSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser!.uid)
+            .collection('user_classes')
+            .doc(classId)
+            .collection('students')
+            .doc(studentId)
+            .collection('baremes')
+            .get();
+
+        for (final baremeDoc in baremesSnapshot.docs) {
+          final baremeId = baremeDoc.id;
+          final storedValue = baremeDoc['Marks']?.toString() ?? '( - - - )';
+
+          // Récupérer les notes personnalisées pour ce barème
+          List<String> customNotes = [];
+          if (evaluationSystem == 'custom') {
+            customNotes =
+                await _getCustomNotesForBareme(classId, matiereId, baremeId);
+          }
+
+          // Convertir la valeur selon le système
+          final displayValue = _getDisplayEvaluation(
+            storedValue,
+            evaluationSystem,
+            customNotes: customNotes,
+          );
+
+          baremes[baremeId] = displayValue;
+
+          // Récupérer les sous-barèmes
+          final sousBaremesSnapshot = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser!.uid)
+              .collection('user_classes')
+              .doc(classId)
+              .collection('students')
+              .doc(studentId)
+              .collection('baremes')
+              .doc(baremeId)
+              .collection('sous_baremes')
+              .get();
+
+          for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+            final sousBaremeId = sousBaremeDoc.id;
+            final sousStoredValue =
+                sousBaremeDoc['Marks']?.toString() ?? '( - - - )';
+
+            // Récupérer les notes personnalisées pour ce sous-barème
+            List<String> sousCustomNotes = [];
+            if (evaluationSystem == 'custom') {
+              sousCustomNotes = await _getSousBaremeCustomNotes(
+                  classId, matiereId, baremeId, sousBaremeId);
+            }
+
+            // Convertir la valeur
+            final sousDisplayValue = _getDisplayEvaluation(
+              sousStoredValue,
+              evaluationSystem,
+              customNotes:
+                  sousCustomNotes.isNotEmpty ? sousCustomNotes : customNotes,
+            );
+
+            baremes['$baremeId-$sousBaremeId'] = sousDisplayValue;
+          }
+        }
+
+        students.add({
+          'id': studentId,
+          'name': studentName,
+          'baremes': baremes,
+        });
+      }
+
+      // Trier les étudiants
+      students.sort((a, b) => (a['name'] ?? '').compareTo(b['name'] ?? ''));
+    } catch (e) {
+      print('❌ Erreur préparation étudiants: $e');
+    }
+
+    return students;
+  }
 
   Future<Map<String, dynamic>> _sendLightDataToFlaskForCompleteReport({
     required String classId,
@@ -1707,13 +2016,85 @@ Future<void> _checkAndShowWeeklyWarning() async {
         return {'success': false, 'message': 'Utilisateur non connecté'};
       }
 
-      // 🔥 IMPORTANT : utiliser classId + matiereId
+      // 🔥 Récupérer le système d'évaluation
       final String evaluationSystem =
           await _getEvaluationSystem(classId, matiereId);
 
-      print('📤 SYSTEM ENVOYÉ À FLASK: $evaluationSystem');
+      // 🔥 Récupérer TOUTES les notes personnalisées
+      List<String> globalCustomNotes = [];
+      Map<String, dynamic> baremeCustomNotes = {};
+      Map<String, dynamic> sousBaremeCustomNotes = {};
 
-      final Map<String, dynamic> lightData = {
+      if (evaluationSystem == 'custom') {
+        // Charger les notes globales
+        globalCustomNotes = await _loadCustomNotes(classId, matiereId);
+
+        // Charger les notes des barèmes
+        final selectionsSnapshot = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(currentUser.uid)
+            .collection('selections')
+            .doc(classId)
+            .collection(matiereId)
+            .get();
+
+        for (final baremeDoc in selectionsSnapshot.docs) {
+          final baremeId = baremeDoc.id;
+
+          // Notes spécifiques au barème
+          final baremeCustomNotesDoc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
+              .collection('bareme_custom_notes')
+              .doc('$classId-$matiereId-$baremeId')
+              .get();
+
+          if (baremeCustomNotesDoc.exists &&
+              baremeCustomNotesDoc.data()?['notes'] != null) {
+            baremeCustomNotes[baremeId] =
+                List<String>.from(baremeCustomNotesDoc.data()!['notes']);
+          }
+
+          // Notes des sous-barèmes
+          final sousBaremesSnapshot = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser.uid)
+              .collection('selections')
+              .doc(classId)
+              .collection(matiereId)
+              .doc(baremeId)
+              .collection('sousBaremes')
+              .get();
+
+          for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+            final sousBaremeId = sousBaremeDoc.id;
+
+            final sousCustomNotesDoc = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(currentUser.uid)
+                .collection('sous_bareme_custom_notes')
+                .doc('$classId-$matiereId-$baremeId-$sousBaremeId')
+                .get();
+
+            if (sousCustomNotesDoc.exists &&
+                sousCustomNotesDoc.data()?['notes'] != null) {
+              sousBaremeCustomNotes[sousBaremeId] =
+                  List<String>.from(sousCustomNotesDoc.data()!['notes']);
+            }
+          }
+        }
+      }
+
+      print('📤 SYSTÈME ENVOYÉ À FLASK: $evaluationSystem');
+      print('📤 NOTES GLOBALES: $globalCustomNotes');
+      print('📤 NOTES BARÈMES: $baremeCustomNotes');
+      print('📤 NOTES SOUS-BARÈMES: $sousBaremeCustomNotes');
+
+      // Préparer les données des étudiants avec les notes converties
+      final students =
+          await _getStudentsForFlask(classId, matiereId, evaluationSystem);
+
+      final Map<String, dynamic> completeData = {
         'userId': currentUser.uid,
         'user': {
           'profName': _profName,
@@ -1736,8 +2117,18 @@ Future<void> _checkAndShowWeeklyWarning() async {
         'isFrenchInterface': _isFrenchInterface,
         'timestamp': DateTime.now().toIso8601String(),
 
-        // ✅ On envoie uniquement le système
+        // ✅ ENVOYER LE SYSTÈME
         'evaluationSystem': evaluationSystem,
+
+        // ✅ ENVOYER TOUTES LES NOTES PERSONNALISÉES
+        'customNotes': {
+          'global': globalCustomNotes,
+          'baremes': baremeCustomNotes,
+          'sousBaremes': sousBaremeCustomNotes,
+        },
+
+        // ✅ ENVOYER LES ÉTUDIANTS AVEC LEURS NOTES
+        'students': students,
       };
 
       print('📤 Envoi des données à Flask...');
@@ -1760,6 +2151,8 @@ Future<void> _checkAndShowWeeklyWarning() async {
           'https://mohamedtsou-taqyem-imprission.hf.space/generate-complete-report');
 
       print('⏳ Génération du rapport...');
+      print(
+          '📦 Taille des données: ~${json.encode(completeData).length} caractères');
 
       final response = await http
           .post(
@@ -1768,7 +2161,7 @@ Future<void> _checkAndShowWeeklyWarning() async {
               'Content-Type': 'application/json; charset=utf-8',
               'Accept': 'application/json',
             },
-            body: json.encode(lightData),
+            body: json.encode(completeData),
           )
           .timeout(const Duration(seconds: 120));
 
@@ -1813,7 +2206,6 @@ Future<void> _checkAndShowWeeklyWarning() async {
     } on TimeoutException {
       return {'success': false, 'message': 'Timeout serveur'};
     } catch (e) {
-      // SUPPRIMEZ "on SocketException" et gardez juste catch (e)
       print('💥 Erreur inattendue: $e');
       return {'success': false, 'message': 'Erreur technique: $e'};
     }
@@ -2653,111 +3045,112 @@ Future<void> _checkAndShowWeeklyWarning() async {
       return [];
     }
   }
-  
+
   Future<List<dynamic>> _getBaremesForReport(
-    String classId, String matiereId) async {
-  try {
-    final String evaluationSystem =
-        await _getEvaluationSystem(classId, matiereId);
-    final List<String> customNotes = await _loadCustomNotes(classId, matiereId);
+      String classId, String matiereId) async {
+    try {
+      final String evaluationSystem =
+          await _getEvaluationSystem(classId, matiereId);
+      final List<String> customNotes =
+          await _loadCustomNotes(classId, matiereId);
 
-    final baremesSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('selections')
-        .doc(classId)
-        .collection(matiereId)
-        .get();
+      final baremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(classId)
+          .collection(matiereId)
+          .get();
 
-    final List<dynamic> baremes = [];
-    for (final baremeDoc in baremesSnapshot.docs) {
-      final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
-      final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
-      final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
+      final List<dynamic> baremes = [];
+      for (final baremeDoc in baremesSnapshot.docs) {
+        final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
+        final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
+        final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
-      final displayedBaremeName = _isFrenchInterface
-          ? DataTranslator.translateBareme(baremeName)
-          : baremeName;
+        final displayedBaremeName = _isFrenchInterface
+            ? DataTranslator.translateBareme(baremeName)
+            : baremeName;
 
-      if (isBaremeSelected) {
-        // Récupérer les sous-barèmes
-        final sousBaremesSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser!.uid)
-            .collection('selections')
-            .doc(classId)
-            .collection(matiereId)
-            .doc(baremeId)
-            .collection('sousBaremes')
-            .get();
+        if (isBaremeSelected) {
+          // Récupérer les sous-barèmes
+          final sousBaremesSnapshot = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser!.uid)
+              .collection('selections')
+              .doc(classId)
+              .collection(matiereId)
+              .doc(baremeId)
+              .collection('sousBaremes')
+              .get();
 
-        final List<Map<String, dynamic>> sousBaremesList = [];
+          final List<Map<String, dynamic>> sousBaremesList = [];
 
-        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-          final sousBaremeId = sousBaremeDoc.id;
-          final sousBaremeName =
-              _getFieldSafe(sousBaremeDoc, 'sousBaremeName', 'غير معروف');
-          final isSousBaremeSelected =
-              _getFieldSafe(sousBaremeDoc, 'selected', false);
+          for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+            final sousBaremeId = sousBaremeDoc.id;
+            final sousBaremeName =
+                _getFieldSafe(sousBaremeDoc, 'sousBaremeName', 'غير معروف');
+            final isSousBaremeSelected =
+                _getFieldSafe(sousBaremeDoc, 'selected', false);
 
-          final displayedSousBaremeName = _isFrenchInterface
-              ? DataTranslator.translateSousBareme(sousBaremeName)
-              : sousBaremeName;
+            final displayedSousBaremeName = _isFrenchInterface
+                ? DataTranslator.translateSousBareme(sousBaremeName)
+                : sousBaremeName;
 
-          if (isSousBaremeSelected) {
-            sousBaremesList.add({
-              'id': sousBaremeId,
-              'value': displayedSousBaremeName,
-              'originalValue': sousBaremeName,
-              'type': 'sousBareme',
-              'parentBaremeId': baremeId,
-              'evaluationSystem': evaluationSystem,
-              'customNotes': customNotes,
-            });
+            if (isSousBaremeSelected) {
+              sousBaremesList.add({
+                'id': sousBaremeId,
+                'value': displayedSousBaremeName,
+                'originalValue': sousBaremeName,
+                'type': 'sousBareme',
+                'parentBaremeId': baremeId,
+                'evaluationSystem': evaluationSystem,
+                'customNotes': customNotes,
+              });
+            }
           }
+
+          // ✅ TRIER les sous-barèmes par ordre alphabétique
+          sousBaremesList.sort((a, b) {
+            String nameA = a['value'] ?? '';
+            String nameB = b['value'] ?? '';
+
+            if (!_isFrenchInterface &&
+                nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+              return _arabicStringComparator(nameA, nameB);
+            }
+            return nameA.compareTo(nameB);
+          });
+
+          baremes.add({
+            'id': baremeId,
+            'value': displayedBaremeName,
+            'originalValue': baremeName,
+            'type': 'bareme',
+            'sousBaremes': sousBaremesList,
+            'evaluationSystem': evaluationSystem,
+            'customNotes': customNotes,
+          });
         }
-
-        // ✅ TRIER les sous-barèmes par ordre alphabétique
-        sousBaremesList.sort((a, b) {
-          String nameA = a['value'] ?? '';
-          String nameB = b['value'] ?? '';
-          
-          if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
-            return _arabicStringComparator(nameA, nameB);
-          }
-          return nameA.compareTo(nameB);
-        });
-
-        baremes.add({
-          'id': baremeId,
-          'value': displayedBaremeName,
-          'originalValue': baremeName,
-          'type': 'bareme',
-          'sousBaremes': sousBaremesList,
-          'evaluationSystem': evaluationSystem,
-          'customNotes': customNotes,
-        });
       }
+
+      // ✅ TRIER les barèmes principaux par ordre alphabétique
+      baremes.sort((a, b) {
+        String nameA = a['value'] ?? '';
+        String nameB = b['value'] ?? '';
+
+        if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+          return _arabicStringComparator(nameA, nameB);
+        }
+        return nameA.compareTo(nameB);
+      });
+
+      return baremes;
+    } catch (e) {
+      print('Erreur récupération barèmes: $e');
+      return [];
     }
-
-    // ✅ TRIER les barèmes principaux par ordre alphabétique
-    baremes.sort((a, b) {
-      String nameA = a['value'] ?? '';
-      String nameB = b['value'] ?? '';
-      
-      if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
-        return _arabicStringComparator(nameA, nameB);
-      }
-      return nameA.compareTo(nameB);
-    });
-
-    return baremes;
-  } catch (e) {
-    print('Erreur récupération barèmes: $e');
-    return [];
   }
-}
-
 
   Future<Map<String, dynamic>> _getSummaryForReport(
       String classId, String matiereId) async {
@@ -3771,176 +4164,192 @@ Future<void> _checkAndShowWeeklyWarning() async {
     });
   }
 
-  void _showEvaluationInfoDialog(VoidCallback onConfirm) {
-    TextEditingController periodeController =
-        TextEditingController(text: _selectedPeriode);
+void _showEvaluationInfoDialog(VoidCallback onConfirm) {
+  TextEditingController periodeController =
+      TextEditingController(text: _selectedPeriode);
 
-    // Options pour le trimestre
-    final trimestreOptions = ['الأول', 'الثاني', 'الثالث'];
-    final trimestreTranslations = {
-      'الأول': 'Premier',
-      'الثاني': 'Deuxième',
-      'الثالث': 'Troisième'
-    };
+  // Options pour le trimestre
+  final trimestreOptions = ['الأول', 'الثاني', 'الثالث'];
+  final trimestreTranslations = {
+    'الأول': 'Premier',
+    'الثاني': 'Deuxième',
+    'الثالث': 'Troisième'
+  };
 
-    // Options pour le type d'évaluation
-    final evaluationOptions = ['تقييم', 'امتحان'];
-    final evaluationTranslations = {'تقييم': 'Évaluation', 'امتحان': 'Examen'};
+  // Options pour le type d'évaluation
+  final evaluationOptions = ['تقييم', 'امتحان'];
+  final evaluationTranslations = {'تقييم': 'Évaluation', 'امتحان': 'Examen'};
 
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.info, color: Colors.blue),
-            SizedBox(width: 8),
-            Text(
-              _getTranslatedText(
-                  'معلومات التقييم', 'Informations d\'évaluation'),
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: Container(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // الثلاثي
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _getTranslatedText('الثلاثي:', 'Trimestre:'),
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: _selectedTrimestre,
-                      items: trimestreOptions
-                          .map((t) => DropdownMenuItem(
-                                value: t,
-                                child: Text(
-                                  _isFrenchInterface
-                                      ? trimestreTranslations[t] ?? t
-                                      : t,
-                                ),
-                              ))
-                          .toList(),
-                      onChanged: (v) {
-                        if (v != null) {
-                          setState(() {
-                            _selectedTrimestre = v;
-                          });
-                        }
-                      },
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(),
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      ),
-                      isExpanded: true,
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 16),
-
-              // الوحدة / الفترة
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _getTranslatedText(
-                          'الوحدة / الفترة:', 'Unité / Période:'),
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    SizedBox(height: 8),
-                    TextField(
-                      controller: periodeController,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(),
-                        hintText:
-                            _getTranslatedText('مثال: الوحدة 1', 'Ex: Unité 1'),
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(height: 16),
-
-              // نوع التقييم
-              Container(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _getTranslatedText('نوع التقييم:', 'Type d\'évaluation:'),
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: _selectedEvaluationType,
-                      items: evaluationOptions
-                          .map((t) => DropdownMenuItem(
-                                value: t,
-                                child: Text(
-                                  _isFrenchInterface
-                                      ? evaluationTranslations[t] ?? t
-                                      : t,
-                                ),
-                              ))
-                          .toList(),
-                      onChanged: (v) {
-                        if (v != null) {
-                          setState(() {
-                            _selectedEvaluationType = v;
-                          });
-                        }
-                      },
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(),
-                        contentPadding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      ),
-                      isExpanded: true,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(_getTranslatedText('إلغاء', 'Annuler')),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _selectedPeriode = periodeController.text.trim();
-              });
-              Navigator.pop(context);
-              onConfirm(); // Appeler la fonction de callback
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-            ),
-            child: Text(_getTranslatedText('متابعة', 'Continuer')),
+  showDialog(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: Row(
+        children: [
+          Icon(Icons.info, color: Colors.blue),
+          SizedBox(width: 8),
+          Text(
+            _getTranslatedText(
+                'معلومات التقييم', 'Informations d\'évaluation'),
+            style: TextStyle(fontWeight: FontWeight.bold),
           ),
         ],
       ),
-    );
-  }
+      content: Container(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // الثلاثي
+            Container(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _getTranslatedText('الثلاثي:', 'Trimestre:'),
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _selectedTrimestre,
+                    items: trimestreOptions
+                        .map((t) => DropdownMenuItem(
+                              value: t,
+                              child: Text(
+                                _isFrenchInterface
+                                    ? trimestreTranslations[t] ?? t
+                                    : t,
+                              ),
+                            ))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) {
+                        setState(() {
+                          _selectedTrimestre = v;
+                        });
+                      }
+                    },
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    isExpanded: true,
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 16),
 
+            // الوحدة / الفترة
+            Container(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _getTranslatedText(
+                        'الوحدة / الفترة:', 'Unité / Période:'),
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  SizedBox(height: 8),
+                  TextField(
+                    controller: periodeController,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText:
+                          _getTranslatedText('مثال: الوحدة 1', 'Ex: Unité 1'),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 16),
+
+            // نوع التقييم
+            Container(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _getTranslatedText('نوع التقييم:', 'Type d\'évaluation:'),
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
+                  SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _selectedEvaluationType,
+                    items: evaluationOptions
+                        .map((t) => DropdownMenuItem(
+                              value: t,
+                              child: Text(
+                                _isFrenchInterface
+                                    ? evaluationTranslations[t] ?? t
+                                    : t,
+                              ),
+                            ))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) {
+                        setState(() {
+                          _selectedEvaluationType = v;
+                        });
+                      }
+                    },
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    isExpanded: true,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(_getTranslatedText('إلغاء', 'Annuler')),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            setState(() {
+              _selectedPeriode = periodeController.text.trim();
+            });
+            Navigator.pop(context);
+            
+            // ✅ التحقق من آيفون قبل متابعة الطباعة
+            if (_isIPhone()) {
+              showDialog(
+                context: context,
+                builder: (context) => IPhonePrintWarning(
+                  isFrenchInterface: _isFrenchInterface,
+                  onContinue: onConfirm,
+                  onCancel: () {
+                    // المستخدم اختار الإلغاء - لا تفعل شيئاً
+                    print('🚫 مستخدم آيفون ألغى الطباعة');
+                  },
+                ),
+              );
+            } else {
+              // ليس آيفون، متابعة عادية
+              onConfirm();
+            }
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+          ),
+          child: Text(_getTranslatedText('متابعة', 'Continuer')),
+        ),
+      ],
+    ),
+  );
+}
   Future<void> _checkPrintCredit() async {
     if (currentUser == null) return;
 
@@ -4795,101 +5204,101 @@ Future<void> _checkAndShowWeeklyWarning() async {
     }
   }
 
-Future<List<dynamic>> _getBaremes() async {
-  try {
-    final baremesSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(currentUser!.uid)
-        .collection('selections')
-        .doc(widget.selectedClass)
-        .collection(widget.selectedMatiere)
-        .get();
+  Future<List<dynamic>> _getBaremes() async {
+    try {
+      final baremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser!.uid)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .get();
 
-    final List<dynamic> baremes = [];
-    for (final baremeDoc in baremesSnapshot.docs) {
-      final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
-      final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
-      final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
+      final List<dynamic> baremes = [];
+      for (final baremeDoc in baremesSnapshot.docs) {
+        final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
+        final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
+        final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
-      // Traduire si nécessaire
-      final displayedBaremeName = _isFrenchInterface
-          ? DataTranslator.translateBareme(baremeName)
-          : baremeName;
+        // Traduire si nécessaire
+        final displayedBaremeName = _isFrenchInterface
+            ? DataTranslator.translateBareme(baremeName)
+            : baremeName;
 
-      if (isBaremeSelected) {
-        // Récupérer les sous-barèmes
-        final sousBaremesSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser!.uid)
-            .collection('selections')
-            .doc(widget.selectedClass)
-            .collection(widget.selectedMatiere)
-            .doc(baremeId)
-            .collection('sousBaremes')
-            .get();
+        if (isBaremeSelected) {
+          // Récupérer les sous-barèmes
+          final sousBaremesSnapshot = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(currentUser!.uid)
+              .collection('selections')
+              .doc(widget.selectedClass)
+              .collection(widget.selectedMatiere)
+              .doc(baremeId)
+              .collection('sousBaremes')
+              .get();
 
-        final List<Map<String, dynamic>> sousBaremesList = [];
+          final List<Map<String, dynamic>> sousBaremesList = [];
 
-        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-          final sousBaremeId = sousBaremeDoc.id;
-          final sousBaremeName =
-              _getFieldSafe(sousBaremeDoc, 'sousBaremeName', 'غير معروف');
-          final isSousBaremeSelected =
-              _getFieldSafe(sousBaremeDoc, 'selected', false);
+          for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+            final sousBaremeId = sousBaremeDoc.id;
+            final sousBaremeName =
+                _getFieldSafe(sousBaremeDoc, 'sousBaremeName', 'غير معروف');
+            final isSousBaremeSelected =
+                _getFieldSafe(sousBaremeDoc, 'selected', false);
 
-          if (isSousBaremeSelected) {
-            final displayedSousBaremeName = _isFrenchInterface
-                ? DataTranslator.translateSousBareme(sousBaremeName)
-                : sousBaremeName;
+            if (isSousBaremeSelected) {
+              final displayedSousBaremeName = _isFrenchInterface
+                  ? DataTranslator.translateSousBareme(sousBaremeName)
+                  : sousBaremeName;
 
-            sousBaremesList.add({
-              'id': sousBaremeId,
-              'value': displayedSousBaremeName,
-              'originalValue': sousBaremeName,
-              'type': 'sousBareme',
-            });
+              sousBaremesList.add({
+                'id': sousBaremeId,
+                'value': displayedSousBaremeName,
+                'originalValue': sousBaremeName,
+                'type': 'sousBareme',
+              });
+            }
           }
+
+          // ✅ TRIER les sous-barèmes par ordre alphabétique
+          sousBaremesList.sort((a, b) {
+            String nameA = a['value'] ?? '';
+            String nameB = b['value'] ?? '';
+
+            if (!_isFrenchInterface &&
+                nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+              return _arabicStringComparator(nameA, nameB);
+            }
+            return nameA.compareTo(nameB);
+          });
+
+          baremes.add({
+            'id': baremeId,
+            'value': displayedBaremeName,
+            'originalValue': baremeName,
+            'type': 'bareme',
+            'sousBaremes': sousBaremesList,
+          });
         }
-
-        // ✅ TRIER les sous-barèmes par ordre alphabétique
-        sousBaremesList.sort((a, b) {
-          String nameA = a['value'] ?? '';
-          String nameB = b['value'] ?? '';
-          
-          if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
-            return _arabicStringComparator(nameA, nameB);
-          }
-          return nameA.compareTo(nameB);
-        });
-
-        baremes.add({
-          'id': baremeId,
-          'value': displayedBaremeName,
-          'originalValue': baremeName,
-          'type': 'bareme',
-          'sousBaremes': sousBaremesList,
-        });
       }
+
+      // ✅ TRIER les barèmes principaux par ordre alphabétique
+      baremes.sort((a, b) {
+        String nameA = a['value'] ?? '';
+        String nameB = b['value'] ?? '';
+
+        if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+          return _arabicStringComparator(nameA, nameB);
+        }
+        return nameA.compareTo(nameB);
+      });
+
+      return baremes;
+    } catch (e) {
+      print('Erreur récupération barèmes: $e');
+      return [];
     }
-
-    // ✅ TRIER les barèmes principaux par ordre alphabétique
-    baremes.sort((a, b) {
-      String nameA = a['value'] ?? '';
-      String nameB = b['value'] ?? '';
-      
-      if (!_isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
-        return _arabicStringComparator(nameA, nameB);
-      }
-      return nameA.compareTo(nameB);
-    });
-
-    return baremes;
-  } catch (e) {
-    print('Erreur récupération barèmes: $e');
-    return [];
   }
-}
-
 
   Future<List<dynamic>> _getStudents() async {
     try {
@@ -7972,103 +8381,103 @@ class _StudentsTableState extends State<StudentsTable> {
     );
   }
 
-Future<List<Map<String, dynamic>>> _getBaremesValues(
-    List<QueryDocumentSnapshot> selectedBaremes) async {
-  final List<Map<String, dynamic>> result = [];
-  final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+  Future<List<Map<String, dynamic>>> _getBaremesValues(
+      List<QueryDocumentSnapshot> selectedBaremes) async {
+    final List<Map<String, dynamic>> result = [];
+    final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
-  print('🔍 Début _getBaremesValues - ${selectedBaremes.length} barèmes');
+    print('🔍 Début _getBaremesValues - ${selectedBaremes.length} barèmes');
 
-  for (final baremeDoc in selectedBaremes) {
-    final baremeId = baremeDoc['baremeId'] ?? baremeDoc.id;
-    final baremeName = baremeDoc['baremeName'] ?? 'غير معروف';
-    final isBaremeSelected = baremeDoc['selected'] ?? false;
+    for (final baremeDoc in selectedBaremes) {
+      final baremeId = baremeDoc['baremeId'] ?? baremeDoc.id;
+      final baremeName = baremeDoc['baremeName'] ?? 'غير معروف';
+      final isBaremeSelected = baremeDoc['selected'] ?? false;
 
-    // Utiliser widget.isFrenchInterface
-    final displayedBaremeName = widget.isFrenchInterface
-        ? DataTranslator.translateBareme(baremeName)
-        : baremeName;
+      // Utiliser widget.isFrenchInterface
+      final displayedBaremeName = widget.isFrenchInterface
+          ? DataTranslator.translateBareme(baremeName)
+          : baremeName;
 
-    // Récupérer les sous-barèmes
-    final sousBaremesSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(userId)
-        .collection('selections')
-        .doc(widget.selectedClass)
-        .collection(widget.selectedMatiere)
-        .doc(baremeId)
-        .collection('sousBaremes')
-        .get();
+      // Récupérer les sous-barèmes
+      final sousBaremesSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('selections')
+          .doc(widget.selectedClass)
+          .collection(widget.selectedMatiere)
+          .doc(baremeId)
+          .collection('sousBaremes')
+          .get();
 
-    final List<Map<String, dynamic>> sousBaremesList = [];
+      final List<Map<String, dynamic>> sousBaremesList = [];
 
-    for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-      final isSousBaremeSelected = sousBaremeDoc['selected'] ?? false;
-      final sousBaremeName = sousBaremeDoc['sousBaremeName'] ?? 'غير معروف';
+      for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
+        final isSousBaremeSelected = sousBaremeDoc['selected'] ?? false;
+        final sousBaremeName = sousBaremeDoc['sousBaremeName'] ?? 'غير معروف';
 
-      if (isSousBaremeSelected) {
-        final displayedSousBaremeName = widget.isFrenchInterface
-            ? DataTranslator.translateSousBareme(sousBaremeName)
-            : sousBaremeName;
+        if (isSousBaremeSelected) {
+          final displayedSousBaremeName = widget.isFrenchInterface
+              ? DataTranslator.translateSousBareme(sousBaremeName)
+              : sousBaremeName;
 
-        sousBaremesList.add({
-          'id': sousBaremeDoc.id,
-          'value': displayedSousBaremeName,
-          'type': 'sousBareme',
+          sousBaremesList.add({
+            'id': sousBaremeDoc.id,
+            'value': displayedSousBaremeName,
+            'type': 'sousBareme',
+          });
+        }
+      }
+
+      // ✅ TRIER les sous-barèmes par ordre alphabétique
+      sousBaremesList.sort((a, b) {
+        String nameA = a['value'] ?? '';
+        String nameB = b['value'] ?? '';
+
+        if (!widget.isFrenchInterface &&
+            nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+          return _arabicStringComparator(nameA, nameB);
+        }
+        return nameA.compareTo(nameB);
+      });
+
+      if (isBaremeSelected) {
+        result.add({
+          'id': baremeId,
+          'value': displayedBaremeName,
+          'type': 'bareme',
+          'sousBaremes': sousBaremesList,
         });
+      } else if (sousBaremesList.isNotEmpty) {
+        for (final sousBareme in sousBaremesList) {
+          result.add({
+            'id': sousBareme['id'],
+            'value': sousBareme['value'],
+            'type': 'sousBareme',
+            'parentBaremeId': baremeId,
+          });
+        }
       }
     }
 
-    // ✅ TRIER les sous-barèmes par ordre alphabétique
-    sousBaremesList.sort((a, b) {
+    // ✅ TRIER les barèmes principaux par ordre alphabétique
+    result.sort((a, b) {
+      if (a['type'] != b['type']) {
+        if (a['type'] == 'bareme') return -1;
+        if (b['type'] == 'bareme') return 1;
+      }
+
       String nameA = a['value'] ?? '';
       String nameB = b['value'] ?? '';
-      
-      if (!widget.isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
+
+      if (!widget.isFrenchInterface &&
+          nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
         return _arabicStringComparator(nameA, nameB);
       }
       return nameA.compareTo(nameB);
     });
 
-    if (isBaremeSelected) {
-      result.add({
-        'id': baremeId,
-        'value': displayedBaremeName,
-        'type': 'bareme',
-        'sousBaremes': sousBaremesList,
-      });
-    } else if (sousBaremesList.isNotEmpty) {
-      for (final sousBareme in sousBaremesList) {
-        result.add({
-          'id': sousBareme['id'],
-          'value': sousBareme['value'],
-          'type': 'sousBareme',
-          'parentBaremeId': baremeId,
-        });
-      }
-    }
+    return result;
   }
-
-  // ✅ TRIER les barèmes principaux par ordre alphabétique
-  result.sort((a, b) {
-    if (a['type'] != b['type']) {
-      if (a['type'] == 'bareme') return -1;
-      if (b['type'] == 'bareme') return 1;
-    }
-    
-    String nameA = a['value'] ?? '';
-    String nameB = b['value'] ?? '';
-    
-    if (!widget.isFrenchInterface && nameA.contains(RegExp(r'[\u0600-\u06FF]'))) {
-      return _arabicStringComparator(nameA, nameB);
-    }
-    return nameA.compareTo(nameB);
-  });
-
-  return result;
-}
-
-
 
   Future<String> _getSelectedValue(String studentId, String baremeKey) async {
     try {
@@ -8159,28 +8568,75 @@ Future<List<Map<String, dynamic>>> _getBaremesValues(
     }
   }
 
-  // COPIEZ cette méthode depuis _DynamicTablePageState
+// VERSION CORRIGÉE - Gère tous types de notes personnalisées
   String _getDisplayEvaluation(String storedValue, String system,
-      {List<String>? customNotes}) {
-    // Vérifier si c'est "غائب"
+      {List<String>? customNotes, String? baremeId, String? sousBaremeId}) {
+    // Debug pour voir ce qui se passe
+    print(
+        '🎯 _getDisplayEvaluation - storedValue: "$storedValue", system: "$system", customNotes: $customNotes');
+
+    // Si c'est "غائب"
     if (storedValue == 'غائب') {
       return 'غائب';
     }
 
-    if (system == 'custom' && customNotes != null && customNotes.isNotEmpty) {
-      final Map<String, String> mapping = {
-        '( - - - )': customNotes[0],
-        '( + - - )': customNotes.length > 1 ? customNotes[1] : customNotes[0],
-        '( + + - )': customNotes.length > 2 ? customNotes[2] : customNotes.last,
-        '( + + + )': customNotes.last,
-      };
-      return mapping[storedValue] ?? customNotes[0];
+    // SYSTÈME CUSTOM - Utiliser les notes personnalisées
+    if (system == 'custom') {
+      if (customNotes != null && customNotes.isNotEmpty) {
+        // IMPORTANT: S'assurer d'avoir au moins 4 notes
+        // Si on a moins de 4 notes, on les répète intelligemment
+        List<String> normalizedNotes = List.from(customNotes);
+
+        // Normaliser à 4 notes si nécessaire
+        while (normalizedNotes.length < 4) {
+          if (normalizedNotes.length == 2) {
+            // Pour 2 notes: [bas, haut] -> [bas, bas, haut, haut]
+            normalizedNotes = [
+              normalizedNotes[0],
+              normalizedNotes[0],
+              normalizedNotes[1],
+              normalizedNotes[1],
+            ];
+          } else if (normalizedNotes.length == 3) {
+            // Pour 3 notes: [bas, moyen, haut] -> [bas, moyen, moyen, haut]
+            normalizedNotes = [
+              normalizedNotes[0],
+              normalizedNotes[1],
+              normalizedNotes[1],
+              normalizedNotes[2],
+            ];
+          } else {
+            // Si une seule note, la répéter 4 fois
+            normalizedNotes = List.filled(4, normalizedNotes[0]);
+          }
+        }
+
+        // Maintenant on a toujours 4 notes pour le mapping
+        final Map<String, String> mapping = {
+          '( - - - )': normalizedNotes[0], // La plus basse
+          '( + - - )': normalizedNotes[1], // Basse-moyenne
+          '( + + - )': normalizedNotes[2], // Haute-moyenne
+          '( + + + )': normalizedNotes[3], // La plus haute
+        };
+
+        final result = mapping[storedValue] ?? normalizedNotes[0];
+        print(
+            '✅ Custom mapping: $storedValue -> $result (notes: $normalizedNotes)');
+        return result;
+      } else {
+        print(
+            '⚠️ Système custom mais pas de notes personnalisées, fallback sur caractères');
+        return storedValue;
+      }
     }
 
-    switch (system) {
-      case 'character':
-        return storedValue;
+    // SYSTÈME CHARACTER
+    if (system == 'character') {
+      return storedValue;
+    }
 
+    // SYSTÈMES NUMÉRIQUES STANDARDS
+    switch (system) {
       case 'note_0_1_5':
         switch (storedValue) {
           case '( - - - )':
