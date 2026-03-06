@@ -290,29 +290,29 @@ Timer? _pulseTimer;
     loadJsonData();
     _loadPrintCredit();
     _startTimer();
-      _checkFirstTimeUser(); // Vérifier si c'est la première utilisation
+     // _checkFirstTimeUser(); // Vérifier si c'est la première utilisation
 
   }
 
-Future<void> _checkFirstTimeUser() async {
-  // Vérifier si l'utilisateur a déjà ouvert cette page
-  final prefs = await SharedPreferences.getInstance();
-  _isFirstTime = prefs.getBool('help_shown_${widget.selectedBaremeId}') != true;
+// Future<void> _checkFirstTimeUser() async {
+//   // Vérifier si l'utilisateur a déjà ouvert cette page
+//   final prefs = await SharedPreferences.getInstance();
+//   _isFirstTime = prefs.getBool('help_shown_${widget.selectedBaremeId}') != true;
   
-  if (_isFirstTime && _isMounted) {
-    _startPulseAnimation();
-  }
-}
+//   if (_isFirstTime && _isMounted) {
+//     _startPulseAnimation();
+//   }
+// }
 
-void _startPulseAnimation() {
-  _pulseTimer = Timer.periodic(Duration(milliseconds: 800), (timer) {
-    if (_isMounted) {
-      setState(() {
-        _pulseScale = _pulseScale == 1.0 ? 1.2 : 1.0;
-      });
-    }
-  });
-}
+// void _startPulseAnimation() {
+//   _pulseTimer = Timer.periodic(Duration(milliseconds: 800), (timer) {
+//     if (_isMounted) {
+//       setState(() {
+//         _pulseScale = _pulseScale == 1.0 ? 1.2 : 1.0;
+//       });
+//     }
+//   });
+// }
 
 // Widget du bouton avec effet de pulsation
 Widget _buildPulsingHelpButton() {
@@ -325,13 +325,13 @@ Widget _buildPulsingHelpButton() {
         shape: BoxShape.circle,
         gradient: RadialGradient(
           colors: [
-            const Color.fromARGB(255, 210, 167, 25),
-            const Color.fromARGB(255, 231, 106, 22),
+            const Color.fromARGB(255, 117, 77, 112),
+            const Color.fromARGB(255, 231, 217, 22),
           ],
         ),
       ),
       child: IconButton(
-        icon: Icon(Icons.help_outline, color: Colors.white),
+        icon: Icon(Icons.help, color: Colors.white),
         tooltip: _getTranslatedText('مساعدة', 'Aide'),
         onPressed: () async {
           // Arrêter l'animation
@@ -340,10 +340,7 @@ Widget _buildPulsingHelpButton() {
             _pulseScale = 1.0;
           });
           
-          // Marquer que l'aide a été montrée
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setBool('help_shown_${widget.selectedBaremeId}', true);
-          
+        
           _showHelpDialog();
         },
       ),
