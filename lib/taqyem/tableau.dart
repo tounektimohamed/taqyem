@@ -614,7 +614,7 @@ class DynamicTablePage extends StatefulWidget {
 class _DynamicTablePageState extends State<DynamicTablePage> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
   String _profName = '';
-
+static const String _IPHONE_ADVICE_KEY = 'iphone_advice_shown';
   String _selectedEvaluationDisplay = 'character'; // Par défaut: caractère
   String _schoolName = '';
   bool _isDialogCompleted = false;
@@ -654,6 +654,23 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       return false; // مؤقتاً، يمكنك تعديله حسب الحاجة
     }
   }
+Future<bool> _shouldShowIPhoneAdvice() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    return !(prefs.getBool(_IPHONE_ADVICE_KEY) ?? false);
+  } catch (e) {
+    return true;
+  }
+}
+
+Future<void> _markIPhoneAdviceAsShown() async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_IPHONE_ADVICE_KEY, true);
+  } catch (e) {
+    print('Erreur sauvegarde conseil iPhone: $e');
+  }
+}
 
   String _getDomaineForMatiere(String matiereName, bool isFrenchInterface) {
     // Définir les domaines en arabe
@@ -4164,6 +4181,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     });
   }
 
+// Modifiez la méthode _showEvaluationInfoDialog
 void _showEvaluationInfoDialog(VoidCallback onConfirm) {
   TextEditingController periodeController =
       TextEditingController(text: _selectedPeriode);
@@ -4317,27 +4335,28 @@ void _showEvaluationInfoDialog(VoidCallback onConfirm) {
           child: Text(_getTranslatedText('إلغاء', 'Annuler')),
         ),
         ElevatedButton(
-          onPressed: () {
+          onPressed: () async {
             setState(() {
               _selectedPeriode = periodeController.text.trim();
             });
             Navigator.pop(context);
             
-            // ✅ التحقق من آيفون قبل متابعة الطباعة
-            if (_isIPhone()) {
+            // ✅ التحقق مما إذا كان يجب عرض النصيحة
+            final shouldShow = await _shouldShowIPhoneAdvice();
+            
+            if (shouldShow) {
               showDialog(
                 context: context,
-                builder: (context) => IPhonePrintWarning(
+                builder: (context) => IPhoneAdviceDialog(
                   isFrenchInterface: _isFrenchInterface,
-                  onContinue: onConfirm,
-                  onCancel: () {
-                    // المستخدم اختار الإلغاء - لا تفعل شيئاً
-                    print('🚫 مستخدم آيفون ألغى الطباعة');
+                  onContinue: () async {
+                    await _markIPhoneAdviceAsShown();
+                    onConfirm();
                   },
                 ),
               );
             } else {
-              // ليس آيفون، متابعة عادية
+              // تم عرض النصيحة من قبل، متابعة عادية
               onConfirm();
             }
           },
@@ -4350,6 +4369,8 @@ void _showEvaluationInfoDialog(VoidCallback onConfirm) {
     ),
   );
 }
+ 
+ 
   Future<void> _checkPrintCredit() async {
     if (currentUser == null) return;
 
@@ -9964,4 +9985,191 @@ void _debugBaremesStructure(List<Map<String, dynamic>> baremesValues) {
     }
   }
   print('=== FIN DÉBOGAGE ===');
+}
+
+// Widget d'alerte pour tous les utilisateurs avec texte spécifique iPhone
+class IPhoneAdviceDialog extends StatelessWidget {
+  final bool isFrenchInterface;
+  final VoidCallback onContinue;
+
+  const IPhoneAdviceDialog({
+    Key? key,
+    required this.isFrenchInterface,
+    required this.onContinue,
+  }) : super(key: key);
+
+  String _t(String ar, String fr) => isFrenchInterface ? fr : ar;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.phone_iphone,
+              color: Colors.orange,
+              size: 28,
+            ),
+          ),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _t('تنبيه لمستخدمي آيفون', 'Alerte pour utilisateurs iPhone'),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ),
+        ],
+      ),
+      content: Container(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Message principal
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange,
+                    size: 40,
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    _t(
+                      'مشاكل معروفة على أجهزة آيفون',
+                      'Problèmes connus sur iPhone',
+                    ),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange[800],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    _t(
+                      'قد تواجه بعض المشاكل في عرض وتحميل التقارير على أجهزة آيفون '
+                      'بسبب قيود نظام iOS.',
+                      'Vous pourriez rencontrer des problèmes d\'affichage et de téléchargement '
+                      'des rapports sur iPhone en raison des restrictions du système iOS.',
+                    ),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[700],
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            
+            SizedBox(height: 16),
+            
+            // Solution recommandée
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.computer, color: Colors.blue, size: 24),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _t(
+                        'للحصول على أفضل تجربة، ننصح باستخدام جهاز كمبيوتر',
+                        'Pour une meilleure expérience, nous recommandons d\'utiliser un ordinateur',
+                      ),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.blue[800],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            SizedBox(height: 12),
+            
+            // Note "une seule fois"
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 14,
+                  color: Colors.grey.shade400,
+                ),
+                SizedBox(width: 6),
+                Text(
+                  _t(
+                    'هذه الرسالة تظهر مرة واحدة فقط',
+                    'Ce message s\'affiche une seule fois',
+                  ),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey.shade400,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          child: Text(
+            _t('إلغاء', 'Annuler'),
+            style: TextStyle(color: Colors.grey),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context);
+            onContinue();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.orange,
+            foregroundColor: Colors.white,
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+          child: Text(
+            _t('متابعة على أي حال', 'Continuer quand même'),
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ),
+      ],
+    );
+  }
 }

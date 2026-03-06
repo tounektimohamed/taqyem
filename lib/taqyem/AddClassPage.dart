@@ -12,9 +12,7 @@ class _AddClassPageState extends State<AddClassPage> {
   List<String> _selectedSubjects = [];
   List<Map<String, String>> _subjects = [];
   List<Map<String, String>> _classNames = [];
-  TextEditingController _studentNameController = TextEditingController();
   List<Map<String, String>> _students = [];
-  TextEditingController _newSubjectController = TextEditingController();
   String? _selectedClassNameDisplay;
   TextEditingController _searchController = TextEditingController();
   List<Map<String, String>> _filteredClassNames = [];
@@ -220,7 +218,7 @@ class _AddClassPageState extends State<AddClassPage> {
       },
     );
   }
-Future<void> _submitRequest() async {
+  Future<void> _submitRequest() async {
   User? currentUser = FirebaseAuth.instance.currentUser;
   if (currentUser == null) return;
 
@@ -259,17 +257,46 @@ Future<void> _submitRequest() async {
         .doc(currentUser.uid)
         .get();
 
-    int currentLimit = userDoc['classLimit'] ?? 4;
+    Map<String, dynamic> userData = userDoc.data() as Map<String, dynamic>;
+    
+    // Gérer l'absence des champs
+    int currentLimit = 4; // Valeur par défaut
+    if (userData.containsKey('classLimit')) {
+      currentLimit = userData['classLimit'] ?? 4;
+    } else {
+      // Créer le champ s'il n'existe pas
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(currentUser.uid)
+          .update({
+        'classLimit': 4,
+        'classLimitUpdatedAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    // Récupérer le nom de l'utilisateur avec gestion d'erreur
+    String userName = '';
+    if (userData.containsKey('name')) {
+      userName = userData['name'] ?? '';
+    } else if (userData.containsKey('nom')) {
+      userName = userData['nom'] ?? '';
+    } else if (userData.containsKey('displayName')) {
+      userName = userData['displayName'] ?? '';
+    } else {
+      // Utiliser l'email comme nom par défaut
+      userName = currentUser.email?.split('@').first ?? 'Utilisateur';
+    }
+
     int currentClassCount = await _getUserClassesCount(currentUser.uid);
     
-    // Créer un ID unique pour la demande (optionnel)
+    // Créer un ID unique pour la demande
     String requestId = 'class_limit_request_${DateTime.now().millisecondsSinceEpoch}';
 
     // Préparer les données de la demande
     Map<String, dynamic> requestData = {
       'userId': currentUser.uid,
       'userEmail': currentUser.email,
-      'userName': userDoc['name'] ?? '',
+      'userName': userName,
       'nom': _nomController.text,
       'prenom': _prenomController.text,
       'telephone': _telephoneController.text,
@@ -281,12 +308,8 @@ Future<void> _submitRequest() async {
       'timestamp': FieldValue.serverTimestamp(),
       'currentClassCount': currentClassCount,
       'currentLimit': currentLimit,
-      'requestedLimit': 20, // Limite demandée (vous pouvez la rendre modifiable)
+      'requestedLimit': 20,
       'requestId': requestId,
-      'deviceInfo': {
-        'platform': Theme.of(context).platform.toString(),
-        // Vous pouvez ajouter plus d'informations si nécessaire
-      },
     };
 
     // Envoyer la demande dans la collection de l'utilisateur
@@ -298,7 +321,7 @@ Future<void> _submitRequest() async {
         .set(requestData);
 
     // Ajouter aussi dans une collection globale pour l'admin
-    DocumentReference globalRequest = await FirebaseFirestore.instance
+    await FirebaseFirestore.instance
         .collection('class_limit_requests')
         .add(requestData);
 
@@ -309,12 +332,16 @@ Future<void> _submitRequest() async {
         .update({
       'hasPendingRequest': true,
       'lastRequestDate': FieldValue.serverTimestamp(),
-      'lastRequestId': globalRequest.id,
+      'lastRequestId': requestId,
     });
 
     // Fermer le dialogue de chargement
-    Navigator.pop(context); // Fermer le CircularProgressIndicator
-    Navigator.pop(context); // Fermer le formulaire
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context); // Fermer le CircularProgressIndicator
+    }
+    
+    // Fermer le formulaire
+    Navigator.pop(context);
 
     // Afficher le message de succès
     ScaffoldMessenger.of(context).showSnackBar(
@@ -322,18 +349,7 @@ Future<void> _submitRequest() async {
         content: Text('✅ تم إرسال طلبك بنجاح. سيتم مراجعته من قبل الإدارة'),
         backgroundColor: Colors.green,
         duration: Duration(seconds: 4),
-        action: SnackBarAction(
-          label: 'حسناً',
-          textColor: Colors.white,
-          onPressed: () {},
-        ),
       ),
-    );
-
-    // Envoyer une notification de confirmation à l'utilisateur
-    await _createLocalNotification(
-      'تم استلام طلبك',
-      'سيتم الرد على طلب زيادة الأقسام في أقرب وقت',
     );
 
     // Nettoyer les champs
@@ -358,16 +374,10 @@ Future<void> _submitRequest() async {
         content: Text('❌ حدث خطأ أثناء إرسال الطلب: ${e.toString()}'),
         backgroundColor: Colors.red,
         duration: Duration(seconds: 5),
-        action: SnackBarAction(
-          label: 'إعادة المحاولة',
-          textColor: Colors.white,
-          onPressed: _submitRequest,
-        ),
       ),
     );
   }
 }
-
 // Méthode pour créer une notification locale (optionnelle)
 Future<void> _createLocalNotification(String title, String body) async {
   // Si vous utilisez flutter_local_notifications
