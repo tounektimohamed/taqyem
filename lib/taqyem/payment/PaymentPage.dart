@@ -1463,229 +1463,306 @@ Widget _buildPaymentForm() {
         ],
 
         SizedBox(height: 20),
+// Dans la méthode _buildPaymentForm(), remplacez la section qui affiche les informations de la carte
+// par ce code mis à jour :
 
-        if (!_useOnlinePayment && _selectedCardDetails != null) ...[
-          Card(
-            color: Colors.blue.shade50,
-            elevation: 2,
-            shape: RoundedRectangleBorder(
+if (!_useOnlinePayment && _selectedCardDetails != null) ...[
+  Card(
+    color: Colors.blue.shade50,
+    elevation: 2,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.qr_code_scanner,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              SizedBox(width: 12),
+              Text(
+                'طريقة الدفع عبر D17',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Tajawal',
+                  color: Colors.blue.shade800,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 16),
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.shade200),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.qr_code_scanner,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        'طريقة الدفع عبر D17',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Tajawal',
-                          color: Colors.blue.shade800,
-                        ),
-                      ),
-                    ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'يرجى اتباع الخطوات التالية لإتمام عملية الاشتراك:',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Tajawal',
+                    color: Colors.grey.shade800,
                   ),
-                  SizedBox(height: 16),
-                  Container(
-                    padding: EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.blue.shade200),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'يرجى اتباع الخطوات التالية لإتمام عملية الاشتراك:',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'Tajawal',
-                            color: Colors.grey.shade800,
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        _buildStepItem('1', 'افتح تطبيق D17 على هاتفك.',
-                            Icons.phone_android),
-                        _buildStepItem(
-                            '2', 'اختر "الدفع عبر QR".', Icons.qr_code),
-                        _buildStepItem(
-                            '3',
-                            'قم بمسح رمز الـ QR المعروض أدناه.',
-                            Icons.qr_code_scanner),
-                        _buildStepItem(
-                            '4',
-                            'أدخل مبلغ الاشتراك: ${selectedForfait == 'ثلاثية' ? '40' : selectedForfait == 'سنوي' ? '70' : '...'} دينار',
-                            Icons.attach_money),
-                        _buildStepItem(
-                            '5', 'أكد عملية التحويل.', Icons.check_circle),
-                      ],
+                ),
+                SizedBox(height: 16),
+                _buildStepItem('1', 'افتح تطبيق D17 على هاتفك.',
+                    Icons.phone_android),
+                _buildStepItem(
+                    '2', 'اختر "الدفع عبر QR".', Icons.qr_code),
+                _buildStepItem(
+                    '3',
+                    'قم بمسح رمز الـ QR المعروض أدناه.',
+                    Icons.qr_code_scanner),
+                _buildStepItem(
+                    '4',
+                    'أدخل مبلغ الاشتراك: ${selectedForfait == 'ثلاثية' ? '40' : selectedForfait == 'سنوي' ? '70' : '...'} دينار',
+                    Icons.attach_money),
+                _buildStepItem(
+                    '5', 'أكد عملية التحويل.', Icons.check_circle),
+              ],
+            ),
+          ),
+          SizedBox(height: 16),
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border:
+                  Border.all(color: Colors.blue.shade200, width: 2),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  'رمز QR للدفع عبر D17',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Tajawal',
+                    color: Colors.blue.shade800,
+                  ),
+                ),
+                SizedBox(height: 12),
+                Center(
+                  child: GestureDetector(
+                    onTap: () {
+                      if (_selectedCardDetails != null &&
+                          _selectedCardDetails!['qrCodeUrl'] !=
+                              null) {
+                        _showFullQRCode(
+                            _selectedCardDetails!['qrCodeUrl'],
+                            _selectedCardId!);
+                      }
+                    },
+                    child: Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: _buildQRImage(
+                        _selectedCardDetails!['qrCodeUrl'] ?? '',
+                        _selectedCardId!,
+                        height: 180,
+                        width: 180,
+                      ),
                     ),
                   ),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'امسح الرمز باستخدام تطبيق D17',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontFamily: 'Tajawal',
+                    color: Colors.grey.shade600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                
+                // 📌 NOUVELLE SECTION : Affichage des informations bancaires
+                if (_selectedCardDetails!['ribNumber'] != null ||
+                    _selectedCardDetails!['bankName'] != null) ...[
                   SizedBox(height: 16),
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: Colors.blue.shade200, width: 2),
+                  Divider(),
+                  SizedBox(height: 8),
+                  Text(
+                    'معلومات التحويل البنكي:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Tajawal',
+                      color: Colors.blue.shade800,
                     ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'رمز QR للدفع عبر D17',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Tajawal',
-                            color: Colors.blue.shade800,
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        Center(
-                          child: GestureDetector(
-                            onTap: () {
-                              if (_selectedCardDetails != null &&
-                                  _selectedCardDetails!['qrCodeUrl'] !=
-                                      null) {
-                                _showFullQRCode(
-                                    _selectedCardDetails!['qrCodeUrl'],
-                                    _selectedCardId!);
-                              }
-                            },
-                            child: Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: _buildQRImage(
-                                _selectedCardDetails!['qrCodeUrl'] ?? '',
-                                _selectedCardId!,
-                                height: 180,
-                                width: 180,
-                              ),
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        Text(
-                          'امسح الرمز باستخدام تطبيق D17',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontFamily: 'Tajawal',
-                            color: Colors.grey.shade600,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        if (_selectedCardDetails!['ribNumber'] != null) ...[
-                          SizedBox(height: 16),
-                          Divider(),
-                          SizedBox(height: 8),
+                  ),
+                  SizedBox(height: 8),
+                  
+                  // Affichage du nom de la banque
+                  if (_selectedCardDetails!['bankName'] != null && 
+                      _selectedCardDetails!['bankName'].toString().isNotEmpty) ...[
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.blue.shade100),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.account_balance, 
+                               color: Colors.blue.shade700, 
+                               size: 20),
+                          SizedBox(width: 8),
                           Text(
-                            'معلومات التحويل البنكي:',
+                            'Num:',
                             style: TextStyle(
                               fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w600,
                               fontFamily: 'Tajawal',
                               color: Colors.blue.shade800,
                             ),
                           ),
-                          SizedBox(height: 8),
-                          Container(
-                            padding: EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: SelectableText(
-                                    _selectedCardDetails!['ribNumber'],
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontFamily: 'monospace',
-                                    ),
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: Icon(Icons.copy, size: 20),
-                                  onPressed: () {
-                                    html.window.navigator.clipboard
-                                        ?.writeText(_selectedCardDetails![
-                                            'ribNumber']);
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(
-                                      SnackBar(
-                                        content: Text('تم نسخ رقم RIB',
-                                            style: TextStyle(
-                                                fontFamily: 'Tajawal')),
-                                        backgroundColor: Colors.green,
-                                        duration: Duration(seconds: 1),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _selectedCardDetails!['bankName'],
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                fontFamily: 'Tajawal',
+                                color: Colors.grey.shade800,
+                              ),
                             ),
                           ),
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 12),
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.amber.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.warning_amber,
-                            color: Colors.amber.shade800),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'بعد إتمام عملية الدفع، يرجى تحميل صورة الإثبات في الأسفل لإكمال طلب الاشتراك.',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontFamily: 'Tajawal',
-                              color: Colors.amber.shade800,
-                            ),
+                    SizedBox(height: 8),
+                  ],
+                  
+                  // Affichage du RIB
+                  if (_selectedCardDetails!['ribNumber'] != null && 
+                      _selectedCardDetails!['ribNumber'].toString().isNotEmpty) ...[
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.numbers, 
+                                   color: Colors.grey.shade700, 
+                                   size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'رقم RIB:',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  fontFamily: 'Tajawal',
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
+                          SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: SelectableText(
+                                  _selectedCardDetails!['ribNumber'],
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontFamily: 'monospace',
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.copy, size: 20),
+                                onPressed: () {
+                                  html.window.navigator.clipboard
+                                      ?.writeText(_selectedCardDetails![
+                                          'ribNumber']);
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
+                                    SnackBar(
+                                      content: Text('تم نسخ رقم RIB',
+                                          style: TextStyle(
+                                              fontFamily: 'Tajawal')),
+                                      backgroundColor: Colors.green,
+                                      duration: Duration(seconds: 1),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ),
+              ],
             ),
           ),
-          SizedBox(height: 20),
+          SizedBox(height: 12),
+          Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.amber.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber,
+                    color: Colors.amber.shade800),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'بعد إتمام عملية الدفع، يرجى تحميل صورة الإثبات في الأسفل لإكمال طلب الاشتراك.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontFamily: 'Tajawal',
+                      color: Colors.amber.shade800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
-
+      ),
+    ),
+  ),
+  SizedBox(height: 20),
+],
         if (_useOnlinePayment) ...[
           Card(
             color: Colors.green[50],
