@@ -1876,6 +1876,10 @@ file:///home/tounekti/.pub-cache/hosted/pub.dev/typed_data-1.4.0/lib/src/typed_b
 file:///home/tounekti/.pub-cache/hosted/pub.dev/typed_data-1.4.0/lib/src/typed_queue.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/typed_data-1.4.0/lib/typed_buffers.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/typed_data-1.4.0/lib/typed_data.dart
+file:///home/tounekti/.pub-cache/hosted/pub.dev/universal_html-2.3.0/lib/html.dart
+file:///home/tounekti/.pub-cache/hosted/pub.dev/universal_html-2.3.0/lib/src/_sdk/html.dart
+file:///home/tounekti/.pub-cache/hosted/pub.dev/universal_html-2.3.0/lib/src/_sdk_html_additions.dart
+file:///home/tounekti/.pub-cache/hosted/pub.dev/universal_html-2.3.0/lib/universal_html.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/url_launcher-6.3.2/lib/src/legacy_api.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/url_launcher-6.3.2/lib/src/type_conversion.dart
 file:///home/tounekti/.pub-cache/hosted/pub.dev/url_launcher-6.3.2/lib/src/types.dart
@@ -2336,6 +2340,8 @@ file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/StatisticsDashboard.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/SubjectHelper.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/admin_migration_page.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/appjson.dart
+file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/chat/admin_chat_panel.dart
+file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/chat/chat_system.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/da3m_tableau.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/data/add_edit_screen.dart
 file:///home/tounekti/Bureau/taqyem-backup/lib/taqyem/data/add_edit_wrapper.dart

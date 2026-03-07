@@ -152,6 +152,12 @@
       "languageVersion": "3.4"
     },
     {
+      "name": "charcode",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/charcode-1.4.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
       "name": "checked_yaml",
       "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/checked_yaml-2.0.4",
       "packageUri": "lib/",
@@ -1568,10 +1574,16 @@
       "languageVersion": "2.12"
     },
     {
-      "name": "universal_io",
-      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/universal_io-2.2.2",
+      "name": "universal_html",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/universal_html-2.3.0",
       "packageUri": "lib/",
-      "languageVersion": "2.17"
+      "languageVersion": "3.6"
+    },
+    {
+      "name": "universal_io",
+      "rootUri": "file:///home/tounekti/.pub-cache/hosted/pub.dev/universal_io-2.3.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
     },
     {
       "name": "url_launcher",

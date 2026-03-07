@@ -4,6 +4,7 @@ import 'package:Taqyem/taqyem/AddClassPage.dart';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
 import 'package:Taqyem/taqyem/StatisticsDashboard.dart';
 import 'package:Taqyem/taqyem/appjson.dart';
+import 'package:Taqyem/taqyem/chat/chat_system.dart';
 import 'package:Taqyem/taqyem/data/addprobsolu.dart';
 import 'package:Taqyem/taqyem/data/app_wrapper.dart';
 import 'package:Taqyem/taqyem/data/firebase_data-service.dart';
@@ -44,7 +45,8 @@ class _AdminDashboardState extends State<AdminDashboard> {
       day: DateTime.now().day,
     ),
   );
-
+String? _conversationId;
+int _unreadCount = 0;
   User? currentUser = FirebaseAuth.instance.currentUser;
   String userName = "Utilisateur";
   bool _isDrawerOpen = false;
@@ -75,7 +77,40 @@ class _AdminDashboardState extends State<AdminDashboard> {
     
     return input;
   }
+  Future<void> _openChat() async {
+  if (currentUser == null) return;
   
+  try {
+    // Nettoyer l'ID utilisateur
+    final cleanUserId = _cleanUserId(currentUser!.uid);
+    
+    // Créer ou récupérer la conversation
+    final conversationId = await ChatSystem.getOrCreateConversation(cleanUserId);
+    
+    if (mounted) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatPage(
+            conversationId: conversationId,
+            userId: cleanUserId,
+            userName: userName,
+          ),
+        ),
+      );
+    }
+  } catch (e) {
+    print('Erreur lors de l\'ouverture du chat: $e');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur lors de l\'ouverture du chat'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+}
 String _cleanUserId(String userId) {
   print('🧹 Nettoyage de l\'ID: $userId');
   
@@ -176,212 +211,198 @@ String _cleanUserId(String userId) {
   }
 
 
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'لوحة التحكم',
-          style: GoogleFonts.roboto(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+    appBar: AppBar(
+      title: Text(
+        'لوحة التحكم',
+        style: GoogleFonts.roboto(
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
         ),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
+      ),
+      backgroundColor: Theme.of(context).colorScheme.primary,
+      leading: Builder(
+        builder: (context) => IconButton(
+          icon: const Icon(Icons.menu, color: Colors.white),
+          onPressed: () => Scaffold.of(context).openDrawer(),
         ),
-        actions: [
-          StreamBuilder<DocumentSnapshot>(
-            stream: _getAccountStatusStream(),
-            builder: (context, snapshot) {
-              bool isActive = false;
-              Duration? remainingTime;
+      ),
+      actions: [
+        StreamBuilder<DocumentSnapshot>(
+          stream: _getAccountStatusStream(),
+          builder: (context, snapshot) {
+            bool isActive = false;
+            Duration? remainingTime;
 
-              if (snapshot.hasData && snapshot.data!.exists) {
-                isActive = snapshot.data!['isActive'] ?? false;
-                var expiration = snapshot.data!['accountExpiration']?.toDate();
-                if (expiration != null) {
-                  remainingTime = expiration.difference(DateTime.now());
-                }
+            if (snapshot.hasData && snapshot.data!.exists) {
+              isActive = snapshot.data!['isActive'] ?? false;
+              var expiration = snapshot.data!['accountExpiration']?.toDate();
+              if (expiration != null) {
+                remainingTime = expiration.difference(DateTime.now());
               }
+            }
 
-              return Tooltip(
-                message: isActive
-                    ? 'Compte Premium${remainingTime != null ? '\nExpire dans ${remainingTime.inDays} jours' : ''}'
-                    : 'Compte Standard - Mettez à niveau pour débloquer toutes les fonctionnalités',
-                child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isActive ? Colors.green[800] : Colors.grey[700],
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.circle,
-                        size: 12,
-                        color: isActive ? Colors.green[200] : Colors.red[200],
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        isActive ? 'PREMIUM' : 'STANDARD',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
+            return Tooltip(
+              message: isActive
+                  ? 'Compte Premium${remainingTime != null ? '\nExpire dans ${remainingTime.inDays} jours' : ''}'
+                  : 'Compte Standard - Mettez à niveau pour débloquer toutes les fonctionnalités',
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isActive ? Colors.green[800] : Colors.grey[700],
+                  borderRadius: BorderRadius.circular(20),
                 ),
-              );
-            },
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SettingsPageUI(),
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.5),
-                  width: 2,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.circle,
+                      size: 12,
+                      color: isActive ? Colors.green[200] : Colors.red[200],
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      isActive ? 'PREMIUM' : 'STANDARD',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              child: CircleAvatar(
-                radius: 18,
-                backgroundImage: currentUser?.photoURL != null
-                    ? NetworkImage(currentUser!.photoURL!)
-                    : null,
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                child: currentUser?.photoURL == null
-                    ? const Icon(Icons.person_outlined, color: Colors.white)
-                    : null,
+            );
+          },
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const SettingsPageUI(),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withOpacity(0.5),
+                width: 2,
               ),
             ),
+            child: CircleAvatar(
+              radius: 18,
+              backgroundImage: currentUser?.photoURL != null
+                  ? NetworkImage(currentUser!.photoURL!)
+                  : null,
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              child: currentUser?.photoURL == null
+                  ? const Icon(Icons.person_outlined, color: Colors.white)
+                  : null,
+            ),
           ),
-          const SizedBox(width: 16),
-        ],
-      ),
-      drawer: _buildModernDrawer(context),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          bool isDesktop = constraints.maxWidth > 600;
+        ),
+        const SizedBox(width: 16),
+      ],
+    ),
+    drawer: _buildModernDrawer(context),
+    body: Stack(
+      children: [
+        // Contenu principal
+        LayoutBuilder(
+          builder: (context, constraints) {
+            bool isDesktop = constraints.maxWidth > 600;
 
-          return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('carouselItems')
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) return CircularProgressIndicator();
+            return SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 20),
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('carouselItems')
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const CircularProgressIndicator();
 
-                    final items = snapshot.data!.docs.map((doc) {
-                      final data = doc.data() as Map<String, dynamic>;
-                      return {
-                        'imageUrl': data['url'] ?? '',
-                        'title': data['title'] ?? '',
-                        'subtitle': data['subtitle'] ?? '',
-                        'description': data['description'] ?? '',
-                      };
-                    }).toList();
+                      final items = snapshot.data!.docs.map((doc) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        return {
+                          'imageUrl': data['url'] ?? '',
+                          'title': data['title'] ?? '',
+                          'subtitle': data['subtitle'] ?? '',
+                          'description': data['description'] ?? '',
+                        };
+                      }).toList();
 
-                    return Column(
-                      children: [
-                        const SizedBox(height: 20),
-                        SimpleCarousel(items: items),
-                        const SizedBox(height: 30),
-                      ],
-                    );
-                  },
-                ),
-
-                const SizedBox(height: 20),
-                _buildQuickAccessSection(context),
-                const SizedBox(height: 30),
-                const SizedBox(height: 30),
-
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      TimelineCalendar(
-                        calendarType: CalendarType.GREGORIAN,
-                        calendarOptions: CalendarOptions(
-                          viewType: ViewType.DAILY,
-                          toggleViewType: true,
-                          headerMonthElevation: 0,
-                          headerMonthBackColor: Colors.grey[50],
-                        ),
-                        dayOptions: DayOptions(
-                          compactMode: true,
-                          dayFontSize: isDesktop ? 18 : 15,
-                          weekDaySelectedColor:
-                              Theme.of(context).colorScheme.primary,
-                          selectedBackgroundColor:
-                              Theme.of(context).colorScheme.primary,
-                          disableDaysBeforeNow: false,
-                          unselectedBackgroundColor: Colors.white,
-                          selectedTextColor: Colors.white,
-                        ),
-                        headerOptions: HeaderOptions(
-                          weekDayStringType: WeekDayStringTypes.SHORT,
-                          monthStringType: MonthStringTypes.FULL,
-                          headerTextColor: Colors.black,
-                        ),
-                        onChangeDateTime: (date) {
-                          setState(() {
-                            _selectedDate.value = date;
-                          });
-                        },
-                        onDateTimeReset: (p0) {
-                          setState(() {
-                            _selectedDate.value = CalendarDateTime(
-                              year: DateTime.now().year,
-                              month: DateTime.now().month,
-                              day: DateTime.now().day,
-                            );
-                          });
-                        },
-                        dateTime: _selectedDate.value,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      return Column(
                         children: [
-                          _buildDateNavButton(context, 'Aujourd\'hui', () {
+                          const SizedBox(height: 20),
+                          SimpleCarousel(items: items),
+                          const SizedBox(height: 30),
+                        ],
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 20),
+                  _buildQuickAccessSection(context),
+                  const SizedBox(height: 30),
+
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        TimelineCalendar(
+                          calendarType: CalendarType.GREGORIAN,
+                          calendarOptions: CalendarOptions(
+                            viewType: ViewType.DAILY,
+                            toggleViewType: true,
+                            headerMonthElevation: 0,
+                            headerMonthBackColor: Colors.grey[50],
+                          ),
+                          dayOptions: DayOptions(
+                            compactMode: true,
+                            dayFontSize: isDesktop ? 18 : 15,
+                            weekDaySelectedColor:
+                                Theme.of(context).colorScheme.primary,
+                            selectedBackgroundColor:
+                                Theme.of(context).colorScheme.primary,
+                            disableDaysBeforeNow: false,
+                            unselectedBackgroundColor: Colors.white,
+                            selectedTextColor: Colors.white,
+                          ),
+                          headerOptions: HeaderOptions(
+                            weekDayStringType: WeekDayStringTypes.SHORT,
+                            monthStringType: MonthStringTypes.FULL,
+                            headerTextColor: Colors.black,
+                          ),
+                          onChangeDateTime: (date) {
+                            setState(() {
+                              _selectedDate.value = date;
+                            });
+                          },
+                          onDateTimeReset: (p0) {
                             setState(() {
                               _selectedDate.value = CalendarDateTime(
                                 year: DateTime.now().year,
@@ -389,84 +410,117 @@ String _cleanUserId(String userId) {
                                 day: DateTime.now().day,
                               );
                             });
-                          }),
-                          _buildDateNavButton(context, 'Demain', () {
-                            final tomorrow =
-                                DateTime.now().add(const Duration(days: 1));
-                            setState(() {
-                              _selectedDate.value = CalendarDateTime(
-                                year: tomorrow.year,
-                                month: tomorrow.month,
-                                day: tomorrow.day,
-                              );
-                            });
-                          }),
-                          _buildDateNavButton(context, 'Semaine prochaine', () {
-                            final nextWeek =
-                                DateTime.now().add(const Duration(days: 7));
-                            setState(() {
-                              _selectedDate.value = CalendarDateTime(
-                                year: nextWeek.year,
-                                month: nextWeek.month,
-                                day: nextWeek.day,
-                              );
-                            });
-                          }),
-                        ],
-                      ),
-                    ],
+                          },
+                          dateTime: _selectedDate.value,
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _buildDateNavButton(context, 'Aujourd\'hui', () {
+                              setState(() {
+                                _selectedDate.value = CalendarDateTime(
+                                  year: DateTime.now().year,
+                                  month: DateTime.now().month,
+                                  day: DateTime.now().day,
+                                );
+                              });
+                            }),
+                            _buildDateNavButton(context, 'Demain', () {
+                              final tomorrow =
+                                  DateTime.now().add(const Duration(days: 1));
+                              setState(() {
+                                _selectedDate.value = CalendarDateTime(
+                                  year: tomorrow.year,
+                                  month: tomorrow.month,
+                                  day: tomorrow.day,
+                                );
+                              });
+                            }),
+                            _buildDateNavButton(context, 'Semaine prochaine', () {
+                              final nextWeek =
+                                  DateTime.now().add(const Duration(days: 7));
+                              setState(() {
+                                _selectedDate.value = CalendarDateTime(
+                                  year: nextWeek.year,
+                                  month: nextWeek.month,
+                                  day: nextWeek.day,
+                                );
+                              });
+                            }),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color:
-                        Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today,
-                        color: Theme.of(context).colorScheme.primary,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        DateFormat('EEEE, d MMMM y', 'fr_FR').format(
-                          DateTime(
-                            _selectedDate.value.year,
-                            _selectedDate.value.month,
-                            _selectedDate.value.day,
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color:
+                          Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          DateFormat('EEEE, d MMMM y', 'fr_FR').format(
+                            DateTime(
+                              _selectedDate.value.year,
+                              _selectedDate.value.month,
+                              _selectedDate.value.day,
+                            ),
+                          ),
+                          style: GoogleFonts.roboto(
+                            fontSize: isDesktop ? 22 : 18,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
-                        style: GoogleFonts.roboto(
-                          fontSize: isDesktop ? 22 : 18,
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
 
-                const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-                NewsSection(),
-                const SizedBox(height: 30),
-              ],
+                   NewsSection(),
+                  const SizedBox(height: 30),
+                ],
+              ),
+            );
+          },
+        ),
+        
+        // Bouton de chat flottant
+        if (currentUser != null)
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: StreamBuilder<int>(
+              stream: ChatSystem.getUnreadCountStream(_cleanUserId(currentUser!.uid)),
+              builder: (context, snapshot) {
+                final unreadCount = snapshot.data ?? 0;
+                return ChatFloatingButton(
+                  onPressed: _openChat,
+                  unreadCount: unreadCount,
+                );
+              },
             ),
-          );
-        },
-      ),
-    );
-  }
-
+          ),
+      ],
+    ),
+  );
+}
   Widget _buildDateNavButton(
       BuildContext context, String text, VoidCallback onPressed) {
     return TextButton(

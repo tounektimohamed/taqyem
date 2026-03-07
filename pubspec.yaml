@@ -120,6 +120,7 @@ dependencies:
   msgpack_dart: ^1.0.1
   flutter_screenutil: ^5.9.3
   file_selector: ^1.1.0
+  universal_html: ^2.3.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -10,6 +10,7 @@ import 'package:Taqyem/taqyem/AdminProposalsPage.dart';
 import 'package:Taqyem/taqyem/AdminRequestsPage.dart';
 import 'package:Taqyem/taqyem/EditPage.dart';
 import 'package:Taqyem/taqyem/admin_migration_page.dart';
+import 'package:Taqyem/taqyem/chat/admin_chat_panel.dart';
 import 'package:Taqyem/taqyem/data/add_edit_screen.dart';
 import 'package:Taqyem/taqyem/ereur_solution.dart';
 import 'package:Taqyem/taqyem/feedback_management_page.dart';
@@ -349,6 +350,19 @@ class _AgentDashboardState extends State<AgentDashboard> {
                 );
               },
             ),
+            _buildDrawerItem(
+  context,
+  Icons.message,
+  'Messages des utilisateurs',
+  () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AdminChatPanel(),
+      ),
+    );
+  },
+),
             // _buildDrawerItem(
             //   context,
             //   Icons.list,
