@@ -19,6 +19,21 @@ import 'package:cross_file/cross_file.dart';
 import 'dart:html' as html if (dart.library.html) 'dart:html';
 
 class PDFClassificationGenerator {
+  static String _darkenColor(String hexColor) {
+    hexColor = hexColor.replaceAll('#', '');
+    if (hexColor.length == 6) {
+      final r = int.parse(hexColor.substring(0, 2), radix: 16);
+      final g = int.parse(hexColor.substring(2, 4), radix: 16);
+      final b = int.parse(hexColor.substring(4, 6), radix: 16);
+      final darkenFactor = 0.8;
+      final newR = (r * darkenFactor).round().toRadixString(16).padLeft(2, '0');
+      final newG = (g * darkenFactor).round().toRadixString(16).padLeft(2, '0');
+      final newB = (b * darkenFactor).round().toRadixString(16).padLeft(2, '0');
+      return '#$newR$newG$newB';
+    }
+    return hexColor;
+  }
+
   static Future<void> generateAndDownloadClassificationReport({
     required BuildContext context,
     required String profName,
@@ -151,6 +166,7 @@ class PDFClassificationGenerator {
         isCompleteReport: isCompleteReport,
         singleGroupName: singleGroupName,
         now: now,
+        templateStyles: templateStyles,
       );
     }
 
@@ -166,6 +182,7 @@ class PDFClassificationGenerator {
         isFrenchInterface: isFrenchInterface,
         groupedStudents: groupedStudents,
         now: now,
+        templateStyles: templateStyles,
       );
     }
 
@@ -177,7 +194,8 @@ class PDFClassificationGenerator {
       isFrenchInterface: isFrenchInterface,
       isCompleteReport: isCompleteReport,
       singleGroupKey: singleGroupKey,
-      selectedPages: selectedPages, // NOUVEAU PARAMÈTRE
+      selectedPages: selectedPages,
+      templateStyles: templateStyles,
     );
 
     return '''
@@ -599,91 +617,91 @@ class PDFClassificationGenerator {
     required bool isCompleteReport,
     String? singleGroupName,
     required DateTime now,
+    Map<String, String>? templateStyles,
   }) {
     final t = _getTranslations(isFrenchInterface);
     final reportType = isCompleteReport
         ? t['complete_report']!
         : '${t['group_report']!} - ${singleGroupName ?? ''}';
 
+    final primaryColor = templateStyles?['primaryColor'] ?? '#1565c0';
+    final accentColor = templateStyles?['accentColor'] ?? '#42a5f5';
+    final fontFamily = templateStyles?['fontFamily'] ?? 'Arial, sans-serif';
+
     return '''
-    <div class="cover-page">
-        <div class="cover-header">
-            <h1 class="ministry-title">${t['ministry_title']!}</h1>
-            <div class="delegation-title">${t['regional_delegation']!}</div>
+    <div class="cover-page" style="font-family: $fontFamily;">
+        <div class="cover-header" style="background: linear-gradient(135deg, $primaryColor 0%, ${_darkenColor(primaryColor)} 100%); padding: 40px 20px; border-radius: ${templateStyles?['borderRadius'] ?? '10px'}; margin-bottom: 30px;">
+            <h1 class="ministry-title" style="color: white; font-size: 24px; margin: 0;">${t['ministry_title']!}</h1>
+            <div class="delegation-title" style="color: rgba(255,255,255,0.9); font-size: 16px; margin-top: 8px;">${t['regional_delegation']!}</div>
         </div>
         
         ${logoBase64.isNotEmpty ? '''
-        <div class="logo-container">
-            <img src="data:image/png;base64,$logoBase64" class="logo" alt="Logo Ministère">
+        <div class="logo-container" style="text-align: center; margin-bottom: 20px;">
+            <img src="data:image/png;base64,$logoBase64" class="logo" alt="Logo Ministère" style="max-width: 150px; max-height: 100px;">
         </div>
         ''' : ''}
         
-        <div class="school-info">
-            <div class="info-value" style="text-align: center; font-size: 20px;">
+        <div class="school-info" style="text-align: center; margin-bottom: 25px;">
+            <div style="font-size: 20px;">
                 ${t['school']!}: <strong>$schoolName</strong>
             </div>
         </div>
         
-        <div class="info-grid">
-            <div class="info-card">
-                <div class="info-icon">👨‍🏫</div>
-                <div class="info-content">
-                    <div class="info-label">${t['professor']!}</div>
-                    <div class="info-value">$profName</div>
+        <div class="info-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px;">
+            <div class="info-card" style="background: ${templateStyles?['headerBg'] ?? '#e3f2fd'}; padding: 20px; border-radius: ${templateStyles?['borderRadius'] ?? '10px'}; ${templateStyles?['boxShadow'] != 'none' ? 'box-shadow: ' + (templateStyles?['boxShadow'] ?? '0 2px 10px rgba(21,101,192,0.15)') + ';' : ''}">
+                <div style="font-size: 24px; text-align: center;">👨‍🏫</div>
+                <div style="text-align: center; margin-top: 8px;">
+                    <div style="font-size: 12px; color: #666;">${t['professor']!}</div>
+                    <div style="font-size: 14px; font-weight: bold; color: $primaryColor;">$profName</div>
                 </div>
             </div>
             
-            <div class="info-card">
-                <div class="info-icon">📚</div>
-                <div class="info-content">
-                    <div class="info-label">${t['subject']!}</div>
-                    <div class="info-value">$matiereName</div>
+            <div class="info-card" style="background: ${templateStyles?['headerBg'] ?? '#e3f2fd'}; padding: 20px; border-radius: ${templateStyles?['borderRadius'] ?? '10px'}; ${templateStyles?['boxShadow'] != 'none' ? 'box-shadow: ' + (templateStyles?['boxShadow'] ?? '0 2px 10px rgba(21,101,192,0.15)') + ';' : ''}">
+                <div style="font-size: 24px; text-align: center;">📚</div>
+                <div style="text-align: center; margin-top: 8px;">
+                    <div style="font-size: 12px; color: #666;">${t['subject']!}</div>
+                    <div style="font-size: 14px; font-weight: bold; color: $primaryColor;">$matiereName</div>
                 </div>
             </div>
             
-            <div class="info-card">
-                <div class="info-icon">👥</div>
-                <div class="info-content">
-                    <div class="info-label">${t['class']!}</div>
-                    <div class="info-value">$className</div>
+            <div class="info-card" style="background: ${templateStyles?['headerBg'] ?? '#e3f2fd'}; padding: 20px; border-radius: ${templateStyles?['borderRadius'] ?? '10px'}; ${templateStyles?['boxShadow'] != 'none' ? 'box-shadow: ' + (templateStyles?['boxShadow'] ?? '0 2px 10px rgba(21,101,192,0.15)') + ';' : ''}">
+                <div style="font-size: 24px; text-align: center;">👥</div>
+                <div style="text-align: center; margin-top: 8px;">
+                    <div style="font-size: 12px; color: #666;">${t['class']!}</div>
+                    <div style="font-size: 14px; font-weight: bold; color: $primaryColor;">$className</div>
                 </div>
             </div>
             
-            <div class="info-card">
-                <div class="info-icon">📝</div>
-                <div class="info-content">
-                    <div class="info-label">${t['criteria']!}</div>
-                    <div class="info-value">$baremeName</div>
+            <div class="info-card" style="background: ${templateStyles?['headerBg'] ?? '#e3f2fd'}; padding: 20px; border-radius: ${templateStyles?['borderRadius'] ?? '10px'}; ${templateStyles?['boxShadow'] != 'none' ? 'box-shadow: ' + (templateStyles?['boxShadow'] ?? '0 2px 10px rgba(21,101,192,0.15)') + ';' : ''}">
+                <div style="font-size: 24px; text-align: center;">📝</div>
+                <div style="text-align: center; margin-top: 8px;">
+                    <div style="font-size: 12px; color: #666;">${t['criteria']!}</div>
+                    <div style="font-size: 14px; font-weight: bold; color: $primaryColor;">$baremeName</div>
                 </div>
             </div>
         </div>
         
         ${sousBaremeName.isNotEmpty ? '''
-        <div class="info-grid">
-            <div class="info-card" style="grid-column: 1 / -1;">
-                <div class="info-icon">📋</div>
-                <div class="info-content">
-                    <div class="info-label">${t['sub_criteria']!}</div>
-                    <div class="info-value">$sousBaremeName</div>
-                </div>
+        <div style="background: ${templateStyles?['headerBg'] ?? '#e3f2fd'}; padding: 20px; border-radius: ${templateStyles?['borderRadius'] ?? '10px'}; ${templateStyles?['boxShadow'] != 'none' ? 'box-shadow: ' + (templateStyles?['boxShadow'] ?? '0 2px 10px rgba(21,101,192,0.15)') + ';' : ''} margin-bottom: 20px;">
+            <div style="text-align: center;">
+                <div style="font-size: 12px; color: #666;">${t['sub_criteria']!}</div>
+                <div style="font-size: 14px; font-weight: bold; color: $primaryColor;">$sousBaremeName</div>
             </div>
         </div>
         ''' : ''}
         
-        <div class="school-info" style="margin-top: 30px;">
-            <div class="info-value" style="text-align: center; font-size: 18px; color: var(--primary-color);">
-                <strong>$reportType</strong>
-            </div>
+        <div style="text-align: center; margin: 30px 0; padding: 25px; background: linear-gradient(135deg, $primaryColor 0%, $accentColor 100%); border-radius: ${templateStyles?['borderRadius'] ?? '10px'};">
+            <div style="font-size: 18px; color: white; font-weight: bold;">$reportType</div>
             ${!isCompleteReport && singleGroupName != null ? '''
-            <div style="text-align: center; margin-top: 10px; font-size: 16px;">
+            <div style="font-size: 16px; color: rgba(255,255,255,0.9); margin-top: 10px;">
                 ${t['group']!}: <strong>$singleGroupName</strong>
             </div>
             ''' : ''}
         </div>
         
-        <div class="footer-cover">
-            <p>${t['generated_on']!} ${DateFormat('dd/MM/yyyy').format(now)}</p>
-            <p class="no-print">${isFrenchInterface ? 'Pour imprimer: Ctrl+P' : 'للطباعة: Ctrl+P'}</p>
+        <div class="footer-cover" style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd;">
+            <p style="color: #666; font-size: 12px;">${t['generated_on']!} ${DateFormat('dd/MM/yyyy').format(now)}</p>
+            <p style="color: #999; font-size: 11px;">${isFrenchInterface ? 'Pour imprimer: Ctrl+P' : 'للطباعة: Ctrl+P'}</p>
         </div>
     </div>
     ''';
@@ -700,8 +718,15 @@ class PDFClassificationGenerator {
     required bool isFrenchInterface,
     required Map<String, List<Map<String, dynamic>>> groupedStudents,
     required DateTime now,
+    Map<String, String>? templateStyles,
   }) {
     final t = _getTranslations(isFrenchInterface);
+    final primaryColor = templateStyles?['primaryColor'] ?? '#1565c0';
+    final secondaryColor = templateStyles?['secondaryColor'] ?? '#1976d2';
+    final accentColor = templateStyles?['accentColor'] ?? '#42a5f5';
+    final borderRadius = templateStyles?['borderRadius'] ?? '10px';
+    final boxShadow =
+        templateStyles?['boxShadow'] ?? '0 2px 10px rgba(21,101,192,0.15)';
 
     // Calculer les statistiques
     final totalStudents =
@@ -714,19 +739,19 @@ class PDFClassificationGenerator {
 
     return '''
     <div class="general-info-page">
-        <h2 class="section-title">${t['general_info']!} $baremeName $matiereName</h2>
+        <h2 class="section-title" style="color: $primaryColor; border-bottom: 3px solid $primaryColor; padding-bottom: 10px;">${t['general_info']!} $baremeName $matiereName</h2>
         
-        <h3 class="section-subtitle" style="margin-top: 30px;">
+        <h3 class="section-subtitle" style="margin-top: 30px; color: $secondaryColor;">
             ${t['statistics']!}
         </h3>
         
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;">
-            <div style="background: var(--treatment-color); color: white; padding: 15px; border-radius: var(--border-radius); text-align: center;">
+            <div style="background: linear-gradient(135deg, $primaryColor, ${_darkenColor(primaryColor)}); color: white; padding: 15px; border-radius: $borderRadius; ${boxShadow != 'none' ? 'box-shadow: $boxShadow;' : ''} text-align: center;">
                 <div style="font-size: 12px; opacity: 0.9;">${t['group_treatment']!}</div>
                 <div style="font-size: 24px; font-weight: bold;">$treatmentCount</div>
             </div>
             
-            <div style="background: var(--support-color); color: white; padding: 15px; border-radius: var(--border-radius); text-align: center;">
+            <div style="background: linear-gradient(135deg, $secondaryColor, ${_darkenColor(secondaryColor)}); color: white; padding: 15px; border-radius: $borderRadius; ${boxShadow != 'none' ? 'box-shadow: $boxShadow;' : ''} text-align: center;">
                 <div style="font-size: 12px; opacity: 0.9;">${t['group_support']!}</div>
                 <div style="font-size: 24px; font-weight: bold;">$supportCount</div>
             </div>
@@ -756,9 +781,11 @@ class PDFClassificationGenerator {
     required bool isFrenchInterface,
     required bool isCompleteReport,
     String? singleGroupKey,
-    required Map<String, bool> selectedPages, // NOUVEAU PARAMÈTRE
+    required Map<String, bool> selectedPages,
+    Map<String, String>? templateStyles,
   }) {
     final t = _getTranslations(isFrenchInterface);
+    final primaryColor = templateStyles?['primaryColor'] ?? '#1565c0';
     String pagesHTML = '';
 
     // Déterminer quels groupes inclure
@@ -809,19 +836,23 @@ class PDFClassificationGenerator {
         continue;
       }
 
-      // Déterminer la classe CSS selon le groupe
+      // Déterminer les couleurs selon le groupe
       String groupClass = '';
       String groupIcon = '';
+      String groupColor = primaryColor;
 
       if (groupName == t['group_treatment']!) {
         groupClass = 'group-treatment';
         groupIcon = '🏥';
+        groupColor = '#d32f2f'; // Red for treatment
       } else if (groupName == t['group_support']!) {
         groupClass = 'group-support';
         groupIcon = '🤝';
+        groupColor = '#f57c00'; // Orange for support
       } else {
         groupClass = 'group-excellence';
         groupIcon = '🏆';
+        groupColor = '#388e3c'; // Green for excellence
       }
 
       final solutions =
@@ -830,26 +861,26 @@ class PDFClassificationGenerator {
           selections.where((item) => item['isProblem'] == true).toList();
 
       pagesHTML += '''
-    <div class="group-page $groupClass">
-        <div class="group-header">
-            <div>
-                <div class="group-title">$groupIcon $groupName</div>
-            </div>
-            <div class="group-stats">
-                ${students.length} ${t['students']!}
+    <div class="group-page $groupClass" style="margin-bottom: 30px;">
+        <div class="group-header" style="background: linear-gradient(135deg, $groupColor, ${_darkenColor(groupColor)}); color: white; padding: 20px; border-radius: ${templateStyles?['borderRadius'] ?? '10px'}; margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 20px; font-weight: bold;">$groupIcon $groupName</div>
+                <div style="background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px;">
+                    ${students.length} ${t['students']!}
+                </div>
             </div>
         </div>
         
         <!-- Liste des étudiants -->
         ${students.isNotEmpty ? '''
-        <div class="students-section">
-            <h3 class="section-subtitle">${t['students_list']!}</h3>
-            <div class="students-list-container">
+        <div class="students-section" style="margin-bottom: 25px;">
+            <h3 class="section-subtitle" style="color: $groupColor; border-bottom: 2px solid $groupColor; padding-bottom: 8px;">${t['students_list']!}</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 15px;">
                 ${students.asMap().entries.map((entry) {
               final index = entry.key + 1;
               final student = entry.value;
               return '''
-                <div class="list-item">
+                <div style="background: ${templateStyles?['headerBg'] ?? '#f5f5f5'}; padding: 12px 15px; border-radius: ${templateStyles?['borderRadius'] ?? '8px'}; ${templateStyles?['boxShadow'] != 'none' ? 'box-shadow: ' + (templateStyles?['boxShadow'] ?? '0 1px 3px rgba(0,0,0,0.1)') + ';' : ''}">
                     <span class="item-number">$index.</span>
                     <span class="item-name">${student['name'] ?? t['unknown']!}</span>
                 </div>
