@@ -1527,10 +1527,13 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
+              insetPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 24),
               child: Container(
-                width: MediaQuery.of(context).size.width * 0.9,
-                height: MediaQuery.of(context).size.height * 0.8,
-                padding: EdgeInsets.all(20),
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.95,
+                  maxHeight: MediaQuery.of(context).size.height * 0.9,
+                ),
+                padding: EdgeInsets.all(16),
                 child: Column(
                   children: [
                     // En-tête
@@ -3476,11 +3479,13 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16.0),
               ),
-              elevation: 8,
+              insetPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 24),
               child: Container(
-                padding: EdgeInsets.all(20.0),
-                width: MediaQuery.of(context).size.width * 0.9,
-                height: MediaQuery.of(context).size.height * 0.9,
+                padding: EdgeInsets.all(16.0),
+                constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.9,
+                  maxHeight: MediaQuery.of(context).size.height * 0.9,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -4042,14 +4047,15 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
           builder: (context, setState) {
             return Dialog(
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
               ),
+              insetPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 24),
               child: Container(
-                width: MediaQuery.of(context).size.width * 0.8,
                 constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.7,
+                  maxWidth: MediaQuery.of(context).size.width * 0.9,
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
                 ),
-                padding: EdgeInsets.all(20),
+                padding: EdgeInsets.all(16),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
