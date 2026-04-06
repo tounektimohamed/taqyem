@@ -1963,14 +1963,18 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     List<String>? customNotes,
   }) {
     return Wrap(
-      spacing: 8,
+      spacing: 4,
+      runSpacing: 4,
+      alignment: WrapAlignment.center,
       children: options.map((displayValue) {
         return GestureDetector(
           onTap: () => onTap(displayValue),
           child: Chip(
             label: Text(displayValue,
                 style: TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold)),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12)),
             backgroundColor: colors[displayValue] ?? Colors.blue,
             side: BorderSide(
               color: selectedValue == displayValue
@@ -1978,6 +1982,8 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                   : Colors.transparent,
               width: 2,
             ),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
           ),
         );
       }).toList(),
@@ -2055,7 +2061,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                   return customNotes;
                 }
                 // Fallback si pas de notes personnalisées
-                return ['ضعيف', 'مقبول', 'جيد', 'ممتاز'];
+                return ['0', '0.25', '0.5', '1'];
               }
 
               // Pour les autres systèmes
@@ -2078,7 +2084,10 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Container(
-                padding: EdgeInsets.all(16),
+                width: MediaQuery.of(context).size.width > 500
+                    ? 460
+                    : MediaQuery.of(context).size.width * 0.92,
+                padding: EdgeInsets.all(12),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -2087,11 +2096,13 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         // Titre à gauche
-                        Text(
-                          'تقييم المعايير',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
+                        Expanded(
+                          child: Text(
+                            'تقييم المعايير',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
 
@@ -2101,7 +2112,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                           children: [
                             // Bouton de rafraîchissement
                             Container(
-                              margin: EdgeInsets.only(left: 8),
+                              margin: EdgeInsets.only(left: 4),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(8),
                                 color: Colors.blue.withOpacity(0.1),
@@ -2112,17 +2123,12 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                               child: IconButton(
                                 icon: Icon(
                                   Icons.refresh,
-                                  size: 18,
+                                  size: 16,
                                   color: Colors.blue,
                                 ),
                                 onPressed: () async {
-                                  // Fonction de rafraîchissement
-                                  setStateDialog(() {
-                                    // Afficher un indicateur de chargement
-                                  });
-
+                                  setStateDialog(() {});
                                   try {
-                                    // Recharger les données
                                     await _loadSelectionsData(
                                       classId,
                                       matiereId,
@@ -2134,7 +2140,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                         });
                                       },
                                     );
-
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text('تم تحديث البيانات'),
@@ -2143,8 +2148,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                       ),
                                     );
                                   } catch (e) {
-                                    print(
-                                        'Erreur lors du rafraîchissement: $e');
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content: Text('حدث خطأ أثناء التحديث'),
@@ -2154,26 +2157,26 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                   }
                                 },
                                 tooltip: 'تحديث البيانات',
-                                padding: EdgeInsets.all(6),
+                                padding: EdgeInsets.all(4),
+                                constraints: BoxConstraints(),
                               ),
                             ),
 
                             // Dropdown du système
                             PopupMenuButton<String>(
+                              padding: EdgeInsets.zero,
+                              constraints: BoxConstraints(),
                               onSelected: (String newSystem) async {
                                 try {
                                   if (newSystem == 'custom') {
-                                    // Demander à l'utilisateur s'il veut des notes globales ou par barème
                                     final bool? useGlobalNotes =
                                         await _askForNotesType(context);
 
                                     if (useGlobalNotes == null) {
-                                      // L'utilisateur a annulé
                                       return;
                                     }
 
                                     if (useGlobalNotes) {
-                                      // Notes globales pour tous les barèmes
                                       final globalNotes =
                                           await _showCustomNotesDialog(
                                         context,
@@ -2183,17 +2186,9 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
 
                                       if (globalNotes == null ||
                                           globalNotes.isEmpty) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                                'يرجى إدخال على الأقل قيمة واحدة'),
-                                            backgroundColor: Colors.orange,
-                                          ),
-                                        );
                                         return;
                                       }
-                                      // ✅ حفظ global custom notes في نفس collection التي تقرأ منها
+
                                       await FirebaseFirestore.instance
                                           .collection('users')
                                           .doc(currentUser!.uid)
@@ -2205,12 +2200,9 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                             FieldValue.serverTimestamp(),
                                       });
 
-                                      // Mettre à jour tous les barèmes avec les notes globales
                                       setStateDialog(() {
                                         selectedSystem = newSystem;
-
                                         selections = selections.map((bareme) {
-                                          final baremeId = bareme['id'];
                                           return {
                                             ...bareme,
                                             'customNotes': globalNotes,
@@ -2225,20 +2217,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                                 (bareme['sousBaremes'] as List)
                                                     .map<Map<String, dynamic>>(
                                                         (sousBareme) {
-                                              final sousBaremeCustomNotes =
-                                                  sousBareme['customNotes']
-                                                      as List<String>?;
-
-                                              // Si le sous-barème n'a pas ses propres notes,
-                                              // utiliser les notes globales
-                                              final notesToUse =
-                                                  sousBaremeCustomNotes !=
-                                                              null &&
-                                                          sousBaremeCustomNotes
-                                                              .isNotEmpty
-                                                      ? sousBaremeCustomNotes
-                                                      : globalNotes;
-
                                               return {
                                                 ...sousBareme,
                                                 'displayEvaluation':
@@ -2247,69 +2225,66 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                                           'storedEvaluation'] ??
                                                       '( - - - )',
                                                   newSystem,
-                                                  customNotes: notesToUse,
+                                                  customNotes: globalNotes,
                                                 ),
                                               };
                                             }).toList(),
                                           };
                                         }).toList();
                                       });
+
+                                      await FirebaseFirestore.instance
+                                          .collection('users')
+                                          .doc(currentUser!.uid)
+                                          .collection('evaluation_systems')
+                                          .doc('$classId-$matiereId')
+                                          .set({
+                                        'system': newSystem,
+                                        'updatedAt':
+                                            FieldValue.serverTimestamp(),
+                                      });
+
+                                      return;
                                     } else {
-                                      // Notes individuelles par barème
-                                      // On laisse l'utilisateur configurer chaque barème individuellement
                                       setStateDialog(() {
                                         selectedSystem = newSystem;
                                       });
+                                      return;
                                     }
-                                  } else {
-                                    // Pour les autres systèmes, juste mettre à jour
-                                    setStateDialog(() {
-                                      selectedSystem = newSystem;
-
-                                      selections = selections.map((bareme) {
-                                        return {
-                                          ...bareme,
-                                          'displayEvaluation':
-                                              _getDisplayEvaluation(
-                                            bareme['storedEvaluation'] ??
-                                                '( - - - )',
-                                            newSystem,
-                                            customNotes: bareme['customNotes'],
-                                          ),
-                                          'sousBaremes':
-                                              (bareme['sousBaremes'] as List)
-                                                  .map<Map<String, dynamic>>(
-                                                      (sousBareme) {
-                                            final sousBaremeCustomNotes =
-                                                sousBareme['customNotes']
-                                                    as List<String>?;
-
-                                            // Utiliser les notes du sous-barème s'il en a, sinon celles du barème
-                                            final notesToUse =
-                                                sousBaremeCustomNotes != null &&
-                                                        sousBaremeCustomNotes
-                                                            .isNotEmpty
-                                                    ? sousBaremeCustomNotes
-                                                    : bareme['customNotes'];
-
-                                            return {
-                                              ...sousBareme,
-                                              'displayEvaluation':
-                                                  _getDisplayEvaluation(
-                                                sousBareme[
-                                                        'storedEvaluation'] ??
-                                                    '( - - - )',
-                                                newSystem,
-                                                customNotes: notesToUse,
-                                              ),
-                                            };
-                                          }).toList(),
-                                        };
-                                      }).toList();
-                                    });
                                   }
 
-                                  // Sauvegarder le nouveau système
+                                  setStateDialog(() {
+                                    selectedSystem = newSystem;
+                                    selections = selections.map((bareme) {
+                                      return {
+                                        ...bareme,
+                                        'displayEvaluation':
+                                            _getDisplayEvaluation(
+                                          bareme['storedEvaluation'] ??
+                                              '( - - - )',
+                                          newSystem,
+                                          customNotes: bareme['customNotes'],
+                                        ),
+                                        'sousBaremes':
+                                            (bareme['sousBaremes'] as List)
+                                                .map<Map<String, dynamic>>(
+                                                    (sousBareme) {
+                                          return {
+                                            ...sousBareme,
+                                            'displayEvaluation':
+                                                _getDisplayEvaluation(
+                                              sousBareme['storedEvaluation'] ??
+                                                  '( - - - )',
+                                              newSystem,
+                                              customNotes:
+                                                  bareme['customNotes'],
+                                            ),
+                                          };
+                                        }).toList(),
+                                      };
+                                    }).toList();
+                                  });
+
                                   await FirebaseFirestore.instance
                                       .collection('users')
                                       .doc(currentUser!.uid)
@@ -2319,24 +2294,12 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                     'system': newSystem,
                                     'updatedAt': FieldValue.serverTimestamp(),
                                   });
-
-                                  // Montrer un feedback visuel
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                          'تم تغيير نظام التقييم إلى ${_getSystemLabel(newSystem)}'),
-                                      duration: Duration(seconds: 1),
-                                      backgroundColor:
-                                          _getSystemColor(newSystem),
-                                    ),
-                                  );
                                 } catch (e) {
-                                  print(
-                                      'Erreur lors du changement de système: $e');
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
-                                        content:
-                                            Text('حدث خطأ أثناء تغيير النظام')),
+                                      content: Text('حدث خطأ: $e'),
+                                      backgroundColor: Colors.red,
+                                    ),
                                   );
                                 }
                               },
@@ -2398,7 +2361,8 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                 ];
                               },
                               child: Container(
-                                padding: EdgeInsets.all(8),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: _getSystemColor(selectedSystem)
                                       .withOpacity(0.1),
@@ -2408,6 +2372,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                   ),
                                 ),
                                 child: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
                                       _getSystemIcon(selectedSystem),
@@ -2415,16 +2380,22 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                       color: _getSystemColor(selectedSystem),
                                     ),
                                     SizedBox(width: 4),
-                                    Text(
-                                      _getSystemLabel(selectedSystem),
-                                      style: TextStyle(
-                                        color: _getSystemColor(selectedSystem),
-                                        fontWeight: FontWeight.bold,
+                                    Flexible(
+                                      child: Text(
+                                        _getSystemLabel(selectedSystem),
+                                        style: TextStyle(
+                                          color:
+                                              _getSystemColor(selectedSystem),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 11,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                     Icon(
                                       Icons.arrow_drop_down,
                                       color: _getSystemColor(selectedSystem),
+                                      size: 18,
                                     ),
                                   ],
                                 ),
@@ -2457,11 +2428,14 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                             color: _getSystemColor(selectedSystem),
                           ),
                           SizedBox(width: 6),
-                          Text(
-                            _getSystemDescription(selectedSystem),
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: _getSystemColor(selectedSystem),
+                          Expanded(
+                            child: Text(
+                              _getSystemDescription(selectedSystem),
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: _getSystemColor(selectedSystem),
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ),
                         ],
@@ -2753,7 +2727,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                             'إلغاء',
                             style: TextStyle(
                               color: Colors.red,
-                              fontSize: 16,
+                              fontSize: 14,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -2782,20 +2756,17 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                             );
 
                             if (confirm == true) {
-                              // Afficher un indicateur de chargement
                               showDialog(
                                 context: context,
                                 barrierDismissible: false,
                                 builder: (context) => Dialog(
-                                  backgroundColor:
-                                      Colors.transparent, // شفافية الخلفية
-                                  insetPadding: EdgeInsets.all(
-                                      24), // المسافة من حدود الشاشة
+                                  backgroundColor: Colors.transparent,
+                                  insetPadding: EdgeInsets.all(24),
                                   child: Center(
                                     child: Container(
                                       padding: EdgeInsets.all(24),
                                       decoration: BoxDecoration(
-                                        color: Colors.white, // لون البطاقة
+                                        color: Colors.white,
                                         borderRadius: BorderRadius.circular(16),
                                         boxShadow: [
                                           BoxShadow(
@@ -2829,18 +2800,14 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                               );
 
                               try {
-                                // Utiliser la fonction de sauvegarde simplifiée
                                 await _saveEvaluationsSimple(
                                   classId: classId,
                                   studentId: studentId,
                                   selections: selections,
                                 );
 
-                                // Fermer les dialogues
-                                Navigator.of(context)
-                                    .pop(); // Fermer l'indicateur
-                                Navigator.of(context)
-                                    .pop(); // Fermer le dialogue principal
+                                Navigator.of(context).pop();
+                                Navigator.of(context).pop();
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -2850,9 +2817,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                   ),
                                 );
                               } catch (e) {
-                                Navigator.of(context)
-                                    .pop(); // Fermer l'indicateur
-                                print('Erreur lors de la sauvegarde: $e');
+                                Navigator.of(context).pop();
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text('حدث خطأ أثناء الحفظ'),
@@ -2862,14 +2827,14 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                               }
                             }
                           },
-                          icon: Icon(Icons.save, size: 20),
+                          icon: Icon(Icons.save, size: 18),
                           label: Text(
                             'حفظ التقييمات',
-                            style: TextStyle(fontSize: 16),
+                            style: TextStyle(fontSize: 14),
                           ),
                           style: ElevatedButton.styleFrom(
                             padding: EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 12),
+                                horizontal: 16, vertical: 10),
                             backgroundColor: _getSystemColor(selectedSystem),
                           ),
                         ),
@@ -2890,39 +2855,49 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     return await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('تخصيص نظام التقييم'),
+        title: Row(
+          children: [
+            Icon(Icons.tune, color: Colors.purple),
+            SizedBox(width: 8),
+            Text('تخصيص نظام التقييم'),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('كيف تريد تخصيص نظام التقييم؟'),
-            SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: Icon(Icons.format_list_bulleted),
-                    label: Text('نظام موحد'),
-                    onPressed: () => Navigator.pop(context, true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                    ),
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.help_outline, color: Colors.blue, size: 32),
+                  SizedBox(height: 8),
+                  Text(
+                    'ما هو نظام التقييم المفضل لديك؟',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    textAlign: TextAlign.center,
                   ),
-                ),
-                SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: Icon(Icons.layers),
-                    label: Text('نظام لكل معيار'),
-                    onPressed: () => Navigator.pop(context, false),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.pink,
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
+            ),
+            SizedBox(height: 20),
+            _buildOptionCard(
+              icon: Icons.check_circle,
+              title: 'نظام موحد للجميع',
+              description: 'نفس القيم لجميع المعايير',
+              color: Colors.blue,
+              onTap: () => Navigator.pop(context, true),
+            ),
+            SizedBox(height: 12),
+            _buildOptionCard(
+              icon: Icons.layers,
+              title: 'نظام مختلف لكل معيار',
+              description: 'يمكنك تخصيص كل معيار بشكل منفصل',
+              color: Colors.purple,
+              onTap: () => Navigator.pop(context, false),
             ),
           ],
         ),
@@ -2936,21 +2911,77 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     );
   }
 
+  Widget _buildOptionCard({
+    required IconData icon,
+    required String title,
+    required String description,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(color: color.withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Fonction pour afficher le dialogue de configuration des notes personnalisées
   Future<List<String>?> _showCustomNotesDialog(
     BuildContext context,
     String classId,
     String matiereId,
   ) async {
-    // Charger les notes existantes si disponibles
     List<String> existingNotes = await _loadCustomNotes(classId, matiereId);
-    List<TextEditingController> controllers = existingNotes.isEmpty
-        ? [TextEditingController(), TextEditingController()]
-        : existingNotes
-            .map((note) => TextEditingController(text: note))
-            .toList();
-
     bool isEditing = existingNotes.isNotEmpty;
+
+    int selectedLevelCount =
+        existingNotes.isNotEmpty ? existingNotes.length : 4;
+
+    final Map<int, List<String>> defaultNotes = {
+      2: ['0', '1'],
+      3: ['0', '0.5', '1'],
+      4: ['0', '0.25', '0.5', '1'],
+    };
+
+    List<String> currentNotes = isEditing
+        ? List.from(existingNotes)
+        : List.from(defaultNotes[selectedLevelCount] ?? ['0', '1']);
 
     return showDialog<List<String>>(
       context: context,
@@ -2958,281 +2989,281 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
         return StatefulBuilder(
           builder: (context, setState) {
             return Dialog(
-              insetPadding: EdgeInsets.all(20),
+              insetPadding: EdgeInsets.all(16),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.7,
-                  maxWidth: 500,
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
+                  maxWidth: 450,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            isEditing
-                                ? 'تعديل النظام المخصص'
-                                : 'تخصيص نظام التقييم',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(Icons.edit, color: Colors.purple),
                             ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    isEditing
+                                        ? 'تعديل التقييم'
+                                        : 'إنشاء نظام تقييم',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  Text(
+                                    'اختر عدد المستويات وعدّلها',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 20),
+                        Text(
+                          'عدد المستويات:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
                           ),
-                          if (isEditing)
-                            IconButton(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              onPressed: () async {
-                                final confirm = await showDialog(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: Text('حذف النظام المخصص'),
-                                    content: Text(
-                                        'هل أنت متأكد من حذف هذا النظام المخصص؟'),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, false),
-                                        child: Text('إلغاء'),
+                        ),
+                        SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            _buildLevelButton(
+                              count: 2,
+                              isSelected: selectedLevelCount == 2,
+                              onTap: () {
+                                setState(() {
+                                  selectedLevelCount = 2;
+                                  currentNotes = List.from(defaultNotes[2]!);
+                                });
+                              },
+                            ),
+                            SizedBox(width: 12),
+                            _buildLevelButton(
+                              count: 3,
+                              isSelected: selectedLevelCount == 3,
+                              onTap: () {
+                                setState(() {
+                                  selectedLevelCount = 3;
+                                  currentNotes = List.from(defaultNotes[3]!);
+                                });
+                              },
+                            ),
+                            SizedBox(width: 12),
+                            _buildLevelButton(
+                              count: 4,
+                              isSelected: selectedLevelCount == 4,
+                              onTap: () {
+                                setState(() {
+                                  selectedLevelCount = 4;
+                                  currentNotes = List.from(defaultNotes[4]!);
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 24),
+                        Text(
+                          'القيم:',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: currentNotes.asMap().entries.map((entry) {
+                            int idx = entry.key;
+                            Color color =
+                                _getLevelColor(idx, currentNotes.length);
+                            return Container(
+                              width:
+                                  (MediaQuery.of(context).size.width - 80) / 2,
+                              padding: EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: color.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border:
+                                    Border.all(color: color.withOpacity(0.3)),
+                              ),
+                              child: Column(
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: color,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      entry.value,
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
                                       ),
-                                      ElevatedButton(
-                                        onPressed: () =>
-                                            Navigator.pop(context, true),
-                                        child: Text('حذف'),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.red,
+                                    ),
+                                  ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    _getLevelLabel(idx),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: color,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        SizedBox(height: 20),
+                        Container(
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.edit,
+                                      color: Colors.blue, size: 18),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'عدّل الملاحظات:',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 10),
+                              ...List.generate(currentNotes.length, (index) {
+                                return Padding(
+                                  padding: EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        width: 30,
+                                        height: 30,
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          color: _getLevelColor(
+                                              index, currentNotes.length),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Text(
+                                          '${index + 1}',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      SizedBox(width: 10),
+                                      Expanded(
+                                        child: TextField(
+                                          controller: TextEditingController(
+                                              text: currentNotes[index]),
+                                          onChanged: (value) {
+                                            currentNotes[index] = value;
+                                          },
+                                          decoration: InputDecoration(
+                                            hintText: 'ملاحظة ${index + 1}',
+                                            border: OutlineInputBorder(),
+                                            contentPadding:
+                                                EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 8,
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
                                 );
+                              }),
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text('إلغاء'),
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              flex: 2,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  final validNotes = currentNotes
+                                      .map((n) => n.trim())
+                                      .where((n) => n.isNotEmpty)
+                                      .toList();
 
-                                if (confirm == true) {
-                                  try {
-                                    await _deleteCustomNotes(
-                                        classId, matiereId);
-                                    Navigator.pop(
-                                        context); // Fermer ce dialogue
+                                  if (validNotes.length < 2) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                         content:
-                                            Text('تم حذف النظام المخصص بنجاح'),
-                                        backgroundColor: Colors.green,
+                                            Text('أدخل ملاحظتين على الأقل'),
+                                        backgroundColor: Colors.orange,
                                       ),
                                     );
-                                  } catch (e) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('حدث خطأ أثناء الحذف'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
+                                    return;
                                   }
-                                }
-                              },
-                            ),
-                        ],
-                      ),
 
-                      SizedBox(height: 12),
-                      Text(
-                        'أدخل 2-6 قيم للتقييم (من الأسوأ إلى الأفضل):',
-                        style: TextStyle(fontSize: 14),
-                      ),
-
-                      SizedBox(height: 16),
-
-                      // Liste des champs
-                      Expanded(
-                        child: ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: controllers.length,
-                          itemBuilder: (context, index) {
-                            return Padding(
-                              padding: EdgeInsets.only(bottom: 10),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 40,
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      '${index + 1}',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(width: 10),
-                                  Expanded(
-                                    child: TextField(
-                                      controller: controllers[index],
-                                      decoration: InputDecoration(
-                                        hintText: 'أدخل القيمة ${index + 1}',
-                                        border: OutlineInputBorder(),
-                                      ),
-                                    ),
-                                  ),
-                                  if (controllers.length > 2)
-                                    IconButton(
-                                      icon: Icon(Icons.remove_circle,
-                                          color: Colors.red),
-                                      onPressed: () {
-                                        setState(() {
-                                          controllers.removeAt(index);
-                                        });
-                                      },
-                                    ),
-                                ],
+                                  Navigator.pop(context, validNotes);
+                                },
+                                icon: Icon(Icons.check, size: 18),
+                                label: Text('تأكيد'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.green,
+                                  padding: EdgeInsets.symmetric(vertical: 12),
+                                ),
                               ),
-                            );
-                          },
-                        ),
-                      ),
-
-                      SizedBox(height: 10),
-
-                      if (controllers.length < 4)
-                        Center(
-                          child: ElevatedButton.icon(
-                            icon: Icon(Icons.add, size: 18),
-                            label: Text('إضافة قيمة أخرى'),
-                            onPressed: () {
-                              setState(() {
-                                controllers.add(TextEditingController());
-                              });
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[50],
-                              foregroundColor: Colors.blue,
                             ),
-                          ),
+                          ],
                         ),
-
-                      SizedBox(height: 20),
-
-                      // Exemples
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                              color: const Color.fromARGB(255, 224, 224, 224)),
-                        ),
-                      ),
-
-                      SizedBox(height: 20),
-
-                      // Boutons d'action
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: Text('إلغاء'),
-                          ),
-                          SizedBox(width: 10),
-                          ElevatedButton(
-                            onPressed: () async {
-                              // Valider et extraire les valeurs
-                              final validValues = controllers
-                                  .map((c) => c.text.trim())
-                                  .where((value) => value.isNotEmpty)
-                                  .toList();
-
-                              if (validValues.length < 2) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                        'يجب إدخال على الأقل قيمتين صالحتين'),
-                                    backgroundColor: Colors.orange,
-                                  ),
-                                );
-                                return;
-                              }
-
-                              if (validValues.length > 4) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('الحد الأقصى هو 4 قيم فقط'),
-                                    backgroundColor: Colors.orange,
-                                  ),
-                                );
-                                return;
-                              }
-
-                              // Vérifier les doublons
-                              final uniqueValues = validValues.toSet().toList();
-                              if (uniqueValues.length != validValues.length) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                        'يجب أن تكون القيم فريدة (بدون تكرار)'),
-                                    backgroundColor: Colors.orange,
-                                  ),
-                                );
-                                return;
-                              }
-
-                              try {
-                                // Afficher un indicateur de chargement
-                                showDialog(
-                                  context: context,
-                                  barrierDismissible: false,
-                                  builder: (context) => Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                );
-
-                                // // Sauvegarder dans Firestore
-                                // await _saveCustomNotes(
-                                //     classId, matiereId, validValues);
-
-                                // Fermer les dialogues
-                                Navigator.pop(context); // Fermer l'indicateur
-                                Navigator.pop(
-                                    context, validValues); // Fermer ce dialogue
-
-                                // Afficher un message de succès
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(isEditing
-                                        ? 'تم تحديث النظام المخصص بنجاح'
-                                        : 'تم حفظ النظام المخصص بنجاح'),
-                                    backgroundColor: Colors.green,
-                                    duration: Duration(seconds: 2),
-                                  ),
-                                );
-                              } catch (e) {
-                                // Fermer l'indicateur en cas d'erreur
-                                if (Navigator.canPop(context)) {
-                                  Navigator.pop(context);
-                                }
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('حدث خطأ أثناء الحفظ: $e'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            },
-                            child: Text(isEditing ? 'تحديث' : 'حفظ النظام'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -3241,6 +3272,74 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
         );
       },
     );
+  }
+
+  Widget _buildLevelButton({
+    required int count,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: 70,
+        padding: EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.purple : Colors.grey[200],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? Colors.purple : Colors.grey[400]!,
+            width: 2,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: isSelected ? Colors.white : Colors.grey[700],
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'مستويات',
+              style: TextStyle(
+                fontSize: 11,
+                color: isSelected ? Colors.white70 : Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getLevelColor(int index, int total) {
+    if (total == 2) {
+      return index == 0 ? Colors.red : Colors.green;
+    } else if (total == 3) {
+      return index == 0
+          ? Colors.red
+          : index == 1
+              ? Colors.orange
+              : Colors.green;
+    } else {
+      return index == 0
+          ? Colors.red
+          : index == 1
+              ? Colors.orange
+              : index == 2
+                  ? Colors.amber
+                  : Colors.green;
+    }
+  }
+
+  String _getLevelLabel(int index) {
+    final labels = ['الأقل', 'ضعيف', 'متوسط', 'الأعلى'];
+    return labels[index.clamp(0, 3)];
   }
 
   // Fonction pour sauvegarder les notes personnalisées
@@ -5131,188 +5230,197 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: _refreshStudents,
-      color: Theme.of(context).primaryColor,
-      backgroundColor: Colors.white,
-      child: _students.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.people_alt_outlined,
-                      size: 60, color: Colors.grey[400]),
-                  SizedBox(height: 16),
-                  Text(
-                    "لا يوجد تلاميذ",
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey[600],
-                    ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 600;
+        final isVeryWide = constraints.maxWidth > 900;
+
+        return RefreshIndicator(
+          onRefresh: _refreshStudents,
+          color: Theme.of(context).primaryColor,
+          backgroundColor: Colors.white,
+          child: _students.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.people_alt_outlined,
+                          size: 60, color: Colors.grey[400]),
+                      SizedBox(height: 16),
+                      Text(
+                        "لا يوجد تلاميذ",
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      if (_selectedClass != null)
+                        Padding(
+                          padding: EdgeInsets.only(top: 16),
+                          child: ElevatedButton.icon(
+                            icon: Icon(Icons.person_add),
+                            label: Text("إضافة تلاميذ"),
+                            onPressed: () => _addStudent(_selectedClass!),
+                          ),
+                        ),
+                    ],
                   ),
-                  if (_selectedClass != null)
-                    Padding(
-                      padding: EdgeInsets.only(top: 16),
-                      child: ElevatedButton.icon(
-                        icon: Icon(Icons.person_add),
-                        label: Text("إضافة تلاميذ"),
-                        onPressed: () => _addStudent(_selectedClass!),
+                )
+              : CustomScrollView(
+                  slivers: [
+                    SliverPadding(
+                      padding: EdgeInsets.all(isWide ? 16 : 8),
+                      sliver: SliverToBoxAdapter(
+                        child: _buildStudentsHeader(isWide),
                       ),
                     ),
-                ],
-              ),
-            )
-          : ListView.builder(
-              padding: EdgeInsets.all(12),
-              itemCount: _students.length + 1, // +1 pour l'en-tête
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  // En-tête avec indicateur alphabétique
-                  return Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: Colors.grey[200] ?? Colors.grey, width: 1),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // Indicateur alphabétique
-                        // Dans _buildStudentsList(), remplacez la section des boutons d'action :
-
-// Boutons d'action
-                        Row(
-                          children: [
-                            // NOUVEAU BOUTON : Importer une liste
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: Colors.purple[50],
-                                border: Border.all(
-                                    color: Colors.purple[100] ?? Colors.purple),
-                              ),
-                              child: IconButton(
-                                icon: Icon(
-                                  Icons.post_add,
-                                  color: Colors.purple[700],
-                                  size: 22,
-                                ),
-                                onPressed: () =>
-                                    _addMultipleStudentsDialog(_selectedClass!),
-                                tooltip: 'إضافة قائمة تلاميذ',
-                                padding: EdgeInsets.all(8),
-                              ),
-                            ),
-
-                            SizedBox(width: 8),
-
-                            // Bouton Ajouter un élève (individuel)
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: Colors.green[50],
-                                border: Border.all(
-                                    color: Colors.green[100] ?? Colors.green),
-                              ),
-                              child: IconButton(
-                                icon: Icon(
-                                  Icons.person_add_alt_1,
-                                  color: Colors.green[700],
-                                  size: 22,
-                                ),
-                                onPressed: () => _addStudent(_selectedClass!),
-                                tooltip: 'إضافة تلميذ جديد',
-                                padding: EdgeInsets.all(8),
-                              ),
-                            ),
-
-                            SizedBox(width: 8),
-
-                            // Bouton Rafraîchir
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: Colors.blue[50],
-                                border: Border.all(
-                                    color: Colors.blue[100] ?? Colors.blue),
-                              ),
-                              child: IconButton(
-                                icon: Icon(
-                                  Icons.refresh,
-                                  color: Colors.blue[700],
-                                  size: 22,
-                                ),
-                                onPressed: _refreshStudents,
-                                tooltip: 'تحديث القائمة',
-                                padding: EdgeInsets.all(8),
-                              ),
-                            ),
-                          ],
-                        ),
-                        // Boutons d'action
-                        Row(
-                          children: [
-                            // Bouton Ajouter un élève
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: Colors.green[50],
-                                border: Border.all(
-                                    color: Colors.green[100] ?? Colors.green),
-                              ),
-                              child: IconButton(
-                                icon: Icon(
-                                  Icons.person_add_alt_1,
-                                  color: Colors.green[700],
-                                  size: 22,
-                                ),
-                                onPressed: () => _addStudent(_selectedClass!),
-                                tooltip: 'إضافة تلميذ جديد',
-                                padding: EdgeInsets.all(8),
-                              ),
-                            ),
-
-                            SizedBox(width: 8),
-
-                            // Bouton Rafraîchir
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: Colors.blue[50],
-                                border: Border.all(
-                                    color: Colors.blue[100] ?? Colors.blue),
-                              ),
-                              child: IconButton(
-                                icon: Icon(
-                                  Icons.refresh,
-                                  color: Colors.blue[700],
-                                  size: 22,
-                                ),
-                                onPressed: _refreshStudents,
-                                tooltip: 'تحديث القائمة',
-                                padding: EdgeInsets.all(8),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final student = _students[index - 1];
-                return Padding(
-                  padding: EdgeInsets.only(bottom: 8),
-                  child: _buildStudentCard(student),
-                );
-              },
-            ),
+                    if (isVeryWide)
+                      SliverPadding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: isWide ? 16 : 8),
+                        sliver: _buildStudentsGrid(context, 3),
+                      )
+                    else if (isWide)
+                      SliverPadding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: isWide ? 16 : 8),
+                        sliver: _buildStudentsGrid(context, 2),
+                      )
+                    else
+                      SliverPadding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        sliver: _buildStudentsListView(),
+                      ),
+                    SliverPadding(padding: EdgeInsets.only(bottom: 80)),
+                  ],
+                ),
+        );
+      },
     );
   }
 
-  Widget _buildStudentCard(Map<String, dynamic> student) {
+  Widget _buildStudentsHeader(bool isWide) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200] ?? Colors.grey, width: 1),
+      ),
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.people,
+                    size: 16, color: Theme.of(context).primaryColor),
+                SizedBox(width: 6),
+                Text(
+                  '${_students.length} تلميذ',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Wrap(
+            spacing: 8,
+            children: [
+              _buildActionButton(
+                icon: Icons.post_add,
+                color: Colors.purple,
+                tooltip: 'إضافة قائمة تلاميذ',
+                onPressed: () => _addMultipleStudentsDialog(_selectedClass!),
+                isWide: isWide,
+              ),
+              _buildActionButton(
+                icon: Icons.person_add_alt_1,
+                color: Colors.green,
+                tooltip: 'إضافة تلميذ جديد',
+                onPressed: () => _addStudent(_selectedClass!),
+                isWide: isWide,
+              ),
+              _buildActionButton(
+                icon: Icons.refresh,
+                color: Colors.blue,
+                tooltip: 'تحديث القائمة',
+                onPressed: _refreshStudents,
+                isWide: isWide,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+    required VoidCallback onPressed,
+    required bool isWide,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        color: color.withOpacity(0.1),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: color, size: isWide ? 22 : 20),
+        onPressed: onPressed,
+        tooltip: tooltip,
+        padding: EdgeInsets.all(isWide ? 10 : 8),
+        constraints: BoxConstraints(
+          minWidth: isWide ? 44 : 36,
+          minHeight: isWide ? 44 : 36,
+        ),
+      ),
+    );
+  }
+
+  SliverGrid _buildStudentsGrid(BuildContext context, int crossAxisCount) {
+    return SliverGrid(
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        childAspectRatio: 2.2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+      ),
+      delegate: SliverChildBuilderDelegate(
+        (context, index) => _buildStudentCard(_students[index], isGrid: true),
+        childCount: _students.length,
+      ),
+    );
+  }
+
+  SliverList _buildStudentsListView() {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) => Padding(
+          padding: EdgeInsets.only(bottom: 8),
+          child: _buildStudentCard(_students[index], isGrid: false),
+        ),
+        childCount: _students.length,
+      ),
+    );
+  }
+
+  Widget _buildStudentCard(Map<String, dynamic> student,
+      {bool isGrid = false}) {
     final photoBase64 = student['photoBase64'];
     final parentName = student['parentName'] ?? 'غير محدد';
     final birthDate = student['birthDate'];
@@ -5322,9 +5430,12 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           _selectedClass!['class_id'], student['id'], selectedSubjectId),
       builder: (context, snapshot) {
         final statusColor = snapshot.data ?? Colors.grey;
-
-        // Variable pour suivre si l'élève est marqué comme absent
         bool isAbsent = student['isAbsent'] ?? false;
+
+        if (isGrid) {
+          return _buildStudentCardGrid(
+              student, photoBase64, statusColor, isAbsent);
+        }
 
         return Card(
           shape: RoundedRectangleBorder(
@@ -5349,8 +5460,8 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                     alignment: Alignment.bottomRight,
                     children: [
                       Container(
-                        width: 56,
-                        height: 56,
+                        width: 50,
+                        height: 50,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.grey[200],
@@ -5361,43 +5472,38 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                   base64Decode(photoBase64),
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) =>
-                                      Icon(Icons.person, size: 30),
+                                      Icon(Icons.person, size: 26),
                                 ),
                               )
-                            : Icon(Icons.person, size: 30),
+                            : Icon(Icons.person, size: 26),
                       ),
                       Container(
-                        width: 16,
-                        height: 16,
+                        width: 14,
+                        height: 14,
                         decoration: BoxDecoration(
                           color: statusColor,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white,
-                            width: 2,
-                          ),
+                          border: Border.all(color: Colors.white, width: 2),
                         ),
                       ),
                     ],
                   ),
-                  SizedBox(width: 16),
+                  SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Row(
                           children: [
                             if (isAbsent)
                               Container(
+                                margin: EdgeInsets.only(left: 6),
                                 padding: EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
+                                    horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: Colors.red.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                    color: Colors.red,
-                                    width: 1,
-                                  ),
                                 ),
                                 child: Text(
                                   'غائب',
@@ -5408,12 +5514,11 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                                   ),
                                 ),
                               ),
-                            SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 student['name'],
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 15,
                                   fontWeight: FontWeight.bold,
                                 ),
                                 maxLines: 1,
@@ -5422,21 +5527,15 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                             ),
                           ],
                         ),
-                        SizedBox(height: 4),
-                        Text(
-                          parentName,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        if (birthDate != null && birthDate.isNotEmpty)
+                        if (parentName != 'غير محدد')
                           Text(
-                            birthDate,
+                            parentName,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               color: Colors.grey[600],
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                       ],
                     ),
@@ -5444,28 +5543,35 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Bouton Marquer comme absent/présent
                       IconButton(
                         icon: Icon(
                           isAbsent ? Icons.person_off : Icons.person_outline,
                           color: isAbsent ? Colors.red : Colors.blue,
+                          size: 20,
                         ),
                         onPressed: () => _toggleAbsentStatus(student),
                         tooltip: isAbsent ? 'إلغاء الغياب' : 'تسجيل غياب',
+                        padding: EdgeInsets.all(6),
+                        constraints:
+                            BoxConstraints(minWidth: 36, minHeight: 36),
                       ),
-
-                      // Le bouton info reste (c'est ici qu'on pourra modifier le nom)
                       IconButton(
-                        icon: Icon(Icons.info_outline, color: Colors.blue),
+                        icon: Icon(Icons.info_outline,
+                            color: Colors.blue, size: 20),
                         onPressed: () =>
                             _showStudentDetails(_selectedClass!, student['id']),
+                        padding: EdgeInsets.all(6),
+                        constraints:
+                            BoxConstraints(minWidth: 36, minHeight: 36),
                       ),
-
                       IconButton(
-                        icon:
-                            Icon(Icons.delete_outline, color: Colors.red[400]),
+                        icon: Icon(Icons.delete_outline,
+                            color: Colors.red[400], size: 20),
                         onPressed: () => _confirmDeleteStudent(
                             _selectedClass!, student['id']),
+                        padding: EdgeInsets.all(6),
+                        constraints:
+                            BoxConstraints(minWidth: 36, minHeight: 36),
                       ),
                     ],
                   ),
@@ -5475,6 +5581,151 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildStudentCardGrid(Map<String, dynamic> student,
+      String? photoBase64, Color statusColor, bool isAbsent) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () async {
+          if (selectedClassId != null && selectedSubjectId != null) {
+            await _showSelectionsDialog(
+                selectedClassId!, selectedSubjectId!, student['id']);
+          }
+        },
+        onLongPress: () => _showStudentContextMenu(student),
+        child: Padding(
+          padding: EdgeInsets.all(10),
+          child: Row(
+            children: [
+              Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.grey[200],
+                    ),
+                    child: photoBase64 != null && photoBase64.isNotEmpty
+                        ? ClipOval(
+                            child: Image.memory(
+                              base64Decode(photoBase64),
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Icon(Icons.person, size: 24),
+                            ),
+                          )
+                        : Icon(Icons.person, size: 24),
+                  ),
+                  Container(
+                    width: 12,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Row(
+                      children: [
+                        if (isAbsent)
+                          Container(
+                            margin: EdgeInsets.only(left: 4),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: Text('غائب',
+                                style: TextStyle(
+                                    color: Colors.red,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold)),
+                          ),
+                        Expanded(
+                          child: Text(
+                            student['name'],
+                            style: TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      student['parentName'] ?? 'غير محدد',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, size: 20, color: Colors.grey[600]),
+                padding: EdgeInsets.zero,
+                onSelected: (value) {
+                  if (value == 'absent')
+                    _toggleAbsentStatus(student);
+                  else if (value == 'info')
+                    _showStudentDetails(_selectedClass!, student['id']);
+                  else if (value == 'delete')
+                    _confirmDeleteStudent(_selectedClass!, student['id']);
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'absent',
+                    child: Row(
+                      children: [
+                        Icon(isAbsent ? Icons.person : Icons.person_off,
+                            size: 18,
+                            color: isAbsent ? Colors.red : Colors.blue),
+                        SizedBox(width: 8),
+                        Text(isAbsent ? 'إلغاء الغياب' : 'تسجيل غياب'),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'info',
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 18, color: Colors.blue),
+                        SizedBox(width: 8),
+                        Text('معلومات'),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('حذف', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -6640,54 +6891,43 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: LayoutBuilder(
-          builder: (context, constraints) {
-            final isSmallScreen = MediaQuery.of(context).size.width < 600;
-            final isMediumScreen = MediaQuery.of(context).size.width < 900;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmallScreen = constraints.maxWidth < 600;
+        final isMediumScreen = constraints.maxWidth < 900;
+        final showStudentsWithSubject = _selectedClass != null &&
+            _showStudentsList &&
+            selectedSubjectId != null;
 
-            return Row(
+        return Scaffold(
+          appBar: AppBar(
+            titleSpacing: isSmallScreen ? 0 : 8,
+            title: Row(
               children: [
-                // Bouton "Réinitialiser les évaluations" - NOUVEAU BOUTON DANGER
-                if (_selectedClass != null &&
-                    _showStudentsList &&
-                    selectedSubjectId != null)
-                  Container(
-                    margin:
-                        EdgeInsets.symmetric(horizontal: isSmallScreen ? 2 : 4),
-                    child: ElevatedButton.icon(
-                      icon: Icon(Icons.delete_sweep,
-                          size: isSmallScreen ? 16 : 18),
-                      label: Text(
-                        isSmallScreen
-                            ? 'إعادة'
-                            : (isMediumScreen
-                                ? 'إعادة تعيين'
-                                : 'إعادة تعيين التقييمات'),
-                        style: TextStyle(
-                            fontSize: isSmallScreen
-                                ? 11
-                                : (isMediumScreen ? 12 : 14)),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.red,
-                        padding: EdgeInsets.symmetric(
-                          horizontal:
-                              isSmallScreen ? 6 : (isMediumScreen ? 8 : 12),
-                          vertical: isSmallScreen ? 6 : 8,
-                        ),
-                      ),
-                      onPressed: () => _confirmResetAllEvaluations(),
-                    ),
+                if (isSmallScreen)
+                  IconButton(
+                    icon: Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      if (_showStudentsList) {
+                        setState(() {
+                          _showStudentsList = false;
+                          _students = [];
+                        });
+                      } else if (_selectedClass != null) {
+                        setState(() {
+                          _selectedClass = null;
+                          _subjects = [];
+                        });
+                      }
+                    },
+                    tooltip: 'رجوع',
+                    padding: EdgeInsets.symmetric(horizontal: 8),
                   ),
-                // Indicateur de chargement combiné
                 if (_isLoadingClasses ||
                     _isLoadingSubjects ||
                     _isLoadingStudents)
                   Padding(
-                    padding: EdgeInsets.only(left: isSmallScreen ? 4 : 8),
+                    padding: EdgeInsets.only(right: isSmallScreen ? 4 : 8),
                     child: SizedBox(
                       width: isSmallScreen ? 16 : 20,
                       height: isSmallScreen ? 16 : 20,
@@ -6704,226 +6944,220 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                         : '${_selectedClass!['class_name']}',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: isSmallScreen ? 14 : 18,
+                      fontSize: isSmallScreen ? 15 : 18,
+                      fontWeight: FontWeight.w600,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
-            );
-          },
-        ),
-        backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
-        elevation: 4,
-        actions: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isSmallScreen = MediaQuery.of(context).size.width < 600;
-              final isMediumScreen = MediaQuery.of(context).size.width < 900;
-
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Bouton "جدول النتائج"
-                  if (_selectedClass != null &&
-                      _showStudentsList &&
-                      selectedSubjectId != null)
-                    Container(
-                      margin: EdgeInsets.symmetric(
-                          horizontal: isSmallScreen ? 2 : 4),
-                      child: ElevatedButton.icon(
-                        icon: Icon(Icons.table_chart,
-                            size: isSmallScreen ? 16 : 18),
-                        label: Text(
-                          isSmallScreen
-                              ? 'النتائج'
-                              : (isMediumScreen ? 'النتائج' : 'جدول النتائج'),
-                          style: TextStyle(
-                              fontSize: isSmallScreen
-                                  ? 11
-                                  : (isMediumScreen ? 12 : 14)),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          backgroundColor: Colors.green,
-                          padding: EdgeInsets.symmetric(
-                            horizontal:
-                                isSmallScreen ? 6 : (isMediumScreen ? 8 : 12),
-                            vertical: isSmallScreen ? 6 : 8,
-                          ),
-                        ),
-                        onPressed: () => _navigateToDynamicTableFromAppBar(),
+            ),
+            backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
+            elevation: 2,
+            actions: [
+              if (!isSmallScreen && showStudentsWithSubject) ...[
+                _buildAppBarButton(
+                  icon: Icons.table_chart,
+                  label: 'جدول النتائج',
+                  color: Colors.green,
+                  onPressed: _navigateToDynamicTableFromAppBar,
+                  isSmall: isSmallScreen,
+                ),
+                _buildAppBarButton(
+                  icon: Icons.delete_sweep,
+                  label: 'إعادة تعيين',
+                  color: Colors.red,
+                  onPressed: _confirmResetAllEvaluations,
+                  isSmall: isSmallScreen,
+                ),
+              ],
+              if (isSmallScreen && showStudentsWithSubject)
+                PopupMenuButton<String>(
+                  icon: Icon(Icons.more_vert, color: Colors.white),
+                  onSelected: (value) {
+                    switch (value) {
+                      case 'table':
+                        _navigateToDynamicTableFromAppBar();
+                        break;
+                      case 'reset':
+                        _confirmResetAllEvaluations();
+                        break;
+                      case 'bareme':
+                        _navigateDirectlyToBaremesSelection();
+                        break;
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    PopupMenuItem(
+                      value: 'table',
+                      child: Row(
+                        children: [
+                          Icon(Icons.table_chart,
+                              color: Colors.green, size: 20),
+                          SizedBox(width: 8),
+                          Text('جدول النتائج'),
+                        ],
                       ),
                     ),
-
-                  // Bouton "برمجة المعايير"
-                  if (_selectedClass != null &&
-                      _showStudentsList &&
-                      selectedSubjectId != null)
-                    Container(
-                      margin: EdgeInsets.symmetric(
-                          horizontal: isSmallScreen ? 2 : 4),
-                      child: ElevatedButton.icon(
-                        icon:
-                            Icon(Icons.settings, size: isSmallScreen ? 16 : 18),
-                        label: Text(
-                          isSmallScreen
-                              ? 'المعايير'
-                              : (isMediumScreen
-                                  ? 'المعايير'
-                                  : 'برمجة المعايير'),
-                          style: TextStyle(
-                              fontSize: isSmallScreen
-                                  ? 11
-                                  : (isMediumScreen ? 12 : 14)),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          backgroundColor:
-                              const Color.fromARGB(255, 248, 151, 25),
-                          padding: EdgeInsets.symmetric(
-                            horizontal:
-                                isSmallScreen ? 6 : (isMediumScreen ? 8 : 12),
-                            vertical: isSmallScreen ? 6 : 8,
-                          ),
-                        ),
-                        onPressed: () => _navigateDirectlyToBaremesSelection(),
+                    PopupMenuItem(
+                      value: 'bareme',
+                      child: Row(
+                        children: [
+                          Icon(Icons.settings,
+                              color: Color(0xFFF89719), size: 20),
+                          SizedBox(width: 8),
+                          Text('المعايير'),
+                        ],
                       ),
                     ),
-
-                  // Bouton Rafraîchir global
-                  Container(
-                    margin: EdgeInsets.only(left: isSmallScreen ? 2 : 4),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.white.withOpacity(0.1),
+                    PopupMenuItem(
+                      value: 'reset',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_sweep, color: Colors.red, size: 20),
+                          SizedBox(width: 8),
+                          Text('إعادة تعيين'),
+                        ],
+                      ),
                     ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        IconButton(
-                          icon: Icon(
-                            Icons.refresh,
-                            color: Colors.white,
-                            size: isSmallScreen ? 20 : 24,
-                          ),
-                          onPressed: () {
-                            if (_selectedClass == null) {
-                              _refreshClasses();
-                            } else if (_showStudentsList) {
-                              _refreshStudents();
-                            } else {
-                              _refreshSubjects();
-                            }
-                          },
-                          tooltip: 'تحديث البيانات',
-                        ),
-                        if (_isRefreshingClasses ||
-                            _isRefreshingSubjects ||
-                            _isRefreshing)
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Container(
-                              width: isSmallScreen ? 6 : 8,
-                              height: isSmallScreen ? 6 : 8,
-                              decoration: BoxDecoration(
-                                color: Colors.yellow,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  // Bouton Aide
-                  IconButton(
-                    icon: Icon(
-                      Icons.help_outline,
-                      color: Colors.white,
-                      size: isSmallScreen ? 20 : 24,
-                    ),
-                    onPressed: () => _buildHelpSection(context),
-                    tooltip: 'مساعدة',
-                  ),
-                ],
-              );
-            },
+                  ],
+                )
+              else if (showStudentsWithSubject)
+                _buildAppBarButton(
+                  icon: Icons.settings,
+                  label: 'المعايير',
+                  color: Color(0xFFF89719),
+                  onPressed: _navigateDirectlyToBaremesSelection,
+                  isSmall: isSmallScreen,
+                ),
+              IconButton(
+                icon: Icon(Icons.refresh,
+                    color: Colors.white, size: isSmallScreen ? 22 : 24),
+                onPressed: () {
+                  if (_selectedClass == null) {
+                    _refreshClasses();
+                  } else if (_showStudentsList) {
+                    _refreshStudents();
+                  } else {
+                    _refreshSubjects();
+                  }
+                },
+                tooltip: 'تحديث البيانات',
+              ),
+              IconButton(
+                icon: Icon(Icons.help_outline,
+                    color: Colors.white, size: isSmallScreen ? 22 : 24),
+                onPressed: () => _buildHelpSection(context),
+                tooltip: 'مساعدة',
+              ),
+              SizedBox(width: isSmallScreen ? 4 : 8),
+            ],
           ),
-        ],
-      ),
-      body: SafeArea(
-        child: _classes.isEmpty && !_isLoadingClasses
-            ? Center(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.all(16),
-                  child: Directionality(
-                    textDirection: TextDirection.rtl,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.class_,
-                          size: 80,
-                          color: Colors.grey.shade400,
-                        ),
-                        SizedBox(height: 20),
-                        Text(
-                          'لا توجد اقسام متاحة',
-                          style: TextStyle(fontSize: 18, color: Colors.grey),
-                        ),
-                        SizedBox(height: 10),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Text(
-                            'يجب عليك إضافة قسم من خلال قسم "إضافة قسم جديد"',
-                            style: TextStyle(fontSize: 16, color: Colors.grey),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        SizedBox(height: 20),
-                        Row(
+          body: SafeArea(
+            child: _classes.isEmpty && !_isLoadingClasses
+                ? Center(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.all(16),
+                      child: Directionality(
+                        textDirection: TextDirection.rtl,
+                        child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            ElevatedButton.icon(
-                              icon: Icon(Icons.add),
-                              label: Text('إضافة قسم جديد'),
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => AddClassPage(),
-                                  ),
-                                ).then((_) {
-                                  _refreshClasses();
-                                });
-                              },
+                            Icon(
+                              Icons.class_,
+                              size: 80,
+                              color: Colors.grey.shade400,
                             ),
-                            SizedBox(width: 16),
-                            ElevatedButton.icon(
-                              icon: Icon(Icons.refresh),
-                              label: Text('تحديث'),
-                              onPressed: _refreshClasses,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
+                            SizedBox(height: 20),
+                            Text(
+                              'لا توجد اقسام متاحة',
+                              style:
+                                  TextStyle(fontSize: 18, color: Colors.grey),
+                            ),
+                            SizedBox(height: 10),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 20),
+                              child: Text(
+                                'يجب عليك إضافة قسم من خلال قسم "إضافة قسم جديد"',
+                                style:
+                                    TextStyle(fontSize: 16, color: Colors.grey),
+                                textAlign: TextAlign.center,
                               ),
+                            ),
+                            SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                ElevatedButton.icon(
+                                  icon: Icon(Icons.add),
+                                  label: Text('إضافة قسم جديد'),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => AddClassPage(),
+                                      ),
+                                    ).then((_) {
+                                      _refreshClasses();
+                                    });
+                                  },
+                                ),
+                                SizedBox(width: 16),
+                                ElevatedButton.icon(
+                                  icon: Icon(Icons.refresh),
+                                  label: Text('تحديث'),
+                                  onPressed: _refreshClasses,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
+                      ),
+                    ),
+                  )
+                : Directionality(
+                    textDirection: TextDirection.rtl,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return _buildClassList();
+                      },
                     ),
                   ),
-                ),
-              )
-            : Directionality(
-                textDirection: TextDirection.rtl,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return _buildClassList();
-                  },
-                ),
-              ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAppBarButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onPressed,
+    required bool isSmall,
+  }) {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 4),
+      child: ElevatedButton.icon(
+        icon: Icon(icon, size: isSmall ? 16 : 18),
+        label: Text(
+          label,
+          style: TextStyle(fontSize: isSmall ? 12 : 14),
+        ),
+        style: ElevatedButton.styleFrom(
+          foregroundColor: Colors.white,
+          backgroundColor: color,
+          padding: EdgeInsets.symmetric(
+            horizontal: isSmall ? 8 : 12,
+            vertical: isSmall ? 6 : 8,
+          ),
+          textStyle: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        onPressed: onPressed,
       ),
     );
   }
