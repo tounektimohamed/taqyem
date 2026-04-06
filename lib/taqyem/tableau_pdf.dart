@@ -1683,14 +1683,13 @@ static String _buildCriteriaTableHTML({
       'انجليزي': 'مجال اللغة الإنجليزية',
     };
 
-
     final matieresFrench = {
-      'Communication orale': 'Domaine Langue Française',
-      'Lecture': 'Domaine Langue Française',
-      'Grammaire': 'Domaine Langue Française',
-      'Production écrite': 'Domaine Langue Française',
-      'Écriture': 'Domaine Langue Française',
-      'Dictée': 'Domaine Langue Française',
+      'Communication orale': 'Domaine Langue Arabe',
+      'Lecture': 'Domaine Langue Arabe',
+      'Grammaire': 'Domaine Langue Arabe',
+      'Production écrite': 'Domaine Langue Arabe',
+      'Écriture': 'Domaine Langue Arabe',
+      'Dictée': 'Domaine Langue Arabe',
       'Mathématiques': 'Domaine Sciences et Technologie',
       'Éveil scientifique': 'Domaine Sciences et Technologie',
       'Éducation technologique': 'Domaine Sciences et Technologie',

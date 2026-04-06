@@ -267,9 +267,9 @@ class _ClassificationPageState extends State<ClassificationPage> {
     'support': [],
     'excellence': [],
   };
-bool _isFirstTime = true;
-double _pulseScale = 1.0;
-Timer? _pulseTimer;
+  bool _isFirstTime = true;
+  double _pulseScale = 1.0;
+  Timer? _pulseTimer;
 
 // Variables pour la gestion des exercices AI sélectionnés
   Map<String, List<AIExerciseSelection>> _selectedAIExercises = {
@@ -283,6 +283,10 @@ Timer? _pulseTimer;
   bool _isMounted = true;
   Timer? _accountStatusTimer;
 
+  // Variables pour les images d'aide
+  Map<String, String> _helpImages = {};
+  bool _isLoadingHelpImages = true;
+
   @override
   void initState() {
     super.initState();
@@ -290,15 +294,39 @@ Timer? _pulseTimer;
     loadJsonData();
     _loadPrintCredit();
     _startTimer();
-     // _checkFirstTimeUser(); // Vérifier si c'est la première utilisation
+    _loadHelpImages();
+    // _checkFirstTimeUser(); // Vérifier si c'est la première utilisation
+  }
 
+  Future<void> _loadHelpImages() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('da3m_images')
+          .doc('help')
+          .get();
+
+      if (mounted) {
+        if (doc.exists && doc.data() != null) {
+          setState(() {
+            _helpImages = Map<String, String>.from(doc.data()!['images'] ?? {});
+            _isLoadingHelpImages = false;
+          });
+        } else {
+          setState(() => _isLoadingHelpImages = false);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingHelpImages = false);
+      }
+    }
   }
 
 // Future<void> _checkFirstTimeUser() async {
 //   // Vérifier si l'utilisateur a déjà ouvert cette page
 //   final prefs = await SharedPreferences.getInstance();
 //   _isFirstTime = prefs.getBool('help_shown_${widget.selectedBaremeId}') != true;
-  
+
 //   if (_isFirstTime && _isMounted) {
 //     _startPulseAnimation();
 //   }
@@ -315,38 +343,37 @@ Timer? _pulseTimer;
 // }
 
 // Widget du bouton avec effet de pulsation
-Widget _buildPulsingHelpButton() {
-  return AnimatedScale(
-    scale: _pulseScale,
-    duration: Duration(milliseconds: 400),
-    curve: Curves.easeInOut,
-    child: Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: RadialGradient(
-          colors: [
-            const Color.fromARGB(255, 117, 77, 112),
-            const Color.fromARGB(255, 231, 217, 22),
-          ],
+  Widget _buildPulsingHelpButton() {
+    return AnimatedScale(
+      scale: _pulseScale,
+      duration: Duration(milliseconds: 400),
+      curve: Curves.easeInOut,
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              const Color.fromARGB(255, 117, 77, 112),
+              const Color.fromARGB(255, 231, 217, 22),
+            ],
+          ),
+        ),
+        child: IconButton(
+          icon: Icon(Icons.help, color: Colors.white),
+          tooltip: _getTranslatedText('مساعدة', 'Aide'),
+          onPressed: () async {
+            // Arrêter l'animation
+            _pulseTimer?.cancel();
+            setState(() {
+              _pulseScale = 1.0;
+            });
+
+            _showHelpDialog();
+          },
         ),
       ),
-      child: IconButton(
-        icon: Icon(Icons.help, color: Colors.white),
-        tooltip: _getTranslatedText('مساعدة', 'Aide'),
-        onPressed: () async {
-          // Arrêter l'animation
-          _pulseTimer?.cancel();
-          setState(() {
-            _pulseScale = 1.0;
-          });
-          
-        
-          _showHelpDialog();
-        },
-      ),
-    ),
-  );
-}
+    );
+  }
 
   @override
   void dispose() {
@@ -354,343 +381,441 @@ Widget _buildPulsingHelpButton() {
     _accountStatusTimer?.cancel();
     super.dispose();
   }
-void _showHelpDialog() {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return Dialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Container(
-          width: MediaQuery.of(context).size.width * 0.9,
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.8,
+
+  void _showHelpDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-          padding: EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // En-tête
-              Container(
-                padding: EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(color: Colors.grey.shade300),
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.8,
+            ),
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // En-tête
+                Container(
+                  padding: EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        Icons.help_outline,
-                        color: Colors.blue.shade700,
-                        size: 28,
-                      ),
-                    ),
-                    SizedBox(width: 15),
-                    Expanded(
-                      child: Text(
-                        _getTranslatedText(
-                          'كيفية استخدام الصفحة',
-                          'Comment utiliser cette page',
-                        ),
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.blue.shade800,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-              ),
-
-              SizedBox(height: 20),
-
-              // Contenu du guide
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      _buildHelpSection(
-                        icon: Icons.radio_button_checked,
-                        color: Colors.red,
-                        title: _getTranslatedText(
-                          '1. تحديد الأخطاء',
-                          '1. Sélectionner les erreurs',
-                        ),
-                        description: _getTranslatedText(
-                          'اضغط على الزر الأحمر "تحديد" لكل مجموعة. ستظهر لك قائمة بالأخطاء وأصول الأخطاء يمكنك اختيار ما يناسب المجموعة.',
-                          'Appuyez sur le bouton rouge "Sélectionner" pour chaque groupe. Une liste d\'erreurs et d\'origines d\'erreurs s\'affichera pour vous permettre de choisir.',
-                        ),
-                      ),
-                      
-                      _buildHelpSection(
-                        icon: Icons.auto_awesome,
-                        color: Colors.purple,
-                        title: _getTranslatedText(
-                          '2. توليد تمارين بالذكاء الاصطناعي',
-                          '2. Générer des exercices par IA',
-                        ),
-                        description: _getTranslatedText(
-                          'بعد تحديد الأخطاء، اضغط على النقاط الثلاث بجانب زر التحديد واختر "génère ai" لتوليد تمارين علاجية مخصصة.',
-                          'Après avoir sélectionné les erreurs, appuyez sur les trois points à côté du bouton de sélection et choisissez "génère ai" pour générer des exercices de remédiation personnalisés.',
-                        ),
-                      ),
-                      
-                      _buildHelpSection(
-                        icon: Icons.checklist,
-                        color: Colors.green,
-                        title: _getTranslatedText(
-                          '3. اختيار التمارين',
-                          '3. Choisir les exercices',
-                        ),
-                        description: _getTranslatedText(
-                          'اضغط على خيار "تحديد تمارينات" لاختيار التمارين التي أعجبتك من التمارين المولدة سابقاً، ثم احفظها بالزر البرتقالي.',
-                          'Appuyez sur l\'option "Sélectionner exercices" pour choisir les exercices que vous avez aimés parmi ceux générés précédemment, puis enregistrez-les avec le bouton orange.',
-                        ),
-                      ),
-                      
-                      _buildHelpSection(
-                        icon: Icons.print,
-                        color: Colors.orange,
-                        title: _getTranslatedText(
-                          '4. طباعة الملف',
-                          '4. Imprimer le fichier',
-                        ),
-                        description: _getTranslatedText(
-                          'بعد الانتهاء، يصبح ملف تشخيص الأخطاء جاهزاً. اختر خيار الطباعة من أيقونة الطابعة في الأعلى.',
-                          'Une fois terminé, le fichier de diagnostic des erreurs est prêt. Choisissez l\'option d\'impression à partir de l\'icône d\'imprimante en haut.',
-                        ),
-                      ),
-
-                      SizedBox(height: 20),
-
-                      // Résumé en étapes
                       Container(
-                        padding: EdgeInsets.all(16),
+                        padding: EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: Colors.blue.shade50,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blue.shade200),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _getTranslatedText(
-                                '📋 ملخص سريع:',
-                                '📋 Résumé rapide:',
+                        child: Icon(
+                          Icons.help_outline,
+                          color: Colors.blue.shade700,
+                          size: 28,
+                        ),
+                      ),
+                      SizedBox(width: 15),
+                      Expanded(
+                        child: Text(
+                          _getTranslatedText(
+                            'كيفية استخدام الصفحة',
+                            'Comment utiliser cette page',
+                          ),
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade800,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+
+                SizedBox(height: 20),
+
+                // Contenu du guide
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildHelpSection(
+                          icon: Icons.radio_button_checked,
+                          color: Colors.red,
+                          title: _getTranslatedText(
+                            '1. تحديد الأخطاء',
+                            '1. Sélectionner les erreurs',
+                          ),
+                          description: _getTranslatedText(
+                            'اضغط على الزر الأحمر "تحديد" لكل مجموعة. ستظهر لك قائمة بالأخطاء وأصول الأخطاء يمكنك اختيار ما يناسب المجموعة.',
+                            'Appuyez sur le bouton rouge "Sélectionner" pour chaque groupe. Une liste d\'erreurs et d\'origines d\'erreurs s\'affichera pour vous permettre de choisir.',
+                          ),
+                          imageUrl: _helpImages['select_errors'],
+                        ),
+
+                        _buildHelpSection(
+                          icon: Icons.auto_awesome,
+                          color: Colors.purple,
+                          title: _getTranslatedText(
+                            '2. توليد تمارين بالذكاء الاصطناعي',
+                            '2. Générer des exercices par IA',
+                          ),
+                          description: _getTranslatedText(
+                            'بعد تحديد الأخطاء، اضغط على النقاط الثلاث بجانب زر التحديد واختر "génère ai" لتوليد تمارين علاجية مخصصة.',
+                            'Après avoir sélectionné les erreurs, appuyez sur les trois points à côté du bouton de sélection et choisissez "génère ai" pour générer des exercices de remédiation personnalisés.',
+                          ),
+                          imageUrl: _helpImages['generate_ai'],
+                        ),
+
+                        _buildHelpSection(
+                          icon: Icons.checklist,
+                          color: Colors.green,
+                          title: _getTranslatedText(
+                            '3. اختيار التمارين',
+                            '3. Choisir les exercices',
+                          ),
+                          description: _getTranslatedText(
+                            'اضغط على خيار "تحديد تمارينات" لاختيار التمارين التي أعجبتك من التمارين المولدة سابقاً، ثم احفظها بالزر البرتقالي.',
+                            'Appuyez sur l\'option "Sélectionner exercices" pour choisir les exercices que vous avez aimés parmi ceux générés précédemment, puis enregistrez-les avec le bouton orange.',
+                          ),
+                          imageUrl: _helpImages['choose_exercises'],
+                        ),
+
+                        _buildHelpSection(
+                          icon: Icons.print,
+                          color: Colors.orange,
+                          title: _getTranslatedText(
+                            '4. طباعة الملف',
+                            '4. Imprimer le fichier',
+                          ),
+                          description: _getTranslatedText(
+                            'بعد الانتهاء، يصبح ملف تشخيص الأخطاء جاهزاً. اختر خيار الطباعة من أيقونة الطابعة في الأعلى.',
+                            'Une fois terminé, le fichier de diagnostic des erreurs est prêt. Choisissez l\'option d\'impression à partir de l\'icône d\'imprimante en haut.',
+                          ),
+                          imageUrl: _helpImages['print_file'],
+                        ),
+
+                        SizedBox(height: 20),
+
+                        // Résumé en étapes
+                        Container(
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _getTranslatedText(
+                                  '📋 ملخص سريع:',
+                                  '📋 Résumé rapide:',
+                                ),
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade800,
+                                ),
                               ),
+                              SizedBox(height: 8),
+                              _buildStepItem(
+                                number: '1',
+                                text: _getTranslatedText(
+                                  'اضغط على تحديد → اختر الأخطاء → حفظ التحديدات',
+                                  'Appuyez sur Sélectionner → Choisissez les erreurs → Enregistrer',
+                                ),
+                              ),
+                              _buildStepItem(
+                                number: '2',
+                                text: _getTranslatedText(
+                                  'استخدم النقاط الثلاث لتوليد تمارين AI',
+                                  'Utilisez les trois points pour générer des exercices IA',
+                                ),
+                              ),
+                              _buildStepItem(
+                                number: '3',
+                                text: _getTranslatedText(
+                                  'حدد التمارين التي تعجبك واحفظها',
+                                  'Sélectionnez les exercices que vous aimez et enregistrez',
+                                ),
+                              ),
+                              _buildStepItem(
+                                number: '4',
+                                text: _getTranslatedText(
+                                  'اضغط على أيقونة الطباعة',
+                                  'Appuyez sur l\'icône d\'impression',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        SizedBox(height: 16),
+
+                        // Note sur le crédit d'impression
+                        Container(
+                          padding: EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.amber.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                color: Colors.amber.shade800,
+                                size: 20,
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _getTranslatedText(
+                                    '💰 رصيد الطباعة: $_remainingPrints/5. إذا كان حسابك نشطاً، الطباعة مجانية!',
+                                    '💰 Crédit d\'impression: $_remainingPrints/5. Si votre compte est actif, l\'impression est gratuite!',
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.amber.shade800,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                SizedBox(height: 20),
+
+                // Bouton de fermeture
+                Center(
+                  child: ElevatedButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.check),
+                    label: Text(
+                      _getTranslatedText('فهمت', 'J\'ai compris'),
+                      style: TextStyle(fontSize: 16),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue.shade700,
+                      foregroundColor: Colors.white,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildHelpSection({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String description,
+    String? imageUrl,
+  }) {
+    final hasImage = imageUrl != null && imageUrl.isNotEmpty;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: 20),
+      child: hasImage
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHelpImage(imageUrl, 150),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: color.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(icon, color: color, size: 20),
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              title,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade800,
+                                color: color,
                               ),
                             ),
-                            SizedBox(height: 8),
-                            _buildStepItem(
-                              number: '1',
-                              text: _getTranslatedText(
-                                'اضغط على تحديد → اختر الأخطاء → حفظ التحديدات',
-                                'Appuyez sur Sélectionner → Choisissez les erreurs → Enregistrer',
-                              ),
-                            ),
-                            _buildStepItem(
-                              number: '2',
-                              text: _getTranslatedText(
-                                'استخدم النقاط الثلاث لتوليد تمارين AI',
-                                'Utilisez les trois points pour générer des exercices IA',
-                              ),
-                            ),
-                            _buildStepItem(
-                              number: '3',
-                              text: _getTranslatedText(
-                                'حدد التمارين التي تعجبك واحفظها',
-                                'Sélectionnez les exercices que vous aimez et enregistrez',
-                              ),
-                            ),
-                            _buildStepItem(
-                              number: '4',
-                              text: _getTranslatedText(
-                                'اضغط على أيقونة الطباعة',
-                                'Appuyez sur l\'icône d\'impression',
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-
-                      SizedBox(height: 16),
-
-                      // Note sur le crédit d'impression
-                      Container(
-                        padding: EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.amber.shade200),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              color: Colors.amber.shade800,
-                              size: 20,
-                            ),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                _getTranslatedText(
-                                  '💰 رصيد الطباعة: $_remainingPrints/5. إذا كان حسابك نشطاً، الطباعة مجانية!',
-                                  '💰 Crédit d\'impression: $_remainingPrints/5. Si votre compte est actif, l\'impression est gratuite!',
-                                ),
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.amber.shade800,
-                                ),
-                              ),
-                            ),
-                          ],
+                      SizedBox(height: 8),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade700,
+                          height: 1.4,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-
-              SizedBox(height: 20),
-
-              // Bouton de fermeture
-              Center(
-                child: ElevatedButton.icon(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.check),
-                  label: Text(
-                    _getTranslatedText('فهمت', 'J\'ai compris'),
-                    style: TextStyle(fontSize: 16),
+              ],
+            )
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade700,
-                    foregroundColor: Colors.white,
-                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                  child: Icon(icon, color: color, size: 24),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: color,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        description,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade700,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
+    );
+  }
+
+  Widget _buildHelpImage(String? imageUrl, double height) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return SizedBox.shrink();
+    }
+
+    try {
+      String base64String = imageUrl;
+      if (imageUrl.contains(',')) {
+        base64String = imageUrl.split(',').last;
+      }
+      final bytes = base64Decode(base64String);
+
+      return Container(
+        width: 120,
+        height: height,
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: Colors.grey[200],
+                child: Icon(Icons.broken_image, color: Colors.grey),
+              );
+            },
           ),
         ),
       );
-    },
-  );
-}
+    } catch (e) {
+      return Container(
+        width: 120,
+        height: height,
+        color: Colors.grey[200],
+        child: Icon(Icons.broken_image, color: Colors.grey),
+      );
+    }
+  }
 
-Widget _buildHelpSection({
-  required IconData icon,
-  required Color color,
-  required String title,
-  required String description,
-}) {
-  return Container(
-    margin: EdgeInsets.only(bottom: 20),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(
-            icon,
-            color: color,
-            size: 24,
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
+  Widget _buildStepItem({required String number, required String text}) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: Colors.blue.shade100,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                number,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: color,
+                  color: Colors.blue.shade800,
                 ),
               ),
-              SizedBox(height: 4),
-              Text(
-                description,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade700,
-                  height: 1.4,
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _buildStepItem({required String number, required String text}) {
-  return Padding(
-    padding: EdgeInsets.symmetric(vertical: 4),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            color: Colors.blue.shade100,
-            shape: BoxShape.circle,
-          ),
-          child: Center(
+          SizedBox(width: 8),
+          Expanded(
             child: Text(
-              number,
+              text,
               style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue.shade800,
+                fontSize: 13,
+                color: Colors.grey.shade800,
               ),
             ),
           ),
-        ),
-        SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade800,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
+
   Future<void> _showModifyExerciseDialog({
     required String originalExercise,
     required String groupKey,
@@ -4206,260 +4331,264 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
       },
     );
   }
-Future<String?> _showBaremeModificationDialogForAI({
-  required String currentBaremeName,
-}) async {
-  TextEditingController controller = TextEditingController(text: currentBaremeName);
-  
-  return showDialog<String>(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.purple.shade50,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.edit,
-                color: Colors.purple.shade700,
-                size: 20,
-              ),
-            ),
-            SizedBox(width: 10),
-            Text(
-              _getTranslatedText(
-                'تعديل اسم المعيار',
-                'Modifier le nom du critère',
-              ),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.purple.shade800,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _getTranslatedText(
-                'سيتم استخدام هذا الاسم لتوليد مقترحات مناسبة:',
-                'Ce nom sera utilisé pour générer des propositions pertinentes:',
-              ),
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey.shade700,
-              ),
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              decoration: InputDecoration(
-                labelText: _getTranslatedText(
-                  'اسم المعيار',
-                  'Nom du critère',
+
+  Future<String?> _showBaremeModificationDialogForAI({
+    required String currentBaremeName,
+  }) async {
+    TextEditingController controller =
+        TextEditingController(text: currentBaremeName);
+
+    return showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade50,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                hintText: _getTranslatedText(
-                  'مثال: مع 1 - القراءة',
-                  'Exemple: C1 - Lecture',
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.purple.shade700, width: 2),
-                ),
-                prefixIcon: Icon(
-                  Icons.score,
+                child: Icon(
+                  Icons.edit,
                   color: Colors.purple.shade700,
+                  size: 20,
                 ),
               ),
-              autofocus: true,
-            ),
-            SizedBox(height: 12),
-            Container(
-              padding: EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
+              SizedBox(width: 10),
+              Text(
+                _getTranslatedText(
+                  'تعديل اسم المعيار',
+                  'Modifier le nom du critère',
+                ),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.purple.shade800,
+                ),
               ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 16,
-                    color: Colors.blue.shade700,
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _getTranslatedText(
+                  'سيتم استخدام هذا الاسم لتوليد مقترحات مناسبة:',
+                  'Ce nom sera utilisé pour générer des propositions pertinentes:',
+                ),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  labelText: _getTranslatedText(
+                    'اسم المعيار',
+                    'Nom du critère',
                   ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _getTranslatedText(
-                        'يمكنك ترجمة الاسم أو تحسينه للحصول على نتائج أفضل',
-                        'Vous pouvez traduire ou améliorer le nom pour de meilleurs résultats',
-                      ),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blue.shade800,
+                  hintText: _getTranslatedText(
+                    'مثال: مع 1 - القراءة',
+                    'Exemple: C1 - Lecture',
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide:
+                        BorderSide(color: Colors.purple.shade700, width: 2),
+                  ),
+                  prefixIcon: Icon(
+                    Icons.score,
+                    color: Colors.purple.shade700,
+                  ),
+                ),
+                autofocus: true,
+              ),
+              SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: Colors.blue.shade700,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _getTranslatedText(
+                          'يمكنك ترجمة الاسم أو تحسينه للحصول على نتائج أفضل',
+                          'Vous pouvez traduire ou améliorer le nom pour de meilleurs résultats',
+                        ),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue.shade800,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                _getTranslatedText('إلغاء', 'Annuler'),
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                String newName = controller.text.trim();
+                if (newName.isNotEmpty) {
+                  Navigator.pop(context, newName);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(_getTranslatedText(
+                        'الرجاء إدخال اسم المعيار',
+                        'Veuillez entrer le nom du critère',
+                      )),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple.shade700,
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text(
+                _getTranslatedText('توليد', 'Générer'),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              _getTranslatedText('إلغاء', 'Annuler'),
-              style: TextStyle(color: Colors.grey),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              String newName = controller.text.trim();
-              if (newName.isNotEmpty) {
-                Navigator.pop(context, newName);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(_getTranslatedText(
-                      'الرجاء إدخال اسم المعيار',
-                      'Veuillez entrer le nom du critère',
-                    )),
-                    backgroundColor: Colors.orange,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.purple.shade700,
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: Text(
-              _getTranslatedText('توليد', 'Générer'),
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-        ],
-      );
-    },
-  );
-}
-Future<List<Map<String, String>>> _generateAIPairs({
-  required String groupName,
-  required String modifiedBaremeName, // Nouveau paramètre
-}) async {
-  try {
-    print('🔵 Génération AI pour: $groupName');
-    print('📝 Nom du barème modifié: $modifiedBaremeName');
-    
-    // URL de votre API Hugging Face
-    const String baseUrl = 'https://mohamedtsou-taqyem-ai-prob-solu.hf.space';
-    
-    final url = Uri.parse('$baseUrl/generate-pairs');
-    print('📡 Connexion à: $url');
-    
-    // Préparer les données avec le nom modifié
-    final Map<String, dynamic> requestBody = {
-      "classe": widget.className,
-      "matiere": widget.matiereName,
-      "critere": modifiedBaremeName, // Utiliser le nom modifié
-      "nombre": 3,
-    };
-    
-    // Ajouter le groupe s'il est spécifié et non vide
-    if (groupName.isNotEmpty) {
-      requestBody["groupe"] = groupName;
-    }
-    
-    print('📦 Corps de la requête: ${jsonEncode(requestBody)}');
-    
-    // Effectuer la requête POST
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        );
       },
-      body: jsonEncode(requestBody),
-    ).timeout(const Duration(seconds: 60));
+    );
+  }
 
-    print('📥 Statut: ${response.statusCode}');
-    print('📦 Réponse: ${response.body}');
+  Future<List<Map<String, String>>> _generateAIPairs({
+    required String groupName,
+    required String modifiedBaremeName, // Nouveau paramètre
+  }) async {
+    try {
+      print('🔵 Génération AI pour: $groupName');
+      print('📝 Nom du barème modifié: $modifiedBaremeName');
 
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> data = jsonDecode(response.body);
-      
-      if (data['success'] == true) {
-        if (data.containsKey('data') && data['data'] is List) {
-          List<Map<String, String>> pairs = [];
-          for (var item in data['data']) {
-            if (item['problem'] != null && item['solution'] != null) {
-              pairs.add({
-                'problem': item['problem'].toString(),
-                'solution': item['solution'].toString(),
-              });
+      // URL de votre API Hugging Face
+      const String baseUrl = 'https://mohamedtsou-taqyem-ai-prob-solu.hf.space';
+
+      final url = Uri.parse('$baseUrl/generate-pairs');
+      print('📡 Connexion à: $url');
+
+      // Préparer les données avec le nom modifié
+      final Map<String, dynamic> requestBody = {
+        "classe": widget.className,
+        "matiere": widget.matiereName,
+        "critere": modifiedBaremeName, // Utiliser le nom modifié
+        "nombre": 3,
+      };
+
+      // Ajouter le groupe s'il est spécifié et non vide
+      if (groupName.isNotEmpty) {
+        requestBody["groupe"] = groupName;
+      }
+
+      print('📦 Corps de la requête: ${jsonEncode(requestBody)}');
+
+      // Effectuer la requête POST
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode(requestBody),
+          )
+          .timeout(const Duration(seconds: 60));
+
+      print('📥 Statut: ${response.statusCode}');
+      print('📦 Réponse: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+
+        if (data['success'] == true) {
+          if (data.containsKey('data') && data['data'] is List) {
+            List<Map<String, String>> pairs = [];
+            for (var item in data['data']) {
+              if (item['problem'] != null && item['solution'] != null) {
+                pairs.add({
+                  'problem': item['problem'].toString(),
+                  'solution': item['solution'].toString(),
+                });
+              }
             }
+            print('✅ ${pairs.length} paires générées avec succès');
+            return pairs;
+          } else if (data.containsKey('raw_response')) {
+            print('⚠️ Réponse brute reçue, tentative de parsing...');
+            final parsedPairs = _parseRawResponse(data['raw_response']);
+            return parsedPairs;
+          } else {
+            print('⚠️ Format de réponse inattendu: $data');
+            return [];
           }
-          print('✅ ${pairs.length} paires générées avec succès');
-          return pairs;
-        } 
-        else if (data.containsKey('raw_response')) {
-          print('⚠️ Réponse brute reçue, tentative de parsing...');
-          final parsedPairs = _parseRawResponse(data['raw_response']);
-          return parsedPairs;
-        }
-        else {
-          print('⚠️ Format de réponse inattendu: $data');
+        } else {
+          final errorMsg = data['error'] ?? 'Erreur inconnue';
+          print('❌ Erreur retournée par le serveur: $errorMsg');
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('⚠️ $errorMsg'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
           return [];
         }
       } else {
-        final errorMsg = data['error'] ?? 'Erreur inconnue';
-        print('❌ Erreur retournée par le serveur: $errorMsg');
-        
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('⚠️ $errorMsg'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
+        print('❌ Erreur HTTP ${response.statusCode}');
         return [];
       }
-    } else {
-      print('❌ Erreur HTTP ${response.statusCode}');
+    } on TimeoutException catch (_) {
+      print('❌ Timeout');
+      return [];
+    } on SocketException catch (e) {
+      print('❌ Erreur de connexion: $e');
+      return [];
+    } catch (e) {
+      print('❌ Erreur inattendue: $e');
       return [];
     }
-    
-  } on TimeoutException catch (_) {
-    print('❌ Timeout');
-    return [];
-  } on SocketException catch (e) {
-    print('❌ Erreur de connexion: $e');
-    return [];
-  } catch (e) {
-    print('❌ Erreur inattendue: $e');
-    return [];
   }
-}
+
 // Méthode helper pour parser la réponse brute si nécessaire
   List<Map<String, String>> _parseRawResponse(String rawResponse) {
     List<Map<String, String>> pairs = [];
@@ -5497,109 +5626,109 @@ Future<List<Map<String, String>>> _generateAIPairs({
   //     ),
   //   );
   // }
-@override
-Widget build(BuildContext context) {
-  return Directionality(
-    textDirection: _isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
-    child: Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _getTranslatedText('خطة العلاج وأصل الخطأ',
-              'Plan de traitement et origine de l\'erreur'),
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: _isFrenchInterface ? TextDirection.ltr : TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            _getTranslatedText('خطة العلاج وأصل الخطأ',
+                'Plan de traitement et origine de l\'erreur'),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+            ),
           ),
+          centerTitle: true,
+          backgroundColor: Colors.blue.shade700,
+          foregroundColor: Colors.white,
+          elevation: 2,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () => Navigator.pop(context),
+          ),
+          actions: [
+            _buildPulsingHelpButton(),
+            // Afficher l'état du crédit d'impression
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: 8),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: _remainingPrints == 0
+                    ? Colors.red
+                    : _remainingPrints <= 2
+                        ? Colors.orange
+                        : Colors.green,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.print, size: 14, color: Colors.white),
+                  SizedBox(width: 4),
+                  Text(
+                    '$_remainingPrints/5',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              margin: EdgeInsets.only(left: 8),
+              child: PopupMenuButton<String>(
+                icon: _isGeneratingReport
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Icon(Icons.print_outlined),
+                onSelected: (value) {
+                  if (value == 'single') {
+                    _showPrintGroupSelection();
+                  } else if (value == 'complete') {
+                    _generateCompleteReport();
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'single',
+                    child: Row(
+                      children: [
+                        Icon(Icons.group, color: Colors.blue.shade700),
+                        SizedBox(width: 8),
+                        Text(_getTranslatedText(
+                            'تقرير مجموعة واحدة', 'Rapport groupe unique')),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'complete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.description, color: Colors.green.shade700),
+                        SizedBox(width: 8),
+                        Text(_getTranslatedText(
+                            'تقرير كامل', 'Rapport complet')),
+                      ],
+                    ),
+                  ),
+                ],
+                tooltip:
+                    _getTranslatedText('طباعة التقرير', 'Imprimer le rapport'),
+              ),
+            ),
+          ],
         ),
-        centerTitle: true,
-        backgroundColor: Colors.blue.shade700,
-        foregroundColor: Colors.white,
-        elevation: 2,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-         _buildPulsingHelpButton(),
-          // Afficher l'état du crédit d'impression
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: 8),
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: _remainingPrints == 0
-                  ? Colors.red
-                  : _remainingPrints <= 2
-                      ? Colors.orange
-                      : Colors.green,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.print, size: 14, color: Colors.white),
-                SizedBox(width: 4),
-                Text(
-                  '$_remainingPrints/5',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            margin: EdgeInsets.only(left: 8),
-            child: PopupMenuButton<String>(
-              icon: _isGeneratingReport
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Icon(Icons.print_outlined),
-              onSelected: (value) {
-                if (value == 'single') {
-                  _showPrintGroupSelection();
-                } else if (value == 'complete') {
-                  _generateCompleteReport();
-                }
-              },
-              itemBuilder: (context) => [
-                PopupMenuItem(
-                  value: 'single',
-                  child: Row(
-                    children: [
-                      Icon(Icons.group, color: Colors.blue.shade700),
-                      SizedBox(width: 8),
-                      Text(_getTranslatedText(
-                          'تقرير مجموعة واحدة', 'Rapport groupe unique')),
-                    ],
-                  ),
-                ),
-                PopupMenuItem(
-                  value: 'complete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.description, color: Colors.green.shade700),
-                      SizedBox(width: 8),
-                      Text(_getTranslatedText(
-                          'تقرير كامل', 'Rapport complet')),
-                    ],
-                  ),
-                ),
-              ],
-              tooltip:
-                  _getTranslatedText('طباعة التقرير', 'Imprimer le rapport'),
-            ),
-          ),
-        ],
-      ),
         body: _isLoading
             ? Center(
                 child: Column(

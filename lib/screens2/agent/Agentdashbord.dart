@@ -11,9 +11,11 @@ import 'package:Taqyem/taqyem/AdminRequestsPage.dart';
 import 'package:Taqyem/taqyem/EditPage.dart';
 import 'package:Taqyem/taqyem/admin_migration_page.dart';
 import 'package:Taqyem/taqyem/chat/admin_chat_panel.dart';
+import 'package:Taqyem/taqyem/da3m_help_admin_page.dart';
 import 'package:Taqyem/taqyem/data/add_edit_screen.dart';
 import 'package:Taqyem/taqyem/ereur_solution.dart';
 import 'package:Taqyem/taqyem/feedback_management_page.dart';
+import 'package:Taqyem/taqyem/guide_admin_page.dart';
 import 'package:Taqyem/taqyem/payment/demande.dart';
 import 'package:Taqyem/taqyem/pdf/ManagePDFPage.dart';
 import 'package:Taqyem/taqyem/selectionPage.dart';
@@ -67,6 +69,51 @@ class _AgentDashboardState extends State<AgentDashboard> {
           ),
         ),
         actions: [
+          const SizedBox(width: 8),
+          Tooltip(
+            message: 'إدارة صور الدليل',
+            child: IconButton(
+              icon: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(51),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.help_outline, color: Colors.white, size: 22),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => GuideAdminPage(),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: 'إدارة صور المساعدة - da3m',
+            child: IconButton(
+              icon: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(51),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.assistant, color: Colors.white, size: 22),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => Da3mHelpAdminPage(),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
           GestureDetector(
             onTap: () {
               Navigator.push(
@@ -351,18 +398,18 @@ class _AgentDashboardState extends State<AgentDashboard> {
               },
             ),
             _buildDrawerItem(
-  context,
-  Icons.message,
-  'Messages des utilisateurs',
-  () {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AdminChatPanel(),
-      ),
-    );
-  },
-),
+              context,
+              Icons.message,
+              'Messages des utilisateurs',
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AdminChatPanel(),
+                  ),
+                );
+              },
+            ),
             // _buildDrawerItem(
             //   context,
             //   Icons.list,

@@ -11,6 +11,8 @@ import 'package:Taqyem/taqyem/data/firebase_data-service.dart';
 import 'package:Taqyem/taqyem/data/import_json_screen.dart';
 import 'package:Taqyem/taqyem/data/provider_wrapper.dart';
 import 'package:Taqyem/taqyem/feedback_system.dart';
+import 'package:Taqyem/taqyem/guide_admin_page.dart';
+import 'package:Taqyem/taqyem/da3m_help_admin_page.dart';
 import 'package:Taqyem/taqyem/payment/PaymentPage.dart';
 import 'package:Taqyem/taqyem/pdf/ManagePDFPage.dart';
 import 'package:Taqyem/taqyem/presence.dart';
@@ -28,6 +30,7 @@ import '../login_signup/account_settings.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import 'package:intl/intl.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:Taqyem/components/interactive_guide.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({Key? key}) : super(key: key);
@@ -45,14 +48,15 @@ class _AdminDashboardState extends State<AdminDashboard> {
       day: DateTime.now().day,
     ),
   );
-String? _conversationId;
-int _unreadCount = 0;
+  String? _conversationId;
+  int _unreadCount = 0;
   User? currentUser = FirebaseAuth.instance.currentUser;
   String userName = "Utilisateur";
   bool _isDrawerOpen = false;
   int _currentCarouselIndex = 0;
   Timer? _feedbackTimer;
   bool _feedbackShown = false;
+  bool _showOnboarding = false;
 
   final List<String> _allowedUserIds = [
     'fhilpGu5Eddhl46rZbsLoldiXnb2',
@@ -66,70 +70,109 @@ int _unreadCount = 0;
     return _allowedUserIds.contains(currentUser!.uid);
   }
 
- String _extractUserId(String input) {
-    // Règles d'extraction
-    final regex = RegExp(r'(?:/Users/)?([^/]+)$');
-    final match = regex.firstMatch(input);
-    
-    if (match != null && match.groupCount >= 1) {
-      return match.group(1) ?? input;
-    }
-    
-    return input;
-  }
-  Future<void> _openChat() async {
-  if (currentUser == null) return;
-  
-  try {
-    // Nettoyer l'ID utilisateur
-    final cleanUserId = _cleanUserId(currentUser!.uid);
-    
-    // Créer ou récupérer la conversation
-    final conversationId = await ChatSystem.getOrCreateConversation(cleanUserId);
-    
-    if (mounted) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ChatPage(
-            conversationId: conversationId,
-            userId: cleanUserId,
-            userName: userName,
-          ),
-        ),
-      );
-    }
-  } catch (e) {
-    print('Erreur lors de l\'ouverture du chat: $e');
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur lors de l\'ouverture du chat'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-}
-String _cleanUserId(String userId) {
-  print('🧹 Nettoyage de l\'ID: $userId');
-  
-  // Règles de nettoyage
-  final cleaned = userId
-      .replaceAll('/Users/', '')
-      .replaceAll('users/', '')
-      .replaceAll('/users/', '')
-      .trim();
-  
-  print('🧹 ID nettoyé: $cleaned');
-  return cleaned;
-}
-
   @override
   void initState() {
     super.initState();
-    _loadUserData();
-    _setupRandomFeedback();
+    _checkFirstLaunch();
+  }
+
+  Future<void> _checkFirstLaunch() async {
+    if (currentUser == null) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(currentUser!.uid)
+          .get();
+
+      final hasSeen = doc.data()?['hasSeenOnboarding'] ?? false;
+
+      if (!hasSeen && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showOnboardingGuide();
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showOnboardingGuide();
+        });
+      }
+    }
+  }
+
+  void _showOnboardingGuide() {
+    if (currentUser != null && mounted) {
+      InteractiveGuide.startGuide(context);
+    }
+  }
+
+  void _showGuideFromDrawer() {
+    if (currentUser != null && mounted) {
+      InteractiveGuide.startGuide(context);
+    }
+  }
+
+  String _extractUserId(String input) {
+    // Règles d'extraction
+    final regex = RegExp(r'(?:/Users/)?([^/]+)$');
+    final match = regex.firstMatch(input);
+
+    if (match != null && match.groupCount >= 1) {
+      return match.group(1) ?? input;
+    }
+
+    return input;
+  }
+
+  Future<void> _openChat() async {
+    if (currentUser == null) return;
+
+    try {
+      // Nettoyer l'ID utilisateur
+      final cleanUserId = _cleanUserId(currentUser!.uid);
+
+      // Créer ou récupérer la conversation
+      final conversationId =
+          await ChatSystem.getOrCreateConversation(cleanUserId);
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChatPage(
+              conversationId: conversationId,
+              userId: cleanUserId,
+              userName: userName,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('Erreur lors de l\'ouverture du chat: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de l\'ouverture du chat'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  String _cleanUserId(String userId) {
+    print('🧹 Nettoyage de l\'ID: $userId');
+
+    // Règles de nettoyage
+    final cleaned = userId
+        .replaceAll('/Users/', '')
+        .replaceAll('users/', '')
+        .replaceAll('/users/', '')
+        .trim();
+
+    print('🧹 ID nettoyé: $cleaned');
+    return cleaned;
   }
 
   @override
@@ -210,214 +253,221 @@ String _cleanUserId(String userId) {
         .snapshots();
   }
 
-
-@override
-Widget build(BuildContext context) {
-  return Scaffold(
-    appBar: AppBar(
-      title: Text(
-        'لوحة التحكم',
-        style: GoogleFonts.roboto(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      ),
-      backgroundColor: Theme.of(context).colorScheme.primary,
-      leading: Builder(
-        builder: (context) => IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white),
-          onPressed: () => Scaffold.of(context).openDrawer(),
-        ),
-      ),
-      actions: [
-        StreamBuilder<DocumentSnapshot>(
-          stream: _getAccountStatusStream(),
-          builder: (context, snapshot) {
-            bool isActive = false;
-            Duration? remainingTime;
-
-            if (snapshot.hasData && snapshot.data!.exists) {
-              isActive = snapshot.data!['isActive'] ?? false;
-              var expiration = snapshot.data!['accountExpiration']?.toDate();
-              if (expiration != null) {
-                remainingTime = expiration.difference(DateTime.now());
-              }
-            }
-
-            return Tooltip(
-              message: isActive
-                  ? 'Compte Premium${remainingTime != null ? '\nExpire dans ${remainingTime.inDays} jours' : ''}'
-                  : 'Compte Standard - Mettez à niveau pour débloquer toutes les fonctionnalités',
-              child: Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isActive ? Colors.green[800] : Colors.grey[700],
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.circle,
-                      size: 12,
-                      color: isActive ? Colors.green[200] : Colors.red[200],
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      isActive ? 'PREMIUM' : 'STANDARD',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-        const SizedBox(width: 8),
-        GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const SettingsPageUI(),
-              ),
-            );
-          },
-          child: Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: Colors.white.withOpacity(0.5),
-                width: 2,
-              ),
-            ),
-            child: CircleAvatar(
-              radius: 18,
-              backgroundImage: currentUser?.photoURL != null
-                  ? NetworkImage(currentUser!.photoURL!)
-                  : null,
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              child: currentUser?.photoURL == null
-                  ? const Icon(Icons.person_outlined, color: Colors.white)
-                  : null,
-            ),
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          'لوحة التحكم',
+          style: GoogleFonts.roboto(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
           ),
         ),
-        const SizedBox(width: 16),
-      ],
-    ),
-    drawer: _buildModernDrawer(context),
-    body: Stack(
-      children: [
-        // Contenu principal
-        LayoutBuilder(
-          builder: (context, constraints) {
-            bool isDesktop = constraints.maxWidth > 600;
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
+        ),
+        actions: [
+          StreamBuilder<DocumentSnapshot>(
+            stream: _getAccountStatusStream(),
+            builder: (context, snapshot) {
+              bool isActive = false;
+              Duration? remainingTime;
 
-            return SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-                  StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection('carouselItems')
-                        .snapshots(),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) return const CircularProgressIndicator();
+              if (snapshot.hasData && snapshot.data!.exists) {
+                isActive = snapshot.data!['isActive'] ?? false;
+                var expiration = snapshot.data!['accountExpiration']?.toDate();
+                if (expiration != null) {
+                  remainingTime = expiration.difference(DateTime.now());
+                }
+              }
 
-                      final items = snapshot.data!.docs.map((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        return {
-                          'imageUrl': data['url'] ?? '',
-                          'title': data['title'] ?? '',
-                          'subtitle': data['subtitle'] ?? '',
-                          'description': data['description'] ?? '',
-                        };
-                      }).toList();
-
-                      return Column(
-                        children: [
-                          const SizedBox(height: 20),
-                          SimpleCarousel(items: items),
-                          const SizedBox(height: 30),
-                        ],
-                      );
-                    },
+              return Tooltip(
+                message: isActive
+                    ? 'Compte Premium${remainingTime != null ? '\nExpire dans ${remainingTime.inDays} jours' : ''}'
+                    : 'Compte Standard - Mettez à niveau pour débloquer toutes les fonctionnalités',
+                child: Container(
+                  margin: const EdgeInsets.only(right: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isActive ? Colors.green[800] : Colors.grey[700],
+                    borderRadius: BorderRadius.circular(20),
                   ),
-
-                  const SizedBox(height: 20),
-                  _buildQuickAccessSection(context),
-                  const SizedBox(height: 30),
-
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          spreadRadius: 2,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.circle,
+                        size: 12,
+                        color: isActive ? Colors.green[200] : Colors.red[200],
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        isActive ? 'PREMIUM' : 'STANDARD',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
                         ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        TimelineCalendar(
-                          calendarType: CalendarType.GREGORIAN,
-                          calendarOptions: CalendarOptions(
-                            viewType: ViewType.DAILY,
-                            toggleViewType: true,
-                            headerMonthElevation: 0,
-                            headerMonthBackColor: Colors.grey[50],
-                          ),
-                          dayOptions: DayOptions(
-                            compactMode: true,
-                            dayFontSize: isDesktop ? 18 : 15,
-                            weekDaySelectedColor:
-                                Theme.of(context).colorScheme.primary,
-                            selectedBackgroundColor:
-                                Theme.of(context).colorScheme.primary,
-                            disableDaysBeforeNow: false,
-                            unselectedBackgroundColor: Colors.white,
-                            selectedTextColor: Colors.white,
-                          ),
-                          headerOptions: HeaderOptions(
-                            weekDayStringType: WeekDayStringTypes.SHORT,
-                            monthStringType: MonthStringTypes.FULL,
-                            headerTextColor: Colors.black,
-                          ),
-                          onChangeDateTime: (date) {
-                            setState(() {
-                              _selectedDate.value = date;
-                            });
-                          },
-                          onDateTimeReset: (p0) {
-                            setState(() {
-                              _selectedDate.value = CalendarDateTime(
-                                year: DateTime.now().year,
-                                month: DateTime.now().month,
-                                day: DateTime.now().day,
-                              );
-                            });
-                          },
-                          dateTime: _selectedDate.value,
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: 'دليل البدء',
+            child: IconButton(
+              icon: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(51),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.help_outline, color: Colors.white, size: 22),
+              ),
+              onPressed: () async {
+                if (currentUser != null) {
+                  await OnboardingHelper.resetOnboarding(currentUser!.uid);
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      InteractiveGuide.startGuide(context);
+                    }
+                  });
+                }
+              },
+            ),
+          ),
+          
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SettingsPageUI(),
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.5),
+                  width: 2,
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 18,
+                backgroundImage: currentUser?.photoURL != null
+                    ? NetworkImage(currentUser!.photoURL!)
+                    : null,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                child: currentUser?.photoURL == null
+                    ? const Icon(Icons.person_outlined, color: Colors.white)
+                    : null,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+        ],
+      ),
+      drawer: _buildModernDrawer(context),
+      body: Stack(
+        children: [
+          // Contenu principal
+          LayoutBuilder(
+            builder: (context, constraints) {
+              bool isDesktop = constraints.maxWidth > 600;
+
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 20),
+                    StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance
+                          .collection('carouselItems')
+                          .snapshots(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData)
+                          return const CircularProgressIndicator();
+
+                        final items = snapshot.data!.docs.map((doc) {
+                          final data = doc.data() as Map<String, dynamic>;
+                          return {
+                            'imageUrl': data['url'] ?? '',
+                            'title': data['title'] ?? '',
+                            'subtitle': data['subtitle'] ?? '',
+                            'description': data['description'] ?? '',
+                          };
+                        }).toList();
+
+                        return Column(
                           children: [
-                            _buildDateNavButton(context, 'Aujourd\'hui', () {
+                            const SizedBox(height: 20),
+                            SimpleCarousel(items: items),
+                            const SizedBox(height: 30),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    _buildQuickAccessSection(context),
+                    const SizedBox(height: 30),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          TimelineCalendar(
+                            calendarType: CalendarType.GREGORIAN,
+                            calendarOptions: CalendarOptions(
+                              viewType: ViewType.DAILY,
+                              toggleViewType: true,
+                              headerMonthElevation: 0,
+                              headerMonthBackColor: Colors.grey[50],
+                            ),
+                            dayOptions: DayOptions(
+                              compactMode: true,
+                              dayFontSize: isDesktop ? 18 : 15,
+                              weekDaySelectedColor:
+                                  Theme.of(context).colorScheme.primary,
+                              selectedBackgroundColor:
+                                  Theme.of(context).colorScheme.primary,
+                              disableDaysBeforeNow: false,
+                              unselectedBackgroundColor: Colors.white,
+                              selectedTextColor: Colors.white,
+                            ),
+                            headerOptions: HeaderOptions(
+                              weekDayStringType: WeekDayStringTypes.SHORT,
+                              monthStringType: MonthStringTypes.FULL,
+                              headerTextColor: Colors.black,
+                            ),
+                            onChangeDateTime: (date) {
+                              setState(() {
+                                _selectedDate.value = date;
+                              });
+                            },
+                            onDateTimeReset: (p0) {
                               setState(() {
                                 _selectedDate.value = CalendarDateTime(
                                   year: DateTime.now().year,
@@ -425,102 +475,118 @@ Widget build(BuildContext context) {
                                   day: DateTime.now().day,
                                 );
                               });
-                            }),
-                            _buildDateNavButton(context, 'Demain', () {
-                              final tomorrow =
-                                  DateTime.now().add(const Duration(days: 1));
-                              setState(() {
-                                _selectedDate.value = CalendarDateTime(
-                                  year: tomorrow.year,
-                                  month: tomorrow.month,
-                                  day: tomorrow.day,
-                                );
-                              });
-                            }),
-                            _buildDateNavButton(context, 'Semaine prochaine', () {
-                              final nextWeek =
-                                  DateTime.now().add(const Duration(days: 7));
-                              setState(() {
-                                _selectedDate.value = CalendarDateTime(
-                                  year: nextWeek.year,
-                                  month: nextWeek.month,
-                                  day: nextWeek.day,
-                                );
-                              });
-                            }),
-                          ],
-                        ),
-                      ],
+                            },
+                            dateTime: _selectedDate.value,
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _buildDateNavButton(context, 'Aujourd\'hui', () {
+                                setState(() {
+                                  _selectedDate.value = CalendarDateTime(
+                                    year: DateTime.now().year,
+                                    month: DateTime.now().month,
+                                    day: DateTime.now().day,
+                                  );
+                                });
+                              }),
+                              _buildDateNavButton(context, 'Demain', () {
+                                final tomorrow =
+                                    DateTime.now().add(const Duration(days: 1));
+                                setState(() {
+                                  _selectedDate.value = CalendarDateTime(
+                                    year: tomorrow.year,
+                                    month: tomorrow.month,
+                                    day: tomorrow.day,
+                                  );
+                                });
+                              }),
+                              _buildDateNavButton(context, 'Semaine prochaine',
+                                  () {
+                                final nextWeek =
+                                    DateTime.now().add(const Duration(days: 7));
+                                setState(() {
+                                  _selectedDate.value = CalendarDateTime(
+                                    year: nextWeek.year,
+                                    month: nextWeek.month,
+                                    day: nextWeek.day,
+                                  );
+                                });
+                              }),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                    decoration: BoxDecoration(
-                      color:
-                          Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.calendar_today,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          DateFormat('EEEE, d MMMM y', 'fr_FR').format(
-                            DateTime(
-                              _selectedDate.value.year,
-                              _selectedDate.value.month,
-                              _selectedDate.value.day,
+                    const SizedBox(height: 20),
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 12, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.calendar_today,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            DateFormat('EEEE, d MMMM y', 'fr_FR').format(
+                              DateTime(
+                                _selectedDate.value.year,
+                                _selectedDate.value.month,
+                                _selectedDate.value.day,
+                              ),
+                            ),
+                            style: GoogleFonts.roboto(
+                              fontSize: isDesktop ? 22 : 18,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
-                          style: GoogleFonts.roboto(
-                            fontSize: isDesktop ? 22 : 18,
-                            fontWeight: FontWeight.w600,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                   NewsSection(),
-                  const SizedBox(height: 30),
-                ],
-              ),
-            );
-          },
-        ),
-        
-        // Bouton de chat flottant
-        if (currentUser != null)
-          Positioned(
-            bottom: 20,
-            right: 20,
-            child: StreamBuilder<int>(
-              stream: ChatSystem.getUnreadCountStream(_cleanUserId(currentUser!.uid)),
-              builder: (context, snapshot) {
-                final unreadCount = snapshot.data ?? 0;
-                return ChatFloatingButton(
-                  onPressed: _openChat,
-                  unreadCount: unreadCount,
-                );
-              },
-            ),
+                    const SizedBox(height: 20),
+                    NewsSection(),
+                    const SizedBox(height: 30),
+                  ],
+                ),
+              );
+            },
           ),
-      ],
-    ),
-  );
-}
+
+          // Bouton de chat flottant
+          if (currentUser != null)
+            Positioned(
+              bottom: 20,
+              right: 20,
+              child: StreamBuilder<int>(
+                stream: ChatSystem.getUnreadCountStream(
+                    _cleanUserId(currentUser!.uid)),
+                builder: (context, snapshot) {
+                  final unreadCount = snapshot.data ?? 0;
+                  return ChatFloatingButton(
+                    onPressed: _openChat,
+                    unreadCount: unreadCount,
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDateNavButton(
       BuildContext context, String text, VoidCallback onPressed) {
     return TextButton(
@@ -641,22 +707,24 @@ Widget build(BuildContext context) {
                 );
               },
             ),
-            
+
             // Afficher l'option addprobsolu seulement si l'utilisateur n'est pas exclu
-          // Afficher addprobsolu seulement si l'utilisateur N'EST PAS exclu
-             if (_canShowAddProbItem()) _buildDrawerItem(
-              context,
-              Icons.class_,
-              'addprobsolu',
-              () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddProbProviderWrapper(),
-                  ),
-                );
-              },
-            ),
+            // Afficher addprobsolu seulement si l'utilisateur N'EST PAS exclu
+            if (_canShowAddProbItem())
+              _buildDrawerItem(
+                context,
+                Icons.class_,
+                'addprobsolu',
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const AddProbProviderWrapper(),
+                    ),
+                  );
+                },
+              ),
+
             _buildDrawerItem(
               context,
               Icons.class_,
@@ -1307,7 +1375,7 @@ class _NewsSectionState extends State<NewsSection> {
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         validUrl = 'https://$url';
       }
-      
+
       final Uri uri = Uri.parse(validUrl);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -1483,7 +1551,7 @@ class _NewsSectionState extends State<NewsSection> {
                                 ],
                               ),
                               const SizedBox(height: 4),
-                              
+
                               // Catégorie
                               if (category.isNotEmpty)
                                 Container(
@@ -1544,7 +1612,8 @@ class _NewsSectionState extends State<NewsSection> {
                                           style: GoogleFonts.roboto(
                                             fontSize: 12,
                                             color: Colors.blue[700],
-                                            decoration: TextDecoration.underline,
+                                            decoration:
+                                                TextDecoration.underline,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -1672,7 +1741,8 @@ Widget _buildQuickAccessSection(BuildContext context) {
               // Indicateur de nombre d'éléments pour grand écran
               if (MediaQuery.of(context).size.width > 600)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: Theme.of(context).primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -1693,12 +1763,12 @@ Widget _buildQuickAccessSection(BuildContext context) {
         LayoutBuilder(
           builder: (context, constraints) {
             final screenWidth = constraints.maxWidth;
-            
+
             // Déterminer le nombre de colonnes basé sur la largeur
             int crossAxisCount;
             double childAspectRatio;
             double horizontalSpacing;
-            
+
             if (screenWidth > 1200) {
               // Très grand écran (PC)
               crossAxisCount = 6;
@@ -1820,10 +1890,12 @@ Widget _buildResponsiveQuickAccessCard(
         elevation: isDesktop ? 4 : (isTablet ? 3 : 2),
         shadowColor: color.withOpacity(0.3),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(isDesktop ? 20 : (isTablet ? 16 : 12)),
+          borderRadius:
+              BorderRadius.circular(isDesktop ? 20 : (isTablet ? 16 : 12)),
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(isDesktop ? 20 : (isTablet ? 16 : 12)),
+          borderRadius:
+              BorderRadius.circular(isDesktop ? 20 : (isTablet ? 16 : 12)),
           onTap: onTap,
           onHover: isDesktop ? (hover) {} : null,
           child: Container(
@@ -1840,17 +1912,20 @@ Widget _buildResponsiveQuickAccessCard(
                   clipBehavior: Clip.none,
                   children: [
                     Container(
-                      padding: EdgeInsets.all(isDesktop ? 18 : (isTablet ? 14 : 12)),
+                      padding:
+                          EdgeInsets.all(isDesktop ? 18 : (isTablet ? 14 : 12)),
                       decoration: BoxDecoration(
                         color: color.withOpacity(0.1),
                         shape: BoxShape.circle,
-                        boxShadow: isDesktop ? [
-                          BoxShadow(
-                            color: color.withOpacity(0.2),
-                            blurRadius: 8,
-                            spreadRadius: 2,
-                          ),
-                        ] : null,
+                        boxShadow: isDesktop
+                            ? [
+                                BoxShadow(
+                                  color: color.withOpacity(0.2),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
+                              ]
+                            : null,
                       ),
                       child: Icon(
                         icon,
@@ -1923,5 +1998,3 @@ Widget _buildResponsiveQuickAccessCard(
     },
   );
 }
-
-
