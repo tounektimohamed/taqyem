@@ -19,152 +19,168 @@ import 'package:cross_file/cross_file.dart';
 import 'dart:html' as html if (dart.library.html) 'dart:html';
 
 class PDFClassificationGenerator {
-  
-static Future<void> generateAndDownloadClassificationReport({
-  required BuildContext context,
-  required String profName,
-  required String matiereName,
-  required String className,
-  required String schoolName,
-  required String baremeName,
-  required String sousBaremeName,
-  required Map<String, List<Map<String, dynamic>>> groupedStudents,
-  required Map<String, List<Map<String, dynamic>>> groupSelections,
-  required Map<String, List<Map<String, dynamic>>> aiExercises,
-  required bool isFrenchInterface,
-  required bool isCompleteReport,
-  String? singleGroupName,
-  String? singleGroupKey,
-}) async {
-  try {
-    // Afficher le dialogue de sélection des pages
-    final selectedPages = await _showPageSelectionDialog(
-      context: context,
-      profName: profName,
-      matiereName: matiereName,
-      className: className,
-      schoolName: schoolName,
-      baremeName: baremeName,
-      sousBaremeName: sousBaremeName,
-      groupedStudents: groupedStudents,
-      groupSelections: groupSelections,
-      aiExercises: aiExercises,
-      isFrenchInterface: isFrenchInterface,
-      isCompleteReport: isCompleteReport,
-    );
-
-    // Si l'utilisateur annule, ne pas générer le PDF
-    if (selectedPages == null) {
-      return;
-    }
-
-    // Charger le logo en base64
-    String logoBase64 = "";
+  static Future<void> generateAndDownloadClassificationReport({
+    required BuildContext context,
+    required String profName,
+    required String matiereName,
+    required String className,
+    required String schoolName,
+    required String baremeName,
+    required String sousBaremeName,
+    required Map<String, List<Map<String, dynamic>>> groupedStudents,
+    required Map<String, List<Map<String, dynamic>>> groupSelections,
+    required Map<String, List<Map<String, dynamic>>> aiExercises,
+    required bool isFrenchInterface,
+    required bool isCompleteReport,
+    String? singleGroupName,
+    String? singleGroupKey,
+  }) async {
     try {
-      final logoBytes = await _loadImage('lib/assets/icons/me/ministere.png');
-      if (logoBytes.isNotEmpty) {
-        logoBase64 = base64Encode(logoBytes);
+      // Afficher le dialogue de sélection du template
+      final selectedTemplate = await _showTemplateSelectionDialog(
+        context: context,
+        isFrenchInterface: isFrenchInterface,
+      );
+
+      // Si l'utilisateur annule, ne pas générer le PDF
+      if (selectedTemplate == null) {
+        return;
       }
+
+      // Afficher le dialogue de sélection des pages
+      final selectedPages = await _showPageSelectionDialog(
+        context: context,
+        profName: profName,
+        matiereName: matiereName,
+        className: className,
+        schoolName: schoolName,
+        baremeName: baremeName,
+        sousBaremeName: sousBaremeName,
+        groupedStudents: groupedStudents,
+        groupSelections: groupSelections,
+        aiExercises: aiExercises,
+        isFrenchInterface: isFrenchInterface,
+        isCompleteReport: isCompleteReport,
+      );
+
+      // Si l'utilisateur annule, ne pas générer le PDF
+      if (selectedPages == null) {
+        return;
+      }
+
+      // Charger le logo en base64
+      String logoBase64 = "";
+      try {
+        final logoBytes = await _loadImage('lib/assets/icons/me/ministere.png');
+        if (logoBytes.isNotEmpty) {
+          logoBase64 = base64Encode(logoBytes);
+        }
+      } catch (e) {
+        print('Logo non trouvé: $e');
+      }
+
+      // Générer le contenu HTML avec les pages sélectionnées
+      final htmlContent = _buildCompleteClassificationHTMLContent(
+        profName: profName,
+        matiereName: matiereName,
+        className: className,
+        schoolName: schoolName,
+        baremeName: baremeName,
+        sousBaremeName: sousBaremeName,
+        groupedStudents: groupedStudents,
+        groupSelections: groupSelections,
+        aiExercises: aiExercises,
+        isFrenchInterface: isFrenchInterface,
+        isCompleteReport: isCompleteReport,
+        singleGroupName: singleGroupName,
+        singleGroupKey: singleGroupKey,
+        logoBase64: logoBase64,
+        selectedPages: selectedPages,
+        selectedTemplate: selectedTemplate,
+      );
+
+      // Générer et télécharger le PDF
+      await _generateAndDownloadPDF(htmlContent, 'classification_report');
     } catch (e) {
-      print('Logo non trouvé: $e');
+      print('Erreur génération rapport classification: $e');
+      rethrow;
+    }
+  }
+
+  static String _buildCompleteClassificationHTMLContent({
+    required String profName,
+    required String matiereName,
+    required String className,
+    required String schoolName,
+    required String baremeName,
+    required String sousBaremeName,
+    required Map<String, List<Map<String, dynamic>>> groupedStudents,
+    required Map<String, List<Map<String, dynamic>>> groupSelections,
+    required Map<String, List<Map<String, dynamic>>> aiExercises,
+    required bool isFrenchInterface,
+    required bool isCompleteReport,
+    String? singleGroupName,
+    String? singleGroupKey,
+    required String logoBase64,
+    required Map<String, bool> selectedPages,
+    required String selectedTemplate,
+  }) {
+    final direction = isFrenchInterface ? 'ltr' : 'rtl';
+    final textAlign = isFrenchInterface ? 'left' : 'right';
+    final now = DateTime.now();
+
+    // Traductions
+    final t = _getTranslations(isFrenchInterface);
+
+    // Styles CSS selon le template
+    final templateStyles = _getTemplateStyles(selectedTemplate);
+
+    String pagesHTML = '';
+
+    // Page de garde (si sélectionnée)
+    if (selectedPages['cover'] == true) {
+      pagesHTML += _buildCoverPageHTML(
+        profName: profName,
+        matiereName: matiereName,
+        className: className,
+        schoolName: schoolName,
+        baremeName: baremeName,
+        sousBaremeName: sousBaremeName,
+        logoBase64: logoBase64,
+        isFrenchInterface: isFrenchInterface,
+        isCompleteReport: isCompleteReport,
+        singleGroupName: singleGroupName,
+        now: now,
+      );
     }
 
-    // Générer le contenu HTML avec les pages sélectionnées
-    final htmlContent = _buildCompleteClassificationHTMLContent(
-      profName: profName,
-      matiereName: matiereName,
-      className: className,
-      schoolName: schoolName,
-      baremeName: baremeName,
-      sousBaremeName: sousBaremeName,
+    // Page des informations générales (si sélectionnée)
+    if (selectedPages['general'] == true) {
+      pagesHTML += _buildGeneralInfoPageHTML(
+        profName: profName,
+        matiereName: matiereName,
+        className: className,
+        schoolName: schoolName,
+        baremeName: baremeName,
+        sousBaremeName: sousBaremeName,
+        isFrenchInterface: isFrenchInterface,
+        groupedStudents: groupedStudents,
+        now: now,
+      );
+    }
+
+    // Pages des groupes (selon les sélections)
+    pagesHTML += _buildGroupsPagesHTML(
       groupedStudents: groupedStudents,
       groupSelections: groupSelections,
       aiExercises: aiExercises,
       isFrenchInterface: isFrenchInterface,
       isCompleteReport: isCompleteReport,
-      singleGroupName: singleGroupName,
       singleGroupKey: singleGroupKey,
-      logoBase64: logoBase64,
-      selectedPages: selectedPages, // Nouveau paramètre
+      selectedPages: selectedPages, // NOUVEAU PARAMÈTRE
     );
 
-    // Générer et télécharger le PDF
-    await _generateAndDownloadPDF(htmlContent, 'classification_report');
-  } catch (e) {
-    print('Erreur génération rapport classification: $e');
-    rethrow;
-  }
-}
-static String _buildCompleteClassificationHTMLContent({
-  required String profName,
-  required String matiereName,
-  required String className,
-  required String schoolName,
-  required String baremeName,
-  required String sousBaremeName,
-  required Map<String, List<Map<String, dynamic>>> groupedStudents,
-  required Map<String, List<Map<String, dynamic>>> groupSelections,
-  required Map<String, List<Map<String, dynamic>>> aiExercises,
-  required bool isFrenchInterface,
-  required bool isCompleteReport,
-  String? singleGroupName,
-  String? singleGroupKey,
-  required String logoBase64,
-  required Map<String, bool> selectedPages, // NOUVEAU PARAMÈTRE
-}) {
-  final direction = isFrenchInterface ? 'ltr' : 'rtl';
-  final textAlign = isFrenchInterface ? 'left' : 'right';
-  final now = DateTime.now();
-
-  // Traductions
-  final t = _getTranslations(isFrenchInterface);
-
-  String pagesHTML = '';
-
-  // Page de garde (si sélectionnée)
-  if (selectedPages['cover'] == true) {
-    pagesHTML += _buildCoverPageHTML(
-      profName: profName,
-      matiereName: matiereName,
-      className: className,
-      schoolName: schoolName,
-      baremeName: baremeName,
-      sousBaremeName: sousBaremeName,
-      logoBase64: logoBase64,
-      isFrenchInterface: isFrenchInterface,
-      isCompleteReport: isCompleteReport,
-      singleGroupName: singleGroupName,
-      now: now,
-    );
-  }
-  
-  // Page des informations générales (si sélectionnée)
-  if (selectedPages['general'] == true) {
-    pagesHTML += _buildGeneralInfoPageHTML(
-      profName: profName,
-      matiereName: matiereName,
-      className: className,
-      schoolName: schoolName,
-      baremeName: baremeName,
-      sousBaremeName: sousBaremeName,
-      isFrenchInterface: isFrenchInterface,
-      groupedStudents: groupedStudents,
-      now: now,
-    );
-  }
-  
-  // Pages des groupes (selon les sélections)
-  pagesHTML += _buildGroupsPagesHTML(
-    groupedStudents: groupedStudents,
-    groupSelections: groupSelections,
-    aiExercises: aiExercises,
-    isFrenchInterface: isFrenchInterface,
-    isCompleteReport: isCompleteReport,
-    singleGroupKey: singleGroupKey,
-    selectedPages: selectedPages, // NOUVEAU PARAMÈTRE
-  );
-
-  return '''
+    return '''
 <!DOCTYPE html>
 <html lang="${isFrenchInterface ? 'fr' : 'ar'}" dir="$direction">
 <head>
@@ -568,7 +584,8 @@ static String _buildCompleteClassificationHTMLContent({
 </body>
 </html>
     ''';
-}
+  }
+
   // Page de garde
   static String _buildCoverPageHTML({
     required String profName,
@@ -732,84 +749,87 @@ static String _buildCompleteClassificationHTMLContent({
     ''';
   }
 
-static String _buildGroupsPagesHTML({
-  required Map<String, List<Map<String, dynamic>>> groupedStudents,
-  required Map<String, List<Map<String, dynamic>>> groupSelections,
-  required Map<String, List<Map<String, dynamic>>> aiExercises,
-  required bool isFrenchInterface,
-  required bool isCompleteReport,
-  String? singleGroupKey,
-  required Map<String, bool> selectedPages, // NOUVEAU PARAMÈTRE
-}) {
-  final t = _getTranslations(isFrenchInterface);
-  String pagesHTML = '';
+  static String _buildGroupsPagesHTML({
+    required Map<String, List<Map<String, dynamic>>> groupedStudents,
+    required Map<String, List<Map<String, dynamic>>> groupSelections,
+    required Map<String, List<Map<String, dynamic>>> aiExercises,
+    required bool isFrenchInterface,
+    required bool isCompleteReport,
+    String? singleGroupKey,
+    required Map<String, bool> selectedPages, // NOUVEAU PARAMÈTRE
+  }) {
+    final t = _getTranslations(isFrenchInterface);
+    String pagesHTML = '';
 
-  // Déterminer quels groupes inclure
-  List<String> groupsToInclude = [];
+    // Déterminer quels groupes inclure
+    List<String> groupsToInclude = [];
 
-  if (isCompleteReport) {
-    // N'inclure que les groupes sélectionnés
-    if (selectedPages['treatment'] == true) {
-      groupsToInclude.add(t['group_treatment']!);
-    }
-    if (selectedPages['support'] == true) {
-      groupsToInclude.add(t['group_support']!);
-    }
-    if (selectedPages['excellence'] == true) {
-      groupsToInclude.add(t['group_excellence']!);
-    }
-  } else if (singleGroupKey != null) {
-    // Pour un rapport simple groupe, n'inclure que le groupe spécifique s'il est sélectionné
-    switch (singleGroupKey) {
-      case 'treatment':
-        if (selectedPages['treatment'] == true) {
-          groupsToInclude = [t['group_treatment']!];
-        }
-        break;
-      case 'support':
-        if (selectedPages['support'] == true) {
-          groupsToInclude = [t['group_support']!];
-        }
-        break;
-      case 'excellence':
-        if (selectedPages['excellence'] == true) {
-          groupsToInclude = [t['group_excellence']!];
-        }
-        break;
-    }
-  }
-
-  for (final groupName in groupsToInclude) {
-    final students = groupedStudents[groupName] ?? [];
-    final selections = _getGroupSelectionsForGroup(groupName, groupSelections, t);
-    
-    // Récupérer les exercices AI pour ce groupe
-    final groupKey = _getGroupKeyFromName(groupName, t);
-    final groupAIExercises = aiExercises[groupKey] ?? [];
-
-    if (students.isEmpty && selections.isEmpty && groupAIExercises.isEmpty) {
-      continue;
+    if (isCompleteReport) {
+      // N'inclure que les groupes sélectionnés
+      if (selectedPages['treatment'] == true) {
+        groupsToInclude.add(t['group_treatment']!);
+      }
+      if (selectedPages['support'] == true) {
+        groupsToInclude.add(t['group_support']!);
+      }
+      if (selectedPages['excellence'] == true) {
+        groupsToInclude.add(t['group_excellence']!);
+      }
+    } else if (singleGroupKey != null) {
+      // Pour un rapport simple groupe, n'inclure que le groupe spécifique s'il est sélectionné
+      switch (singleGroupKey) {
+        case 'treatment':
+          if (selectedPages['treatment'] == true) {
+            groupsToInclude = [t['group_treatment']!];
+          }
+          break;
+        case 'support':
+          if (selectedPages['support'] == true) {
+            groupsToInclude = [t['group_support']!];
+          }
+          break;
+        case 'excellence':
+          if (selectedPages['excellence'] == true) {
+            groupsToInclude = [t['group_excellence']!];
+          }
+          break;
+      }
     }
 
-    // Déterminer la classe CSS selon le groupe
-    String groupClass = '';
-    String groupIcon = '';
+    for (final groupName in groupsToInclude) {
+      final students = groupedStudents[groupName] ?? [];
+      final selections =
+          _getGroupSelectionsForGroup(groupName, groupSelections, t);
 
-    if (groupName == t['group_treatment']!) {
-      groupClass = 'group-treatment';
-      groupIcon = '🏥';
-    } else if (groupName == t['group_support']!) {
-      groupClass = 'group-support';
-      groupIcon = '🤝';
-    } else {
-      groupClass = 'group-excellence';
-      groupIcon = '🏆';
-    }
+      // Récupérer les exercices AI pour ce groupe
+      final groupKey = _getGroupKeyFromName(groupName, t);
+      final groupAIExercises = aiExercises[groupKey] ?? [];
 
-    final solutions = selections.where((item) => item['isProblem'] == false).toList();
-    final problems = selections.where((item) => item['isProblem'] == true).toList();
+      if (students.isEmpty && selections.isEmpty && groupAIExercises.isEmpty) {
+        continue;
+      }
 
-    pagesHTML += '''
+      // Déterminer la classe CSS selon le groupe
+      String groupClass = '';
+      String groupIcon = '';
+
+      if (groupName == t['group_treatment']!) {
+        groupClass = 'group-treatment';
+        groupIcon = '🏥';
+      } else if (groupName == t['group_support']!) {
+        groupClass = 'group-support';
+        groupIcon = '🤝';
+      } else {
+        groupClass = 'group-excellence';
+        groupIcon = '🏆';
+      }
+
+      final solutions =
+          selections.where((item) => item['isProblem'] == false).toList();
+      final problems =
+          selections.where((item) => item['isProblem'] == true).toList();
+
+      pagesHTML += '''
     <div class="group-page $groupClass">
         <div class="group-header">
             <div>
@@ -826,15 +846,15 @@ static String _buildGroupsPagesHTML({
             <h3 class="section-subtitle">${t['students_list']!}</h3>
             <div class="students-list-container">
                 ${students.asMap().entries.map((entry) {
-                  final index = entry.key + 1;
-                  final student = entry.value;
-                  return '''
+              final index = entry.key + 1;
+              final student = entry.value;
+              return '''
                 <div class="list-item">
                     <span class="item-number">$index.</span>
                     <span class="item-name">${student['name'] ?? t['unknown']!}</span>
                 </div>
                 ''';
-                }).join('')}
+            }).join('')}
             </div>
         </div>
         ''' : ''}
@@ -898,10 +918,10 @@ static String _buildGroupsPagesHTML({
         </div>
     </div>
     ''';
-  }
+    }
 
-  return pagesHTML;
-}
+    return pagesHTML;
+  }
 
   // Méthode utilitaire pour formater la date
   static String _formatDate(dynamic timestamp, bool isFrenchInterface) {
@@ -1060,7 +1080,7 @@ static String _buildGroupsPagesHTML({
       );
 
       print('PDF généré avec succès: ${generatedPdfFile.path}');
-      
+
       // Utiliser XFile pour ouvrir le fichier
       final xFile = XFile(generatedPdfFile.path);
       await OpenFile.open(xFile.path);
@@ -1069,7 +1089,7 @@ static String _buildGroupsPagesHTML({
     } catch (e) {
       print('Erreur lors de la génération du fichier PDF: $e');
       print('Fallback: téléchargement HTML...');
-      
+
       if (kIsWeb) {
         await _downloadHTMLFileWeb(htmlContent, fileNamePrefix);
       } else {
@@ -1108,15 +1128,16 @@ static String _buildGroupsPagesHTML({
       String htmlContent, String fileNamePrefix) async {
     try {
       final directory = await getTemporaryDirectory();
-      final filePath = '${directory.path}/${fileNamePrefix}_${DateTime.now().millisecondsSinceEpoch}.html';
-      
+      final filePath =
+          '${directory.path}/${fileNamePrefix}_${DateTime.now().millisecondsSinceEpoch}.html';
+
       // Utiliser XFile pour écrire le fichier
       final xFile = XFile.fromData(
         Uint8List.fromList(htmlContent.codeUnits),
         name: '${fileNamePrefix}_${DateTime.now().millisecondsSinceEpoch}.html',
         mimeType: 'text/html',
       );
-      
+
       await xFile.saveTo(filePath);
       await OpenFile.open(filePath);
 
@@ -1162,38 +1183,114 @@ static String _buildGroupsPagesHTML({
     }
   }
 
-static Future<Map<String, bool>?> _showPageSelectionDialog({
-  required BuildContext context,
-  required String profName,
-  required String matiereName,
-  required String className,
-  required String schoolName,
-  required String baremeName,
-  required String sousBaremeName,
-  required Map<String, List<Map<String, dynamic>>> groupedStudents,
-  required Map<String, List<Map<String, dynamic>>> groupSelections,
-  required Map<String, List<Map<String, dynamic>>> aiExercises,
-  required bool isFrenchInterface,
-  required bool isCompleteReport,
-}) async {
-  return await showDialog<Map<String, bool>>(
-    context: context,
-    builder: (context) => PageSelectionDialog(
-      profName: profName,
-      matiereName: matiereName,
-      className: className,
-      schoolName: schoolName,
-      baremeName: baremeName,
-      sousBaremeName: sousBaremeName,
-      groupedStudents: groupedStudents,
-      groupSelections: groupSelections,
-      aiExercises: aiExercises,
-      isFrenchInterface: isFrenchInterface,
-      isCompleteReport: isCompleteReport,
-    ),
-  );
-}
+  static Future<Map<String, bool>?> _showPageSelectionDialog({
+    required BuildContext context,
+    required String profName,
+    required String matiereName,
+    required String className,
+    required String schoolName,
+    required String baremeName,
+    required String sousBaremeName,
+    required Map<String, List<Map<String, dynamic>>> groupedStudents,
+    required Map<String, List<Map<String, dynamic>>> groupSelections,
+    required Map<String, List<Map<String, dynamic>>> aiExercises,
+    required bool isFrenchInterface,
+    required bool isCompleteReport,
+  }) async {
+    return await showDialog<Map<String, bool>>(
+      context: context,
+      builder: (context) => PageSelectionDialog(
+        profName: profName,
+        matiereName: matiereName,
+        className: className,
+        schoolName: schoolName,
+        baremeName: baremeName,
+        sousBaremeName: sousBaremeName,
+        groupedStudents: groupedStudents,
+        groupSelections: groupSelections,
+        aiExercises: aiExercises,
+        isFrenchInterface: isFrenchInterface,
+        isCompleteReport: isCompleteReport,
+      ),
+    );
+  }
 
+  static Future<String?> _showTemplateSelectionDialog({
+    required BuildContext context,
+    required bool isFrenchInterface,
+  }) async {
+    return await showDialog<String>(
+      context: context,
+      builder: (context) => TemplateSelectionDialog(
+        isFrenchInterface: isFrenchInterface,
+      ),
+    );
+  }
+
+  static Map<String, String> _getTemplateStyles(String template) {
+    switch (template) {
+      case 'modern':
+        return {
+          'primaryColor': '#1a237e',
+          'secondaryColor': '#3949ab',
+          'accentColor': '#7986cb',
+          'backgroundColor': '#ffffff',
+          'headerBg': '#e8eaf6',
+          'borderRadius': '8px',
+          'boxShadow': '0 2px 8px rgba(0,0,0,0.1)',
+          'fontFamily': 'Arial, sans-serif',
+          'fontSize': '14px',
+        };
+      case 'minimal':
+        return {
+          'primaryColor': '#212121',
+          'secondaryColor': '#616161',
+          'accentColor': '#9e9e9e',
+          'backgroundColor': '#ffffff',
+          'headerBg': '#f5f5f5',
+          'borderRadius': '0px',
+          'boxShadow': 'none',
+          'fontFamily': 'Helvetica, sans-serif',
+          'fontSize': '13px',
+        };
+      case 'colorful':
+        return {
+          'primaryColor': '#e91e63',
+          'secondaryColor': '#9c27b0',
+          'accentColor': '#673ab7',
+          'backgroundColor': '#fce4ec',
+          'headerBg': '#f3e5f5',
+          'borderRadius': '12px',
+          'boxShadow': '0 4px 12px rgba(233,30,99,0.2)',
+          'fontFamily': 'Georgia, serif',
+          'fontSize': '15px',
+        };
+      case 'educational':
+        return {
+          'primaryColor': '#4caf50',
+          'secondaryColor': '#2e7d32',
+          'accentColor': '#81c784',
+          'backgroundColor': '#e8f5e9',
+          'headerBg': '#c8e6c9',
+          'borderRadius': '6px',
+          'boxShadow': '0 2px 6px rgba(76,175,80,0.15)',
+          'fontFamily': 'Verdana, sans-serif',
+          'fontSize': '14px',
+        };
+      default:
+        return {
+          'primaryColor': '#1565c0',
+          'secondaryColor': '#1976d2',
+          'accentColor': '#42a5f5',
+          'backgroundColor': '#ffffff',
+          'headerBg': '#e3f2fd',
+          'borderRadius': '10px',
+          'boxShadow': '0 2px 10px rgba(21,101,192,0.15)',
+          'fontFamily': 'Arial, sans-serif',
+          'fontSize': '14px',
+        };
+    }
+  }
 }
 
 // Ajoutez cette classe après PDFClassificationGenerator
@@ -1237,7 +1334,7 @@ class _PageSelectionDialogState extends State<PageSelectionDialog> {
     'support': true,
     'excellence': true,
   };
-  
+
   bool _selectAll = true;
   late Map<String, String> _translations;
 
@@ -1245,41 +1342,47 @@ class _PageSelectionDialogState extends State<PageSelectionDialog> {
   void initState() {
     super.initState();
     _translations = _getPageTranslations(widget.isFrenchInterface);
-    
+
     // Initialiser les sélections en fonction des groupes disponibles
     if (widget.isCompleteReport) {
       _selectedPages['cover'] = true;
       _selectedPages['general'] = true;
-      
+
       // Obtenir les noms des groupes selon la langue
-      final treatmentName = _getGroupNameByKey('treatment', widget.isFrenchInterface);
-      final supportName = _getGroupNameByKey('support', widget.isFrenchInterface);
-      final excellenceName = _getGroupNameByKey('excellence', widget.isFrenchInterface);
-      
-      _selectedPages['treatment'] = widget.groupedStudents.containsKey(treatmentName) || 
-                                    (widget.groupSelections['treatment']?.isNotEmpty ?? false) ||
-                                    (widget.aiExercises['treatment']?.isNotEmpty ?? false);
-                                    
-      _selectedPages['support'] = widget.groupedStudents.containsKey(supportName) ||
-                                 (widget.groupSelections['support']?.isNotEmpty ?? false) ||
-                                 (widget.aiExercises['support']?.isNotEmpty ?? false);
-                                 
-      _selectedPages['excellence'] = widget.groupedStudents.containsKey(excellenceName) ||
-                                    (widget.groupSelections['excellence']?.isNotEmpty ?? false) ||
-                                    (widget.aiExercises['excellence']?.isNotEmpty ?? false);
+      final treatmentName =
+          _getGroupNameByKey('treatment', widget.isFrenchInterface);
+      final supportName =
+          _getGroupNameByKey('support', widget.isFrenchInterface);
+      final excellenceName =
+          _getGroupNameByKey('excellence', widget.isFrenchInterface);
+
+      _selectedPages['treatment'] =
+          widget.groupedStudents.containsKey(treatmentName) ||
+              (widget.groupSelections['treatment']?.isNotEmpty ?? false) ||
+              (widget.aiExercises['treatment']?.isNotEmpty ?? false);
+
+      _selectedPages['support'] =
+          widget.groupedStudents.containsKey(supportName) ||
+              (widget.groupSelections['support']?.isNotEmpty ?? false) ||
+              (widget.aiExercises['support']?.isNotEmpty ?? false);
+
+      _selectedPages['excellence'] =
+          widget.groupedStudents.containsKey(excellenceName) ||
+              (widget.groupSelections['excellence']?.isNotEmpty ?? false) ||
+              (widget.aiExercises['excellence']?.isNotEmpty ?? false);
     } else {
       // Pour un rapport simple groupe, ne montrer que les pages pertinentes
       _selectedPages['cover'] = true;
       _selectedPages['general'] = true;
-      
+
       // Le groupe spécifique sera toujours inclus
-      if (widget.groupSelections.containsKey('treatment') && 
+      if (widget.groupSelections.containsKey('treatment') &&
           widget.groupSelections['treatment']!.isNotEmpty) {
         _selectedPages['treatment'] = true;
         _selectedPages['support'] = false;
         _selectedPages['excellence'] = false;
-      } else if (widget.groupSelections.containsKey('support') && 
-                widget.groupSelections['support']!.isNotEmpty) {
+      } else if (widget.groupSelections.containsKey('support') &&
+          widget.groupSelections['support']!.isNotEmpty) {
         _selectedPages['treatment'] = false;
         _selectedPages['support'] = true;
         _selectedPages['excellence'] = false;
@@ -1289,7 +1392,7 @@ class _PageSelectionDialogState extends State<PageSelectionDialog> {
         _selectedPages['excellence'] = true;
       }
     }
-    
+
     // Mettre à jour selectAll
     _updateSelectAll();
   }
@@ -1297,17 +1400,25 @@ class _PageSelectionDialogState extends State<PageSelectionDialog> {
   String _getGroupNameByKey(String key, bool isFrench) {
     if (isFrench) {
       switch (key) {
-        case 'treatment': return 'Groupe de traitement';
-        case 'support': return 'Groupe de soutien';
-        case 'excellence': return "Groupe d'excellence";
-        default: return '';
+        case 'treatment':
+          return 'Groupe de traitement';
+        case 'support':
+          return 'Groupe de soutien';
+        case 'excellence':
+          return "Groupe d'excellence";
+        default:
+          return '';
       }
     } else {
       switch (key) {
-        case 'treatment': return 'مجموعة العلاج';
-        case 'support': return 'مجموعة الدعم';
-        case 'excellence': return 'مجموعة التميز';
-        default: return '';
+        case 'treatment':
+          return 'مجموعة العلاج';
+        case 'support':
+          return 'مجموعة الدعم';
+        case 'excellence':
+          return 'مجموعة التميز';
+        default:
+          return '';
       }
     }
   }
@@ -1349,17 +1460,29 @@ class _PageSelectionDialogState extends State<PageSelectionDialog> {
       case 'general':
         return 1;
       case 'treatment':
-        int count = widget.groupedStudents[_getGroupNameByKey('treatment', widget.isFrenchInterface)]?.length ?? 0;
+        int count = widget
+                .groupedStudents[
+                    _getGroupNameByKey('treatment', widget.isFrenchInterface)]
+                ?.length ??
+            0;
         count += widget.groupSelections['treatment']?.length ?? 0;
         count += widget.aiExercises['treatment']?.length ?? 0;
         return count;
       case 'support':
-        int count = widget.groupedStudents[_getGroupNameByKey('support', widget.isFrenchInterface)]?.length ?? 0;
+        int count = widget
+                .groupedStudents[
+                    _getGroupNameByKey('support', widget.isFrenchInterface)]
+                ?.length ??
+            0;
         count += widget.groupSelections['support']?.length ?? 0;
         count += widget.aiExercises['support']?.length ?? 0;
         return count;
       case 'excellence':
-        int count = widget.groupedStudents[_getGroupNameByKey('excellence', widget.isFrenchInterface)]?.length ?? 0;
+        int count = widget
+                .groupedStudents[
+                    _getGroupNameByKey('excellence', widget.isFrenchInterface)]
+                ?.length ??
+            0;
         count += widget.groupSelections['excellence']?.length ?? 0;
         count += widget.aiExercises['excellence']?.length ?? 0;
         return count;
@@ -1605,7 +1728,8 @@ class _PageSelectionDialogState extends State<PageSelectionDialog> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: _selectedPages[key]! ? color : Colors.grey.shade700,
+                      color:
+                          _selectedPages[key]! ? color : Colors.grey.shade700,
                     ),
                   ),
                   SizedBox(height: 4),
@@ -1677,5 +1801,303 @@ class _PageSelectionDialogState extends State<PageSelectionDialog> {
             'excellence': 'مجموعة التميز',
             'excellence_desc': 'التلاميذ، المشاكل والتمارين',
           };
+  }
+}
+
+class TemplateSelectionDialog extends StatefulWidget {
+  final bool isFrenchInterface;
+
+  const TemplateSelectionDialog({
+    Key? key,
+    required this.isFrenchInterface,
+  }) : super(key: key);
+
+  @override
+  _TemplateSelectionDialogState createState() =>
+      _TemplateSelectionDialogState();
+}
+
+class _TemplateSelectionDialogState extends State<TemplateSelectionDialog> {
+  String _selectedTemplate = 'default';
+
+  final List<Map<String, dynamic>> _templates = [
+    {
+      'id': 'default',
+      'name_ar': 'القالب الافتراضي',
+      'name_fr': 'Template par défaut',
+      'description_ar': 'تصميم كلاسيكي مع ألوان احترافية',
+      'description_fr': 'Design classique avec couleurs professionnelles',
+      'preview': Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Center(
+          child: Icon(Icons.description, color: Colors.white, size: 40),
+        ),
+      ),
+    },
+    {
+      'id': 'modern',
+      'name_ar': 'تصميم حديث',
+      'name_fr': 'Design moderne',
+      'description_ar': 'واجهة عصرية وأنيقة',
+      'description_fr': 'Interface moderne et élégante',
+      'preview': Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF1A237E), Color(0xFF3949AB)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: Icon(Icons.web, color: Colors.white, size: 40),
+        ),
+      ),
+    },
+    {
+      'id': 'minimal',
+      'name_ar': 'تصميم بسيط',
+      'name_fr': 'Design minimaliste',
+      'description_ar': 'تصميم نظيف ومبسط',
+      'description_fr': 'Design épuré et simplifié',
+      'preview': Container(
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(0),
+          border: Border.all(color: Colors.grey[300]!),
+        ),
+        child: Center(
+          child: Icon(Icons.article, color: Colors.grey[600], size: 40),
+        ),
+      ),
+    },
+    {
+      'id': 'colorful',
+      'name_ar': 'تصميم ملون',
+      'name_fr': 'Design coloré',
+      'description_ar': 'تصميم مشرق وجذاب',
+      'description_fr': 'Design vivant et attrayant',
+      'preview': Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFFE91E63), Color(0xFF9C27B0)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Icon(Icons.palette, color: Colors.white, size: 40),
+        ),
+      ),
+    },
+    {
+      'id': 'educational',
+      'name_ar': 'تصميم تعليمي',
+      'name_fr': 'Design éducatif',
+      'description_ar': 'تصميم مناسب للبيئة التعليمية',
+      'description_fr': 'Design adapté au milieu éducatif',
+      'preview': Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Center(
+          child: Icon(Icons.school, color: Colors.white, size: 40),
+        ),
+      ),
+    },
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final isSmallScreen = MediaQuery.of(context).size.width < 500;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      insetPadding: EdgeInsets.symmetric(
+          horizontal: isSmallScreen ? 8 : 32, vertical: 24),
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth:
+              MediaQuery.of(context).size.width * (isSmallScreen ? 0.95 : 0.7),
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        padding: EdgeInsets.all(isSmallScreen ? 12 : 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              children: [
+                Icon(Icons.dashboard_customize,
+                    color: Colors.purple.shade700,
+                    size: isSmallScreen ? 24 : 28),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    widget.isFrenchInterface
+                        ? 'اختر قالب التصميم'
+                        : 'Choisir le template de design',
+                    style: TextStyle(
+                      fontSize: isSmallScreen ? 16 : 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.purple.shade800,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            SizedBox(height: isSmallScreen ? 8 : 16),
+            Text(
+              widget.isFrenchInterface
+                  ? 'اختر نمط التصميم الذي يناسبك'
+                  : 'Choisissez le style de design qui vous convient',
+              style: TextStyle(
+                fontSize: isSmallScreen ? 12 : 14,
+                color: Colors.grey[600],
+              ),
+            ),
+            SizedBox(height: isSmallScreen ? 12 : 20),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Wrap(
+                  spacing: isSmallScreen ? 8 : 12,
+                  runSpacing: isSmallScreen ? 8 : 12,
+                  children: _templates.map((template) {
+                    final isSelected = _selectedTemplate == template['id'];
+                    return InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedTemplate = template['id'];
+                        });
+                      },
+                      child: Container(
+                        width: isSmallScreen
+                            ? (MediaQuery.of(context).size.width - 48) / 2
+                            : 160,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSelected
+                                ? Colors.purple
+                                : Colors.grey.shade300,
+                            width: isSelected ? 2 : 1,
+                          ),
+                          color:
+                              isSelected ? Colors.purple.shade50 : Colors.white,
+                        ),
+                        child: Column(
+                          children: [
+                            // Preview
+                            Container(
+                              height: isSmallScreen ? 60 : 80,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(11),
+                                ),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: template['preview'],
+                            ),
+                            // Info
+                            Padding(
+                              padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    widget.isFrenchInterface
+                                        ? template['name_ar']
+                                        : template['name_fr'],
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 11 : 13,
+                                      fontWeight: FontWeight.bold,
+                                      color: isSelected
+                                          ? Colors.purple
+                                          : Colors.black87,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    widget.isFrenchInterface
+                                        ? template['description_ar']
+                                        : template['description_fr'],
+                                    style: TextStyle(
+                                      fontSize: isSmallScreen ? 9 : 10,
+                                      color: Colors.grey[600],
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            SizedBox(height: isSmallScreen ? 12 : 16),
+            // Actions
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    widget.isFrenchInterface ? 'إلغاء' : 'Annuler',
+                    style: TextStyle(fontSize: isSmallScreen ? 13 : 14),
+                  ),
+                ),
+                SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context, _selectedTemplate);
+                  },
+                  icon: Icon(Icons.check, size: isSmallScreen ? 18 : 20),
+                  label: Text(
+                    widget.isFrenchInterface ? 'تأكيد' : 'Confirmer',
+                    style: TextStyle(fontSize: isSmallScreen ? 13 : 14),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple.shade700,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 16 : 24,
+                      vertical: isSmallScreen ? 10 : 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
