@@ -1,0 +1,19 @@
+<lint-module
+    format="1"
+    dir="/home/tounekti/.pub-cache/hosted/pub.dev/sqlite3_flutter_libs-0.5.40/android"
+    name=":sqlite3_flutter_libs"
+    type="LIBRARY"
+    maven="eu.simonbinder.sqlite3_flutter_libs:sqlite3_flutter_libs:1.0-SNAPSHOT"
+    agpVersion="8.6.0"
+    buildFolder="/home/tounekti/Bureau/taqyem-backup/build/sqlite3_flutter_libs"
+    bootClassPath="/home/tounekti/Android/Sdk/platforms/android-35/android.jar:/home/tounekti/Android/Sdk/build-tools/34.0.0/core-lambda-stubs.jar"
+    javaSourceLevel="11"
+    compileTarget="android-35"
+    neverShrinking="true">
+  <lintOptions
+      abortOnError="true"
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="release"/>
+</lint-module>

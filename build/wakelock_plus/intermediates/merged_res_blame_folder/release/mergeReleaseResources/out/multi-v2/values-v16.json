@@ -1,0 +1,34 @@
+{
+    "logs": [
+        {
+            "outputFile": "dev.fluttercommunity.plus.wakelock.wakelock_plus-mergeReleaseResources-24:/values-v16/values-v16.xml",
+            "map": [
+                {
+                    "source": "/home/tounekti/.gradle/caches/transforms-4/67e0988f2f54eefc28e7b75ba0277f80/transformed/core-1.12.0/res/values-v16/values-v16.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "65",
+                        "endOffsets": "116"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "dev.fluttercommunity.plus.wakelock.wakelock_plus-release-26:/values-v16/values-v16.xml",
+            "map": [
+                {
+                    "source": "/home/tounekti/.gradle/caches/transforms-4/67e0988f2f54eefc28e7b75ba0277f80/transformed/core-1.12.0/res/values-v16/values-v16.xml",
+                    "from": {
+                        "startLines": "2",
+                        "startColumns": "4",
+                        "startOffsets": "55",
+                        "endColumns": "65",
+                        "endOffsets": "116"
+                    }
+                }
+            ]
+        }
+    ]
+}

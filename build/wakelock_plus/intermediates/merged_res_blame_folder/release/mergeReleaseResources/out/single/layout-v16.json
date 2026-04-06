@@ -1,0 +1,6 @@
+[
+    {
+        "merged": "dev.fluttercommunity.plus.wakelock.wakelock_plus-release-26:/layout-v16/notification_template_custom_big.xml",
+        "source": "dev.fluttercommunity.plus.wakelock.wakelock_plus-core-1.12.0-6:/layout-v16/notification_template_custom_big.xml"
+    }
+]

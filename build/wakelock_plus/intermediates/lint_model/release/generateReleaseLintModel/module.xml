@@ -1,0 +1,26 @@
+<lint-module
+    format="1"
+    dir="/home/tounekti/.pub-cache/hosted/pub.dev/wakelock_plus-1.3.3/android"
+    name=":wakelock_plus"
+    type="LIBRARY"
+    maven="dev.fluttercommunity.plus.wakelock:wakelock_plus:1.0-SNAPSHOT"
+    agpVersion="8.6.0"
+    buildFolder="/home/tounekti/Bureau/taqyem-backup/build/wakelock_plus"
+    bootClassPath="/home/tounekti/Android/Sdk/platforms/android-34/android.jar:/home/tounekti/Android/Sdk/build-tools/34.0.0/core-lambda-stubs.jar"
+    javaSourceLevel="17"
+    compileTarget="android-34"
+    neverShrinking="true">
+  <lintOptions
+      disable="InvalidPackage"
+      abortOnError="true"
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true">
+    <severities>
+      <severity
+        id="InvalidPackage"
+        severity="IGNORE" />
+    </severities>
+  </lintOptions>
+  <variant name="release"/>
+</lint-module>

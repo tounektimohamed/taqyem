@@ -1,0 +1,22 @@
+[
+    {
+        "merged": "eu.simonbinder.sqlite3_flutter_libs-release-25:/layout/notification_template_part_time.xml",
+        "source": "eu.simonbinder.sqlite3_flutter_libs-core-1.12.0-6:/layout/notification_template_part_time.xml"
+    },
+    {
+        "merged": "eu.simonbinder.sqlite3_flutter_libs-release-25:/layout/custom_dialog.xml",
+        "source": "eu.simonbinder.sqlite3_flutter_libs-core-1.12.0-6:/layout/custom_dialog.xml"
+    },
+    {
+        "merged": "eu.simonbinder.sqlite3_flutter_libs-release-25:/layout/ime_base_split_test_activity.xml",
+        "source": "eu.simonbinder.sqlite3_flutter_libs-core-1.12.0-6:/layout/ime_base_split_test_activity.xml"
+    },
+    {
+        "merged": "eu.simonbinder.sqlite3_flutter_libs-release-25:/layout/notification_template_part_chronometer.xml",
+        "source": "eu.simonbinder.sqlite3_flutter_libs-core-1.12.0-6:/layout/notification_template_part_chronometer.xml"
+    },
+    {
+        "merged": "eu.simonbinder.sqlite3_flutter_libs-release-25:/layout/ime_secondary_split_test_activity.xml",
+        "source": "eu.simonbinder.sqlite3_flutter_libs-core-1.12.0-6:/layout/ime_secondary_split_test_activity.xml"
+    }
+]
