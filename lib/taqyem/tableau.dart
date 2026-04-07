@@ -25,7 +25,166 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ============================================================
-// WeeklyWarningService - Gestion de l'affichage hebdomadaire
+// Helper function for translating bareme names from JSON
+// ============================================================
+String getTranslatedBaremeNameFromJson(String baremeName, String className,
+    String matiereName, Map<String, dynamic> jsonCriteriaData) {
+  if (jsonCriteriaData.isEmpty || className.isEmpty || matiereName.isEmpty) {
+    return baremeName;
+  }
+
+  try {
+    String jsonClassName = className;
+
+    if (jsonClassName.contains('أ') ||
+        jsonClassName.contains('ب') ||
+        jsonClassName.contains('ج') ||
+        jsonClassName.contains('د')) {
+      jsonClassName = jsonClassName.replaceAll(RegExp(r'[أ-د]$'), '').trim();
+    }
+
+    if (!jsonCriteriaData.containsKey(jsonClassName)) {
+      return baremeName;
+    }
+
+    final classData = jsonCriteriaData[jsonClassName];
+    if (classData is! Map<String, dynamic> ||
+        !classData.containsKey('subjects')) {
+      return baremeName;
+    }
+
+    final subjects = classData['subjects'] as Map<String, dynamic>;
+
+    if (!subjects.containsKey(matiereName)) {
+      return baremeName;
+    }
+
+    final subjectData = subjects[matiereName];
+    if (subjectData is! Map<String, dynamic> ||
+        !subjectData.containsKey('criteria')) {
+      return baremeName;
+    }
+
+    final criteria = subjectData['criteria'] as List<dynamic>;
+    final baremeCodeMatch = RegExp(r'مع\s*(\d+)').firstMatch(baremeName);
+    if (baremeCodeMatch == null) {
+      return baremeName;
+    }
+
+    final criterionIndex = int.tryParse(baremeCodeMatch.group(1)!) ?? -1;
+
+    if (criterionIndex < 1 || criterionIndex > criteria.length) {
+      return baremeName;
+    }
+
+    final criterion = criteria[criterionIndex - 1];
+    if (criterion is! Map<String, dynamic>) {
+      return baremeName;
+    }
+
+    String? criterionName = criterion['name'] as String?;
+    return criterionName ?? baremeName;
+  } catch (e) {
+    return baremeName;
+  }
+}
+
+// ============================================================
+// Helper function for translating sous-bareme (indicator) names from JSON
+// Pattern: "مع 1.أ" -> criterion 1, indicator "أ"
+// ============================================================
+String getTranslatedSousBaremeNameFromJson(
+    String sousBaremeName,
+    String className,
+    String matiereName,
+    Map<String, dynamic> jsonCriteriaData) {
+  if (jsonCriteriaData.isEmpty || className.isEmpty || matiereName.isEmpty) {
+    return sousBaremeName;
+  }
+
+  try {
+    String jsonClassName = className;
+
+    if (jsonClassName.contains('أ') ||
+        jsonClassName.contains('ب') ||
+        jsonClassName.contains('ج') ||
+        jsonClassName.contains('د')) {
+      jsonClassName = jsonClassName.replaceAll(RegExp(r'[أ-د]$'), '').trim();
+    }
+
+    if (!jsonCriteriaData.containsKey(jsonClassName)) {
+      return sousBaremeName;
+    }
+
+    final classData = jsonCriteriaData[jsonClassName];
+    if (classData is! Map<String, dynamic> ||
+        !classData.containsKey('subjects')) {
+      return sousBaremeName;
+    }
+
+    final subjects = classData['subjects'] as Map<String, dynamic>;
+
+    if (!subjects.containsKey(matiereName)) {
+      return sousBaremeName;
+    }
+
+    final subjectData = subjects[matiereName];
+    if (subjectData is! Map<String, dynamic> ||
+        !subjectData.containsKey('criteria')) {
+      return sousBaremeName;
+    }
+
+    final criteria = subjectData['criteria'] as List<dynamic>;
+
+    // Parse sous-bareme name: "مع 1.أ" -> criterion 1, indicator "أ"
+    final sousBaremeMatch =
+        RegExp(r'مع\s*(\d+)\s*[.:]\s*([أ-د])').firstMatch(sousBaremeName);
+    if (sousBaremeMatch == null) {
+      return sousBaremeName;
+    }
+
+    final criterionIndex = int.tryParse(sousBaremeMatch.group(1)!) ?? -1;
+    final indicatorLetter = sousBaremeMatch.group(2) ?? '';
+
+    if (criterionIndex < 1 || criterionIndex > criteria.length) {
+      return sousBaremeName;
+    }
+
+    final criterion = criteria[criterionIndex - 1];
+    if (criterion is! Map<String, dynamic>) {
+      return sousBaremeName;
+    }
+
+    // Get indicators from criterion - indicators is a List<String> in JSON
+    final indicators = criterion['indicators'];
+    if (indicators is! List) {
+      return sousBaremeName;
+    }
+
+    // Map indicator letter to index (أ=0, ب=1, ج=2, د=3)
+    // Arabic Unicode: أ=1571, ب=1576, ج=1579, د=1583 - NOT contiguous!
+    final Map<String, int> indicatorLetterMap = {
+      'أ': 0,
+      'ب': 1,
+      'ج': 2,
+      'د': 3
+    };
+    int indicatorIndex = indicatorLetterMap[indicatorLetter] ?? -1;
+
+    if (indicatorIndex < 0 || indicatorIndex >= indicators.length) {
+      return sousBaremeName;
+    }
+
+    final indicator = indicators[indicatorIndex];
+    return indicator.toString();
+  } catch (e) {
+    return sousBaremeName;
+  }
+}
+
+// ============================================================
+// WeeklyWarningService - Gestion de l'affichage hebdomadaire</parameter>
+
 // ============================================================
 class WeeklyWarningService {
   static const String _warningKey = 'last_warning_shown';
@@ -47,7 +206,7 @@ class WeeklyWarningService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_warningKey, DateTime.now().millisecondsSinceEpoch);
     } catch (e) {
-      print('Erreur sauvegarde avertissement: $e');
+      // print('Erreur sauvegarde avertissement: $e');
     }
   }
 }
@@ -633,7 +792,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   Timer? _accountStatusTimer;
   StreamSubscription? _userSubscription;
   bool _isFrenchInterface = false;
+  bool _useJsonBaremeTranslation = false;
+  Map<String, dynamic> _jsonCriteriaData = {};
   String _matiereName = '';
+  String _classNameArabic = '';
   String _selectedTrimestre = 'الأول';
   String _selectedPeriode = '';
   String _selectedEvaluationType = 'تقييم';
@@ -671,7 +833,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_IPHONE_ADVICE_KEY, true);
     } catch (e) {
-      print('Erreur sauvegarde conseil iPhone: $e');
+      // print('Erreur sauvegarde conseil iPhone: $e');
     }
   }
 
@@ -792,8 +954,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 // Convertit la valeur affichée en valeur stockée
   String _getMappedEvaluation(String displayValue, String system,
       {List<String>? customNotes}) {
-    print(
-        '🎯 _getMappedEvaluation - displayValue: "$displayValue", system: "$system", customNotes: $customNotes');
+    // print(
+    //     '🎯 _getMappedEvaluation - displayValue: "$displayValue", system: "$system", customNotes: $customNotes');
 
     // Si c'est "غائب"
     if (displayValue == 'غائب') {
@@ -927,7 +1089,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       if (globalDoc.exists && globalDoc.data()?['notes'] != null) {
         allCustomNotes['global'] =
             List<String>.from(globalDoc.data()!['notes']);
-        print('🌍 Notes globales chargées: ${allCustomNotes['global']}');
+        // print('🌍 Notes globales chargées: ${allCustomNotes['global']}');
       }
 
       // 2. Charger les notes des barèmes
@@ -954,8 +1116,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
             baremeCustomDoc.data()?['notes'] != null) {
           allCustomNotes['baremes'][baremeId] =
               List<String>.from(baremeCustomDoc.data()!['notes']);
-          print(
-              '📌 Notes barème $baremeId: ${allCustomNotes['baremes'][baremeId]}');
+          // print(
+          //     '📌 Notes barème $baremeId: ${allCustomNotes['baremes'][baremeId]}');
         }
 
         // Notes des sous-barèmes
@@ -982,13 +1144,13 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           if (sousCustomDoc.exists && sousCustomDoc.data()?['notes'] != null) {
             allCustomNotes['sousBaremes'][sousBaremeId] =
                 List<String>.from(sousCustomDoc.data()!['notes']);
-            print(
-                '🔹 Notes sous-barème $sousBaremeId: ${allCustomNotes['sousBaremes'][sousBaremeId]}');
+            // print(
+            //     '🔹 Notes sous-barème $sousBaremeId: ${allCustomNotes['sousBaremes'][sousBaremeId]}');
           }
         }
       }
     } catch (e) {
-      print('❌ Erreur chargement notes custom: $e');
+      // print('❌ Erreur chargement notes custom: $e');
     }
 
     return allCustomNotes;
@@ -1023,8 +1185,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   String _getDisplayEvaluation(String storedValue, String system,
       {List<String>? customNotes, String? baremeId, String? sousBaremeId}) {
     // Debug pour voir ce qui se passe
-    print(
-        '🎯 _getDisplayEvaluation - storedValue: "$storedValue", system: "$system", customNotes: $customNotes');
+    // print(
+    //     '🎯 _getDisplayEvaluation - storedValue: "$storedValue", system: "$system", customNotes: $customNotes');
 
     // Si c'est "غائب"
     if (storedValue == 'غائب') {
@@ -1073,12 +1235,12 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         };
 
         final result = mapping[storedValue] ?? normalizedNotes[0];
-        print(
-            '✅ Custom mapping: $storedValue -> $result (notes: $normalizedNotes)');
+        // print(
+        //     '✅ Custom mapping: $storedValue -> $result (notes: $normalizedNotes)');
         return result;
       } else {
-        print(
-            '⚠️ Système custom mais pas de notes personnalisées, fallback sur caractères');
+        // print(
+        //     '⚠️ Système custom mais pas de notes personnalisées, fallback sur caractères');
         return storedValue;
       }
     }
@@ -1146,7 +1308,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       // Format: classId-matiereId
       final docId = '$classId-$matiereId';
 
-      print('🔍 Recherche système pour: $docId');
+      // print('🔍 Recherche système pour: $docId');
 
       final systemDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -1157,12 +1319,12 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
       if (systemDoc.exists) {
         final system = systemDoc.data()?['system'] ?? 'character';
-        print('✅ Système récupéré: $system');
+        // print('✅ Système récupéré: $system');
         return system;
       }
 
       // Si pas trouvé avec l'ID composé, essayer de chercher dans tous les documents
-      print('⚠️ Document non trouvé avec ID: $docId');
+      // print('⚠️ Document non trouvé avec ID: $docId');
 
       // Chercher tous les systèmes pour debug
       final allSystems = await FirebaseFirestore.instance
@@ -1171,15 +1333,15 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .collection('evaluation_systems')
           .get();
 
-      print('📋 Tous les systèmes disponibles:');
-      for (final doc in allSystems.docs) {
-        print('   - ${doc.id}: ${doc.data()}');
-      }
+      // print('📋 Tous les systèmes disponibles:');
+      // for (final doc in allSystems.docs) {
+      //   print('   - ${doc.id}: ${doc.data()}');
+      // }
 
-      print('ℹ️ Système par défaut: character');
+      // print('ℹ️ Système par défaut: character');
       return 'character';
     } catch (e) {
-      print('❌ Erreur récupération système: $e');
+      // print('❌ Erreur récupération système: $e');
       return 'character';
     }
   }
@@ -1189,7 +1351,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) return;
 
-      print('=== DÉBOGAGE SYSTÈMES D\'ÉVALUATION ===');
+      // print('=== DÉBOGAGE SYSTÈMES D\'ÉVALUATION ===');
 
       final systemsSnapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -1197,10 +1359,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .collection('evaluation_systems')
           .get();
 
-      print('📋 Systèmes trouvés: ${systemsSnapshot.docs.length}');
-      for (final doc in systemsSnapshot.docs) {
-        print('   📄 ${doc.id} -> ${doc.data()}');
-      }
+      // print('📋 Systèmes trouvés: ${systemsSnapshot.docs.length}');
+      // for (final doc in systemsSnapshot.docs) {
+      //   print('   📄 ${doc.id} -> ${doc.data()}');
+      // }
 
       // Vérifier spécifiquement pour la classe et matière actuelles
       final docId = '${widget.selectedClass}-${widget.selectedMatiere}';
@@ -1211,15 +1373,15 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           .doc(docId)
           .get();
 
-      if (specificDoc.exists) {
-        print('✅ Système pour $docId: ${specificDoc.data()}');
-      } else {
-        print('❌ Aucun système trouvé pour $docId');
-      }
+      // if (specificDoc.exists) {
+      //   print('✅ Système pour $docId: ${specificDoc.data()}');
+      // } else {
+      //   print('❌ Aucun système trouvé pour $docId');
+      // }
 
-      print('=== FIN DÉBOGAGE ===');
+      // print('=== FIN DÉBOGAGE ===');
     } catch (e) {
-      print('❌ Erreur débogage: $e');
+      // print('❌ Erreur débogage: $e');
     }
   }
 
@@ -1242,7 +1404,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       }
       return [];
     } catch (e) {
-      print('Erreur lors du chargement des notes personnalisées: $e');
+      // print('Erreur lors du chargement des notes personnalisées: $e');
       return [];
     }
   }
@@ -1320,7 +1482,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                   setState(() {});
                 }
               } catch (e) {
-                print('Erreur chargement noms: $e');
+                // print('Erreur chargement noms: $e');
                 className = _isFrenchInterface ? 'Inconnu' : 'غير معروف';
                 matiereName = _isFrenchInterface ? 'Inconnu' : 'غير معروف';
                 if (mounted) {
@@ -2032,7 +2194,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       // Trier les étudiants
       students.sort((a, b) => (a['name'] ?? '').compareTo(b['name'] ?? ''));
     } catch (e) {
-      print('❌ Erreur préparation étudiants: $e');
+      // print('❌ Erreur préparation étudiants: $e');
     }
 
     return students;
@@ -2121,10 +2283,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         }
       }
 
-      print('📤 SYSTÈME ENVOYÉ À FLASK: $evaluationSystem');
-      print('📤 NOTES GLOBALES: $globalCustomNotes');
-      print('📤 NOTES BARÈMES: $baremeCustomNotes');
-      print('📤 NOTES SOUS-BARÈMES: $sousBaremeCustomNotes');
+      // print('📤 SYSTÈME ENVOYÉ À FLASK: $evaluationSystem');
+      // print('📤 NOTES GLOBALES: $globalCustomNotes');
+      // print('📤 NOTES BARÈMES: $baremeCustomNotes');
+      // print('📤 NOTES SOUS-BARÈMES: $sousBaremeCustomNotes');
 
       // Préparer les données des étudiants avec les notes converties
       final students =
@@ -2170,16 +2332,16 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         'templateId': templateId,
       };
 
-      print('📤 Envoi des données à Flask...');
+      // print('📤 Envoi des données à Flask...');
 
       final testUrl =
           Uri.parse('https://mohamedtsou-taqyem-imprission.hf.space/health');
 
       try {
         await http.get(testUrl).timeout(const Duration(seconds: 5));
-        print('✅ Serveur Flask accessible');
+        // print('✅ Serveur Flask accessible');
       } catch (e) {
-        print('❌ Serveur Flask inaccessible: $e');
+        // print('❌ Serveur Flask inaccessible: $e');
         return {
           'success': false,
           'message': 'Serveur Flask non démarré sur HF Space'
@@ -2189,9 +2351,9 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       final url = Uri.parse(
           'https://mohamedtsou-taqyem-imprission.hf.space/generate-complete-report');
 
-      print('⏳ Génération du rapport...');
-      print(
-          '📦 Taille des données: ~${json.encode(completeData).length} caractères');
+      // print('⏳ Génération du rapport...');
+      // print(
+      //     '📦 Taille des données: ~${json.encode(completeData).length} caractères');
 
       final response = await http
           .post(
@@ -2204,7 +2366,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           )
           .timeout(const Duration(seconds: 120));
 
-      print('✅ Status HTTP: ${response.statusCode}');
+      // print('✅ Status HTTP: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
@@ -2245,7 +2407,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     } on TimeoutException {
       return {'success': false, 'message': 'Timeout serveur'};
     } catch (e) {
-      print('💥 Erreur inattendue: $e');
+      // print('💥 Erreur inattendue: $e');
       return {'success': false, 'message': 'Erreur technique: $e'};
     }
   }
@@ -2253,7 +2415,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   Future<void> _downloadReportFromUrl(
       String downloadUrl, String filename, String reportId) async {
     try {
-      print('📥 Téléchargement depuis: $downloadUrl');
+      // print('📥 Téléchargement depuis: $downloadUrl');
 
       if (kIsWeb) {
         // Version Web
@@ -2286,7 +2448,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         }
       }
     } catch (e) {
-      print('❌ Erreur téléchargement: $e');
+      // print('❌ Erreur téléchargement: $e');
       _showErrorSnackbar(
           _getTranslatedText('خطأ في التحميل', 'Erreur de téléchargement') +
               ': $e');
@@ -2319,9 +2481,9 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         'status': 'downloaded'
       });
 
-      print('✅ Métadonnées sauvegardées dans Firestore');
+      // print('✅ Métadonnées sauvegardées dans Firestore');
     } catch (e) {
-      print('⚠️ Erreur sauvegarde métadonnées: $e');
+      // print('⚠️ Erreur sauvegarde métadonnées: $e');
       // Ne pas bloquer l'utilisateur pour cette erreur
     }
   }
@@ -2348,7 +2510,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         };
       }).toList();
     } catch (e) {
-      print('❌ Erreur récupération historique: $e');
+      // print('❌ Erreur récupération historique: $e');
       return [];
     }
   }
@@ -2749,7 +2911,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           html.Url.revokeObjectUrl(url);
         });
 
-        print('✅ PDF téléchargé sur le web');
+        // print('✅ PDF téléchargé sur le web');
       } else {
         // Version Mobile/Desktop
         final directory = await getTemporaryDirectory();
@@ -2765,10 +2927,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         await xFile.saveTo(filePath);
         await OpenFile.open(filePath);
 
-        print('✅ PDF sauvegardé: $filePath');
+        // print('✅ PDF sauvegardé: $filePath');
       }
     } catch (e) {
-      print('❌ Erreur téléchargement PDF base64: $e');
+      // print('❌ Erreur téléchargement PDF base64: $e');
       rethrow;
     }
   }
@@ -2796,7 +2958,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         await OpenFile.open(filePath);
       }
     } catch (e) {
-      print('Erreur téléchargement rapport: $e');
+      // print('Erreur téléchargement rapport: $e');
       rethrow;
     }
   }
@@ -2819,7 +2981,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           html.Url.revokeObjectUrl(url);
         });
 
-        print('✅ Fichier HTML téléchargé sur le web');
+        // print('✅ Fichier HTML téléchargé sur le web');
       } else {
         // Version Mobile/Desktop
         final directory = await getTemporaryDirectory();
@@ -2835,83 +2997,11 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         await xFile.saveTo(filePath);
         await OpenFile.open(filePath);
 
-        print('✅ Fichier HTML sauvegardé: $filePath');
+        // print('✅ Fichier HTML sauvegardé: $filePath');
       }
     } catch (e) {
-      print('❌ Erreur téléchargement HTML: $e');
+      // print('❌ Erreur téléchargement HTML: $e');
       rethrow;
-    }
-  }
-
-// Méthode pour récupérer les barèmes POUR LE RAPPORT COMPLET
-  Future<List<dynamic>> _getBaremesForCompleteReport(
-      String classId, String matiereId) async {
-    try {
-      final baremesSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(currentUser!.uid)
-          .collection('selections')
-          .doc(classId)
-          .collection(matiereId)
-          .get();
-
-      final List<dynamic> baremes = [];
-      for (final baremeDoc in baremesSnapshot.docs) {
-        final baremeId = _getFieldSafe(baremeDoc, 'baremeId', '');
-        final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
-        final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
-
-        final displayedBaremeName = _isFrenchInterface
-            ? DataTranslator.translateBareme(baremeName)
-            : baremeName;
-
-        if (isBaremeSelected) {
-          baremes.add({
-            'id': baremeId,
-            'value': displayedBaremeName,
-            'originalValue': baremeName,
-            'type': 'bareme',
-            'parentBaremeId': null, // Barème principal
-          });
-        }
-
-        final sousBaremesSnapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser!.uid)
-            .collection('selections')
-            .doc(classId)
-            .collection(matiereId)
-            .doc(baremeId)
-            .collection('sousBaremes')
-            .get();
-
-        for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
-          final sousBaremeId = sousBaremeDoc.id;
-          final sousBaremeName =
-              _getFieldSafe(sousBaremeDoc, 'sousBaremeName', 'غير معروف');
-          final isSousBaremeSelected =
-              _getFieldSafe(sousBaremeDoc, 'selected', false);
-
-          final displayedSousBaremeName = _isFrenchInterface
-              ? DataTranslator.translateSousBareme(sousBaremeName)
-              : sousBaremeName;
-
-          if (isSousBaremeSelected) {
-            baremes.add({
-              'id': sousBaremeId,
-              'value': displayedSousBaremeName,
-              'originalValue': sousBaremeName,
-              'type': 'sousBareme',
-              'parentBaremeId': baremeId,
-            });
-          }
-        }
-      }
-
-      return baremes;
-    } catch (e) {
-      print('Erreur récupération barèmes rapport complet: $e');
-      return [];
     }
   }
 
@@ -3013,7 +3103,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
       return students;
     } catch (e) {
-      print('Erreur récupération étudiants rapport complet: $e');
+      // print('Erreur récupération étudiants rapport complet: $e');
       return [];
     }
   }
@@ -3105,7 +3195,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
       return students;
     } catch (e) {
-      print('Erreur récupération étudiants: $e');
+      // print('Erreur récupération étudiants: $e');
       return [];
     }
   }
@@ -3132,9 +3222,16 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         final baremeName = _getFieldSafe(baremeDoc, 'baremeName', 'غير معروف');
         final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
-        final displayedBaremeName = _isFrenchInterface
+        String displayedBaremeName = _isFrenchInterface
             ? DataTranslator.translateBareme(baremeName)
             : baremeName;
+
+        if (_useJsonBaremeTranslation &&
+            _classNameArabic.isNotEmpty &&
+            _matiereName.isNotEmpty) {
+          displayedBaremeName = _getTranslatedBaremeName(
+              baremeName, _classNameArabic, _matiereName);
+        }
 
         if (isBaremeSelected) {
           // Récupérer les sous-barèmes
@@ -3211,7 +3308,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
       return baremes;
     } catch (e) {
-      print('Erreur récupération barèmes: $e');
+      // print('Erreur récupération barèmes: $e');
       return [];
     }
   }
@@ -3238,7 +3335,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         'sumCriteriaMaxPerBareme': sumCriteriaMaxPerBareme,
       };
     } catch (e) {
-      print('Erreur récupération résumé: $e');
+      // print('Erreur récupération résumé: $e');
       return {
         'totalStudents': 0,
         'sumCriteriaMaxPerBareme': {},
@@ -3273,10 +3370,140 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     _setupUserListener();
     _detectLanguage();
     _checkAndShowWeeklyWarning();
-    _loadEvaluationSystem(); // AJOUTEZ CETTE LIGNE
+    _loadEvaluationSystem();
+    _loadJsonData();
+    _loadUserPreferences();
+    _loadClassNameFromFirebase();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _debugAllEvaluationSystems(); // Pour debug
     });
+  }
+
+  Future<void> _loadJsonData() async {
+    try {
+      String jsonString =
+          await rootBundle.loadString('assets/evaluation_excel.json');
+      final jsonDataTmp = jsonDecode(jsonString);
+      setState(() {
+        _jsonCriteriaData = jsonDataTmp['classes'] as Map<String, dynamic>;
+      });
+      // print('JSON data loaded: ${_jsonCriteriaData.keys.toList()}');
+    } catch (e) {
+      // print("Erreur lors du chargement du fichier JSON: $e");
+    }
+  }
+
+  Future<void> _loadUserPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _useJsonBaremeTranslation =
+            prefs.getBool('useJsonBaremeTranslation') ?? false;
+      });
+      // print('User preferences loaded: _useJsonBaremeTranslation=$_useJsonBaremeTranslation');
+    } catch (e) {
+      // print("Erreur lors du chargement des préférences: $e");
+    }
+  }
+
+  Future<void> _loadClassNameFromFirebase() async {
+    try {
+      final classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(widget.selectedClass)
+          .get();
+      if (classDoc.exists) {
+        setState(() {
+          _classNameArabic = classDoc.get('name') ?? '';
+        });
+        // print('Loaded class name from Firebase: $_classNameArabic');
+      }
+    } catch (e) {
+      // print('Error loading class name: $e');
+    }
+  }
+
+  String _getTranslatedBaremeName(
+      String baremeName, String className, String matiereName) {
+    print(
+        'TRANSLATION DEBUG: _useJsonBaremeTranslation=$_useJsonBaremeTranslation, className=$className, matiereName=$matiereName, baremeName=$baremeName');
+
+    if (!_useJsonBaremeTranslation ||
+        _jsonCriteriaData.isEmpty ||
+        className.isEmpty ||
+        matiereName.isEmpty) {
+      print(
+          'TRANSLATION: returning original - settings disabled or empty data');
+      return baremeName;
+    }
+
+    try {
+      String jsonClassName = className;
+      print('TRANSLATION: jsonClassName = $jsonClassName');
+
+      if (jsonClassName.contains('أ') ||
+          jsonClassName.contains('ب') ||
+          jsonClassName.contains('ج') ||
+          jsonClassName.contains('د')) {
+        jsonClassName = jsonClassName.replaceAll(RegExp(r'[أ-د]$'), '').trim();
+      }
+      // print('DEBUG mapped className: $jsonClassName');
+
+      if (!_jsonCriteriaData.containsKey(jsonClassName)) {
+        // print('DEBUG: class $jsonClassName not found in JSON');
+        return baremeName;
+      }
+
+      final classData = _jsonCriteriaData[jsonClassName];
+      if (classData is! Map<String, dynamic> ||
+          !classData.containsKey('subjects')) {
+        return baremeName;
+      }
+
+      final subjects = classData['subjects'] as Map<String, dynamic>;
+
+      if (!subjects.containsKey(matiereName)) {
+        return baremeName;
+      }
+
+      final subjectData = subjects[matiereName];
+      if (subjectData is! Map<String, dynamic> ||
+          !subjectData.containsKey('criteria')) {
+        // print('DEBUG: no criteria for matiere $matiereName');
+        return baremeName;
+      }
+
+      final criteria = subjectData['criteria'] as List<dynamic>;
+      // print('DEBUG criteria count: ${criteria.length}');
+
+      final baremeCodeMatch = RegExp(r'مع\s*(\d+)').firstMatch(baremeName);
+      if (baremeCodeMatch == null) {
+        // print('DEBUG: no regex match for $baremeName');
+        return baremeName;
+      }
+
+      final criterionIndex = int.tryParse(baremeCodeMatch.group(1)!) ?? -1;
+      // print('DEBUG: index=$criterionIndex');
+
+      if (criterionIndex < 1 || criterionIndex > criteria.length) {
+        // print('DEBUG: index out of range');
+        return baremeName;
+      }
+
+      final criterion = criteria[criterionIndex - 1];
+      if (criterion is! Map<String, dynamic>) {
+        // print('DEBUG: criterion not a map');
+        return baremeName;
+      }
+
+      String? criterionName = criterion['name'] as String?;
+      // print('DEBUG criterion name: $criterionName');
+
+      return criterionName ?? baremeName;
+    } catch (e) {
+      // print('Error getting translated bareme name: $e');
+      return baremeName;
+    }
   }
 
   Future<void> _loadEvaluationSystem() async {
@@ -3287,10 +3514,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         setState(() {
           _selectedEvaluationDisplay = system;
         });
-        print('✅ Système d\'évaluation chargé: $system');
+        // print('✅ Système d\'évaluation chargé: $system');
       }
     } catch (e) {
-      print('❌ Erreur chargement système: $e');
+      // print('❌ Erreur chargement système: $e');
     }
   }
 
@@ -3342,7 +3569,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                   filteredClasses = classes;
                 });
               } catch (e) {
-                print('Erreur chargement classes: $e');
+                // print('Erreur chargement classes: $e');
               }
             }
 
@@ -3369,7 +3596,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                   filteredMatieres = matieres;
                 });
               } catch (e) {
-                print('Erreur chargement matières: $e');
+                // print('Erreur chargement matières: $e');
               }
             }
 
@@ -3772,14 +3999,14 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     String matiereName,
   ) async {
     try {
-      print('🎯 ===== DEBUT RECHERCHE CRITERES JSON =====');
-      print('📌 Paramètres d\'entrée:');
-      print('   • Classe originale: "$className"');
-      print('   • Matière: "$matiereName"');
+      // print('🎯 ===== DEBUT RECHERCHE CRITERES JSON =====');
+      // print('📌 Paramètres d\'entrée:');
+      // print('   • Classe originale: "$className"');
+      // print('   • Matière: "$matiereName"');
 
       // 1. Mapper la classe avec section vers la classe de base du JSON
       final String jsonClassName = _mapClassToJsonBase(className);
-      print('🔄 Classe mappée pour JSON: "$jsonClassName"');
+      // print('🔄 Classe mappée pour JSON: "$jsonClassName"');
 
       // 2. Charger le JSON
       final jsonString =
@@ -3788,84 +4015,84 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
       // 3. Vérifier la structure
       if (!jsonData.containsKey('classes')) {
-        print('❌ ERREUR: Clé "classes" non trouvée dans JSON');
+        // print('❌ ERREUR: Clé "classes" non trouvée dans JSON');
         return [];
       }
 
       final classes = jsonData['classes'] as Map<String, dynamic>;
-      print('📚 Classes disponibles dans JSON: ${classes.keys.length}');
+      // print('📚 Classes disponibles dans JSON: ${classes.keys.length}');
 
       // Afficher toutes les classes disponibles pour le débogage
-      print('   Liste des classes JSON:');
+      // print('   Liste des classes JSON:');
       classes.keys.toList().sort();
-      for (final key in classes.keys) {
-        print('   • $key');
-      }
+      // for (final key in classes.keys) {
+      //   print('   • $key');
+      // }
 
       // 4. Chercher la classe dans le JSON
       if (!classes.containsKey(jsonClassName)) {
-        print('❌ ERREUR: Classe "$jsonClassName" non trouvée dans JSON');
+        // print('❌ ERREUR: Classe "$jsonClassName" non trouvée dans JSON');
 
         // Chercher des correspondances partielles
         for (final key in classes.keys) {
           if (key.contains(jsonClassName) || jsonClassName.contains(key)) {
-            print('   🔍 Correspondance trouvée: "$key"');
+            // print('   🔍 Correspondance trouvée: "$key"');
             return _extractCriteriaForClass(classes[key], matiereName);
           }
         }
 
-        print('   ❌ Aucune correspondance trouvée');
+        // print('   ❌ Aucune correspondance trouvée');
         return [];
       }
 
-      print('✅ SUCCES: Classe "$jsonClassName" trouvée dans JSON');
+      // print('✅ SUCCES: Classe "$jsonClassName" trouvée dans JSON');
 
       // 5. Extraire les critères
       final classData = classes[jsonClassName];
       return _extractCriteriaForClass(classData, matiereName);
     } catch (e) {
-      print('💥 ERREUR FATALE dans _getCriteriaFromJson: $e');
+      // print('💥 ERREUR FATALE dans _getCriteriaFromJson: $e');
       return [];
     } finally {
-      print('===== FIN RECHERCHE CRITERES JSON =====\n');
+      // print('===== FIN RECHERCHE CRITERES JSON =====\n');
     }
   }
 
   List<Map<String, dynamic>> _extractCriteriaForClass(
       dynamic classData, String matiereName) {
     try {
-      print('🔍 Extraction critères pour matière: "$matiereName"');
+      // print('🔍 Extraction critères pour matière: "$matiereName"');
 
       if (classData is! Map<String, dynamic>) {
-        print('❌ Données de classe invalides');
+        // print('❌ Données de classe invalides');
         return [];
       }
 
       // Vérifier la structure subjects
       if (!classData.containsKey('subjects') ||
           classData['subjects'] is! Map<String, dynamic>) {
-        print('❌ Clé "subjects" non trouvée ou invalide');
+        // print('❌ Clé "subjects" non trouvée ou invalide');
         return [];
       }
 
       final subjects = classData['subjects'] as Map<String, dynamic>;
-      print('📖 Matières disponibles dans la classe: ${subjects.keys.length}');
+      // print('📖 Matières disponibles dans la classe: ${subjects.keys.length}');
 
       // Afficher toutes les matières pour le débogage
-      print('   Liste des matières:');
-      for (final key in subjects.keys) {
-        print('   • $key');
-      }
+      // print('   Liste des matières:');
+      // for (final key in subjects.keys) {
+      //   print('   • $key');
+      // }
 
       // Chercher la matière exacte
       if (!subjects.containsKey(matiereName)) {
-        print('❌ Matière "$matiereName" non trouvée');
-        print('   Chercher des correspondances...');
+        // print('❌ Matière "$matiereName" non trouvée');
+        // print('   Chercher des correspondances...');
 
         // Chercher par nom partiel
         for (final key in subjects.keys) {
           if (key.contains(matiereName) || matiereName.contains(key)) {
-            print('   ✅ Matière trouvée par correspondance: "$key"');
+            // print('   ✅ Matière trouvée par correspondance: "$key"');
             return _processSubjectData(subjects[key], key);
           }
         }
@@ -3874,23 +4101,23 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         if (_isFrenchInterface) {
           final arabicMatiereName =
               DataTranslator.getArabicMatiereFromFrench(matiereName);
-          print('   🔍 Chercher version arabe: "$arabicMatiereName"');
+          // print('   🔍 Chercher version arabe: "$arabicMatiereName"');
 
           if (subjects.containsKey(arabicMatiereName)) {
-            print('   ✅ Matière trouvée par traduction: "$arabicMatiereName"');
+            // print('   ✅ Matière trouvée par traduction: "$arabicMatiereName"');
             return _processSubjectData(
                 subjects[arabicMatiereName], arabicMatiereName);
           }
         }
 
-        print('❌ Matière non trouvée après toutes les recherches');
+        // print('❌ Matière non trouvée après toutes les recherches');
         return [];
       }
 
-      print('✅ Matière trouvée: "$matiereName"');
+      // print('✅ Matière trouvée: "$matiereName"');
       return _processSubjectData(subjects[matiereName], matiereName);
     } catch (e) {
-      print('❌ Erreur extraction critères: $e');
+      // print('❌ Erreur extraction critères: $e');
       return [];
     }
   }
@@ -3899,38 +4126,38 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       dynamic subjectData, String originalMatiereName) {
     try {
       if (subjectData is! Map<String, dynamic>) {
-        print('❌ Données matière invalides');
+        // print('❌ Données matière invalides');
         return [];
       }
 
-      print('📊 Vérification données matière:');
-      print('   • has_criteria: ${subjectData['has_criteria']}');
-      print('   • criteria_count: ${subjectData['criteria_count']}');
+      // print('📊 Vérification données matière:');
+      // print('   • has_criteria: ${subjectData['has_criteria']}');
+      // print('   • criteria_count: ${subjectData['criteria_count']}');
 
       if (subjectData['has_criteria'] != true) {
-        print('⚠️ Matière sans critères (has_criteria = false)');
+        // print('⚠️ Matière sans critères (has_criteria = false)');
         return [];
       }
 
       final criteriaList = subjectData['criteria'] as List<dynamic>?;
       if (criteriaList == null || criteriaList.isEmpty) {
-        print('⚠️ Liste de critères vide ou null');
+        // print('⚠️ Liste de critères vide ou null');
         return [];
       }
 
-      print('✅ ${criteriaList.length} critères trouvés');
+      // print('✅ ${criteriaList.length} critères trouvés');
 
       // Afficher les noms des critères pour le débogage
-      for (int i = 0; i < criteriaList.length; i++) {
-        final criterion = criteriaList[i] as Map<String, dynamic>;
-        print(
-            '   ${i + 1}. ${criterion['name']} (${criterion['indicators_count'] ?? 0} indicateurs)');
-      }
+      // for (int i = 0; i < criteriaList.length; i++) {
+      //   final criterion = criteriaList[i] as Map<String, dynamic>;
+      //   print(
+      //       '   ${i + 1}. ${criterion['name']} (${criterion['indicators_count'] ?? 0} indicateurs)');
+      // }
 
       // Traiter et trier les critères
       return _createCriteriaList(criteriaList, originalMatiereName);
     } catch (e) {
-      print('❌ Erreur traitement données matière: $e');
+      // print('❌ Erreur traitement données matière: $e');
       return [];
     }
   }
@@ -3981,7 +4208,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     // Garder l'ordre du JSON tel quel
     // Les critères sont déjà dans l'ordre d'itération du JSON
 
-    print('✅ ${criteria.length} critères chargés dans l\'ordre du JSON');
+// print('✅ ${criteria.length} critères chargés dans l\'ordre du JSON');
     return criteria;
   }
 
@@ -3999,15 +4226,15 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
         if (hasCriteria && subjectData['criteria'] != null) {
           final criteriaList = subjectData['criteria'] as List<dynamic>;
-          print('✅ Critères trouvés pour $matiereName: ${criteriaList.length}');
+// print('✅ Critères trouvés pour $matiereName: ${criteriaList.length}');
 
           return _processCriteriaList(criteriaList, matiereName);
         } else {
-          print('⚠️ Pas de critères pour $matiereName ou has_criteria=false');
+// print('⚠️ Pas de critères pour $matiereName ou has_criteria=false');
         }
       } else {
-        print('❌ Matière non trouvée dans la classe: $matiereName');
-        print('Matières disponibles: ${subjects.keys.join(', ')}');
+// print('❌ Matière non trouvée dans la classe: $matiereName');
+// print('Matières disponibles: ${subjects.keys.join(', ')}');
       }
     }
 
@@ -4169,11 +4396,11 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       setState(() {
         _matiereName = matiereName;
         _isFrenchInterface = isFrenchInterface;
-        print('Détection langue - Matière: "$matiereName", '
-            'Interface française: $isFrenchInterface');
+        // print('Détection langue - Matière: "$matiereName", '
+        //     'Interface française: $isFrenchInterface');
       });
     } catch (e) {
-      print('Erreur détection langue: $e');
+      // print('Erreur détection langue: $e');
       setState(() {
         _isFrenchInterface = false;
       });
@@ -4198,7 +4425,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       }
       return data[field] ?? defaultValue;
     } catch (e) {
-      print('Erreur lecture champ $field: $e');
+      // print('Erreur lecture champ $field: $e');
       return defaultValue;
     }
   }
@@ -4433,7 +4660,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         });
       }
     } catch (e) {
-      print('Erreur lors de la vérification du crédit: $e');
+      // print('Erreur lors de la vérification du crédit: $e');
     }
   }
 
@@ -4471,7 +4698,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         });
       }
     } catch (e) {
-      print('Erreur lors de la vérification du statut du compte: $e');
+      // print('Erreur lors de la vérification du statut du compte: $e');
     }
   }
 
@@ -4489,22 +4716,22 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       final bool isActive = _getFieldSafe(userDoc, 'isActive', false);
       final int remainingPrints = _getFieldSafe(userDoc, 'remainingPrints', 5);
 
-      print('Statut compte - Actif: $isActive, Credits: $remainingPrints');
+      // print('Statut compte - Actif: $isActive, Credits: $remainingPrints');
 
       if (isActive) {
-        print('Compte actif - Pas de déduction de crédit');
+        // print('Compte actif - Pas de déduction de crédit');
         return true;
       }
 
       if (remainingPrints > 0) {
-        print('Crédits suffisants - Restant: $remainingPrints');
+        // print('Crédits suffisants - Restant: $remainingPrints');
         return true;
       }
 
-      print('Plus de crédits disponibles');
+      // print('Plus de crédits disponibles');
       return false;
     } catch (e) {
-      print('Erreur lors de la vérification du crédit: $e');
+      // print('Erreur lors de la vérification du crédit: $e');
       return false;
     }
   }
@@ -4540,7 +4767,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         await OpenFile.open(filePath);
       }
     } catch (e) {
-      print('Erreur sauvegarde PDF: $e');
+      // print('Erreur sauvegarde PDF: $e');
       throw e;
     }
   }
@@ -4568,12 +4795,12 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       final className = await _getClassName();
 
       // DEBUG: Afficher les données avant envoi
-      print('=== DONNÉES POUR RAPPORT HTML ===');
-      print('Total étudiants: $totalStudents');
-      print('Statistiques sumCriteriaMaxPerBareme:');
-      sumCriteriaMaxPerBareme.forEach((key, value) {
-        print('  $key: $value');
-      });
+      // print('=== DONNÉES POUR RAPPORT HTML ===');
+      // print('Total étudiants: $totalStudents');
+      // print('Statistiques sumCriteriaMaxPerBareme:');
+      // sumCriteriaMaxPerBareme.forEach((key, value) {
+      //   print('  $key: $value');
+      // });
 
       var data = {
         'profName': _profName,
@@ -4894,10 +5121,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       if (evaluationSystem == 'custom') {
         customNotes = await _loadCustomNotes(
             widget.selectedClass, widget.selectedMatiere);
-        print('📝 Notes custom chargées: $customNotes');
+        // print('📝 Notes custom chargées: $customNotes');
       }
 
-      print('📤 ENVOI À FLASK - SYSTÈME: $evaluationSystem');
+      // print('📤 ENVOI À FLASK - SYSTÈME: $evaluationSystem');
 
       Map<String, dynamic> finalData = {
         "userId": data['userId'],
@@ -5226,10 +5453,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           _remainingPrints = remainingPrints - 1;
         });
 
-        print('✅ Crédit déduit - Nouveau solde: ${remainingPrints - 1}');
+        // print('✅ Crédit déduit - Nouveau solde: ${remainingPrints - 1}');
       }
     } catch (e) {
-      print('Erreur lors de la déduction du crédit: $e');
+      // print('Erreur lors de la déduction du crédit: $e');
     }
   }
 
@@ -5288,9 +5515,16 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         final isBaremeSelected = _getFieldSafe(baremeDoc, 'selected', false);
 
         // Traduire si nécessaire
-        final displayedBaremeName = _isFrenchInterface
+        String displayedBaremeName = _isFrenchInterface
             ? DataTranslator.translateBareme(baremeName)
             : baremeName;
+
+        if (_useJsonBaremeTranslation &&
+            _classNameArabic.isNotEmpty &&
+            _matiereName.isNotEmpty) {
+          displayedBaremeName = _getTranslatedBaremeName(
+              baremeName, _classNameArabic, _matiereName);
+        }
 
         if (isBaremeSelected) {
           // Récupérer les sous-barèmes
@@ -5362,7 +5596,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
       return baremes;
     } catch (e) {
-      print('Erreur récupération barèmes: $e');
+      // print('Erreur récupération barèmes: $e');
       return [];
     }
   }
@@ -5462,7 +5696,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
       return students;
     } catch (e) {
-      print('❌ Erreur récupération étudiants: $e');
+      // print('❌ Erreur récupération étudiants: $e');
       return [];
     }
   }
@@ -5506,7 +5740,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
       return [];
     } catch (e) {
-      print('Erreur chargement notes: $e');
+      // print('Erreur chargement notes: $e');
       return [];
     }
   }
@@ -5538,7 +5772,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
       return [];
     } catch (e) {
-      print('Erreur chargement notes sous-barème: $e');
+      // print('Erreur chargement notes sous-barème: $e');
       return [];
     }
   }
@@ -5569,7 +5803,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           });
         }
       } catch (e) {
-        print('Erreur lors du chargement des données utilisateur: $e');
+// print('Erreur lors du chargement des données utilisateur: $e');
       }
     }
   }
@@ -5584,73 +5818,103 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.edit, color: Colors.blue),
-              SizedBox(width: 8),
-              Text(
-                  _getTranslatedText(
-                      'تعديل المعلومات', 'Modifier les informations'),
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: profController,
-                decoration: InputDecoration(
-                  labelText:
-                      _getTranslatedText('اسم الأستاذ', 'Nom du professeur'),
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Row(
+                children: [
+                  Icon(Icons.edit, color: Colors.blue),
+                  SizedBox(width: 8),
+                  Text(_getTranslatedText('الإعدادات', 'Paramètres'),
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: profController,
+                      decoration: InputDecoration(
+                        labelText: _getTranslatedText(
+                            'اسم الأستاذ', 'Nom du professeur'),
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.person),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    TextField(
+                      controller: schoolController,
+                      decoration: InputDecoration(
+                        labelText: _getTranslatedText(
+                            'اسم المدرسة', 'Nom de l\'école'),
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.school),
+                      ),
+                    ),
+                    SizedBox(height: 16),
+                    Divider(),
+                    SizedBox(height: 8),
+                    SwitchListTile(
+                      title: Text(_getTranslatedText('ترجمة أسماء المعايير',
+                          'Traduire les noms des critères')),
+                      subtitle: Text(_getTranslatedText(
+                          'يعرض أسماء المعايير حسب ملف evaluation_excel.json',
+                          'Affiche les noms des critères selon le fichier JSON')),
+                      value: _useJsonBaremeTranslation,
+                      onChanged: (value) async {
+                        if (!context.mounted) return;
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setBool('useJsonBaremeTranslation', value);
+                        setDialogState(() {
+                          _useJsonBaremeTranslation = value;
+                        });
+                        if (mounted) {
+                          setState(() {
+                            _useJsonBaremeTranslation = value;
+                          });
+                        }
+                      },
+                      activeColor: Colors.green,
+                    ),
+                  ],
                 ),
               ),
-              SizedBox(height: 16),
-              TextField(
-                controller: schoolController,
-                decoration: InputDecoration(
-                  labelText:
-                      _getTranslatedText('اسم المدرسة', 'Nom de l\'école'),
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.school),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(_getTranslatedText('إلغاء', 'Annuler')),
                 ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(_getTranslatedText('إلغاء', 'Annuler')),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (currentUser != null) {
-                  await FirebaseFirestore.instance
-                      .collection('Users')
-                      .doc(currentUser!.uid)
-                      .set(
-                    {
-                      'profName': profController.text,
-                      'schoolName': schoolController.text,
-                    },
-                    SetOptions(merge: true),
-                  );
+                ElevatedButton(
+                  onPressed: () async {
+                    if (currentUser != null) {
+                      await FirebaseFirestore.instance
+                          .collection('Users')
+                          .doc(currentUser!.uid)
+                          .set(
+                        {
+                          'profName': profController.text,
+                          'schoolName': schoolController.text,
+                        },
+                        SetOptions(merge: true),
+                      );
 
-                  setState(() {
-                    _profName = profController.text;
-                    _schoolName = schoolController.text;
-                  });
+                      setState(() {
+                        _profName = profController.text;
+                        _schoolName = schoolController.text;
+                      });
 
-                  _showSuccessSnackbar(_getTranslatedText(
-                      'تم تحديث المعلومات', 'Informations mises à jour'));
-                }
-                Navigator.of(context).pop();
-              },
-              child: Text(_getTranslatedText('حفظ', 'Enregistrer')),
-            ),
-          ],
+                      _showSuccessSnackbar(_getTranslatedText(
+                          'تم تحديث المعلومات', 'Informations mises à jour'));
+                    }
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(_getTranslatedText('حفظ', 'Enregistrer')),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -5872,7 +6136,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         setState(() {});
       }
     } catch (e) {
-      print('Erreur lors de la récupération des marques : $e');
+      // print('Erreur lors de la récupération des marques : $e');
     }
   }
 
@@ -6281,7 +6545,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
           'lib/assets/icons/me/ministere.png',
           height: 70,
           errorBuilder: (context, error, stackTrace) {
-            print("Erreur chargement image: $error");
+// print("Erreur chargement image: $error");
             return Container(
               width: 80,
               height: 80,
@@ -6420,6 +6684,12 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
               totalStudents: totalStudents,
               navigateToClassificationPage: _navigateToClassificationPage,
               isFrenchInterface: _isFrenchInterface,
+              useJsonBaremeTranslation: _useJsonBaremeTranslation,
+              classNameArabic: _classNameArabic,
+              matiereName: _matiereName,
+              jsonCriteriaData: _jsonCriteriaData,
+              profName: _profName,
+              schoolName: _schoolName,
             );
           }
         }
@@ -6510,7 +6780,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
         ),
       );
     } catch (e) {
-      print('Erreur lors de la navigation vers la page de classification : $e');
+      // print('Erreur lors de la navigation vers la page de classification : $e');
       _showErrorSnackbar(
           _getTranslatedText('خطأ في التنقل', 'Erreur lors de la navigation'));
     }
@@ -6586,7 +6856,13 @@ class StudentsTable extends StatefulWidget {
   final Map<String, int> sumCriteriaMaxPerBareme;
   final int totalStudents;
   final Function(String, {String? sousBaremeId}) navigateToClassificationPage;
-  final bool isFrenchInterface; // Nouveau paramètre
+  final bool isFrenchInterface;
+  final bool useJsonBaremeTranslation;
+  final String classNameArabic;
+  final String matiereName;
+  final Map<String, dynamic> jsonCriteriaData;
+  final String profName;
+  final String schoolName;
 
   const StudentsTable({
     Key? key,
@@ -6597,7 +6873,13 @@ class StudentsTable extends StatefulWidget {
     required this.sumCriteriaMaxPerBareme,
     required this.totalStudents,
     required this.navigateToClassificationPage,
-    required this.isFrenchInterface, // Nouveau paramètre
+    required this.isFrenchInterface,
+    required this.useJsonBaremeTranslation,
+    required this.classNameArabic,
+    required this.matiereName,
+    required this.jsonCriteriaData,
+    required this.profName,
+    required this.schoolName,
   }) : super(key: key);
 
   @override
@@ -6755,7 +7037,7 @@ class _StudentsTableState extends State<StudentsTable> {
   // CORRECTION : Méthode groupBaremes sécurisée
   Map<String, List<Map<String, dynamic>>> groupBaremes(
       List<Map<String, dynamic>> baremesValues) {
-    print('🔍 Début groupBaremes - ${baremesValues.length} éléments');
+    // print('🔍 Début groupBaremes - ${baremesValues.length} éléments');
 
     // Grouper par barème principal (regrouper sous-barèmes avec leur parent)
     Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
@@ -6782,6 +7064,7 @@ class _StudentsTableState extends State<StudentsTable> {
         groupedBaremes[baremeId]!.add({
           'id': sousBareme['id'],
           'value': sousBareme['value'],
+          'originalValue': sousBareme['originalValue'],
           'type': 'sousBareme',
           'parentBaremeId': baremeId,
         });
@@ -6799,10 +7082,10 @@ class _StudentsTableState extends State<StudentsTable> {
       groupedBaremes['orphans'] = orphanSousBaremes;
     }
 
-    print('📊 Groupes créés: ${groupedBaremes.length}');
-    for (var entry in groupedBaremes.entries) {
-      print('   Groupe ${entry.key}: ${entry.value.length} éléments');
-    }
+    // print('📊 Groupes créés: ${groupedBaremes.length}');
+    // for (var entry in groupedBaremes.entries) {
+    //   print('   Groupe ${entry.key}: ${entry.value.length} éléments');
+    // }
 
     return groupedBaremes;
   }
@@ -6865,8 +7148,7 @@ class _StudentsTableState extends State<StudentsTable> {
       }
     }
 
-    print(
-        '🔍 Vérification affichage colonne somme pour système: $_currentEvaluationSystem');
+// print('🔍 Vérification affichage colonne somme pour système: $_currentEvaluationSystem');
 
     // Systèmes qui utilisent des notes numériques
     final numericSystems = ['note_0_1_5', 'note_0_3', 'note_0_6', 'custom'];
@@ -6876,23 +7158,23 @@ class _StudentsTableState extends State<StudentsTable> {
       // Pour le système custom, vérifier si les notes sont numériques
       if (_currentEvaluationSystem == 'custom') {
         final hasNumericNotes = await _isCustomSystemWithNumericNotes();
-        print('📊 Système custom - Notes numériques: $hasNumericNotes');
+        // print('📊 Système custom - Notes numériques: $hasNumericNotes');
         return hasNumericNotes;
       }
       // Pour les autres systèmes numériques, toujours afficher
-      print('✅ Système numérique - Afficher colonne somme');
+      // print('✅ Système numérique - Afficher colonne somme');
       return true;
     }
 
     // Systèmes basés sur des caractères (pas de colonne somme)
     final characterSystems = ['character', 'ext'];
     if (characterSystems.contains(_currentEvaluationSystem)) {
-      print('❌ Système basé sur caractères - Cacher colonne somme');
+      // print('❌ Système basé sur caractères - Cacher colonne somme');
       return false;
     }
 
     // Par défaut, ne pas afficher
-    print('⚠️ Système non reconnu - Cacher colonne somme par défaut');
+// print('⚠️ Système non reconnu - Cacher colonne somme par défaut');
     return false;
   }
 
@@ -6940,10 +7222,10 @@ class _StudentsTableState extends State<StudentsTable> {
         setState(() {
           _currentEvaluationSystem = system;
         });
-        print('✅ _StudentsTableState - Système chargé: $system');
+        // print('✅ _StudentsTableState - Système chargé: $system');
       }
     } catch (e) {
-      print('❌ Erreur chargement système dans _StudentsTableState: $e');
+      // print('❌ Erreur chargement système dans _StudentsTableState: $e');
       if (_isMounted) {
         setState(() {
           _currentEvaluationSystem = 'character';
@@ -6956,22 +7238,21 @@ class _StudentsTableState extends State<StudentsTable> {
     try {
       if (_currentEvaluationSystem == 'custom') {
         final hasNumericNotes = await _isCustomSystemWithNumericNotes();
-        print(
-            '🔍 Type de notes custom: ${hasNumericNotes ? 'Numériques' : 'Textuelles'}');
+// print('🔍 Type de notes custom: ${hasNumericNotes ? 'Numériques' : 'Textuelles'}');
 
         // Log toutes les notes custom pour debug
         final customNotes = await _loadCustomNotes(
             widget.selectedClass, widget.selectedMatiere);
-        print('📝 Notes custom disponibles: $customNotes');
+// print('📝 Notes custom disponibles: $customNotes');
 
         // Vérifier chaque note
         for (final note in customNotes) {
           final numValue = double.tryParse(note.trim());
-          print('   - "$note" -> numérique: ${numValue != null}');
+          // print('   - "$note" -> numérique: ${numValue != null}');
         }
       }
     } catch (e) {
-      print('❌ Erreur vérification type notes: $e');
+      // print('❌ Erreur vérification type notes: $e');
     }
   }
 
@@ -7006,7 +7287,7 @@ class _StudentsTableState extends State<StudentsTable> {
         });
       }
     } catch (e) {
-      print('Erreur chargement étudiants: $e');
+      // print('Erreur chargement étudiants: $e');
     }
   }
 
@@ -7027,7 +7308,7 @@ class _StudentsTableState extends State<StudentsTable> {
         });
       }
     } catch (e) {
-      print('Erreur chargement sélections: $e');
+      // print('Erreur chargement sélections: $e');
     }
   }
 
@@ -7051,9 +7332,94 @@ class _StudentsTableState extends State<StudentsTable> {
       child: Column(
         children: [
           _buildHeader(),
-          SizedBox(height: 16),
+          SizedBox(height: 8),
+          _buildTopActionButtons(),
+          SizedBox(height: 8),
           Expanded(
             child: _buildContentWithCachedData(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopActionButtons() {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _getTranslatedText('دليل الأزرار:', 'Legend:'),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+          SizedBox(height: 8),
+          Row(
+            children: [
+              _buildLegendItem(
+                Colors.green,
+                _getTranslatedText('تصنيف', 'Classification'),
+                _getTranslatedText('تصنيف التلاميذ حسب المستوى',
+                    'Classer les élèves par niveau'),
+              ),
+              SizedBox(width: 24),
+              _buildLegendItem(
+                Colors.blue,
+                _getTranslatedText('تشخيص', 'Traitement'),
+                _getTranslatedText('خطة علاجية للتلاميذ',
+                    'Plan de traitement pour les élèves'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(Color color, String title, String description) {
+    return Expanded(
+      child: Row(
+        children: [
+          Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -7288,7 +7654,7 @@ class _StudentsTableState extends State<StudentsTable> {
             baremesValuesSnapshot.data!.isEmpty) {
           return _buildEmptyStateForCriteria();
         }
-        _debugBaremesStructure(baremesValuesSnapshot.data!);
+        //   _debugBaremesStructure(baremesValuesSnapshot.data!);
 
         return _buildDataTable(sortedStudents, baremesValuesSnapshot.data!);
       },
@@ -7333,7 +7699,7 @@ class _StudentsTableState extends State<StudentsTable> {
       );
     }
 
-    _debugBaremesStructure(baremesValues);
+    //  _debugBaremesStructure(baremesValues);
 
     final Map<String, List<Map<String, dynamic>>> groupedBaremes = {};
 
@@ -7459,7 +7825,11 @@ class _StudentsTableState extends State<StudentsTable> {
     for (var entry in groupedBaremes.entries) {
       for (final bareme in entry.value) {
         columns.add(DataColumn(
-          label: _buildColumnHeader(bareme['value'], entry.key),
+          label: _buildColumnHeader(
+            bareme['value'],
+            entry.key,
+            originalValue: bareme['originalValue'],
+          ),
         ));
       }
     }
@@ -7497,7 +7867,8 @@ class _StudentsTableState extends State<StudentsTable> {
   }
 
 // NOUVELLE MÉTHODE: Construction de l'en-tête de colonne
-  Widget _buildColumnHeader(String title, String groupKey) {
+  Widget _buildColumnHeader(String title, String groupKey,
+      {String? originalValue}) {
     return Container(
       width: 110,
       padding: EdgeInsets.symmetric(vertical: 8),
@@ -7534,6 +7905,20 @@ class _StudentsTableState extends State<StudentsTable> {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
+          if (originalValue != null) ...[
+            SizedBox(height: 2),
+            Text(
+              originalValue,
+              style: TextStyle(
+                fontWeight: FontWeight.w400,
+                color: Colors.white70,
+                fontSize: 9,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
     );
@@ -7568,8 +7953,7 @@ class _StudentsTableState extends State<StudentsTable> {
               }
 
               if (snapshot.hasError) {
-                print(
-                    '❌ Erreur calcul somme pour $studentId: ${snapshot.error}');
+// print('❌ Erreur calcul somme pour $studentId: ${snapshot.error}');
                 return _buildSumCellError();
               }
 
@@ -8235,7 +8619,7 @@ class _StudentsTableState extends State<StudentsTable> {
 
       return false;
     } catch (e) {
-      print('❌ Erreur vérification notes custom: $e');
+// print('❌ Erreur vérification notes custom: $e');
       return false;
     }
   }
@@ -8245,11 +8629,11 @@ class _StudentsTableState extends State<StudentsTable> {
       final trimmedNote = note.trim();
       final numValue = double.tryParse(trimmedNote);
       if (numValue == null) {
-        print('⚠️ Note non numérique trouvée: "$trimmedNote"');
+// print('⚠️ Note non numérique trouvée: "$trimmedNote"');
         return false;
       }
     }
-    print('✅ Toutes les notes sont numériques');
+// print('✅ Toutes les notes sont numériques');
     return true;
   }
 
@@ -8294,14 +8678,14 @@ class _StudentsTableState extends State<StudentsTable> {
         final trimmedNote = note.trim();
         final numValue = double.tryParse(trimmedNote);
         if (numValue == null) {
-          print('⚠️ Note non numérique pour barème $baremeKey: "$trimmedNote"');
+// print('⚠️ Note non numérique pour barème $baremeKey: "$trimmedNote"');
           return false;
         }
       }
 
       return true;
     } catch (e) {
-      print('❌ Erreur vérification notes numériques barème: $e');
+// print('❌ Erreur vérification notes numériques barème: $e');
       return false;
     }
   }
@@ -8309,7 +8693,7 @@ class _StudentsTableState extends State<StudentsTable> {
 // CORRECTION : Méthode améliorée pour afficher les statistiques
   Widget _buildStatValue(String baremeKey, bool isPercentage) {
     // DEBUG: Afficher la clé recherchée
-    print('🔍 Recherche statistique pour: $baremeKey');
+    // print('🔍 Recherche statistique pour: $baremeKey');
 
     // Rechercher la valeur dans sumCriteriaMaxPerBareme
     int? count = widget.sumCriteriaMaxPerBareme[baremeKey];
@@ -8320,7 +8704,7 @@ class _StudentsTableState extends State<StudentsTable> {
       for (var key in widget.sumCriteriaMaxPerBareme.keys) {
         if (key.contains(baremeKey) || baremeKey.contains(key)) {
           count = widget.sumCriteriaMaxPerBareme[key];
-          print('🔄 Clé trouvée avec variation: $key -> $count');
+// print('🔄 Clé trouvée avec variation: $key -> $count');
           break;
         }
       }
@@ -8329,8 +8713,7 @@ class _StudentsTableState extends State<StudentsTable> {
     // Si toujours null, utiliser 0
     count ??= 0;
 
-    print(
-        '📊 Statistique finale - Clé: $baremeKey, Valeur: $count, Pourcentage: $isPercentage');
+// print('📊 Statistique finale - Clé: $baremeKey, Valeur: $count, Pourcentage: $isPercentage');
 
     if (isPercentage) {
       if (widget.totalStudents == 0) {
@@ -8405,7 +8788,7 @@ class _StudentsTableState extends State<StudentsTable> {
                   );
                 }
               } catch (e) {
-                print('Erreur: $e');
+// print('Erreur: $e');
                 if (_isMounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -8453,17 +8836,36 @@ class _StudentsTableState extends State<StudentsTable> {
     final List<Map<String, dynamic>> result = [];
     final String userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
-    print('🔍 Début _getBaremesValues - ${selectedBaremes.length} barèmes');
+    // print('🔍 Début _getBaremesValues - ${selectedBaremes.length} barèmes');
 
     for (final baremeDoc in selectedBaremes) {
       final baremeId = baremeDoc['baremeId'] ?? baremeDoc.id;
       final baremeName = baremeDoc['baremeName'] ?? 'غير معروف';
       final isBaremeSelected = baremeDoc['selected'] ?? false;
 
-      // Utiliser widget.isFrenchInterface
-      final displayedBaremeName = widget.isFrenchInterface
-          ? DataTranslator.translateBareme(baremeName)
-          : baremeName;
+      String displayedBaremeName = baremeName;
+      String? originalBaremeValue;
+      print(
+          'TABLEAU BAREme: useJsonTranslation=${widget.useJsonBaremeTranslation}, baremeName="$baremeName"');
+      if (widget.useJsonBaremeTranslation &&
+          widget.classNameArabic.isNotEmpty &&
+          widget.matiereName.isNotEmpty) {
+        final translated = getTranslatedBaremeNameFromJson(
+            baremeName,
+            widget.classNameArabic,
+            widget.matiereName,
+            widget.jsonCriteriaData);
+        if (translated != baremeName) {
+          displayedBaremeName = translated;
+          originalBaremeValue = baremeName;
+        }
+      } else if (widget.isFrenchInterface) {
+        final translated = DataTranslator.translateBareme(baremeName);
+        if (translated != baremeName) {
+          displayedBaremeName = translated;
+          originalBaremeValue = baremeName;
+        }
+      }
 
       // Récupérer les sous-barèmes
       final sousBaremesSnapshot = await FirebaseFirestore.instance
@@ -8483,13 +8885,33 @@ class _StudentsTableState extends State<StudentsTable> {
         final sousBaremeName = sousBaremeDoc['sousBaremeName'] ?? 'غير معروف';
 
         if (isSousBaremeSelected) {
-          final displayedSousBaremeName = widget.isFrenchInterface
-              ? DataTranslator.translateSousBareme(sousBaremeName)
-              : sousBaremeName;
+          String displayedSousBaremeName = sousBaremeName;
+          bool wasTranslated = false;
+          if (widget.useJsonBaremeTranslation &&
+              widget.classNameArabic.isNotEmpty &&
+              widget.matiereName.isNotEmpty) {
+            final translated = getTranslatedSousBaremeNameFromJson(
+                sousBaremeName,
+                widget.classNameArabic,
+                widget.matiereName,
+                widget.jsonCriteriaData);
+            if (translated != sousBaremeName) {
+              displayedSousBaremeName = translated;
+              wasTranslated = true;
+            }
+          } else if (widget.isFrenchInterface) {
+            final translated =
+                DataTranslator.translateSousBareme(sousBaremeName);
+            if (translated != sousBaremeName) {
+              displayedSousBaremeName = translated;
+              wasTranslated = true;
+            }
+          }
 
           sousBaremesList.add({
             'id': sousBaremeDoc.id,
             'value': displayedSousBaremeName,
+            'originalValue': wasTranslated ? sousBaremeName : null,
             'type': 'sousBareme',
           });
         }
@@ -8511,6 +8933,7 @@ class _StudentsTableState extends State<StudentsTable> {
         result.add({
           'id': baremeId,
           'value': displayedBaremeName,
+          'originalValue': originalBaremeValue,
           'type': 'bareme',
           'sousBaremes': sousBaremesList,
         });
@@ -8560,7 +8983,7 @@ class _StudentsTableState extends State<StudentsTable> {
       final isSousBareme = await _isSousBareme(baremeKey);
 
       if (isSousBareme) {
-        print('🔍 SOUS-BARÈME détecté: $baremeKey');
+        // print('🔍 SOUS-BARÈME détecté: $baremeKey');
 
         final parentInfo = await _getParentBaremeInfo(baremeKey);
         final baremeId = parentInfo['parentBaremeId'];
@@ -8594,7 +9017,7 @@ class _StudentsTableState extends State<StudentsTable> {
           );
         }
       } else {
-        print('🔍 BARÈME PRINCIPAL détecté: $baremeKey');
+        // print('🔍 BARÈME PRINCIPAL détecté: $baremeKey');
 
         var baremeDoc = await FirebaseFirestore.instance
             .collection('users')
@@ -8618,8 +9041,7 @@ class _StudentsTableState extends State<StudentsTable> {
         }
       }
 
-      print(
-          '🎯 Conversion: $storedValue -> système: $evaluationSystem, notes: $customNotes');
+// print('🎯 Conversion: $storedValue -> système: $evaluationSystem, notes: $customNotes');
 
       final result = _getDisplayEvaluation(
         storedValue,
@@ -8627,10 +9049,10 @@ class _StudentsTableState extends State<StudentsTable> {
         customNotes: customNotes,
       );
 
-      print('✅ Résultat: $result');
+      // print('✅ Résultat: $result');
       return result;
     } catch (e) {
-      print('❌ Erreur récupération valeur pour $baremeKey: $e');
+      // print('❌ Erreur récupération valeur pour $baremeKey: $e');
       return _dropdownValues[0];
     }
   }
@@ -8639,8 +9061,8 @@ class _StudentsTableState extends State<StudentsTable> {
   String _getDisplayEvaluation(String storedValue, String system,
       {List<String>? customNotes, String? baremeId, String? sousBaremeId}) {
     // Debug pour voir ce qui se passe
-    print(
-        '🎯 _getDisplayEvaluation - storedValue: "$storedValue", system: "$system", customNotes: $customNotes');
+    // print(
+    //     '🎯 _getDisplayEvaluation - storedValue: "$storedValue", system: "$system", customNotes: $customNotes');
 
     // Si c'est "غائب"
     if (storedValue == 'غائب') {
@@ -8687,12 +9109,12 @@ class _StudentsTableState extends State<StudentsTable> {
         };
 
         final result = mapping[storedValue] ?? normalizedNotes[0];
-        print(
-            '✅ Custom mapping: $storedValue -> $result (notes: $normalizedNotes)');
+        // print(
+        //     '✅ Custom mapping: $storedValue -> $result (notes: $normalizedNotes)');
         return result;
       } else {
-        print(
-            '⚠️ Système custom mais pas de notes personnalisées, fallback sur caractères');
+        // print(
+        //     '⚠️ Système custom mais pas de notes personnalisées, fallback sur caractères');
         return storedValue;
       }
     }
@@ -8763,7 +9185,7 @@ class _StudentsTableState extends State<StudentsTable> {
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        print('✅ $baremeKey est un sous-barème');
+// print('✅ $baremeKey est un sous-barème');
         return true;
       }
 
@@ -8783,16 +9205,16 @@ class _StudentsTableState extends State<StudentsTable> {
 
         for (final sousBaremeDoc in sousBaremesSnapshot.docs) {
           if (sousBaremeDoc.id == baremeKey) {
-            print('✅ $baremeKey est un sous-barème de $baremeId');
+// print('✅ $baremeKey est un sous-barème de $baremeId');
             return true;
           }
         }
       }
 
-      print('❌ $baremeKey n\'est pas un sous-barème');
+// print('❌ $baremeKey n\'est pas un sous-barème');
       return false;
     } catch (e) {
-      print('❌ Erreur vérification sous-barème: $e');
+// print('❌ Erreur vérification sous-barème: $e');
       return false;
     }
   }
@@ -8849,7 +9271,7 @@ class _StudentsTableState extends State<StudentsTable> {
         'parentMatiereId': widget.selectedMatiere,
       };
     } catch (e) {
-      print('❌ Erreur récupération parent bareme: $e');
+// print('❌ Erreur récupération parent bareme: $e');
       return {
         'parentBaremeId': '',
         'parentClassId': widget.selectedClass,
@@ -8861,14 +9283,13 @@ class _StudentsTableState extends State<StudentsTable> {
   Future<List<String>> _getCustomNotesForBareme(
       String classId, String matiereId, String baremeId) async {
     try {
-      print('🔍 CHERCHE NOTES pour barème: $baremeId');
+// print('🔍 CHERCHE NOTES pour barème: $baremeId');
 
       // D'abord vérifier si c'est un sous-barème
       final isSousBareme = await _isSousBareme(baremeId);
 
       if (isSousBareme) {
-        print(
-            '⚠️ $baremeId est un sous-barème, utiliser _getSousBaremeCustomNotes');
+// print('⚠️ $baremeId est un sous-barème, utiliser _getSousBaremeCustomNotes');
         final parentInfo = await _getParentBaremeInfo(baremeId);
         final parentBaremeId = parentInfo['parentBaremeId'] ?? '';
 
@@ -8881,11 +9302,11 @@ class _StudentsTableState extends State<StudentsTable> {
       }
 
       // C'est un barème principal - continuer avec la logique normale
-      print('📌 C\'est un barème principal');
+// print('📌 C\'est un barème principal');
 
       // 1. Chercher d'abord les notes GLOBALES (sans baremeId)
       final globalDocId = '$classId-$matiereId';
-      print('   📍 Chercher notes globales: $globalDocId');
+// print('   📍 Chercher notes globales: $globalDocId');
 
       final globalDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -8898,14 +9319,14 @@ class _StudentsTableState extends State<StudentsTable> {
         final notes = globalDoc.data()?['notes'];
         if (notes != null && notes is List && notes.isNotEmpty) {
           final result = List<String>.from(notes);
-          print('✅ Notes globales trouvées: $result');
+// print('✅ Notes globales trouvées: $result');
           return result;
         }
       }
 
       // 2. Chercher les notes spécifiques au barème
       final specificDocId = '$classId-$matiereId-$baremeId';
-      print('   📍 Chercher notes spécifiques: $specificDocId');
+// print('   📍 Chercher notes spécifiques: $specificDocId');
 
       final specificDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -8918,32 +9339,32 @@ class _StudentsTableState extends State<StudentsTable> {
         final notes = specificDoc.data()?['notes'];
         if (notes != null && notes is List && notes.isNotEmpty) {
           final result = List<String>.from(notes);
-          print('✅ Notes spécifiques trouvées: $result');
+// print('✅ Notes spécifiques trouvées: $result');
           return result;
         }
       }
 
       // 3. Voir TOUS les documents pour debug
-      print('🔍 Voir tous les documents bareme_custom_notes...');
+// print('🔍 Voir tous les documents bareme_custom_notes...');
       final allDocs = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.currentUser.uid)
           .collection('bareme_custom_notes')
           .get();
 
-      print('📋 Total documents: ${allDocs.docs.length}');
+// print('📋 Total documents: ${allDocs.docs.length}');
       for (final doc in allDocs.docs) {
-        print('   📄 ${doc.id}');
+// print('   📄 ${doc.id}');
         final data = doc.data();
         if (data['notes'] != null) {
-          print('     📝 Notes: ${data['notes']}');
+// print('     📝 Notes: ${data['notes']}');
         }
       }
 
-      print('⚠️ Aucune note personnalisée trouvée');
+// print('⚠️ Aucune note personnalisée trouvée');
       return [];
     } catch (e) {
-      print('❌ Erreur chargement notes: $e');
+// print('❌ Erreur chargement notes: $e');
       return [];
     }
   }
@@ -8987,7 +9408,7 @@ class _StudentsTableState extends State<StudentsTable> {
 
       return false;
     } catch (e) {
-      print('Erreur vérification notes sous-barème: $e');
+// print('Erreur vérification notes sous-barème: $e');
       return false;
     }
   }
@@ -8999,14 +9420,14 @@ class _StudentsTableState extends State<StudentsTable> {
     String sousBaremeId,
   ) async {
     try {
-      print('🔍 SOUS-BARÈME: Recherche notes pour sousBaremeId: $sousBaremeId');
-      print('   parentBaremeId: $baremeId');
-      print('   classId: $classId');
-      print('   matiereId: $matiereId');
+// print('🔍 SOUS-BARÈME: Recherche notes pour sousBaremeId: $sousBaremeId');
+// print('   parentBaremeId: $baremeId');
+// print('   classId: $classId');
+// print('   matiereId: $matiereId');
 
       // ESSAI 1: Chercher avec la structure complète (la plus spécifique)
       final fullId = '$classId-$matiereId-$baremeId-$sousBaremeId';
-      print('   📍 Chercher avec ID complet: $fullId');
+// print('   📍 Chercher avec ID complet: $fullId');
 
       final fullDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -9019,7 +9440,7 @@ class _StudentsTableState extends State<StudentsTable> {
         final notes = fullDoc.data()?['notes'];
         if (notes != null && notes is List && notes.isNotEmpty) {
           final result = List<String>.from(notes);
-          print('✅ Notes trouvées avec ID complet: $result');
+// print('✅ Notes trouvées avec ID complet: $result');
           return result;
         }
       }
@@ -9042,7 +9463,7 @@ class _StudentsTableState extends State<StudentsTable> {
 
         if (notes != null && notes is List && notes.isNotEmpty) {
           final result = List<String>.from(notes);
-          print('✅ Notes trouvées avec tous les filtres: $result');
+// print('✅ Notes trouvées avec tous les filtres: $result');
           return result;
         }
       }
@@ -9063,8 +9484,7 @@ class _StudentsTableState extends State<StudentsTable> {
 
         if (notes != null && notes is List && notes.isNotEmpty) {
           final result = List<String>.from(notes);
-          print(
-              '✅ Notes trouvées avec sousBaremeId et parentBaremeId: $result');
+// print('✅ Notes trouvées avec sousBaremeId et parentBaremeId: $result');
           return result;
         }
       }
@@ -9084,7 +9504,7 @@ class _StudentsTableState extends State<StudentsTable> {
 
         if (notes != null && notes is List && notes.isNotEmpty) {
           final result = List<String>.from(notes);
-          print('✅ Notes trouvées avec seulement sousBaremeId: $result');
+// print('✅ Notes trouvées avec seulement sousBaremeId: $result');
           return result;
         }
       }
@@ -9102,14 +9522,13 @@ class _StudentsTableState extends State<StudentsTable> {
         final notes = sousBaremeDoc.data()?['notes'];
         if (notes != null && notes is List && notes.isNotEmpty) {
           final result = List<String>.from(notes);
-          print('✅ Notes trouvées dans bareme_custom_notes: $result');
+// print('✅ Notes trouvées dans bareme_custom_notes: $result');
           return result;
         }
       }
 
       // ESSAI 6: Chercher toutes les notes disponibles pour debug
-      print(
-          '⚠️ Aucune note personnalisée trouvée - Affichage tous les documents:');
+// print('⚠️ Aucune note personnalisée trouvée - Affichage tous les documents:');
 
       final allDocs = await FirebaseFirestore.instance
           .collection('users')
@@ -9117,20 +9536,19 @@ class _StudentsTableState extends State<StudentsTable> {
           .collection('sous_bareme_custom_notes')
           .get();
 
-      print(
-          '📋 Total documents dans sous_bareme_custom_notes: ${allDocs.docs.length}');
+// print('📋 Total documents dans sous_bareme_custom_notes: ${allDocs.docs.length}');
       for (final doc in allDocs.docs) {
         final data = doc.data();
-        print('   📄 ${doc.id}');
-        print('     sousBaremeId: ${data['sousBaremeId']}');
-        print('     parentBaremeId: ${data['parentBaremeId']}');
-        print('     parentClassId: ${data['parentClassId']}');
-        print('     parentMatiereId: ${data['parentMatiereId']}');
-        print('     Notes: ${data['notes'] ?? []}');
+// print('   📄 ${doc.id}');
+// print('     sousBaremeId: ${data['sousBaremeId']}');
+// print('     parentBaremeId: ${data['parentBaremeId']}');
+// print('     parentClassId: ${data['parentClassId']}');
+// print('     parentMatiereId: ${data['parentMatiereId']}');
+// print('     Notes: ${data['notes'] ?? []}');
       }
 
       // ESSAI 7: Utiliser les notes du barème parent
-      print('↪️ Utilisation des notes du barème parent: $baremeId');
+// print('↪️ Utilisation des notes du barème parent: $baremeId');
       final parentNotes = await _getCustomNotesForBareme(
         classId,
         matiereId,
@@ -9138,22 +9556,21 @@ class _StudentsTableState extends State<StudentsTable> {
       );
 
       if (parentNotes.isNotEmpty) {
-        print('✅ Notes du parent utilisées: $parentNotes');
+// print('✅ Notes du parent utilisées: $parentNotes');
         return parentNotes;
       }
 
       // ESSAI 8: Utiliser les notes globales
       final globalNotes = await _loadCustomNotes(classId, matiereId);
       if (globalNotes.isNotEmpty) {
-        print('✅ Notes globales utilisées: $globalNotes');
+// print('✅ Notes globales utilisées: $globalNotes');
         return globalNotes;
       }
 
-      print(
-          '⚠️ Aucune note personnalisée trouvée pour sous-barème $sousBaremeId');
+// print('⚠️ Aucune note personnalisée trouvée pour sous-barème $sousBaremeId');
       return [];
     } catch (e) {
-      print('❌ Erreur chargement notes sous-barème: $e');
+// print('❌ Erreur chargement notes sous-barème: $e');
       return [];
     }
   }
@@ -9163,7 +9580,7 @@ class _StudentsTableState extends State<StudentsTable> {
       // Même format que dans _DynamicTablePageState
       final docId = '$classId-$matiereId';
 
-      print('🔍 _StudentsTableState - Recherche système pour: $docId');
+// print('🔍 _StudentsTableState - Recherche système pour: $docId');
 
       final systemDoc = await FirebaseFirestore.instance
           .collection('users')
@@ -9174,14 +9591,14 @@ class _StudentsTableState extends State<StudentsTable> {
 
       if (systemDoc.exists) {
         final system = systemDoc.data()?['system'] ?? 'character';
-        print('✅ _StudentsTableState - Système trouvé: $system');
+// print('✅ _StudentsTableState - Système trouvé: $system');
         return system;
       }
 
-      print('⚠️ _StudentsTableState - Système par défaut: character');
+// print('⚠️ _StudentsTableState - Système par défaut: character');
       return 'character';
     } catch (e) {
-      print('❌ _StudentsTableState - Erreur récupération système: $e');
+// print('❌ _StudentsTableState - Erreur récupération système: $e');
       return 'character';
     }
   }
@@ -9205,15 +9622,15 @@ class _StudentsTableState extends State<StudentsTable> {
       if (snapshot.docs.isNotEmpty) {
         final data = snapshot.docs.first.data();
         if (data['notes'] != null) {
-          print("🔥 CUSTOM NOTES LOADED: ${data['notes']}");
+// print("🔥 CUSTOM NOTES LOADED: ${data['notes']}");
           return List<String>.from(data['notes']);
         }
       }
 
-      print("⚠️ NO MATCHING CUSTOM NOTES");
+// print("⚠️ NO MATCHING CUSTOM NOTES");
       return [];
     } catch (e) {
-      print('Erreur lors du chargement des notes personnalisées: $e');
+// print('Erreur lors du chargement des notes personnalisées: $e');
       return [];
     }
   }
@@ -9228,7 +9645,7 @@ class _StudentsTableState extends State<StudentsTable> {
         var baremeId = parts[0];
         var sousBaremeId = parts[1];
 
-        print('🔍 Sous-barème détecté dans getDropdownValues: $sousBaremeId');
+// print('🔍 Sous-barème détecté dans getDropdownValues: $sousBaremeId');
 
         // Récupérer le système pour le sous-barème
         final evaluationSystem = await _getEvaluationSystemForSousBareme(
@@ -9238,7 +9655,7 @@ class _StudentsTableState extends State<StudentsTable> {
           sousBaremeId,
         );
 
-        print('📊 Système pour sous-barème $sousBaremeId: $evaluationSystem');
+// print('📊 Système pour sous-barème $sousBaremeId: $evaluationSystem');
 
         if (evaluationSystem == 'custom') {
           // Charger les notes personnalisées du sous-barème
@@ -9249,7 +9666,7 @@ class _StudentsTableState extends State<StudentsTable> {
             sousBaremeId,
           );
 
-          print('📝 Notes custom sous-barème: ${customNotes.length} notes');
+// print('📝 Notes custom sous-barème: ${customNotes.length} notes');
         }
 
         return _getDropdownValues(evaluationSystem, customNotes);
@@ -9258,19 +9675,19 @@ class _StudentsTableState extends State<StudentsTable> {
         final String evaluationSystem = await _getEvaluationSystem(
             widget.selectedClass, widget.selectedMatiere);
 
-        print('📊 Système pour barème $baremeKey: $evaluationSystem');
+// print('📊 Système pour barème $baremeKey: $evaluationSystem');
 
         if (evaluationSystem == 'custom') {
           customNotes = await _getCustomNotesForBareme(
               widget.selectedClass, widget.selectedMatiere, baremeKey);
 
-          print('📝 Notes custom barème: ${customNotes.length} notes');
+// print('📝 Notes custom barème: ${customNotes.length} notes');
         }
 
         return _getDropdownValues(evaluationSystem, customNotes);
       }
     } catch (e) {
-      print('❌ Erreur getDropdownValuesForBareme: $e');
+// print('❌ Erreur getDropdownValuesForBareme: $e');
       return ['( - - - )', '( + - - )', '( + + - )', '( + + + )'];
     }
   }
@@ -9288,98 +9705,17 @@ class _StudentsTableState extends State<StudentsTable> {
 
       if (sousBaremeSystemDoc.exists) {
         final system = sousBaremeSystemDoc['system'] ?? 'character';
-        print('✅ Système trouvé pour sous-barème $sousBaremeId: $system');
+// print('✅ Système trouvé pour sous-barème $sousBaremeId: $system');
         return system;
       }
 
       // Sinon, utiliser le système du barème parent
       final parentSystem = await _getEvaluationSystem(classId, matiereId);
-      print('↪️ Utilisation système parent: $parentSystem');
+// print('↪️ Utilisation système parent: $parentSystem');
       return parentSystem;
     } catch (e) {
-      print('❌ Erreur récupération système sous-barème: $e');
+// print('❌ Erreur récupération système sous-barème: $e');
       return 'character';
-    }
-  }
-
-  Future<void> _debugAllCustomNotes() async {
-    try {
-      print('=== DÉBOGAGE TOUTES LES NOTES PERSONNALISÉES ===');
-
-      final userId = widget.currentUser.uid;
-
-      // Notes des barèmes principaux
-      final baremeNotes = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('bareme_custom_notes')
-          .get();
-
-      print(
-          '📋 Notes barème (bareme_custom_notes): ${baremeNotes.docs.length} documents');
-      for (final doc in baremeNotes.docs) {
-        print('   📄 ID: ${doc.id}');
-        print('     Notes: ${doc.data()['notes'] ?? []}');
-      }
-
-      // Notes des sous-barèmes
-      final sousBaremeNotes = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('sous_bareme_custom_notes')
-          .get();
-
-      print(
-          '📋 Notes sous-barème (sous_bareme_custom_notes): ${sousBaremeNotes.docs.length} documents');
-      for (final doc in sousBaremeNotes.docs) {
-        final data = doc.data();
-        print('   📄 ID: ${doc.id}');
-        print('     sousBaremeId: ${data['sousBaremeId']}');
-        print('     parentBaremeId: ${data['parentBaremeId']}');
-        print('     parentClassId: ${data['parentClassId']}');
-        print('     parentMatiereId: ${data['parentMatiereId']}');
-        print('     Notes: ${data['notes'] ?? []}');
-      }
-
-      // Afficher les IDs recherchés pour les sous-barèmes problématiques
-      print('🔍 IDs recherchés pour les sous-barèmes:');
-      print('   - 5QYUZeTCGOCjZhLVGaWl');
-      print('   - hKBd7dUHoporCwSo5Kw9');
-
-      // Chercher spécifiquement ces sous-barèmes
-      final sousBareme1 = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('sous_bareme_custom_notes')
-          .where('sousBaremeId', isEqualTo: '5QYUZeTCGOCjZhLVGaWl')
-          .get();
-
-      print(
-          '   Sous-barème 5QYUZeTCGOCjZhLVGaWl trouvé: ${sousBareme1.docs.isNotEmpty}');
-      if (sousBareme1.docs.isNotEmpty) {
-        for (final doc in sousBareme1.docs) {
-          print('     Document: ${doc.data()}');
-        }
-      }
-
-      final sousBareme2 = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(userId)
-          .collection('sous_bareme_custom_notes')
-          .where('sousBaremeId', isEqualTo: 'hKBd7dUHoporCwSo5Kw9')
-          .get();
-
-      print(
-          '   Sous-barème hKBd7dUHoporCwSo5Kw9 trouvé: ${sousBareme2.docs.isNotEmpty}');
-      if (sousBareme2.docs.isNotEmpty) {
-        for (final doc in sousBareme2.docs) {
-          print('     Document: ${doc.data()}');
-        }
-      }
-
-      print('=== FIN DÉBOGAGE ===');
-    } catch (e) {
-      print('❌ Erreur débogage: $e');
     }
   }
 
@@ -9467,7 +9803,7 @@ class _StudentsTableState extends State<StudentsTable> {
         _showClassificationDialog(studentGroups);
       }
     } catch (e) {
-      print('Erreur lors de la classification des élèves: $e');
+// print('Erreur lors de la classification des élèves: $e');
       rethrow;
     }
   }
@@ -9707,15 +10043,15 @@ class _StudentsTableState extends State<StudentsTable> {
       final String evaluationSystem = await _getEvaluationSystem(
           widget.selectedClass, widget.selectedMatiere);
 
-      print('🔍 CALCUL SOMME pour étudiant $studentId');
-      print('📊 Groupes disponibles: ${groupedBaremes.length}');
+// print('🔍 CALCUL SOMME pour étudiant $studentId');
+// print('📊 Groupes disponibles: ${groupedBaremes.length}');
 
       // Parcourir tous les groupes
       for (var entry in groupedBaremes.entries) {
         final groupKey = entry.key;
         final baremesInGroup = entry.value;
 
-        print('  Groupe: $groupKey, ${baremesInGroup.length} éléments');
+// print('  Groupe: $groupKey, ${baremesInGroup.length} éléments');
 
         for (final bareme in baremesInGroup) {
           final baremeType = bareme['type'] ?? 'bareme';
@@ -9731,10 +10067,10 @@ class _StudentsTableState extends State<StudentsTable> {
                 final sousBaremeId = sousBareme['id'];
                 final value = await _getNumericValueForBareme(
                     studentId, sousBaremeId, evaluationSystem);
-                print('    - SOUS-BARÈME: $sousBaremeId -> $value');
+// print('    - SOUS-BARÈME: $sousBaremeId -> $value');
                 if (value > 0) {
                   total += value;
-                  print('      ✅ Ajouté à la somme: $value (Total: $total)');
+// print('      ✅ Ajouté à la somme: $value (Total: $total)');
                 }
               }
               continue; // Passer au prochain élément
@@ -9745,51 +10081,23 @@ class _StudentsTableState extends State<StudentsTable> {
           if (baremeId != null && baremeId.isNotEmpty) {
             final value = await _getNumericValueForBareme(
                 studentId, baremeId, evaluationSystem);
-            print(
-                '    - ${baremeType == 'bareme' ? 'BARÈME' : 'SOUS-BARÈME'}: $baremeId -> $value');
+// print('    - ${baremeType == 'bareme' ? 'BARÈME' : 'SOUS-BARÈME'}: $baremeId -> $value');
             if (value > 0) {
               total += value;
-              print('      ✅ Ajouté à la somme: $value (Total: $total)');
+// print('      ✅ Ajouté à la somme: $value (Total: $total)');
             }
           }
         }
       }
 
-      print('✅ SOMME TOTALE pour $studentId: $total');
+// print('✅ SOMME TOTALE pour $studentId: $total');
     } catch (e) {
-      print('❌ Erreur calcul total pour $studentId: $e');
-      print('Stack trace: ${e.toString()}');
+// print('❌ Erreur calcul total pour $studentId: $e');
+// print('Stack trace: ${e.toString()}');
     }
 
     return total;
   }
-
-  void _debugGroupedBaremesStructure(
-      Map<String, List<Map<String, dynamic>>> groupedBaremes) {
-    print('=== DÉBOGAGE STRUCTURE BARÈMES ===');
-    print('Nombre de groupes: ${groupedBaremes.length}');
-
-    for (var entry in groupedBaremes.entries) {
-      print('Groupe: ${entry.key}');
-      print('  Nombre d\'éléments: ${entry.value.length}');
-
-      for (var bareme in entry.value) {
-        print('  - ID: ${bareme['id']}');
-        print('    Type: ${bareme['type']}');
-        print('    Valeur: ${bareme['value']}');
-        print('    Sous-barèmes: ${bareme['sousBaremes'] ?? []}');
-        if (bareme['sousBaremes'] != null && bareme['sousBaremes'] is List) {
-          final sousBaremes = bareme['sousBaremes'] as List;
-          print('    Nombre de sous-barèmes: ${sousBaremes.length}');
-          for (var sous in sousBaremes) {
-            print('      * ${sous['id']}: ${sous['value']}');
-          }
-        }
-      }
-    }
-    print('=== FIN DÉBOGAGE ===');
-  }
-  // Méthode pour convertir une valeur en nombre
 
 // MÉTHODE CORRIGÉE: Conversion avec vérification des notes numériques
 
@@ -9840,7 +10148,7 @@ class _StudentsTableState extends State<StudentsTable> {
       // Convertir en nombre
       return _convertToNumber(displayValue, evaluationSystem, customNotes);
     } catch (e) {
-      print('Erreur conversion numérique pour $baremeKey: $e');
+// print('Erreur conversion numérique pour $baremeKey: $e');
       return 0.0;
     }
   }
@@ -9899,7 +10207,7 @@ class _StudentsTableState extends State<StudentsTable> {
     if (system == 'custom') {
       // Si pas de notes personnalisées, traiter comme character system
       if (customNotes.isEmpty) {
-        print('⚠️ Pas de notes custom, fallback sur character system');
+// print('⚠️ Pas de notes custom, fallback sur character system');
         switch (displayValue) {
           case '( - - - )':
             return 0.0;
@@ -10009,28 +10317,6 @@ class _StudentDropdownState extends State<StudentDropdown> {
       },
     );
   }
-}
-
-void _debugBaremesStructure(List<Map<String, dynamic>> baremesValues) {
-  print('=== DÉBOGAGE STRUCTURE BARÈMES ===');
-  print('Total éléments: ${baremesValues.length}');
-
-  for (int i = 0; i < baremesValues.length; i++) {
-    final bareme = baremesValues[i];
-    print('${i + 1}. ID: ${bareme['id']}');
-    print('   Type: ${bareme['type']}');
-    print('   Valeur: ${bareme['value']}');
-    print('   Parent: ${bareme['parentBaremeId'] ?? 'N/A'}');
-
-    if (bareme['type'] == 'bareme') {
-      final sousBaremes = bareme['sousBaremes'] as List<dynamic>? ?? [];
-      print('   Sous-barèmes: ${sousBaremes.length}');
-      for (var sous in sousBaremes) {
-        print('     - ${sous['id']}: ${sous['value']}');
-      }
-    }
-  }
-  print('=== FIN DÉBOGAGE ===');
 }
 
 // Widget d'alerte pour tous les utilisateurs avec texte spécifique iPhone

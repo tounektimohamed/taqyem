@@ -4697,30 +4697,6 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
   Widget _buildClassDetailsView() {
     return Column(
       children: [
-        AppBar(
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back),
-            onPressed: () {
-              setState(() {
-                _selectedClass = null;
-                _showStudentsList = false;
-              });
-            },
-          ),
-          title: Text(_selectedClass!['class_name']),
-          // SUPPRIMER LE BOUTON "إضافة مادة" QUAND ON EST DANS LA LISTE DES ÉTUDIANTS
-          actions: [
-            if (!_showStudentsList) // <-- AJOUTER CETTE CONDITION
-              TextButton.icon(
-                icon: Icon(Icons.add, size: 20),
-                label: Text('إضافة مادة'),
-                style: TextButton.styleFrom(
-                  foregroundColor: Color.fromARGB(255, 10, 101, 236),
-                ),
-                onPressed: () => _addSubjectDialog(_selectedClass!),
-              ),
-          ],
-        ),
         Expanded(
           child:
               _showStudentsList ? _buildStudentsList() : _buildSubjectsGrid(),
@@ -6914,28 +6890,34 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
 
         return Scaffold(
           appBar: AppBar(
+            leading: isSmallScreen && _selectedClass != null
+                ? Builder(
+                    builder: (context) => IconButton(
+                      icon:
+                          Icon(Icons.arrow_back, color: Colors.white, size: 22),
+                      onPressed: () {
+                        if (_showStudentsList) {
+                          setState(() {
+                            _showStudentsList = false;
+                            _students = [];
+                          });
+                        } else if (_selectedClass != null) {
+                          setState(() {
+                            _selectedClass = null;
+                            _subjects = [];
+                          });
+                        }
+                      },
+                      tooltip: 'رجوع',
+                    ),
+                  )
+                : null,
+            leadingWidth: isSmallScreen && _selectedClass != null ? 48 : 0,
             titleSpacing: isSmallScreen ? 0 : 8,
+            toolbarHeight: isSmallScreen ? 50 : 56,
             title: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                if (isSmallScreen)
-                  IconButton(
-                    icon: Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () {
-                      if (_showStudentsList) {
-                        setState(() {
-                          _showStudentsList = false;
-                          _students = [];
-                        });
-                      } else if (_selectedClass != null) {
-                        setState(() {
-                          _selectedClass = null;
-                          _subjects = [];
-                        });
-                      }
-                    },
-                    tooltip: 'رجوع',
-                    padding: EdgeInsets.symmetric(horizontal: 8),
-                  ),
                 if (_isLoadingClasses ||
                     _isLoadingSubjects ||
                     _isLoadingStudents)
@@ -6968,12 +6950,19 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
             backgroundColor: const Color.fromRGBO(7, 82, 96, 1),
             elevation: 2,
             actions: [
-              if (!isSmallScreen && showStudentsWithSubject) ...[
+              if (showStudentsWithSubject) ...[
                 _buildAppBarButton(
                   icon: Icons.table_chart,
                   label: 'جدول النتائج',
                   color: Colors.green,
                   onPressed: _navigateToDynamicTableFromAppBar,
+                  isSmall: isSmallScreen,
+                ),
+                _buildAppBarButton(
+                  icon: Icons.settings,
+                  label: 'المعايير',
+                  color: Color(0xFFF89719),
+                  onPressed: _navigateDirectlyToBaremesSelection,
                   isSmall: isSmallScreen,
                 ),
                 _buildAppBarButton(
@@ -6984,68 +6973,11 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
                   isSmall: isSmallScreen,
                 ),
               ],
-              if (isSmallScreen && showStudentsWithSubject)
-                PopupMenuButton<String>(
-                  icon: Icon(Icons.more_vert, color: Colors.white),
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'table':
-                        _navigateToDynamicTableFromAppBar();
-                        break;
-                      case 'reset':
-                        _confirmResetAllEvaluations();
-                        break;
-                      case 'bareme':
-                        _navigateDirectlyToBaremesSelection();
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: 'table',
-                      child: Row(
-                        children: [
-                          Icon(Icons.table_chart,
-                              color: Colors.green, size: 20),
-                          SizedBox(width: 8),
-                          Text('جدول النتائج'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'bareme',
-                      child: Row(
-                        children: [
-                          Icon(Icons.settings,
-                              color: Color(0xFFF89719), size: 20),
-                          SizedBox(width: 8),
-                          Text('المعايير'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'reset',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete_sweep, color: Colors.red, size: 20),
-                          SizedBox(width: 8),
-                          Text('إعادة تعيين'),
-                        ],
-                      ),
-                    ),
-                  ],
-                )
-              else if (showStudentsWithSubject)
-                _buildAppBarButton(
-                  icon: Icons.settings,
-                  label: 'المعايير',
-                  color: Color(0xFFF89719),
-                  onPressed: _navigateDirectlyToBaremesSelection,
-                  isSmall: isSmallScreen,
-                ),
               IconButton(
                 icon: Icon(Icons.refresh,
                     color: Colors.white, size: isSmallScreen ? 22 : 24),
+                padding:
+                    EdgeInsets.symmetric(horizontal: isSmallScreen ? 4 : 8),
                 onPressed: () {
                   if (_selectedClass == null) {
                     _refreshClasses();
@@ -7059,11 +6991,13 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
               ),
               IconButton(
                 icon: Icon(Icons.help_outline,
-                    color: Colors.white, size: isSmallScreen ? 22 : 24),
+                    color: Colors.white, size: isSmallScreen ? 20 : 24),
                 onPressed: () => _buildHelpSection(context),
                 tooltip: 'مساعدة',
+                padding:
+                    EdgeInsets.symmetric(horizontal: isSmallScreen ? 4 : 8),
               ),
-              SizedBox(width: isSmallScreen ? 4 : 8),
+              SizedBox(width: isSmallScreen ? 0 : 8),
             ],
           ),
           body: SafeArea(
@@ -7154,21 +7088,22 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     required bool isSmall,
   }) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 4),
+      margin: EdgeInsets.symmetric(horizontal: 2),
       child: ElevatedButton.icon(
-        icon: Icon(icon, size: isSmall ? 16 : 18),
+        icon: Icon(icon, size: isSmall ? 14 : 16),
         label: Text(
           label,
-          style: TextStyle(fontSize: isSmall ? 12 : 14),
+          style: TextStyle(fontSize: isSmall ? 10 : 12),
         ),
         style: ElevatedButton.styleFrom(
           foregroundColor: Colors.white,
           backgroundColor: color,
           padding: EdgeInsets.symmetric(
-            horizontal: isSmall ? 8 : 12,
-            vertical: isSmall ? 6 : 8,
+            horizontal: isSmall ? 6 : 8,
+            vertical: isSmall ? 4 : 6,
           ),
           textStyle: TextStyle(fontWeight: FontWeight.w600),
+          minimumSize: Size(0, isSmall ? 28 : 32),
         ),
         onPressed: onPressed,
       ),
