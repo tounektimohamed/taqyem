@@ -167,6 +167,7 @@ class PDFClassificationGenerator {
         singleGroupName: singleGroupName,
         now: now,
         templateStyles: templateStyles,
+        selectedTemplate: selectedTemplate,
       );
     }
 
@@ -201,400 +202,7 @@ class PDFClassificationGenerator {
     return '''
 <!DOCTYPE html>
 <html lang="${isFrenchInterface ? 'fr' : 'ar'}" dir="$direction">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${t['main_title']}</title>
-    <style>
-        /* STYLES DE BASE */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        :root {
-            --primary-color: #075260;
-            --secondary-color: #2E7D32;
-            --accent-color: #FF9800;
-            --ai-color: #9C27B0;
-            --light-bg: #f8f9fa;
-            --white: #ffffff;
-            --text-color: #333333;
-            --border-radius: 8px;
-            --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            
-            /* Couleurs des groupes */
-            --treatment-color: #e74c3c;
-            --support-color: #f39c12;
-            --excellence-color: #27ae60;
-        }
-        
-        body {
-            font-family: ${isFrenchInterface ? 'Arial, Helvetica, sans-serif' : "'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif"};
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            color: var(--text-color);
-            direction: $direction;
-            line-height: 1.6;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .report-container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        /* Page de garde */
-        .cover-page {
-            background: var(--white);
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            padding: 40px;
-            margin-bottom: 40px;
-            position: relative;
-            overflow: hidden;
-            min-height: 90vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-        
-        .cover-header {
-            text-align: center;
-            margin-bottom: 40px;
-            border-bottom: 2px solid var(--primary-color);
-            padding-bottom: 20px;
-        }
-        
-        .ministry-title {
-            color: var(--primary-color);
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            line-height: 1.3;
-        }
-        
-        .delegation-title {
-            color: var(--secondary-color);
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 15px;
-        }
-        
-        .logo-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 20px;
-            margin: 30px 0;
-        }
-        
-        .logo {
-            height: 100px;
-            max-width: 200px;
-            object-fit: contain;
-        }
-        
-        .school-info {
-            background: var(--light-bg);
-            border-radius: var(--border-radius);
-            padding: 25px;
-            margin: 30px 0;
-            border: 2px solid var(--primary-color);
-            position: relative;
-        }
-        
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
-        }
-        
-        .info-card {
-            background: var(--white);
-            border-radius: var(--border-radius);
-            padding: 20px;
-            border: 1px solid #e0e0e0;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-        
-        .info-icon {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 20px;
-            flex-shrink: 0;
-        }
-        
-        .info-content {
-            flex: 1;
-        }
-        
-        .info-label {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 5px;
-        }
-        
-        .info-value {
-            color: var(--text-color);
-            font-size: 16px;
-            font-weight: 600;
-        }
-        
-        .footer-cover {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
-            color: #666;
-            font-size: 14px;
-        }
-        
-        /* Page des informations générales */
-        .general-info-page {
-            background: var(--white);
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            padding: 30px;
-            margin-top: 40px;
-            page-break-before: always;
-        }
-        
-        .section-title {
-            font-size: 22px;
-            color: var(--primary-color);
-            margin-bottom: 25px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid var(--primary-color);
-            font-weight: bold;
-        }
-        
-        /* Styles pour les sections AI */
-        .ai-section {
-            margin-top: 30px;
-            margin-bottom: 30px;
-            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%);
-            border-radius: var(--border-radius);
-            padding: 20px;
-            border: 2px solid var(--ai-color);
-        }
-        
-        .ai-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-            color: var(--ai-color);
-            font-size: 18px;
-            font-weight: bold;
-        }
-        
-        .ai-exercise-card {
-            background: white;
-            border-radius: var(--border-radius);
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid #e0e0e0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .ai-exercise-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid var(--ai-color);
-        }
-        
-        .ai-badge {
-            background: var(--ai-color);
-            color: white;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        .ai-exercise-content {
-            font-size: 14px;
-            line-height: 1.8;
-            white-space: pre-wrap;
-            background: #fafafa;
-            padding: 15px;
-            border-radius: var(--border-radius);
-            border: 1px solid #e0e0e0;
-        }
-        
-        .ai-metadata {
-            margin-top: 10px;
-            font-size: 11px;
-            color: #666;
-            font-style: italic;
-            text-align: right;
-        }
-        
-        /* Pages des groupes */
-        .group-page {
-            background: var(--white);
-            border-radius: var(--border-radius);
-            box-shadow: var(--box-shadow);
-            padding: 30px;
-            margin-top: 40px;
-            page-break-before: always;
-        }
-        
-        .group-header {
-            background: linear-gradient(135deg, var(--treatment-color), #c0392b);
-            color: white;
-            padding: 20px;
-            border-radius: var(--border-radius) var(--border-radius) 0 0;
-            margin-bottom: 25px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .group-support .group-header {
-            background: linear-gradient(135deg, var(--support-color), #e67e22);
-        }
-        
-        .group-excellence .group-header {
-            background: linear-gradient(135deg, var(--excellence-color), #219653);
-        }
-        
-        .group-title {
-            font-size: 20px;
-            font-weight: bold;
-        }
-        
-        .group-stats {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-        }
-        
-        .students-list-container {
-            margin: 15px 0;
-        }
-        
-        .list-item {
-            padding: 10px 15px;
-            border-bottom: 1px solid #e0e0e0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .item-number {
-            width: 30px;
-            height: 30px;
-            background: var(--primary-color);
-            color: white;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        .item-name {
-            font-weight: 500;
-        }
-        
-        .students-section, .solutions-section, .problems-section, .ai-exercises-section {
-            margin-bottom: 30px;
-        }
-        
-        .section-subtitle {
-            font-size: 18px;
-            color: var(--text-color);
-            margin-bottom: 15px;
-            padding-${isFrenchInterface ? 'left' : 'right'}: 10px;
-            border-${isFrenchInterface ? 'left' : 'right'}: 4px solid;
-            font-weight: bold;
-        }
-        
-        .students-section .section-subtitle {
-            border-color: var(--primary-color);
-        }
-        
-        .solutions-section .section-subtitle {
-            border-color: var(--excellence-color);
-            color: var(--excellence-color);
-        }
-        
-        .problems-section .section-subtitle {
-            border-color: var(--treatment-color);
-            color: var(--treatment-color);
-        }
-        
-        .ai-exercises-section .section-subtitle {
-            border-color: var(--ai-color);
-            color: var(--ai-color);
-        }
-        
-        .items-list {
-            list-style-type: none;
-            padding: 0;
-        }
-        
-        .item-card {
-            margin-bottom: 15px;
-            padding: 15px;
-            border-radius: var(--border-radius);
-            background: var(--light-bg);
-            border-${isFrenchInterface ? 'left' : 'right'}: 4px solid;
-            position: relative;
-            transition: all 0.3s ease;
-        }
-        
-        .solution-item {
-            border-color: var(--excellence-color);
-            background-color: #e8f5e9;
-        }
-        
-        .problem-item {
-            border-color: var(--treatment-color);
-            background-color: #ffebee;
-        }
-        
-        .item-text {
-            font-size: 14px;
-            line-height: 1.5;
-            margin-bottom: 8px;
-        }
-        
-        .item-source {
-            font-size: 12px;
-            color: #666;
-            font-style: italic;
-        }
-        
-        .report-footer {
-            text-align: center;
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
-            color: #666;
-            font-size: 14px;
-        }
-    </style>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-</head>
+${_buildStyledHead(isFrenchInterface, direction, templateStyles, selectedTemplate, t)}
 <body>
     <div class="report-container">
         $pagesHTML
@@ -617,91 +225,126 @@ class PDFClassificationGenerator {
     required bool isCompleteReport,
     String? singleGroupName,
     required DateTime now,
-    Map<String, String>? templateStyles,
+    required Map<String, String> templateStyles,
+    required String selectedTemplate,
   }) {
     final t = _getTranslations(isFrenchInterface);
+    final ts = templateStyles;
     final reportType = isCompleteReport
         ? t['complete_report']!
         : '${t['group_report']!} - ${singleGroupName ?? ''}';
 
-    final primaryColor = templateStyles?['primaryColor'] ?? '#1565c0';
-    final accentColor = templateStyles?['accentColor'] ?? '#42a5f5';
-    final fontFamily = templateStyles?['fontFamily'] ?? 'Arial, sans-serif';
+    final primaryColor = ts['primaryColor'] ?? '#1565c0';
+    final secondaryColor = ts['secondaryColor'] ?? '#1976d2';
+    final accentColor = ts['accentColor'] ?? '#42a5f5';
+    final headerBg = ts['headerBg'] ?? '#e3f2fd';
+    final borderRadius = ts['borderRadius'] ?? '10px';
+    final boxShadow = ts['boxShadow'] ?? '0 4px 15px rgba(21,101,192,0.2)';
+    final fontFamily = ts['fontFamily'] ?? 'Arial, sans-serif';
+    final coverGradient = ts['coverGradient'] ??
+        'linear-gradient(135deg, $primaryColor 0%, $secondaryColor 50%, $accentColor 100%)';
+
+    final svgDecorator =
+        _getSVGDecorator(selectedTemplate, primaryColor, accentColor);
 
     return '''
-    <div class="cover-page" style="font-family: $fontFamily;">
-        <div class="cover-header" style="background: linear-gradient(135deg, $primaryColor 0%, ${_darkenColor(primaryColor)} 100%); padding: 40px 20px; border-radius: ${templateStyles?['borderRadius'] ?? '10px'}; margin-bottom: 30px;">
-            <h1 class="ministry-title" style="color: white; font-size: 24px; margin: 0;">${t['ministry_title']!}</h1>
-            <div class="delegation-title" style="color: rgba(255,255,255,0.9); font-size: 16px; margin-top: 8px;">${t['regional_delegation']!}</div>
+    <div class="cover-page" style="font-family: $fontFamily; padding: 20px; max-width: 800px; margin: 0 auto;">
+        <!-- SVG Decorator -->
+        $svgDecorator
+        
+        <!-- Header avec dégradé -->
+        <div class="cover-header" style="background: $coverGradient; padding: 35px 25px; border-radius: $borderRadius; margin-bottom: 30px; position: relative; overflow: hidden;">
+            <div style="position: absolute; top: -50px; right: -50px; width: 200px; height: 200px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+            <div style="position: absolute; bottom: -30px; left: -30px; width: 100px; height: 100px; background: rgba(255,255,255,0.05); border-radius: 50%;"></div>
+            <div style="position: relative; z-index: 1;">
+                <h1 style="color: white; font-size: 22px; margin: 0 0 8px 0; font-weight: 700;">${t['ministry_title']!}</h1>
+                <div style="color: rgba(255,255,255,0.9); font-size: 14px;">${t['regional_delegation']!}</div>
+            </div>
         </div>
         
+        <!-- Logo -->
         ${logoBase64.isNotEmpty ? '''
-        <div class="logo-container" style="text-align: center; margin-bottom: 20px;">
-            <img src="data:image/png;base64,$logoBase64" class="logo" alt="Logo Ministère" style="max-width: 150px; max-height: 100px;">
+        <div style="text-align: center; margin-bottom: 25px;">
+            <img src="data:image/png;base64,$logoBase64" style="max-width: 140px; max-height: 90px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));">
         </div>
         ''' : ''}
         
-        <div class="school-info" style="text-align: center; margin-bottom: 25px;">
-            <div style="font-size: 20px;">
-                ${t['school']!}: <strong>$schoolName</strong>
+        <!-- École -->
+        <div class="school-card" style="background: $headerBg; padding: 15px 20px; border-radius: $borderRadius; text-align: center; margin-bottom: 25px; ${boxShadow != 'none' ? 'box-shadow: $boxShadow;' : ''}">
+            <span style="font-size: 13px; color: #666;">${t['school']!}</span>
+            <div style="font-size: 18px; font-weight: 600; color: $primaryColor; margin-top: 5px;">$schoolName</div>
+        </div>
+        
+        <!-- Grille d'informations -->
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px;">
+            <div class="info-card" style="background: white; padding: 18px; border-radius: $borderRadius; border-left: 4px solid $primaryColor; ${boxShadow != 'none' ? 'box-shadow: $boxShadow;' : ''}">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; background: $headerBg; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">👨‍🏫</div>
+                    <div>
+                        <div style="font-size: 11px; color: #888; text-transform: uppercase;">${t['professor']!}</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #333; margin-top: 2px;">$profName</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-card" style="background: white; padding: 18px; border-radius: $borderRadius; border-left: 4px solid $accentColor; ${boxShadow != 'none' ? 'box-shadow: $boxShadow;' : ''}">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; background: $headerBg; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">📚</div>
+                    <div>
+                        <div style="font-size: 11px; color: #888; text-transform: uppercase;">${t['subject']!}</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #333; margin-top: 2px;">$matiereName</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-card" style="background: white; padding: 18px; border-radius: $borderRadius; border-left: 4px solid $secondaryColor; ${boxShadow != 'none' ? 'box-shadow: $boxShadow;' : ''}">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; background: $headerBg; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">👥</div>
+                    <div>
+                        <div style="font-size: 11px; color: #888; text-transform: uppercase;">${t['class']!}</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #333; margin-top: 2px;">$className</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="info-card" style="background: white; padding: 18px; border-radius: $borderRadius; border-left: 4px solid #7b1fa2; ${boxShadow != 'none' ? 'box-shadow: $boxShadow;' : ''}">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 40px; height: 40px; background: $headerBg; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px;">📝</div>
+                    <div>
+                        <div style="font-size: 11px; color: #888; text-transform: uppercase;">${t['criteria']!}</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #333; margin-top: 2px;">$baremeName</div>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <div class="info-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-bottom: 20px;">
-            <div class="info-card" style="background: ${templateStyles?['headerBg'] ?? '#e3f2fd'}; padding: 20px; border-radius: ${templateStyles?['borderRadius'] ?? '10px'}; ${templateStyles?['boxShadow'] != 'none' ? 'box-shadow: ' + (templateStyles?['boxShadow'] ?? '0 2px 10px rgba(21,101,192,0.15)') + ';' : ''}">
-                <div style="font-size: 24px; text-align: center;">👨‍🏫</div>
-                <div style="text-align: center; margin-top: 8px;">
-                    <div style="font-size: 12px; color: #666;">${t['professor']!}</div>
-                    <div style="font-size: 14px; font-weight: bold; color: $primaryColor;">$profName</div>
-                </div>
-            </div>
-            
-            <div class="info-card" style="background: ${templateStyles?['headerBg'] ?? '#e3f2fd'}; padding: 20px; border-radius: ${templateStyles?['borderRadius'] ?? '10px'}; ${templateStyles?['boxShadow'] != 'none' ? 'box-shadow: ' + (templateStyles?['boxShadow'] ?? '0 2px 10px rgba(21,101,192,0.15)') + ';' : ''}">
-                <div style="font-size: 24px; text-align: center;">📚</div>
-                <div style="text-align: center; margin-top: 8px;">
-                    <div style="font-size: 12px; color: #666;">${t['subject']!}</div>
-                    <div style="font-size: 14px; font-weight: bold; color: $primaryColor;">$matiereName</div>
-                </div>
-            </div>
-            
-            <div class="info-card" style="background: ${templateStyles?['headerBg'] ?? '#e3f2fd'}; padding: 20px; border-radius: ${templateStyles?['borderRadius'] ?? '10px'}; ${templateStyles?['boxShadow'] != 'none' ? 'box-shadow: ' + (templateStyles?['boxShadow'] ?? '0 2px 10px rgba(21,101,192,0.15)') + ';' : ''}">
-                <div style="font-size: 24px; text-align: center;">👥</div>
-                <div style="text-align: center; margin-top: 8px;">
-                    <div style="font-size: 12px; color: #666;">${t['class']!}</div>
-                    <div style="font-size: 14px; font-weight: bold; color: $primaryColor;">$className</div>
-                </div>
-            </div>
-            
-            <div class="info-card" style="background: ${templateStyles?['headerBg'] ?? '#e3f2fd'}; padding: 20px; border-radius: ${templateStyles?['borderRadius'] ?? '10px'}; ${templateStyles?['boxShadow'] != 'none' ? 'box-shadow: ' + (templateStyles?['boxShadow'] ?? '0 2px 10px rgba(21,101,192,0.15)') + ';' : ''}">
-                <div style="font-size: 24px; text-align: center;">📝</div>
-                <div style="text-align: center; margin-top: 8px;">
-                    <div style="font-size: 12px; color: #666;">${t['criteria']!}</div>
-                    <div style="font-size: 14px; font-weight: bold; color: $primaryColor;">$baremeName</div>
-                </div>
-            </div>
-        </div>
-        
+        <!-- Sous-critère -->
         ${sousBaremeName.isNotEmpty ? '''
-        <div style="background: ${templateStyles?['headerBg'] ?? '#e3f2fd'}; padding: 20px; border-radius: ${templateStyles?['borderRadius'] ?? '10px'}; ${templateStyles?['boxShadow'] != 'none' ? 'box-shadow: ' + (templateStyles?['boxShadow'] ?? '0 2px 10px rgba(21,101,192,0.15)') + ';' : ''} margin-bottom: 20px;">
-            <div style="text-align: center;">
-                <div style="font-size: 12px; color: #666;">${t['sub_criteria']!}</div>
-                <div style="font-size: 14px; font-weight: bold; color: $primaryColor;">$sousBaremeName</div>
+        <div class="sub-criteria-card" style="background: linear-gradient(135deg, $headerBg 0%, white 100%); padding: 18px 20px; border-radius: $borderRadius; margin-bottom: 25px; border: 1px dashed $primaryColor; ${boxShadow != 'none' ? 'box-shadow: $boxShadow;' : ''}">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 36px; height: 36px; background: $primaryColor; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;">📋</div>
+                <div>
+                    <div style="font-size: 11px; color: #888; text-transform: uppercase;">${t['sub_criteria']!}</div>
+                    <div style="font-size: 14px; font-weight: 600; color: $primaryColor; margin-top: 2px;">$sousBaremeName</div>
+                </div>
             </div>
         </div>
         ''' : ''}
         
-        <div style="text-align: center; margin: 30px 0; padding: 25px; background: linear-gradient(135deg, $primaryColor 0%, $accentColor 100%); border-radius: ${templateStyles?['borderRadius'] ?? '10px'};">
-            <div style="font-size: 18px; color: white; font-weight: bold;">$reportType</div>
+        <!-- Type de rapport -->
+        <div class="report-type-card" style="background: $coverGradient; padding: 25px; border-radius: $borderRadius; text-align: center; margin: 25px 0;">
+            <div style="font-size: 16px; color: white; font-weight: 600;">$reportType</div>
             ${!isCompleteReport && singleGroupName != null ? '''
-            <div style="font-size: 16px; color: rgba(255,255,255,0.9); margin-top: 10px;">
+            <div style="font-size: 14px; color: rgba(255,255,255,0.9); margin-top: 8px;">
                 ${t['group']!}: <strong>$singleGroupName</strong>
             </div>
             ''' : ''}
         </div>
         
-        <div class="footer-cover" style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd;">
-            <p style="color: #666; font-size: 12px;">${t['generated_on']!} ${DateFormat('dd/MM/yyyy').format(now)}</p>
-            <p style="color: #999; font-size: 11px;">${isFrenchInterface ? 'Pour imprimer: Ctrl+P' : 'للطباعة: Ctrl+P'}</p>
+        <!-- Footer -->
+        <div style="text-align: center; margin-top: 35px; padding-top: 20px; border-top: 2px solid #eee;">
+            <div style="font-size: 12px; color: #999;">${t['generated_on']!} ${DateFormat('dd/MM/yyyy').format(now)}</div>
+            <div style="font-size: 11px; color: #bbb; margin-top: 5px;">${isFrenchInterface ? 'Pour imprimer: Ctrl+P' : 'للطباعة: Ctrl+P'}</div>
         </div>
     </div>
     ''';
@@ -721,54 +364,66 @@ class PDFClassificationGenerator {
     Map<String, String>? templateStyles,
   }) {
     final t = _getTranslations(isFrenchInterface);
-    final primaryColor = templateStyles?['primaryColor'] ?? '#1565c0';
-    final secondaryColor = templateStyles?['secondaryColor'] ?? '#1976d2';
-    final accentColor = templateStyles?['accentColor'] ?? '#42a5f5';
-    final borderRadius = templateStyles?['borderRadius'] ?? '10px';
-    final boxShadow =
-        templateStyles?['boxShadow'] ?? '0 2px 10px rgba(21,101,192,0.15)';
+    final ts = templateStyles ?? {};
+    final primaryColor = ts['primaryColor'] ?? '#1565c0';
+    final secondaryColor = ts['secondaryColor'] ?? '#1976d2';
+    final borderRadius = ts['borderRadius'] ?? '10px';
+    final boxShadow = ts['boxShadow'] ?? '0 4px 15px rgba(0,0,0,0.1)';
 
-    // Calculer les statistiques
     final totalStudents =
         groupedStudents.values.fold(0, (sum, group) => sum + group.length);
-
     final treatmentCount = groupedStudents[t['group_treatment']!]?.length ?? 0;
     final supportCount = groupedStudents[t['group_support']!]?.length ?? 0;
     final excellenceCount =
         groupedStudents[t['group_excellence']!]?.length ?? 0;
 
+    final groupTreatmentGradient = ts['groupTreatmentGradient'] ??
+        'linear-gradient(135deg, #d32f2f, #c62828)';
+    final groupSupportGradient = ts['groupSupportGradient'] ??
+        'linear-gradient(135deg, #f57c00, #ef6c00)';
+    final groupExcellenceGradient = ts['groupExcellenceGradient'] ??
+        'linear-gradient(135deg, #388e3c, #2e7d32)';
+
     return '''
-    <div class="general-info-page">
-        <h2 class="section-title" style="color: $primaryColor; border-bottom: 3px solid $primaryColor; padding-bottom: 10px;">${t['general_info']!} $baremeName $matiereName</h2>
+    <div class="general-info-page" style="padding: 20px; max-width: 800px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, $primaryColor, $secondaryColor); padding: 20px 25px; border-radius: $borderRadius; margin-bottom: 25px;">
+            <h2 style="color: white; font-size: 18px; margin: 0;">${t['general_info']!}</h2>
+            <div style="color: rgba(255,255,255,0.9); font-size: 14px; margin-top: 5px;">$baremeName - $matiereName</div>
+        </div>
         
-        <h3 class="section-subtitle" style="margin-top: 30px; color: $secondaryColor;">
-            ${t['statistics']!}
-        </h3>
+        <h3 class="section-title" style="color: $primaryColor; margin-bottom: 15px;">${t['statistics']!}</h3>
         
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;">
-            <div style="background: linear-gradient(135deg, $primaryColor, ${_darkenColor(primaryColor)}); color: white; padding: 15px; border-radius: $borderRadius; ${boxShadow != 'none' ? 'box-shadow: $boxShadow;' : ''} text-align: center;">
-                <div style="font-size: 12px; opacity: 0.9;">${t['group_treatment']!}</div>
-                <div style="font-size: 24px; font-weight: bold;">$treatmentCount</div>
-            </div>
-            
-            <div style="background: linear-gradient(135deg, $secondaryColor, ${_darkenColor(secondaryColor)}); color: white; padding: 15px; border-radius: $borderRadius; ${boxShadow != 'none' ? 'box-shadow: $boxShadow;' : ''} text-align: center;">
-                <div style="font-size: 12px; opacity: 0.9;">${t['group_support']!}</div>
-                <div style="font-size: 24px; font-weight: bold;">$supportCount</div>
-            </div>
-            
-            <div style="background: var(--excellence-color); color: white; padding: 15px; border-radius: var(--border-radius); text-align: center;">
-                <div style="font-size: 12px; opacity: 0.9;">${t['group_excellence']!}</div>
-                <div style="font-size: 24px; font-weight: bold;">$excellenceCount</div>
-            </div>
-            
-            <div style="background: var(--primary-color); color: white; padding: 15px; border-radius: var(--border-radius); text-align: center;">
-                <div style="font-size: 12px; opacity: 0.9;">${t['total_students']!}</div>
-                <div style="font-size: 24px; font-weight: bold;">$totalStudents</div>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 25px;">
+            ${_statBoxHTML('🏥 ${t['group_treatment']!}', treatmentCount, groupTreatmentGradient)}
+            ${_statBoxHTML('🤝 ${t['group_support']!}', supportCount, groupSupportGradient)}
+            ${_statBoxHTML('🏆 ${t['group_excellence']!}', excellenceCount, groupExcellenceGradient)}
+            ${_statBoxHTML('👥 ${t['total_students']!}', totalStudents, 'linear-gradient(135deg, $primaryColor, $secondaryColor)')}
+        </div>
+        
+        <div style="background: white; border-radius: $borderRadius; padding: 20px; ${boxShadow != 'none' ? 'box-shadow: $boxShadow;' : ''} border: 1px solid #eee;">
+            <h4 style="color: #333; font-size: 14px; margin: 0 0 15px 0;">${isFrenchInterface ? 'Résumé' : 'ملخص'}</h4>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 150px;">
+                    <div style="font-size: 11px; color: #888; text-transform: uppercase;">${t['professor']!}</div>
+                    <div style="font-size: 13px; color: #333; font-weight: 500;">$profName</div>
+                </div>
+                <div style="flex: 1; min-width: 150px;">
+                    <div style="font-size: 11px; color: #888; text-transform: uppercase;">${t['subject']!}</div>
+                    <div style="font-size: 13px; color: #333; font-weight: 500;">$matiereName</div>
+                </div>
+                <div style="flex: 1; min-width: 150px;">
+                    <div style="font-size: 11px; color: #888; text-transform: uppercase;">${t['class']!}</div>
+                    <div style="font-size: 13px; color: #333; font-weight: 500;">$className</div>
+                </div>
+                <div style="flex: 1; min-width: 150px;">
+                    <div style="font-size: 11px; color: #888; text-transform: uppercase;">${t['school']!}</div>
+                    <div style="font-size: 13px; color: #333; font-weight: 500;">$schoolName</div>
+                </div>
             </div>
         </div>
         
-        <div class="report-footer">
-            <p class="no-print">${isFrenchInterface ? 'Page 2' : 'الصفحة 2'}</p>
+        <div class="report-footer" style="margin-top: 30px; text-align: center;">
+            <p style="color: #999; font-size: 11px;">${isFrenchInterface ? 'Page 2' : 'الصفحة 2'}</p>
         </div>
     </div>
     ''';
@@ -785,40 +440,41 @@ class PDFClassificationGenerator {
     Map<String, String>? templateStyles,
   }) {
     final t = _getTranslations(isFrenchInterface);
-    final primaryColor = templateStyles?['primaryColor'] ?? '#1565c0';
+    final ts = templateStyles ?? {};
+    final primaryColor = ts['primaryColor'] ?? '#1565c0';
+    final borderRadius = ts['borderRadius'] ?? '10px';
+    final boxShadow = ts['boxShadow'] ?? '0 4px 15px rgba(0,0,0,0.1)';
+    final groupTreatmentGradient = ts['groupTreatmentGradient'] ??
+        'linear-gradient(135deg, #d32f2f, #c62828)';
+    final groupSupportGradient = ts['groupSupportGradient'] ??
+        'linear-gradient(135deg, #f57c00, #ef6c00)';
+    final groupExcellenceGradient = ts['groupExcellenceGradient'] ??
+        'linear-gradient(135deg, #388e3c, #2e7d32)';
+
     String pagesHTML = '';
 
-    // Déterminer quels groupes inclure
     List<String> groupsToInclude = [];
 
     if (isCompleteReport) {
-      // N'inclure que les groupes sélectionnés
-      if (selectedPages['treatment'] == true) {
+      if (selectedPages['treatment'] == true)
         groupsToInclude.add(t['group_treatment']!);
-      }
-      if (selectedPages['support'] == true) {
+      if (selectedPages['support'] == true)
         groupsToInclude.add(t['group_support']!);
-      }
-      if (selectedPages['excellence'] == true) {
+      if (selectedPages['excellence'] == true)
         groupsToInclude.add(t['group_excellence']!);
-      }
     } else if (singleGroupKey != null) {
-      // Pour un rapport simple groupe, n'inclure que le groupe spécifique s'il est sélectionné
       switch (singleGroupKey) {
         case 'treatment':
-          if (selectedPages['treatment'] == true) {
+          if (selectedPages['treatment'] == true)
             groupsToInclude = [t['group_treatment']!];
-          }
           break;
         case 'support':
-          if (selectedPages['support'] == true) {
+          if (selectedPages['support'] == true)
             groupsToInclude = [t['group_support']!];
-          }
           break;
         case 'excellence':
-          if (selectedPages['excellence'] == true) {
+          if (selectedPages['excellence'] == true)
             groupsToInclude = [t['group_excellence']!];
-          }
           break;
       }
     }
@@ -827,32 +483,28 @@ class PDFClassificationGenerator {
       final students = groupedStudents[groupName] ?? [];
       final selections =
           _getGroupSelectionsForGroup(groupName, groupSelections, t);
-
-      // Récupérer les exercices AI pour ce groupe
       final groupKey = _getGroupKeyFromName(groupName, t);
       final groupAIExercises = aiExercises[groupKey] ?? [];
 
-      if (students.isEmpty && selections.isEmpty && groupAIExercises.isEmpty) {
+      if (students.isEmpty && selections.isEmpty && groupAIExercises.isEmpty)
         continue;
-      }
 
-      // Déterminer les couleurs selon le groupe
       String groupClass = '';
       String groupIcon = '';
-      String groupColor = primaryColor;
+      String groupGradient = primaryColor;
 
       if (groupName == t['group_treatment']!) {
         groupClass = 'group-treatment';
         groupIcon = '🏥';
-        groupColor = '#d32f2f'; // Red for treatment
+        groupGradient = groupTreatmentGradient;
       } else if (groupName == t['group_support']!) {
         groupClass = 'group-support';
         groupIcon = '🤝';
-        groupColor = '#f57c00'; // Orange for support
+        groupGradient = groupSupportGradient;
       } else {
         groupClass = 'group-excellence';
         groupIcon = '🏆';
-        groupColor = '#388e3c'; // Green for excellence
+        groupGradient = groupExcellenceGradient;
       }
 
       final solutions =
@@ -861,91 +513,68 @@ class PDFClassificationGenerator {
           selections.where((item) => item['isProblem'] == true).toList();
 
       pagesHTML += '''
-    <div class="group-page $groupClass" style="margin-bottom: 30px;">
-        <div class="group-header" style="background: linear-gradient(135deg, $groupColor, ${_darkenColor(groupColor)}); color: white; padding: 20px; border-radius: ${templateStyles?['borderRadius'] ?? '10px'}; margin-bottom: 20px;">
+    <div class="group-page $groupClass" style="padding: 20px; max-width: 800px; margin: 0 auto 30px auto; background: white; border-radius: $borderRadius; ${boxShadow != 'none' ? 'box-shadow: $boxShadow;' : ''}">
+        <div class="group-header-custom" style="background: $groupGradient; color: white; padding: 20px 25px; border-radius: $borderRadius; margin-bottom: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="font-size: 20px; font-weight: bold;">$groupIcon $groupName</div>
-                <div style="background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px;">
-                    ${students.length} ${t['students']!}
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 24px;">$groupIcon</span>
+                    <span style="font-size: 18px; font-weight: 600;">$groupName</span>
+                </div>
+                <div style="background: rgba(255,255,255,0.25); padding: 6px 16px; border-radius: 20px; font-size: 13px;">
+                    👥 ${students.length} ${t['students']!}
                 </div>
             </div>
         </div>
         
-        <!-- Liste des étudiants -->
         ${students.isNotEmpty ? '''
-        <div class="students-section" style="margin-bottom: 25px;">
-            <h3 class="section-subtitle" style="color: $groupColor; border-bottom: 2px solid $groupColor; padding-bottom: 8px;">${t['students_list']!}</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; margin-top: 15px;">
-                ${students.asMap().entries.map((entry) {
-              final index = entry.key + 1;
-              final student = entry.value;
-              return '''
-                <div style="background: ${templateStyles?['headerBg'] ?? '#f5f5f5'}; padding: 12px 15px; border-radius: ${templateStyles?['borderRadius'] ?? '8px'}; ${templateStyles?['boxShadow'] != 'none' ? 'box-shadow: ' + (templateStyles?['boxShadow'] ?? '0 1px 3px rgba(0,0,0,0.1)') + ';' : ''}">
-                    <span class="item-number">$index.</span>
-                    <span class="item-name">${student['name'] ?? t['unknown']!}</span>
-                </div>
-                ''';
-            }).join('')}
+        <div style="margin-bottom: 25px;">
+            <h3 class="section-subtitle" style="color: $primaryColor;">${t['students_list']!}</h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                ${students.asMap().entries.map((e) => _studentChipHTML(e.key + 1, e.value, t)).join('')}
             </div>
         </div>
         ''' : ''}
         
-        <!-- Problèmes identifiés -->
         ${problems.isNotEmpty ? '''
-        <div class="problems-section">
-            <h3 class="section-subtitle">${t['problems_title']!} (${problems.length})</h3>
+        <div style="margin-bottom: 20px;">
+            <h3 class="section-subtitle" style="color: #d32f2f;">⚠️ ${t['problems_title']!} (${problems.length})</h3>
             <ul class="items-list">
-                ${problems.map((problem) => '''
-                <li class="item-card problem-item">
-                    <div class="item-text">${problem['text']}</div>
-                </li>
-                ''').join('')}
+                ${problems.map((p) => _itemCardHTML(p, true)).join('')}
             </ul>
         </div>
         ''' : ''}
         
-        <!-- Solutions proposées -->
         ${solutions.isNotEmpty ? '''
-        <div class="solutions-section">
-            <h3 class="section-subtitle">${t['solutions_title']!} (${solutions.length})</h3>
+        <div style="margin-bottom: 20px;">
+            <h3 class="section-subtitle" style="color: #388e3c;">✨ ${t['solutions_title']!} (${solutions.length})</h3>
             <ul class="items-list">
-                ${solutions.map((solution) => '''
-                <li class="item-card solution-item">
-                    <div class="item-text">${solution['text']}</div>
-                </li>
-                ''').join('')}
+                ${solutions.map((s) => _itemCardHTML(s, false)).join('')}
             </ul>
         </div>
         ''' : ''}
         
-        <!-- Exercices AI -->
         ${groupAIExercises.isNotEmpty ? '''
-        <div class="ai-exercises-section">
-            <div class="ai-header">
-                <span>🤖</span>
-                <span>${t['ai_exercises']!}</span>
+        <div style="background: #f3e5f5; padding: 15px; border-radius: $borderRadius; border: 1px solid #e1bee7;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                <span style="font-size: 20px;">🤖</span>
+                <span style="color: #7b1fa2; font-weight: 600; font-size: 14px;">${t['ai_exercises']!}</span>
                 <span class="ai-badge">${groupAIExercises.length}</span>
             </div>
-            
             ${groupAIExercises.map((exercise) => '''
-            <div class="ai-exercise-card">
-                <div class="ai-exercise-header">
-                    <span>📝 ${exercise['modifiedBaremeName'] ?? t['ai_exercise']!}</span>
+            <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e1bee7;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="color: #7b1fa2; font-weight: 500; font-size: 13px;">📝 ${exercise['modifiedBaremeName'] ?? t['ai_exercise']!}</span>
                     <span class="ai-badge">${t['ai_generated']!}</span>
                 </div>
-                <div class="ai-exercise-content">
-                    ${exercise['aiResponse']?.replaceAll('\n', '<br>') ?? ''}
-                </div>
-                <div class="ai-metadata">
-                    ${_formatDate(exercise['createdAt'], isFrenchInterface)}
-                </div>
+                <div class="ai-exercise-content">${exercise['aiResponse']?.replaceAll('\n', '<br>') ?? ''}</div>
+                <div class="ai-metadata">${_formatDate(exercise['createdAt'], isFrenchInterface)}</div>
             </div>
             ''').join('')}
         </div>
         ''' : ''}
         
-        <div class="report-footer">
-            <p class="no-print">${isFrenchInterface ? 'Page - Groupe $groupName' : 'الصفحة - مجموعة $groupName'}</p>
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; text-align: center;">
+            <span style="color: #999; font-size: 11px;">${isFrenchInterface ? 'Groupe $groupName' : 'مجموعة $groupName'}</span>
         </div>
     </div>
     ''';
@@ -1264,63 +893,417 @@ class PDFClassificationGenerator {
         return {
           'primaryColor': '#1a237e',
           'secondaryColor': '#3949ab',
-          'accentColor': '#7986cb',
-          'backgroundColor': '#ffffff',
+          'accentColor': '#82b1ff',
+          'backgroundColor': '#f0f2ff',
           'headerBg': '#e8eaf6',
-          'borderRadius': '8px',
-          'boxShadow': '0 2px 8px rgba(0,0,0,0.1)',
-          'fontFamily': 'Arial, sans-serif',
+          'borderRadius': '4px',
+          'boxShadow': '4px 4px 0px rgba(26,35,126,0.15)',
+          'fontFamily': '"Trebuchet MS", "Gill Sans", sans-serif',
           'fontSize': '14px',
+          'cardBorder': '2px solid #1a237e',
+          'sectionTitleStyle':
+              'letter-spacing: 2px; text-transform: uppercase; font-size: 13px;',
+          'coverGradient':
+              'linear-gradient(135deg, #1a237e 0%, #283593 50%, #1565c0 100%)',
+          'groupTreatmentGradient':
+              'linear-gradient(135deg, #b71c1c 0%, #c62828 100%)',
+          'groupSupportGradient':
+              'linear-gradient(135deg, #e65100 0%, #ef6c00 100%)',
+          'groupExcellenceGradient':
+              'linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%)',
+          'studentCardBg': '#e8eaf6',
+          'badgeBg': '#1a237e',
+          'badgeText': '#ffffff',
+          'decorativeElement': 'geometric',
         };
       case 'minimal':
         return {
-          'primaryColor': '#212121',
-          'secondaryColor': '#616161',
-          'accentColor': '#9e9e9e',
+          'primaryColor': '#111111',
+          'secondaryColor': '#444444',
+          'accentColor': '#111111',
           'backgroundColor': '#ffffff',
-          'headerBg': '#f5f5f5',
+          'headerBg': '#f7f7f7',
           'borderRadius': '0px',
           'boxShadow': 'none',
-          'fontFamily': 'Helvetica, sans-serif',
-          'fontSize': '13px',
+          'fontFamily': '"Palatino Linotype", "Book Antiqua", Georgia, serif',
+          'fontSize': '13.5px',
+          'cardBorder': '1px solid #e0e0e0',
+          'sectionTitleStyle':
+              'letter-spacing: 4px; text-transform: uppercase; font-size: 11px; font-weight: 400;',
+          'coverGradient': 'linear-gradient(180deg, #111111 0%, #333333 100%)',
+          'groupTreatmentGradient':
+              'linear-gradient(180deg, #222222 0%, #444444 100%)',
+          'groupSupportGradient':
+              'linear-gradient(180deg, #444444 0%, #666666 100%)',
+          'groupExcellenceGradient':
+              'linear-gradient(180deg, #111111 0%, #222222 100%)',
+          'studentCardBg': '#f9f9f9',
+          'badgeBg': '#111111',
+          'badgeText': '#ffffff',
+          'decorativeElement': 'line',
         };
       case 'colorful':
         return {
-          'primaryColor': '#e91e63',
-          'secondaryColor': '#9c27b0',
-          'accentColor': '#673ab7',
+          'primaryColor': '#ad1457',
+          'secondaryColor': '#7b1fa2',
+          'accentColor': '#ff4081',
           'backgroundColor': '#fce4ec',
-          'headerBg': '#f3e5f5',
-          'borderRadius': '12px',
-          'boxShadow': '0 4px 12px rgba(233,30,99,0.2)',
-          'fontFamily': 'Georgia, serif',
+          'headerBg': '#f8bbd9',
+          'borderRadius': '20px',
+          'boxShadow': '0 8px 24px rgba(173,20,87,0.18)',
+          'fontFamily': '"Comic Sans MS", "Chalkboard SE", cursive',
           'fontSize': '15px',
+          'cardBorder': '2px dashed #ad1457',
+          'sectionTitleStyle': 'font-size: 17px; font-weight: 800;',
+          'coverGradient':
+              'linear-gradient(135deg, #ad1457 0%, #7b1fa2 50%, #4a148c 100%)',
+          'groupTreatmentGradient':
+              'linear-gradient(135deg, #c62828 0%, #e53935 100%)',
+          'groupSupportGradient':
+              'linear-gradient(135deg, #e65100 0%, #ff6d00 100%)',
+          'groupExcellenceGradient':
+              'linear-gradient(135deg, #1b5e20 0%, #43a047 100%)',
+          'studentCardBg': '#fce4ec',
+          'badgeBg': '#ad1457',
+          'badgeText': '#ffffff',
+          'decorativeElement': 'dots',
         };
       case 'educational':
         return {
-          'primaryColor': '#4caf50',
-          'secondaryColor': '#2e7d32',
-          'accentColor': '#81c784',
-          'backgroundColor': '#e8f5e9',
-          'headerBg': '#c8e6c9',
-          'borderRadius': '6px',
-          'boxShadow': '0 2px 6px rgba(76,175,80,0.15)',
-          'fontFamily': 'Verdana, sans-serif',
+          'primaryColor': '#2e7d32',
+          'secondaryColor': '#388e3c',
+          'accentColor': '#66bb6a',
+          'backgroundColor': '#f1f8e9',
+          'headerBg': '#dcedc8',
+          'borderRadius': '8px',
+          'boxShadow': '0 3px 8px rgba(46,125,50,0.2)',
+          'fontFamily': '"Century Gothic", "Gill Sans MT", Verdana, sans-serif',
           'fontSize': '14px',
+          'cardBorder': '1px solid #a5d6a7',
+          'sectionTitleStyle': 'letter-spacing: 1px; font-size: 15px;',
+          'coverGradient':
+              'linear-gradient(135deg, #1b5e20 0%, #2e7d32 50%, #388e3c 100%)',
+          'groupTreatmentGradient':
+              'linear-gradient(135deg, #bf360c 0%, #d84315 100%)',
+          'groupSupportGradient':
+              'linear-gradient(135deg, #e65100 0%, #f57c00 100%)',
+          'groupExcellenceGradient':
+              'linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%)',
+          'studentCardBg': '#f1f8e9',
+          'badgeBg': '#2e7d32',
+          'badgeText': '#ffffff',
+          'decorativeElement': 'leaf',
         };
       default:
         return {
-          'primaryColor': '#1565c0',
-          'secondaryColor': '#1976d2',
-          'accentColor': '#42a5f5',
-          'backgroundColor': '#ffffff',
-          'headerBg': '#e3f2fd',
+          'primaryColor': '#01579b',
+          'secondaryColor': '#0277bd',
+          'accentColor': '#29b6f6',
+          'backgroundColor': '#e1f5fe',
+          'headerBg': '#b3e5fc',
           'borderRadius': '10px',
-          'boxShadow': '0 2px 10px rgba(21,101,192,0.15)',
-          'fontFamily': 'Arial, sans-serif',
+          'boxShadow': '0 4px 16px rgba(1,87,155,0.15)',
+          'fontFamily': '"Segoe UI", Tahoma, Geneva, sans-serif',
           'fontSize': '14px',
+          'cardBorder': '1px solid #b3e5fc',
+          'sectionTitleStyle': 'font-size: 15px;',
+          'coverGradient':
+              'linear-gradient(135deg, #01579b 0%, #0277bd 60%, #0288d1 100%)',
+          'groupTreatmentGradient':
+              'linear-gradient(135deg, #b71c1c 0%, #d32f2f 100%)',
+          'groupSupportGradient':
+              'linear-gradient(135deg, #e65100 0%, #f57c00 100%)',
+          'groupExcellenceGradient':
+              'linear-gradient(135deg, #1b5e20 0%, #388e3c 100%)',
+          'studentCardBg': '#e1f5fe',
+          'badgeBg': '#01579b',
+          'badgeText': '#ffffff',
+          'decorativeElement': 'wave',
         };
     }
+  }
+
+  static String _getSVGDecorator(
+      String template, String primary, String accent) {
+    switch (template) {
+      case 'modern':
+        return '''<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:20px;right:20px;opacity:0.07;">
+          <polygon points="60,0 120,60 60,120 0,60" fill="$primary"/>
+          <polygon points="60,20 100,60 60,100 20,60" fill="$accent"/>
+          <polygon points="60,40 80,60 60,80 40,60" fill="$primary"/>
+        </svg>''';
+      case 'minimal':
+        return '''<svg width="80" height="80" viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:30px;right:30px;opacity:0.06;">
+          <circle cx="40" cy="40" r="38" stroke="#111" stroke-width="2" fill="none"/>
+          <line x1="40" y1="2" x2="40" y2="78" stroke="#111" stroke-width="1"/>
+          <line x1="2" y1="40" x2="78" y2="40" stroke="#111" stroke-width="1"/>
+        </svg>''';
+      case 'colorful':
+        return '''<svg width="140" height="140" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:-20px;right:-20px;opacity:0.12;">
+          <circle cx="70" cy="70" r="70" fill="$primary"/>
+          <circle cx="70" cy="70" r="50" fill="$accent"/>
+          <circle cx="70" cy="70" r="30" fill="white"/>
+        </svg>''';
+      case 'educational':
+        return '''<svg width="100" height="80" viewBox="0 0 100 80" xmlns="http://www.w3.org/2000/svg" style="position:absolute;bottom:20px;right:20px;opacity:0.08;">
+          <path d="M50 0 L100 25 L100 75 L50 80 L0 75 L0 25 Z" fill="$primary"/>
+          <path d="M50 15 L85 32 L85 65 L50 68 L15 65 L15 32 Z" fill="$accent"/>
+        </svg>''';
+      default:
+        return '''<svg width="120" height="60" viewBox="0 0 120 60" xmlns="http://www.w3.org/2000/svg" style="position:absolute;bottom:0;right:0;opacity:0.06;">
+          <path d="M0 60 Q30 0 60 30 Q90 60 120 10 L120 60 Z" fill="$primary"/>
+        </svg>''';
+    }
+  }
+
+  static String _getTemplateCSSBlock(
+      String template, Map<String, String> ts, bool isFrench) {
+    final primary = ts['primaryColor']!;
+    final accent = ts['accentColor']!;
+    final bg = ts['backgroundColor']!;
+    final headerBg = ts['headerBg']!;
+    final radius = ts['borderRadius']!;
+    final shadow = ts['boxShadow']!;
+    final font = ts['fontFamily']!;
+    final cardBorder = ts['cardBorder']!;
+    final sectionStyle = ts['sectionTitleStyle']!;
+    final coverGradient = ts['coverGradient']!;
+    final studentCardBg = ts['studentCardBg']!;
+    final badgeBg = ts['badgeBg']!;
+
+    switch (template) {
+      case 'modern':
+        return '''
+        body { font-family: $font; background: #f0f2ff; }
+        .cover-page { position: relative; border-left: 6px solid $primary; }
+        .cover-page::before {
+          content: '';
+          position: absolute;
+          top: 0; right: 0;
+          width: 180px; height: 100%;
+          background: repeating-linear-gradient(45deg, rgba(26,35,126,0.06) 0px, rgba(26,35,126,0.06) 2px, transparent 2px, transparent 14px);
+          pointer-events: none;
+        }
+        .cover-header { border-radius: 0 !important; }
+        .school-card { border-radius: 0 !important; border-left: 3px solid $primary; }
+        .info-card { border-radius: 0 !important; border-left-width: 3px !important; }
+        .sub-criteria-card { border-radius: 0 !important; border-style: solid !important; }
+        .report-type-card { border-radius: 0 !important; }
+        .section-title, .section-subtitle {
+          $sectionStyle
+          border-left: 4px solid $primary;
+          padding-left: 14px;
+          background: $headerBg;
+          padding: 10px 14px;
+          border-radius: 0;
+        }
+        .student-name-chip {
+          background: $studentCardBg;
+          border: $cardBorder;
+          border-radius: 0;
+          padding: 10px 14px;
+          font-family: $font;
+          display: flex; align-items: center; gap: 10px;
+          box-shadow: 2px 2px 0 $primary;
+          transition: transform 0.15s;
+        }
+        .student-name-chip:hover { transform: translate(-1px, -1px); }
+        .chip-number {
+          background: $primary;
+          color: white;
+          width: 26px; height: 26px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 11px; font-weight: 800;
+          border-radius: 0;
+        }
+        .group-header-custom {
+          border-radius: 0;
+          padding: 22px 28px;
+        }
+        .item-card-custom {
+          border-radius: 0;
+          border-left: 5px solid;
+          background: $headerBg;
+          padding: 14px 18px;
+          margin-bottom: 10px;
+          box-shadow: 3px 3px 0 rgba(0,0,0,0.08);
+        }
+        .stat-box {
+          border-radius: 0;
+          border-top: 4px solid $primary;
+          background: white;
+          padding: 18px;
+          box-shadow: 3px 3px 0 $primary;
+        }
+        ''';
+      case 'minimal':
+        return '''
+        body { font-family: $font; background: #ffffff; color: #111; letter-spacing: 0.01em; }
+        .cover-page { border-top: 8px solid #111; border-bottom: 1px solid #ddd; padding: 60px 50px; }
+        .cover-header { border-radius: 0 !important; }
+        .school-card { border-radius: 0 !important; border: none; border-bottom: 1px solid #ddd; box-shadow: none !important; }
+        .info-card { border-radius: 0 !important; border: none !important; border-bottom: 1px solid #eee; box-shadow: none !important; padding: 14px 0 !important; }
+        .sub-criteria-card { border-radius: 0 !important; border: 1px solid #ddd !important; border-style: solid !important; }
+        .report-type-card { border-radius: 0 !important; background: #111 !important; }
+        .section-title { $sectionStyle border-bottom: 1px solid #111; border-left: none; padding-bottom: 8px; color: #111; margin-bottom: 28px; }
+        .section-subtitle { $sectionStyle color: #666; border: none; padding-bottom: 4px; border-bottom: 1px solid #ddd; }
+        .student-name-chip { background: transparent; border: none; border-bottom: 1px solid #e0e0e0; border-radius: 0; padding: 12px 4px; display: flex; align-items: baseline; gap: 16px; font-size: 13px; }
+        .chip-number { font-size: 10px; color: #999; font-family: $font; min-width: 20px; background: transparent; font-style: italic; }
+        .group-header-custom { background: #111 !important; border-radius: 0; padding: 18px 24px; border-bottom: 4px solid #444; }
+        .item-card-custom { border-radius: 0; border: none; border-left: 2px solid #bbb; background: #fafafa; padding: 12px 20px; margin-bottom: 8px; font-size: 13px; }
+        .stat-box { border-radius: 0; background: transparent; border: 1px solid #ddd; border-top: 3px solid #111; padding: 18px; text-align: left; }
+        ''';
+      case 'colorful':
+        return '''
+        body { font-family: $font; background: linear-gradient(135deg, #fce4ec 0%, #f3e5f5 50%, #ede7f6 100%); }
+        .cover-page { background: white; border-radius: 24px; border: 3px solid $primary; position: relative; overflow: hidden; }
+        .cover-page::before { content: ''; position: absolute; top: -30px; right: -30px; width: 200px; height: 200px; background: radial-gradient(circle at 50% 50%, ${accent}33 0%, transparent 70%); border-radius: 50%; }
+        .cover-header { border-radius: 21px 21px 0 0 !important; }
+        .school-card { border-radius: 20px !important; }
+        .info-card { border-radius: 20px !important; }
+        .sub-criteria-card { border-radius: 20px !important; border-style: dashed !important; }
+        .report-type-card { border-radius: 20px !important; }
+        .section-title { $sectionStyle background: linear-gradient(90deg, $primary, ${ts['secondaryColor']}); color: white; border-radius: 30px; padding: 10px 22px; border: none; display: inline-block; margin-bottom: 22px; }
+        .section-subtitle { $sectionStyle color: $primary; border-bottom: 3px dashed $accent; padding-bottom: 6px; border-left: none; }
+        .student-name-chip { background: linear-gradient(135deg, ${primary}15, ${accent}20); border: 2px dashed $primary; border-radius: 30px; padding: 10px 18px; display: flex; align-items: center; gap: 10px; transition: transform 0.2s, box-shadow 0.2s; }
+        .student-name-chip:hover { transform: scale(1.02); box-shadow: $shadow; }
+        .chip-number { background: $primary; color: white; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; border-radius: 50%; }
+        .group-header-custom { border-radius: 20px; padding: 22px 28px; box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+        .item-card-custom { border-radius: 16px; border: $cardBorder; padding: 14px 18px; margin-bottom: 12px; box-shadow: $shadow; }
+        .stat-box { border-radius: 20px; padding: 20px; box-shadow: $shadow; border: 2px solid ${primary}30; }
+        ''';
+      case 'educational':
+        return '''
+        body { font-family: $font; background: linear-gradient(180deg, #f1f8e9 0%, #e8f5e9 100%); }
+        .cover-page { border-left: 8px solid $primary; border-radius: 0 $radius $radius 0; background: white; }
+        .cover-header { border-radius: 0 $radius $radius 0 !important; }
+        .school-card { border-radius: $radius !important; }
+        .info-card { border-radius: $radius !important; }
+        .sub-criteria-card { border-radius: $radius !important; border-style: solid !important; }
+        .report-type-card { border-radius: $radius !important; }
+        .section-title { $sectionStyle color: $primary; border-left: 6px solid $primary; padding-left: 14px; background: ${primary}0f; border-radius: 0 $radius $radius 0; padding: 10px 14px; margin-bottom: 22px; }
+        .section-subtitle { $sectionStyle color: ${ts['secondaryColor']}; border-left: 4px solid $accent; padding-left: 10px; margin-bottom: 16px; }
+        .student-name-chip { background: $studentCardBg; border: $cardBorder; border-radius: $radius; padding: 11px 16px; display: flex; align-items: center; gap: 12px; box-shadow: $shadow; transition: background 0.2s; }
+        .student-name-chip:hover { background: $headerBg; }
+        .chip-number { background: $primary; color: white; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; border-radius: 50%; flex-shrink: 0; }
+        .group-header-custom { border-radius: $radius; padding: 20px 26px; border-bottom: 4px solid rgba(255,255,255,0.3); }
+        .item-card-custom { border-radius: $radius; border: $cardBorder; background: $studentCardBg; padding: 14px 18px; margin-bottom: 10px; box-shadow: $shadow; }
+        .stat-box { border-radius: $radius; background: white; border: $cardBorder; box-shadow: $shadow; padding: 18px; border-top: 4px solid $primary; }
+        ''';
+      default:
+        return '''
+        body { font-family: $font; background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%); }
+        .cover-page { border-radius: $radius; background: white; box-shadow: $shadow; }
+        .cover-header { border-radius: $radius $radius 0 0 !important; }
+        .school-card { border-radius: $radius !important; }
+        .info-card { border-radius: $radius !important; }
+        .sub-criteria-card { border-radius: $radius !important; border-style: dashed !important; }
+        .report-type-card { border-radius: $radius !important; }
+        .section-title { $sectionStyle color: $primary; border-bottom: 3px solid $primary; padding-bottom: 10px; margin-bottom: 22px; }
+        .section-subtitle { $sectionStyle color: ${ts['secondaryColor']}; border-left: 4px solid $accent; padding-left: 10px; margin-bottom: 14px; }
+        .student-name-chip { background: $studentCardBg; border: $cardBorder; border-radius: $radius; padding: 11px 16px; display: flex; align-items: center; gap: 10px; box-shadow: $shadow; }
+        .chip-number { background: $primary; color: white; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; border-radius: 50%; }
+        .group-header-custom { border-radius: $radius; padding: 20px 26px; }
+        .item-card-custom { border-radius: $radius; border-left: 4px solid; background: $studentCardBg; padding: 14px 18px; margin-bottom: 10px; box-shadow: $shadow; }
+        .stat-box { border-radius: $radius; background: white; border: $cardBorder; box-shadow: $shadow; padding: 18px; }
+        ''';
+    }
+  }
+
+  static String _buildStyledHead(
+      bool isFrenchInterface,
+      String direction,
+      Map<String, String> templateStyles,
+      String selectedTemplate,
+      Map<String, String> t) {
+    final templateCSS = _getTemplateCSSBlock(
+        selectedTemplate, templateStyles, isFrenchInterface);
+    final decorator = _getSVGDecorator(selectedTemplate,
+        templateStyles['primaryColor']!, templateStyles['accentColor']!);
+
+    return '''
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${t['main_title']}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary-color: ${templateStyles['primaryColor']};
+            --secondary-color: ${templateStyles['secondaryColor']};
+            --accent-color: ${templateStyles['accentColor']};
+            --ai-color: #9C27B0;
+            --light-bg: ${templateStyles['headerBg']};
+            --white: #ffffff;
+            --text-color: #333333;
+            --border-radius: ${templateStyles['borderRadius']};
+            --box-shadow: ${templateStyles['boxShadow']};
+            --treatment-color: #e74c3c;
+            --support-color: #f39c12;
+            --excellence-color: #27ae60;
+        }
+        body {
+            font-family: ${isFrenchInterface ? templateStyles['fontFamily']! : "'Noto Sans Arabic', " + templateStyles['fontFamily']!};
+            color: var(--text-color);
+            direction: $direction;
+            line-height: 1.7;
+            min-height: 100vh;
+            padding: 20px;
+            font-size: ${templateStyles['fontSize']};
+        }
+        .report-container { max-width: 1200px; margin: 0 auto; }
+        .cover-page, .general-info-page, .group-page {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 40px;
+            margin-bottom: 40px;
+            position: relative;
+            overflow: hidden;
+        }
+        .cover-page { min-height: 88vh; display: flex; flex-direction: column; justify-content: center; }
+        .general-info-page, .group-page { page-break-before: always; }
+        .section-title { font-size: 20px; color: var(--primary-color); margin-bottom: 24px; padding-bottom: 10px; border-bottom: 2px solid var(--primary-color); font-weight: bold; }
+        .section-subtitle { font-size: 16px; color: var(--text-color); margin-bottom: 14px; padding-${isFrenchInterface ? 'left' : 'right'}: 10px; border-${isFrenchInterface ? 'left' : 'right'}: 4px solid var(--primary-color); font-weight: bold; }
+        .report-footer { text-align: center; margin-top: 40px; padding-top: 16px; border-top: 1px solid #e0e0e0; color: #888; font-size: 12px; }
+        .items-list { list-style: none; padding: 0; }
+        .ai-badge { background: var(--ai-color); color: white; padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: bold; }
+        .ai-exercise-content { font-size: 13px; line-height: 1.8; white-space: pre-wrap; background: #fafafa; padding: 14px; border-radius: var(--border-radius); border: 1px solid #e0e0e0; }
+        .ai-metadata { margin-top: 8px; font-size: 11px; color: #888; font-style: italic; text-align: right; }
+        $templateCSS
+        $decorator
+    </style>
+</head>''';
+  }
+
+  static String _studentChipHTML(
+      int index, Map<String, dynamic> student, Map<String, String> t) {
+    return '''
+    <div class="student-name-chip">
+      <span class="chip-number">$index</span>
+      <span style="font-weight:500;">${student['name'] ?? t['unknown']!}</span>
+    </div>
+    ''';
+  }
+
+  static String _itemCardHTML(Map<String, dynamic> item, bool isProblem) {
+    final borderColor = isProblem ? '#d32f2f' : '#2e7d32';
+    final bgColor = isProblem ? '#ffebee' : '#e8f5e9';
+    return '''
+    <li class="item-card-custom" style="border-color: $borderColor; background: $bgColor;">
+      <div style="font-size:14px; line-height:1.6;">${item['text'] ?? ''}</div>
+    </li>
+    ''';
+  }
+
+  static String _statBoxHTML(String label, int count, String gradient) {
+    return '''
+    <div class="stat-box" style="background: $gradient; color:white; text-align:center;">
+      <div style="font-size:11px; opacity:0.9; margin-bottom:6px;">$label</div>
+      <div style="font-size:28px; font-weight:800;">$count</div>
+    </div>
+    ''';
   }
 }
 

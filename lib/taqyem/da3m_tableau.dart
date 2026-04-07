@@ -257,7 +257,8 @@ class SolutionSelection {
 }
 
 class _ClassificationPageState extends State<ClassificationPage> {
-  List<dynamic> jsonData = [];
+  Map<String, dynamic> jsonCriteriaData = {};
+  List<dynamic> jsonExerciseData = [];
   bool _isGeneratingReport = false;
   bool _isLoading = true;
   int _selectedTabIndex = 0;
@@ -267,6 +268,8 @@ class _ClassificationPageState extends State<ClassificationPage> {
     'support': [],
     'excellence': [],
   };
+
+  Set<String> _reviewedStudents = {};
   bool _isFirstTime = true;
   double _pulseScale = 1.0;
   Timer? _pulseTimer;
@@ -286,6 +289,10 @@ class _ClassificationPageState extends State<ClassificationPage> {
   // Variables pour les images d'aide
   Map<String, String> _helpImages = {};
   bool _isLoadingHelpImages = true;
+
+  // Responsive helpers
+  bool get _isSmallScreen => MediaQuery.of(context).size.width < 600;
+  double get _screenWidth => MediaQuery.of(context).size.width;
 
   @override
   void initState() {
@@ -1077,11 +1084,12 @@ class _ClassificationPageState extends State<ClassificationPage> {
       );
 
       // Create a shareable text
+      String translatedBareme = _getTranslatedBaremeName(baremeName, null);
       String shareableText = '''
 📚 **EXERCICES À AMÉLIORER - TAQYEM APP**
 Classe: ${widget.className}
-Critère: $baremeName
-Matière: $matiereName
+Critère: $translatedBareme
+Matière: ${DataTranslator.translateMatiere(matiereName)}
 
 
 **Exercice original:**
@@ -1125,11 +1133,13 @@ Merci d'améliorer ces exercices ! 🙏
         ? "Please improve these exercises in French:"
         : "الرجاء تحسين هذه التمارين باللغة العربية:";
 
+    String translatedBareme = _getTranslatedBaremeName(baremeName, null);
+
     return '''
 $langInstruction
 
-**Critère/Category:** $baremeName
-**Matière/Subject:** $matiereName
+**Critère/Category:** $translatedBareme
+**Matière/Subject:** ${DataTranslator.translateMatiere(matiereName)}
 
 **Exercice original/Original exercise:**
 $originalExercise
@@ -1951,8 +1961,11 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
       }
 
       // Demander à l'utilisateur s'il veut modifier le nom du barème
+      String currentBareme = widget.sousBaremeName ?? widget.baremeName;
+      String translatedBareme =
+          _getTranslatedBaremeName(widget.baremeName, widget.sousBaremeName);
       String? modifiedBaremeName = await _showBaremeModificationDialog(
-        currentBaremeName: widget.sousBaremeName ?? widget.baremeName,
+        currentBaremeName: translatedBareme,
       );
 
       if (modifiedBaremeName == null) {
@@ -3046,9 +3059,11 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
 
   Future<void> loadJsonData() async {
     try {
-      String jsonString = await rootBundle.loadString('assets/data.json');
+      String jsonString =
+          await rootBundle.loadString('assets/evaluation_excel.json');
+      final jsonDataTmp = json.jsonDecode(jsonString);
       setState(() {
-        jsonData = json.jsonDecode(jsonString);
+        jsonCriteriaData = jsonDataTmp['classes'] as Map<String, dynamic>;
         _isLoading = false;
       });
     } catch (e) {
@@ -3057,6 +3072,106 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
         _isLoading = false;
       });
     }
+
+    try {
+      String jsonString = await rootBundle.loadString('assets/data.json');
+      setState(() {
+        jsonExerciseData = json.jsonDecode(jsonString) as List<dynamic>;
+      });
+    } catch (e) {
+      print("Erreur lors du chargement du fichier data.json: $e");
+    }
+  }
+
+  String _getTranslatedBaremeName(String baremeName, String? sousBaremeName) {
+    if (jsonCriteriaData.isEmpty ||
+        widget.className.isEmpty ||
+        widget.matiereName.isEmpty) {
+      return sousBaremeName ?? baremeName;
+    }
+
+    try {
+      String jsonClassName = widget.className;
+
+      if (jsonClassName.contains('أ') ||
+          jsonClassName.contains('ب') ||
+          jsonClassName.contains('ج') ||
+          jsonClassName.contains('د')) {
+        jsonClassName = jsonClassName.replaceAll(RegExp(r'[أ-د]$'), '').trim();
+      }
+
+      if (jsonCriteriaData.containsKey(jsonClassName)) {
+        final classData = jsonCriteriaData[jsonClassName];
+        if (classData is Map<String, dynamic> &&
+            classData.containsKey('subjects')) {
+          final subjects = classData['subjects'] as Map<String, dynamic>;
+
+          if (subjects.containsKey(widget.matiereName)) {
+            final subjectData = subjects[widget.matiereName];
+            if (subjectData is Map<String, dynamic> &&
+                subjectData.containsKey('criteria')) {
+              final criteria = subjectData['criteria'] as List;
+
+              RegExp regex = RegExp(r'مع (\d+)(?:\.([أبج]))?');
+              Match? match = regex.firstMatch(baremeName);
+
+              if (match != null) {
+                int criterionIndex = int.parse(match.group(1)!) - 1;
+                String? subLetter = match.group(2);
+
+                if (criterionIndex >= 0 && criterionIndex < criteria.length) {
+                  var criterion = criteria[criterionIndex];
+                  if (criterion is Map<String, dynamic>) {
+                    String criterionName = criterion['name'] ?? '';
+
+                    if (subLetter != null) {
+                      List indicators = criterion['indicators'] ?? [];
+                      int indicatorIndex = 0;
+                      if (subLetter == 'ب')
+                        indicatorIndex = 1;
+                      else if (subLetter == 'ج')
+                        indicatorIndex = 2;
+                      else if (subLetter == 'د') indicatorIndex = 3;
+
+                      if (indicatorIndex < indicators.length) {
+                        String indicatorName = indicators[indicatorIndex];
+                        if (indicatorName is String &&
+                            indicatorName.isNotEmpty) {
+                          return '$criterionName - $indicatorName';
+                        }
+                      }
+                    }
+
+                    return criterionName;
+                  }
+                }
+              }
+
+              for (var criterion in criteria) {
+                if (criterion is Map<String, dynamic>) {
+                  String criterionName = criterion['name'] ?? '';
+                  if (criterionName == baremeName ||
+                      criterionName == sousBaremeName) {
+                    return criterionName;
+                  }
+                }
+              }
+
+              if (criteria.isNotEmpty) {
+                if (sousBaremeName != null && sousBaremeName.isNotEmpty) {
+                  return sousBaremeName;
+                }
+                return baremeName;
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error getting translated bareme name: $e');
+    }
+
+    return sousBaremeName ?? baremeName;
   }
 
   // Méthode pour afficher le dialogue d'erreur de crédit
@@ -3359,7 +3474,7 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
         _groupSelections[groupKey] ?? [];
 
     // Récupérer les données JSON
-    var jsonResult = jsonData.firstWhere(
+    var jsonResult = jsonExerciseData.firstWhere(
       (item) {
         String jsonClasse = item['classe'].trim().toLowerCase();
         String jsonMatiere = item['matiere'].trim().toLowerCase();
@@ -3522,11 +3637,13 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
                                   ? null
                                   : () async {
                                       // 🔴 DEMANDER D'ABORD DE MODIFIER LE NOM DU BARÈME
+                                      String translatedBareme =
+                                          _getTranslatedBaremeName(
+                                              widget.baremeName,
+                                              widget.sousBaremeName);
                                       String? modifiedBaremeName =
                                           await _showBaremeModificationDialogForAI(
-                                        currentBaremeName:
-                                            widget.sousBaremeName ??
-                                                widget.baremeName,
+                                        currentBaremeName: translatedBareme,
                                       );
 
                                       // Si l'utilisateur a annulé, ne pas continuer
@@ -4968,7 +5085,7 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
   }
 
   Map<String, dynamic> _getSolutionsData() {
-    var result = jsonData.firstWhere(
+    var result = jsonExerciseData.firstWhere(
       (item) =>
           item['classe'].trim().toLowerCase() ==
               widget.className.trim().toLowerCase() &&
@@ -5026,18 +5143,17 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
     int selectionCount = _groupSelections[groupKey]?.length ?? 0;
 
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            color.withOpacity(0.1),
-            Colors.white,
-          ],
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              color.withOpacity(0.1),
+              Colors.white,
+            ],
+          ),
         ),
-      ),
-      child: Column(
-        children: [
+        child: Column(children: [
           Container(
             padding: EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -5255,60 +5371,176 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
                             color: Colors.grey.shade600,
                           ),
                         ),
+                        SizedBox(height: 8),
+                        Text(
+                          _getTranslatedText(
+                              'حدد التلاميذ من صفحة التصحيح أولاً',
+                              'Sélectionnez d\'abord les élèves depuis la page de correction'),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ],
                     ),
                   )
-                : ListView.builder(
-                    padding: EdgeInsets.all(16),
-                    itemCount: students.length,
-                    itemBuilder: (context, index) {
-                      final student = students[index];
-                      return Card(
-                        elevation: 2,
-                        margin: EdgeInsets.only(bottom: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                : Column(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: _isSmallScreen ? 8 : 16,
+                          vertical: 8,
                         ),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: color.withOpacity(0.2),
-                            child: Icon(
-                              Icons.person,
-                              color: color,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${students.length} ${_getTranslatedText('تلميذ', 'élève')}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
                             ),
-                          ),
-                          title: Text(
-                            student['name'] ??
-                                _getTranslatedText('غير معروف', 'Inconnu'),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
+                            TextButton.icon(
+                              onPressed: () =>
+                                  _selectAllInGroup(students, groupKey),
+                              icon: Icon(Icons.check_circle_outline, size: 16),
+                              label: Text(_getTranslatedText(
+                                  'تحديد الكل', 'Tout sélectionner')),
+                              style: TextButton.styleFrom(
+                                padding: EdgeInsets.symmetric(horizontal: 8),
+                                visualDensity: VisualDensity.compact,
+                              ),
                             ),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (student['treatmentPlan']?.isNotEmpty == true)
-                                Text(
-                                  '${_getTranslatedText('خطة العلاج:', 'Plan de traitement:')} ${student['treatmentPlan']}',
-                                  style: TextStyle(fontSize: 12),
-                                ),
-                              if (student['errorOrigin']?.isNotEmpty == true)
-                                Text(
-                                  '${_getTranslatedText('أصل الخطأ:', 'Origine de l\'erreur:')} ${student['errorOrigin']}',
-                                  style: TextStyle(fontSize: 12),
-                                ),
-                            ],
-                          ),
-                          trailing: Icon(Icons.school, color: color),
+                          ],
                         ),
-                      );
-                    },
+                      ),
+                      Expanded(
+                        child: ListView.builder(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: _isSmallScreen ? 8 : 16),
+                          itemCount: students.length,
+                          itemBuilder: (context, index) {
+                            final student = students[index];
+                            final isReviewed =
+                                _reviewedStudents.contains(student['name']);
+                            return Card(
+                              elevation: _isSmallScreen ? 1 : 2,
+                              margin: EdgeInsets.only(
+                                  bottom: _isSmallScreen ? 8 : 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                    _isSmallScreen ? 8 : 12),
+                                side: isReviewed
+                                    ? BorderSide(
+                                        color: Colors.green.shade400, width: 2)
+                                    : BorderSide.none,
+                              ),
+                              color: isReviewed ? Colors.green.shade50 : null,
+                              child: ListTile(
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: _isSmallScreen ? 8 : 16,
+                                  vertical: _isSmallScreen ? 4 : 8,
+                                ),
+                                leading: Stack(
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: isReviewed
+                                          ? Colors.green.shade100
+                                          : color.withOpacity(0.2),
+                                      radius: _isSmallScreen ? 18 : 24,
+                                      child: Icon(
+                                        isReviewed ? Icons.check : Icons.person,
+                                        color:
+                                            isReviewed ? Colors.green : color,
+                                        size: _isSmallScreen ? 20 : 24,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                title: Text(
+                                  student['name'] ??
+                                      _getTranslatedText(
+                                          'غير معروف', 'Inconnu'),
+                                  style: TextStyle(
+                                    fontSize: _isSmallScreen ? 14 : 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (student['treatmentPlan']?.isNotEmpty ==
+                                        true)
+                                      Text(
+                                        '${_getTranslatedText('خطة:', 'Plan:')} ${student['treatmentPlan']}',
+                                        style: TextStyle(
+                                            fontSize: _isSmallScreen ? 10 : 12),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    if (student['errorOrigin']?.isNotEmpty ==
+                                        true)
+                                      Text(
+                                        '${_getTranslatedText('أصل:', 'Origine:')} ${student['errorOrigin']}',
+                                        style: TextStyle(
+                                            fontSize: _isSmallScreen ? 10 : 12),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                  ],
+                                ),
+                                trailing: Icon(
+                                  isReviewed
+                                      ? Icons.check_circle
+                                      : Icons.circle_outlined,
+                                  color: isReviewed
+                                      ? Colors.green
+                                      : Colors.grey.shade400,
+                                  size: _isSmallScreen ? 20 : 24,
+                                ),
+                                onTap: () =>
+                                    _toggleStudentReview(student['name'] ?? ''),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
           ),
-        ],
-      ),
-    );
+        ]));
+  }
+
+  void _toggleStudentReview(String studentName) {
+    setState(() {
+      if (_reviewedStudents.contains(studentName)) {
+        _reviewedStudents.remove(studentName);
+      } else {
+        _reviewedStudents.add(studentName);
+      }
+    });
+  }
+
+  void _selectAllInGroup(List<Map<String, String>> students, String groupKey) {
+    setState(() {
+      final allReviewed =
+          students.every((s) => _reviewedStudents.contains(s['name']));
+      if (allReviewed) {
+        for (var student in students) {
+          _reviewedStudents.remove(student['name']);
+        }
+      } else {
+        for (var student in students) {
+          if (student['name']?.isNotEmpty == true) {
+            _reviewedStudents.add(student['name']!);
+          }
+        }
+      }
+    });
   }
 
   void _showPrintGroupSelection() async {
@@ -5337,29 +5569,33 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
       builder: (context) {
         return Dialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(_isSmallScreen ? 12 : 16),
           ),
           child: Padding(
-            padding: EdgeInsets.all(20),
+            padding: EdgeInsets.all(_isSmallScreen ? 12 : 20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.group, color: Colors.blue.shade700),
-                    SizedBox(width: 8),
-                    Text(
-                      _getTranslatedText('اختر مجموعة للطباعة',
-                          'Choisissez un groupe pour l\'impression'),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                    Icon(Icons.group,
+                        color: Colors.blue.shade700,
+                        size: _isSmallScreen ? 20 : 24),
+                    SizedBox(width: _isSmallScreen ? 6 : 8),
+                    Expanded(
+                      child: Text(
+                        _getTranslatedText('اختر مجموعة للطباعة',
+                            'Choisissez un groupe pour l\'impression'),
+                        style: TextStyle(
+                          fontSize: _isSmallScreen ? 14 : 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: 20),
+                SizedBox(height: _isSmallScreen ? 12 : 20),
                 ...groups.map((groupName) {
                   final count = groupedStudents[groupName]?.length ?? 0;
                   final selectionCount = groupName
@@ -5372,6 +5608,7 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
 
                   return ListTile(
                     leading: CircleAvatar(
+                      radius: _isSmallScreen ? 16 : 20,
                       backgroundColor: groupName.contains(
                               _getTranslatedText('العلاج', 'traitement'))
                           ? Colors.red.shade100
@@ -5387,7 +5624,7 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
                                     _getTranslatedText('الدعم', 'soutien'))
                                 ? Icons.support
                                 : Icons.emoji_events,
-                        size: 20,
+                        size: _isSmallScreen ? 16 : 20,
                         color: groupName.contains(
                                 _getTranslatedText('العلاج', 'traitement'))
                             ? Colors.red
@@ -5397,23 +5634,32 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
                                 : Colors.green,
                       ),
                     ),
-                    title: Text(groupName),
+                    title: Text(
+                      groupName,
+                      style: TextStyle(fontSize: _isSmallScreen ? 12 : 14),
+                    ),
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                            '$count ${_getTranslatedText('تلميذ', count > 1 ? 'élèves' : 'élève')}'),
+                            '$count ${_getTranslatedText('تلميذ', count > 1 ? 'élèves' : 'élève')}',
+                            style:
+                                TextStyle(fontSize: _isSmallScreen ? 10 : 12)),
                         if (selectionCount > 0)
                           Text(
                             '$selectionCount ${_getTranslatedText('محدد', selectionCount > 1 ? 'sélectionnés' : 'sélectionné')}',
                             style: TextStyle(
                               color: Colors.green,
-                              fontSize: 12,
+                              fontSize: _isSmallScreen ? 10 : 12,
                             ),
                           ),
                       ],
                     ),
-                    trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                    trailing: Icon(Icons.arrow_forward_ios,
+                        size: _isSmallScreen ? 12 : 16),
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: _isSmallScreen ? 4 : 8),
+                    dense: _isSmallScreen,
                     onTap: () {
                       String groupKey = '';
                       if (groupName.contains(
@@ -5777,84 +6023,204 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
                         //   _buildTranslatedHeader(),
                         Container(
                           padding: EdgeInsets.symmetric(
-                              vertical: 16.0, horizontal: 20),
+                              vertical: _isSmallScreen ? 8.0 : 16.0,
+                              horizontal: _isSmallScreen ? 12 : 20),
                           child: Column(
                             children: [
                               Text(
                                 _getTranslatedText('تصنيف الأخطاء',
                                     'Plan de traitement et origine de l\'erreur'),
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  fontSize: _isSmallScreen ? 16 : 20,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.blue.shade800,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
-                              SizedBox(height: 4),
+                              SizedBox(height: _isSmallScreen ? 2 : 4),
                               Text(
                                 _getTranslatedText(
-                                    'في مادة ${widget.matiereName} ال  ${widget.sousBaremeName ?? widget.baremeName}',
-                                    'En ${widget.matiereName} dans le critère ${widget.sousBaremeName ?? widget.baremeName}'),
+                                    'في مادة ${widget.matiereName} ال ${_getTranslatedBaremeName(widget.baremeName, widget.sousBaremeName)}',
+                                    'En ${DataTranslator.translateMatiere(widget.matiereName)} dans le critère ${_getTranslatedBaremeName(widget.baremeName, widget.sousBaremeName)}'),
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: _isSmallScreen ? 12 : 16,
                                   color: Colors.grey.shade700,
                                 ),
                                 textAlign: TextAlign.center,
                               ),
-                              SizedBox(height: 12),
+                              SizedBox(height: _isSmallScreen ? 8 : 12),
                               Container(
-                                padding: EdgeInsets.all(16),
+                                padding:
+                                    EdgeInsets.all(_isSmallScreen ? 10 : 16),
                                 decoration: BoxDecoration(
                                   color: Colors.blue.shade50,
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(
+                                      _isSmallScreen ? 8 : 12),
                                   border:
                                       Border.all(color: Colors.blue.shade100),
                                 ),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.info_outline_rounded,
-                                        color: Colors.blue.shade700, size: 24),
-                                    SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                child: _isSmallScreen
+                                    ? Column(
                                         children: [
-                                          Text(
-                                            _getTranslatedText(
-                                                'حدد خطأ  وأصل  الخطأ لكل مجموعة ثم اختر نوع التقرير:',
-                                                'Sélectionnez des solutions et problèmes pour chaque groupe puis choisissez le type de rapport:'),
-                                            style: TextStyle(
-                                              color: Colors.blue.shade800,
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                            ),
+                                          Row(
+                                            children: [
+                                              Icon(Icons.info_outline_rounded,
+                                                  color: Colors.blue.shade700,
+                                                  size: 20),
+                                              SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  _getTranslatedText(
+                                                      'حدد خطأ  وأصل  الخطأ لكل مجموعة ثم اختر نوع التقرير:',
+                                                      'Sélectionnez des solutions et problèmes pour chaque groupe puis choisissez le type de rapport:'),
+                                                  style: TextStyle(
+                                                    color: Colors.blue.shade800,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          SizedBox(height: 8),
+                                          SizedBox(height: 6),
                                           Text(
                                             _getTranslatedText(
                                                 '• تقرير مجموعة واحدة: يطبع مجموعة محددة مع تلاميذها و أخطائها ',
-                                                '• Rapport groupe unique: imprime un groupe spécifique avec ses élèves et solutions'),
+                                                '• Rapport groupe unique: imprime un groupe spécifique'),
                                             style: TextStyle(
                                               color: Colors.blue.shade700,
-                                              fontSize: 12,
+                                              fontSize: 10,
                                             ),
                                           ),
-                                          SizedBox(height: 4),
+                                          SizedBox(height: 2),
                                           Text(
                                             _getTranslatedText(
                                                 '• تقرير كامل: يطبع جميع المجموعات مع تلاميذها ',
-                                                '• Rapport complet: imprime tous les groupes avec leurs élèves et solutions'),
+                                                '• Rapport complet: imprime tous les groupes'),
                                             style: TextStyle(
                                               color: Colors.blue.shade700,
-                                              fontSize: 12,
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Icon(Icons.info_outline_rounded,
+                                              color: Colors.blue.shade700,
+                                              size: 24),
+                                          SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  _getTranslatedText(
+                                                      'حدد خطأ  وأصل  الخطأ لكل مجموعة ثم اختر نوع التقرير:',
+                                                      'Sélectionnez des solutions et problèmes pour chaque groupe puis choisissez le type de rapport:'),
+                                                  style: TextStyle(
+                                                    color: Colors.blue.shade800,
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                SizedBox(height: 8),
+                                                Text(
+                                                  _getTranslatedText(
+                                                      '• تقرير مجموعة واحدة: يطبع مجموعة محددة مع تلاميذها و أخطائها ',
+                                                      '• Rapport groupe unique: imprime un groupe spécifique avec ses élèves et solutions'),
+                                                  style: TextStyle(
+                                                    color: Colors.blue.shade700,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                                SizedBox(height: 4),
+                                                Text(
+                                                  _getTranslatedText(
+                                                      '• تقرير كامل: يطبع جميع المجموعات مع تلاميذها ',
+                                                      '• Rapport complet: imprime tous les groupes avec leurs élèves et solutions'),
+                                                  style: TextStyle(
+                                                    color: Colors.blue.shade700,
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                  ],
-                                ),
                               ),
+                              if (_reviewedStudents.isNotEmpty)
+                                Container(
+                                  margin: EdgeInsets.only(top: 12),
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                        color: Colors.green.shade200),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.check_circle,
+                                        color: Colors.green,
+                                        size: _isSmallScreen ? 16 : 20,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              '${_reviewedStudents.length} ${_getTranslatedText('تلميذ تمت مراجعته', 'élève(s) révisé(s)')}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.green.shade700,
+                                              ),
+                                            ),
+                                            if (!_isSmallScreen)
+                                              SizedBox(height: 4),
+                                            if (!_isSmallScreen)
+                                              LinearProgressIndicator(
+                                                value: _reviewedStudents
+                                                        .length /
+                                                    ((_groupSelections[
+                                                                        'treatment']
+                                                                    ?.length ??
+                                                                0) +
+                                                            (_groupSelections[
+                                                                        'support']
+                                                                    ?.length ??
+                                                                0) +
+                                                            (_groupSelections[
+                                                                        'excellence']
+                                                                    ?.length ??
+                                                                0))
+                                                        .toDouble()
+                                                        .clamp(
+                                                            1, double.infinity),
+                                                backgroundColor:
+                                                    Colors.green.shade100,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                            Color>(
+                                                        Colors.green.shade400),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                             ],
                           ),
                         ),
@@ -5985,13 +6351,14 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
                                   labelColor: Colors.blue.shade800,
                                   unselectedLabelColor: Colors.grey.shade600,
                                   indicatorColor: Colors.blue.shade700,
-                                  indicatorWeight: 3,
+                                  indicatorWeight: _isSmallScreen ? 2 : 3,
                                   labelStyle: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 14,
+                                    fontSize: _isSmallScreen ? 12 : 14,
                                   ),
                                   unselectedLabelStyle: TextStyle(
                                     fontWeight: FontWeight.normal,
+                                    fontSize: _isSmallScreen ? 11 : 13,
                                   ),
                                   tabs: groups.map((group) {
                                     String groupKey = '';
@@ -6013,8 +6380,9 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
 
                                     return Tab(
                                       child: Container(
-                                        constraints:
-                                            BoxConstraints(minWidth: 120),
+                                        constraints: BoxConstraints(
+                                            minWidth:
+                                                _isSmallScreen ? 90 : 120),
                                         child: Row(
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
@@ -6022,23 +6390,29 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
                                           children: [
                                             Icon(
                                               group['icon'] as IconData,
-                                              size: 18,
+                                              size: _isSmallScreen ? 14 : 18,
                                             ),
-                                            SizedBox(width: 6),
+                                            SizedBox(
+                                                width: _isSmallScreen ? 4 : 6),
                                             Flexible(
                                               child: Text(
                                                 _getShortGroupName(
                                                     group['name'] as String),
                                                 overflow: TextOverflow.ellipsis,
                                                 style: TextStyle(
-                                                  fontSize: 12,
+                                                  fontSize:
+                                                      _isSmallScreen ? 10 : 12,
                                                 ),
                                               ),
                                             ),
-                                            SizedBox(width: 4),
+                                            SizedBox(
+                                                width: _isSmallScreen ? 2 : 4),
                                             Container(
                                               padding: EdgeInsets.symmetric(
-                                                  horizontal: 6, vertical: 2),
+                                                  horizontal:
+                                                      _isSmallScreen ? 4 : 6,
+                                                  vertical:
+                                                      _isSmallScreen ? 1 : 2),
                                               decoration: BoxDecoration(
                                                 color: (group['color'] as Color)
                                                     .withOpacity(0.1),
@@ -6051,7 +6425,9 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
                                                   Text(
                                                     '${(group['students'] as List).length}',
                                                     style: TextStyle(
-                                                      fontSize: 10,
+                                                      fontSize: _isSmallScreen
+                                                          ? 8
+                                                          : 10,
                                                       fontWeight:
                                                           FontWeight.bold,
                                                     ),
@@ -6060,7 +6436,9 @@ ${instructions.isNotEmpty ? instructions : "Améliorez ces exercices en gardant 
                                                     Text(
                                                       '$selectionCount✓',
                                                       style: TextStyle(
-                                                        fontSize: 8,
+                                                        fontSize: _isSmallScreen
+                                                            ? 6
+                                                            : 8,
                                                         color: Colors.green,
                                                         fontWeight:
                                                             FontWeight.bold,

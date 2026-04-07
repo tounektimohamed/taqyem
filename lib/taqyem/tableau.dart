@@ -10,6 +10,7 @@ import 'package:Taqyem/taqyem/payment/PaymentPage.dart';
 import 'package:Taqyem/taqyem/pdf_report_generator.dart';
 import 'package:Taqyem/taqyem/tableau_pdf.dart';
 import 'package:Taqyem/taqyem/word_report_generator.dart';
+import 'package:Taqyem/taqyem/template_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -614,7 +615,7 @@ class DynamicTablePage extends StatefulWidget {
 class _DynamicTablePageState extends State<DynamicTablePage> {
   final User? currentUser = FirebaseAuth.instance.currentUser;
   String _profName = '';
-static const String _IPHONE_ADVICE_KEY = 'iphone_advice_shown';
+  static const String _IPHONE_ADVICE_KEY = 'iphone_advice_shown';
   String _selectedEvaluationDisplay = 'character'; // Par défaut: caractère
   String _schoolName = '';
   bool _isDialogCompleted = false;
@@ -636,6 +637,7 @@ static const String _IPHONE_ADVICE_KEY = 'iphone_advice_shown';
   String _selectedTrimestre = 'الأول';
   String _selectedPeriode = '';
   String _selectedEvaluationType = 'تقييم';
+  String _selectedTemplateId = 'classic';
   // دالة للكشف إذا كان الجهاز آيفون
   bool _isIPhone() {
     // في Flutter web، يمكننا الكشف عن نظام التشغيل
@@ -654,23 +656,24 @@ static const String _IPHONE_ADVICE_KEY = 'iphone_advice_shown';
       return false; // مؤقتاً، يمكنك تعديله حسب الحاجة
     }
   }
-Future<bool> _shouldShowIPhoneAdvice() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    return !(prefs.getBool(_IPHONE_ADVICE_KEY) ?? false);
-  } catch (e) {
-    return true;
-  }
-}
 
-Future<void> _markIPhoneAdviceAsShown() async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_IPHONE_ADVICE_KEY, true);
-  } catch (e) {
-    print('Erreur sauvegarde conseil iPhone: $e');
+  Future<bool> _shouldShowIPhoneAdvice() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return !(prefs.getBool(_IPHONE_ADVICE_KEY) ?? false);
+    } catch (e) {
+      return true;
+    }
   }
-}
+
+  Future<void> _markIPhoneAdviceAsShown() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_IPHONE_ADVICE_KEY, true);
+    } catch (e) {
+      print('Erreur sauvegarde conseil iPhone: $e');
+    }
+  }
 
   String _getDomaineForMatiere(String matiereName, bool isFrenchInterface) {
     // Définir les domaines en arabe
@@ -1243,9 +1246,22 @@ Future<void> _markIPhoneAdviceAsShown() async {
       return [];
     }
   }
-// Fonction pour convertir la valeur stockée en valeur d'affichage selon le système
 
-  void _showCompleteReportDialog() {
+  void _showTemplateSelectorThenReport() {
+    showDialog(
+      context: context,
+      builder: (context) => TemplateSelectorDialog(
+        isFrenchInterface: _isFrenchInterface,
+        currentTemplateId: _selectedTemplateId,
+        onSelected: (template) {
+          setState(() => _selectedTemplateId = template.id);
+          _showCompleteReportDialogWithTemplate(template.id);
+        },
+      ),
+    );
+  }
+
+  void _showCompleteReportDialogWithTemplate(String templateId) {
     // Contrôleurs pour les champs
     TextEditingController periodeController =
         TextEditingController(text: _selectedPeriode);
@@ -1835,9 +1851,9 @@ Future<void> _markIPhoneAdviceAsShown() async {
                             widget.selectedMatiere,
                             className,
                             matiereName,
-                            performanceAttendue: performanceAttendueController
-                                .text
-                                .trim(), // NOUVEAU: Passer la performance attendue
+                            performanceAttendue:
+                                performanceAttendueController.text.trim(),
+                            templateId: templateId,
                           );
                         }
                       : null,
@@ -1865,6 +1881,7 @@ Future<void> _markIPhoneAdviceAsShown() async {
     String className,
     String matiereName, {
     String performanceAttendue = '',
+    String templateId = 'classic',
   }) async {
     if (!await _checkAndUpdatePrintCredit()) {
       _showCreditErrorDialog();
@@ -1889,6 +1906,7 @@ Future<void> _markIPhoneAdviceAsShown() async {
         className: className,
         matiereName: matiereName,
         performanceAttendue: performanceAttendue,
+        templateId: templateId,
       );
 
       if (response['success']) {
@@ -2026,6 +2044,7 @@ Future<void> _markIPhoneAdviceAsShown() async {
     required String className,
     required String matiereName,
     required String performanceAttendue,
+    String templateId = 'classic',
   }) async {
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
@@ -2146,6 +2165,9 @@ Future<void> _markIPhoneAdviceAsShown() async {
 
         // ✅ ENVOYER LES ÉTUDIANTS AVEC LEURS NOTES
         'students': students,
+
+        // ✅ ENVOYER LE TEMPLATE ID
+        'templateId': templateId,
       };
 
       print('📤 Envoi des données à Flask...');
@@ -2605,7 +2627,9 @@ Future<void> _markIPhoneAdviceAsShown() async {
           ? null
           : (value) {
               if (value == 'complete_report') {
-                _showCompleteReportDialog();
+                _showCompleteReportDialogWithTemplate(_selectedTemplateId);
+              } else if (value == 'choose_template') {
+                _showTemplateSelectorThenReport();
               } else if (value == 'baremes_table') {
                 _showClassAndMatiereSelectionDialog();
               } else if (value == 'history') {
@@ -2660,6 +2684,29 @@ Future<void> _markIPhoneAdviceAsShown() async {
               Icon(Icons.book, color: Colors.purple),
               SizedBox(width: 8),
               Text(_getTranslatedText('تقرير كامل', 'Rapport Complet')),
+            ],
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'choose_template',
+          child: Row(
+            children: [
+              Icon(Icons.palette, color: Colors.teal),
+              SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_getTranslatedText('اختر التصميم ثم اطبع',
+                      'Choisir le design puis imprimer')),
+                  Text(
+                    _getTranslatedText(
+                      'الحالي: ${ReportTemplates.getById(_selectedTemplateId).nameAr}',
+                      'Actuel: ${ReportTemplates.getById(_selectedTemplateId).nameFr}',
+                    ),
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -4182,195 +4229,194 @@ Future<void> _markIPhoneAdviceAsShown() async {
   }
 
 // Modifiez la méthode _showEvaluationInfoDialog
-void _showEvaluationInfoDialog(VoidCallback onConfirm) {
-  TextEditingController periodeController =
-      TextEditingController(text: _selectedPeriode);
+  void _showEvaluationInfoDialog(VoidCallback onConfirm) {
+    TextEditingController periodeController =
+        TextEditingController(text: _selectedPeriode);
 
-  // Options pour le trimestre
-  final trimestreOptions = ['الأول', 'الثاني', 'الثالث'];
-  final trimestreTranslations = {
-    'الأول': 'Premier',
-    'الثاني': 'Deuxième',
-    'الثالث': 'Troisième'
-  };
+    // Options pour le trimestre
+    final trimestreOptions = ['الأول', 'الثاني', 'الثالث'];
+    final trimestreTranslations = {
+      'الأول': 'Premier',
+      'الثاني': 'Deuxième',
+      'الثالث': 'Troisième'
+    };
 
-  // Options pour le type d'évaluation
-  final evaluationOptions = ['تقييم', 'امتحان'];
-  final evaluationTranslations = {'تقييم': 'Évaluation', 'امتحان': 'Examen'};
+    // Options pour le type d'évaluation
+    final evaluationOptions = ['تقييم', 'امتحان'];
+    final evaluationTranslations = {'تقييم': 'Évaluation', 'امتحان': 'Examen'};
 
-  showDialog(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: Row(
-        children: [
-          Icon(Icons.info, color: Colors.blue),
-          SizedBox(width: 8),
-          Text(
-            _getTranslatedText(
-                'معلومات التقييم', 'Informations d\'évaluation'),
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ],
-      ),
-      content: Container(
-        width: double.maxFinite,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Row(
           children: [
-            // الثلاثي
-            Container(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _getTranslatedText('الثلاثي:', 'Trimestre:'),
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: _selectedTrimestre,
-                    items: trimestreOptions
-                        .map((t) => DropdownMenuItem(
-                              value: t,
-                              child: Text(
-                                _isFrenchInterface
-                                    ? trimestreTranslations[t] ?? t
-                                    : t,
-                              ),
-                            ))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) {
-                        setState(() {
-                          _selectedTrimestre = v;
-                        });
-                      }
-                    },
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    ),
-                    isExpanded: true,
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 16),
-
-            // الوحدة / الفترة
-            Container(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _getTranslatedText(
-                        'الوحدة / الفترة:', 'Unité / Période:'),
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  SizedBox(height: 8),
-                  TextField(
-                    controller: periodeController,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      hintText:
-                          _getTranslatedText('مثال: الوحدة 1', 'Ex: Unité 1'),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 16),
-
-            // نوع التقييم
-            Container(
-              padding: EdgeInsets.symmetric(vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _getTranslatedText('نوع التقييم:', 'Type d\'évaluation:'),
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: _selectedEvaluationType,
-                    items: evaluationOptions
-                        .map((t) => DropdownMenuItem(
-                              value: t,
-                              child: Text(
-                                _isFrenchInterface
-                                    ? evaluationTranslations[t] ?? t
-                                    : t,
-                              ),
-                            ))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) {
-                        setState(() {
-                          _selectedEvaluationType = v;
-                        });
-                      }
-                    },
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    ),
-                    isExpanded: true,
-                  ),
-                ],
-              ),
+            Icon(Icons.info, color: Colors.blue),
+            SizedBox(width: 8),
+            Text(
+              _getTranslatedText(
+                  'معلومات التقييم', 'Informations d\'évaluation'),
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ],
         ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(_getTranslatedText('إلغاء', 'Annuler')),
-        ),
-        ElevatedButton(
-          onPressed: () async {
-            setState(() {
-              _selectedPeriode = periodeController.text.trim();
-            });
-            Navigator.pop(context);
-            
-            // ✅ التحقق مما إذا كان يجب عرض النصيحة
-            final shouldShow = await _shouldShowIPhoneAdvice();
-            
-            if (shouldShow) {
-              showDialog(
-                context: context,
-                builder: (context) => IPhoneAdviceDialog(
-                  isFrenchInterface: _isFrenchInterface,
-                  onContinue: () async {
-                    await _markIPhoneAdviceAsShown();
-                    onConfirm();
-                  },
+        content: Container(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // الثلاثي
+              Container(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getTranslatedText('الثلاثي:', 'Trimestre:'),
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: _selectedTrimestre,
+                      items: trimestreOptions
+                          .map((t) => DropdownMenuItem(
+                                value: t,
+                                child: Text(
+                                  _isFrenchInterface
+                                      ? trimestreTranslations[t] ?? t
+                                      : t,
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() {
+                            _selectedTrimestre = v;
+                          });
+                        }
+                      },
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      isExpanded: true,
+                    ),
+                  ],
                 ),
-              );
-            } else {
-              // تم عرض النصيحة من قبل، متابعة عادية
-              onConfirm();
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue,
+              ),
+              SizedBox(height: 16),
+
+              // الوحدة / الفترة
+              Container(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getTranslatedText(
+                          'الوحدة / الفترة:', 'Unité / Période:'),
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    SizedBox(height: 8),
+                    TextField(
+                      controller: periodeController,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText:
+                            _getTranslatedText('مثال: الوحدة 1', 'Ex: Unité 1'),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+
+              // نوع التقييم
+              Container(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getTranslatedText('نوع التقييم:', 'Type d\'évaluation:'),
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: _selectedEvaluationType,
+                      items: evaluationOptions
+                          .map((t) => DropdownMenuItem(
+                                value: t,
+                                child: Text(
+                                  _isFrenchInterface
+                                      ? evaluationTranslations[t] ?? t
+                                      : t,
+                                ),
+                              ))
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() {
+                            _selectedEvaluationType = v;
+                          });
+                        }
+                      },
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      ),
+                      isExpanded: true,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          child: Text(_getTranslatedText('متابعة', 'Continuer')),
         ),
-      ],
-    ),
-  );
-}
- 
- 
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(_getTranslatedText('إلغاء', 'Annuler')),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              setState(() {
+                _selectedPeriode = periodeController.text.trim();
+              });
+              Navigator.pop(context);
+
+              // ✅ التحقق مما إذا كان يجب عرض النصيحة
+              final shouldShow = await _shouldShowIPhoneAdvice();
+
+              if (shouldShow) {
+                showDialog(
+                  context: context,
+                  builder: (context) => IPhoneAdviceDialog(
+                    isFrenchInterface: _isFrenchInterface,
+                    onContinue: () async {
+                      await _markIPhoneAdviceAsShown();
+                      onConfirm();
+                    },
+                  ),
+                );
+              } else {
+                // تم عرض النصيحة من قبل، متابعة عادية
+                onConfirm();
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+            ),
+            child: Text(_getTranslatedText('متابعة', 'Continuer')),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _checkPrintCredit() async {
     if (currentUser == null) return;
 
@@ -10067,9 +10113,9 @@ class IPhoneAdviceDialog extends StatelessWidget {
                   Text(
                     _t(
                       'قد تواجه بعض المشاكل في عرض وتحميل التقارير على أجهزة آيفون '
-                      'بسبب قيود نظام iOS.',
+                          'بسبب قيود نظام iOS.',
                       'Vous pourriez rencontrer des problèmes d\'affichage et de téléchargement '
-                      'des rapports sur iPhone en raison des restrictions du système iOS.',
+                          'des rapports sur iPhone en raison des restrictions du système iOS.',
                     ),
                     style: TextStyle(
                       fontSize: 14,
@@ -10081,9 +10127,9 @@ class IPhoneAdviceDialog extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             SizedBox(height: 16),
-            
+
             // Solution recommandée
             Container(
               padding: EdgeInsets.all(12),
@@ -10112,9 +10158,9 @@ class IPhoneAdviceDialog extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             SizedBox(height: 12),
-            
+
             // Note "une seule fois"
             Row(
               mainAxisAlignment: MainAxisAlignment.center,

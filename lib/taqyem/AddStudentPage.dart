@@ -562,10 +562,15 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
 
   Future<void> _navigateAfterSelection(String classId, String matiereId) async {
     try {
-      // Attendre un peu pour laisser le temps de sauvegarder
       await Future.delayed(Duration(milliseconds: 500));
 
-      // Naviguer directement vers la sélection des barèmes
+      final classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(classId)
+          .get();
+      final className =
+          classDoc.exists ? (classDoc['name'] ?? classId) : classId;
+
       final matiereDoc = await FirebaseFirestore.instance
           .collection('classes')
           .doc(classId)
@@ -581,6 +586,7 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
           MaterialPageRoute(
             builder: (context) => BaremesPage(
               selectedClass: classId,
+              selectedClassName: className,
               selectedMatiere: matiereId,
               matiereName: matiereName,
             ),
@@ -604,7 +610,14 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
     }
 
     try {
-      // Récupérer le nom de la matière
+      final classDoc = await FirebaseFirestore.instance
+          .collection('classes')
+          .doc(selectedClassId!)
+          .get();
+      final className = classDoc.exists
+          ? (classDoc['name'] ?? selectedClassId!)
+          : selectedClassId!;
+
       final matiereDoc = await FirebaseFirestore.instance
           .collection('classes')
           .doc(selectedClassId!)
@@ -615,12 +628,12 @@ class _ManageClassesPageState extends State<ManageClassesPage> {
       final matiereName =
           matiereDoc.exists ? matiereDoc['name'] : selectedSubjectId!;
 
-      // Naviguer directement vers BaremesPage
       Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => BaremesPage(
             selectedClass: selectedClassId!,
+            selectedClassName: className,
             selectedMatiere: selectedSubjectId!,
             matiereName: matiereName,
           ),

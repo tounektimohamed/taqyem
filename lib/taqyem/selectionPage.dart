@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:Taqyem/taqyem/AddStudentPage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:Taqyem/taqyem/tableau.dart';
@@ -171,15 +172,17 @@ class DataTranslator {
 
 class BaremesPage extends StatefulWidget {
   final String selectedClass;
+  final String selectedClassName;
   final String selectedMatiere;
   final String matiereName;
-  final bool autoNavigateToStudentList; // Nouveau paramètre
+  final bool autoNavigateToStudentList;
 
   BaremesPage({
     required this.selectedClass,
+    required this.selectedClassName,
     required this.selectedMatiere,
     required this.matiereName,
-    this.autoNavigateToStudentList = false, // Valeur par défaut
+    this.autoNavigateToStudentList = false,
   });
 
   @override
@@ -192,6 +195,7 @@ class _BaremesPageState extends State<BaremesPage> {
   Map<String, bool> _isExpanded = {};
   bool _isLoading = true;
   bool _isFrenchInterface = false;
+  Map<String, dynamic> _jsonCriteriaData = {};
 
   String removeArabicDiacritics(String text) {
     // Supprimer les diacritiques arabes pour un tri plus précis
@@ -222,6 +226,7 @@ class _BaremesPageState extends State<BaremesPage> {
     super.initState();
     _detectLanguage();
     _loadExistingSelections();
+    _loadJsonData();
     _showUtilityDialog();
 
     // Navigation automatique si demandée
@@ -230,6 +235,105 @@ class _BaremesPageState extends State<BaremesPage> {
         _navigateToStudentList();
       });
     }
+  }
+
+  Future<void> _loadJsonData() async {
+    try {
+      String jsonString =
+          await rootBundle.loadString('assets/evaluation_excel.json');
+      final jsonDataTmp = jsonDecode(jsonString);
+      setState(() {
+        _jsonCriteriaData = jsonDataTmp['classes'] as Map<String, dynamic>;
+      });
+    } catch (e) {
+      print("Erreur lors du chargement du fichier JSON: $e");
+    }
+  }
+
+  String _getTranslatedBaremeName(String baremeName) {
+    if (_jsonCriteriaData.isEmpty ||
+        widget.selectedClassName.isEmpty ||
+        widget.matiereName.isEmpty) {
+      return baremeName;
+    }
+
+    try {
+      String jsonClassName = widget.selectedClassName;
+
+      if (jsonClassName.contains('أ') ||
+          jsonClassName.contains('ب') ||
+          jsonClassName.contains('ج') ||
+          jsonClassName.contains('د')) {
+        jsonClassName = jsonClassName.replaceAll(RegExp(r'[أ-د]$'), '').trim();
+      }
+
+      if (!_jsonCriteriaData.containsKey(jsonClassName)) {
+        return baremeName;
+      }
+
+      final classData = _jsonCriteriaData[jsonClassName];
+      if (classData is! Map<String, dynamic> ||
+          !classData.containsKey('subjects')) {
+        return baremeName;
+      }
+
+      final subjects = classData['subjects'] as Map<String, dynamic>;
+
+      if (!subjects.containsKey(widget.matiereName)) {
+        return baremeName;
+      }
+
+      final subjectData = subjects[widget.matiereName];
+      if (subjectData is! Map<String, dynamic> ||
+          !subjectData.containsKey('criteria')) {
+        return baremeName;
+      }
+
+      final criteria = subjectData['criteria'] as List;
+
+      RegExp regex = RegExp(r'مع (\d+)(?:\.([أبج]))?');
+      Match? match = regex.firstMatch(baremeName);
+
+      if (match == null) {
+        return baremeName;
+      }
+
+      int criterionIndex = int.parse(match.group(1)!) - 1;
+      String? subLetter = match.group(2);
+
+      if (criterionIndex < 0 || criterionIndex >= criteria.length) {
+        return baremeName;
+      }
+
+      var criterion = criteria[criterionIndex];
+      if (criterion is! Map<String, dynamic>) {
+        return baremeName;
+      }
+
+      String criterionName = criterion['name'] ?? '';
+
+      if (subLetter != null) {
+        List indicators = criterion['indicators'] ?? [];
+        int indicatorIndex = 0;
+        if (subLetter == 'ب')
+          indicatorIndex = 1;
+        else if (subLetter == 'ج')
+          indicatorIndex = 2;
+        else if (subLetter == 'د') indicatorIndex = 3;
+
+        if (indicatorIndex < indicators.length) {
+          String indicatorName = indicators[indicatorIndex];
+          if (indicatorName is String && indicatorName.isNotEmpty) {
+            return '$criterionName - $indicatorName';
+          }
+        }
+      }
+      return criterionName;
+    } catch (e) {
+      print('Error getting translated bareme name: $e');
+    }
+
+    return baremeName;
   }
 
   void _detectLanguage() {
@@ -715,10 +819,9 @@ class _BaremesPageState extends State<BaremesPage> {
                     var baremeId = bareme.id;
                     var baremeValue = bareme['value'];
 
-                    // Traduire le nom du critère si l'interface est en français
-                    String displayedBareme = _isFrenchInterface
-                        ? DataTranslator.translateBareme(baremeValue)
-                        : baremeValue;
+                    // Traduire le nom du critère selon JSON
+                    String displayedBareme =
+                        _getTranslatedBaremeName(baremeValue);
 
                     return Container(
                       margin: EdgeInsets.only(bottom: 12),
@@ -771,13 +874,26 @@ class _BaremesPageState extends State<BaremesPage> {
                               ),
                               SizedBox(width: 8),
                               Expanded(
-                                child: Text(
-                                  displayedBareme,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Colors.grey.shade800,
-                                  ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      displayedBareme,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.grey.shade800,
+                                      ),
+                                    ),
+                                    if (displayedBareme != baremeValue)
+                                      Text(
+                                        baremeValue,
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.grey.shade500,
+                                        ),
+                                      ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -860,13 +976,10 @@ class _BaremesPageState extends State<BaremesPage> {
                                     var sousBaremeId = sousBareme.id;
                                     var sousBaremeName = sousBareme['name'];
 
-                                    // Traduire le nom du sous-critère si l'interface est en français
+                                    // Traduire le nom du sous-critère selon JSON
                                     String displayedSousBareme =
-                                        _isFrenchInterface
-                                            ? DataTranslator
-                                                .translateSousBareme(
-                                                    sousBaremeName)
-                                            : sousBaremeName;
+                                        _getTranslatedBaremeName(
+                                            sousBaremeName);
 
                                     return Container(
                                       margin: EdgeInsets.symmetric(
@@ -898,12 +1011,27 @@ class _BaremesPageState extends State<BaremesPage> {
                                               ),
                                             ),
                                           ),
-                                          title: Text(
-                                            displayedSousBareme,
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.grey.shade700,
-                                            ),
+                                          title: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                displayedSousBareme,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey.shade700,
+                                                ),
+                                              ),
+                                              if (displayedSousBareme !=
+                                                  sousBaremeName)
+                                                Text(
+                                                  sousBaremeName,
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: Colors.grey.shade500,
+                                                  ),
+                                                ),
+                                            ],
                                           ),
                                           trailing: Icon(
                                             Icons.arrow_forward_ios_rounded,
@@ -1237,6 +1365,8 @@ class _BaremesPageState extends State<BaremesPage> {
             MaterialPageRoute(
               builder: (context) => SelectedBaremesPage(
                 selectedClass: widget.selectedClass,
+                selectedClassName:
+                    widget.selectedClassName ?? widget.selectedClass,
                 selectedMatiere: widget.selectedMatiere,
                 matiereName: widget.matiereName,
               ),
@@ -1598,74 +1728,76 @@ class _SelectionPageState extends State<SelectionPage> {
       _isLoading = false;
     });
   }
-Future<void> fetchClasses() async {
-  try {
-    QuerySnapshot snapshot =
-        await FirebaseFirestore.instance.collection('classes').get();
 
-    // Définir l'ordre personnalisé des classes
-    const List<String> classOrder = [
-      "السنة الأولى ابتدائي",
-      "السنة الأولى ابتدائي أ",
-      "السنة الأولى ابتدائي ب", 
-      "السنة الأولى ابتدائي ج",
-      "السنة الأولى ابتدائي د",
-      "السنة الثانية ابتدائي",
-      "السنة الثانية ابتدائي أ",
-      "السنة الثانية ابتدائي ب",
-      "السنة الثانية ابتدائي ج",
-      "السنة الثانية ابتدائي د",
-      "السنة الثالثة ابتدائي",
-      "السنة الثالثة ابتدائي أ",
-      "السنة الثالثة ابتدائي ب",
-      "السنة الثالثة ابتدائي ج",
-      "السنة الثالثة ابتدائي د",
-      "السنة الرابعة ابتدائي",
-      "السنة الرابعة ابتدائي أ",
-      "السنة الرابعة ابتدائي ب",
-      "السنة الرابعة ابتدائي ج",
-      "السنة الرابعة ابتدائي د",
-      "السنة الخامسة ابتدائي",
-      "السنة الخامسة ابتدائي أ",
-      "السنة الخامسة ابتدائي ب",
-      "السنة الخامسة ابتدائي ج",
-      "السنة الخامسة ابتدائي د",
-      "السنة السادسة ابتدائي",
-      "السنة السادسة ابتدائي أ",
-      "السنة السادسة ابتدائي ب",
-      "السنة السادسة ابتدائي ج",
-      "السنة السادسة ابتدائي د",
-    ];
+  Future<void> fetchClasses() async {
+    try {
+      QuerySnapshot snapshot =
+          await FirebaseFirestore.instance.collection('classes').get();
 
-    List<Map<String, String>> allClasses = snapshot.docs
-        .map((doc) => {
-              'id': doc.id,
-              'name': doc['name'] as String,
-              'translatedName':
-                  DataTranslator.translateClass(doc['name'] as String)
-            })
-        .toList();
+      // Définir l'ordre personnalisé des classes
+      const List<String> classOrder = [
+        "السنة الأولى ابتدائي",
+        "السنة الأولى ابتدائي أ",
+        "السنة الأولى ابتدائي ب",
+        "السنة الأولى ابتدائي ج",
+        "السنة الأولى ابتدائي د",
+        "السنة الثانية ابتدائي",
+        "السنة الثانية ابتدائي أ",
+        "السنة الثانية ابتدائي ب",
+        "السنة الثانية ابتدائي ج",
+        "السنة الثانية ابتدائي د",
+        "السنة الثالثة ابتدائي",
+        "السنة الثالثة ابتدائي أ",
+        "السنة الثالثة ابتدائي ب",
+        "السنة الثالثة ابتدائي ج",
+        "السنة الثالثة ابتدائي د",
+        "السنة الرابعة ابتدائي",
+        "السنة الرابعة ابتدائي أ",
+        "السنة الرابعة ابتدائي ب",
+        "السنة الرابعة ابتدائي ج",
+        "السنة الرابعة ابتدائي د",
+        "السنة الخامسة ابتدائي",
+        "السنة الخامسة ابتدائي أ",
+        "السنة الخامسة ابتدائي ب",
+        "السنة الخامسة ابتدائي ج",
+        "السنة الخامسة ابتدائي د",
+        "السنة السادسة ابتدائي",
+        "السنة السادسة ابتدائي أ",
+        "السنة السادسة ابتدائي ب",
+        "السنة السادسة ابتدائي ج",
+        "السنة السادسة ابتدائي د",
+      ];
 
-    // Trier selon l'ordre personnalisé
-    allClasses.sort((a, b) {
-      final indexA = classOrder.indexOf(a['name']!);
-      final indexB = classOrder.indexOf(b['name']!);
-      
-      // Si le nom n'est pas trouvé dans l'ordre personnalisé,
-      // le mettre à la fin
-      if (indexA == -1) return 1;
-      if (indexB == -1) return -1;
-      
-      return indexA.compareTo(indexB);
-    });
+      List<Map<String, String>> allClasses = snapshot.docs
+          .map((doc) => {
+                'id': doc.id,
+                'name': doc['name'] as String,
+                'translatedName':
+                    DataTranslator.translateClass(doc['name'] as String)
+              })
+          .toList();
 
-    setState(() {
-      classes = allClasses;
-    });
-  } catch (e) {
-    print('Erreur lors de la récupération des classes: $e');
+      // Trier selon l'ordre personnalisé
+      allClasses.sort((a, b) {
+        final indexA = classOrder.indexOf(a['name']!);
+        final indexB = classOrder.indexOf(b['name']!);
+
+        // Si le nom n'est pas trouvé dans l'ordre personnalisé,
+        // le mettre à la fin
+        if (indexA == -1) return 1;
+        if (indexB == -1) return -1;
+
+        return indexA.compareTo(indexB);
+      });
+
+      setState(() {
+        classes = allClasses;
+      });
+    } catch (e) {
+      print('Erreur lors de la récupération des classes: $e');
+    }
   }
-}
+
   Future<void> fetchMatieres(String classId) async {
     try {
       QuerySnapshot snapshot = await FirebaseFirestore.instance
@@ -2168,6 +2300,8 @@ Future<void> fetchClasses() async {
                                 MaterialPageRoute(
                                   builder: (context) => SelectedBaremesPage(
                                     selectedClass: selectedClassId!,
+                                    selectedClassName:
+                                        selectedClassName ?? selectedClassId!,
                                     selectedMatiere: selectedMatiereId!,
                                     matiereName: selectedMatiereName!,
                                   ),
@@ -2191,6 +2325,8 @@ Future<void> fetchClasses() async {
                                 MaterialPageRoute(
                                   builder: (context) => BaremesPage(
                                     selectedClass: selectedClassId!,
+                                    selectedClassName:
+                                        selectedClassName ?? selectedClassId!,
                                     selectedMatiere: selectedMatiereId!,
                                     matiereName: selectedMatiereName!,
                                   ),
@@ -2292,11 +2428,13 @@ Future<void> fetchClasses() async {
 
 class SelectedBaremesPage extends StatefulWidget {
   final String selectedClass;
+  final String selectedClassName;
   final String selectedMatiere;
   final String matiereName;
 
   SelectedBaremesPage({
     required this.selectedClass,
+    required this.selectedClassName,
     required this.selectedMatiere,
     required this.matiereName,
   });
@@ -2310,6 +2448,7 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
   bool _isFrenchInterface = false;
   Map<String, bool> _selectedBaremes = {};
   Map<String, Map<String, bool>> _selectedSousBaremes = {};
+  Map<String, dynamic> _jsonCriteriaData = {};
   String removeArabicDiacritics(String text) {
     // Supprimer les diacritiques arabes pour un tri plus précis
     final Map<String, String> diacriticsMap = {
@@ -2338,12 +2477,112 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
   void initState() {
     super.initState();
     _detectLanguage();
+    _loadJsonData();
     _showUtilityDialog();
     Future.delayed(Duration(milliseconds: 500), () {
       setState(() {
         _isLoading = false;
       });
     });
+  }
+
+  Future<void> _loadJsonData() async {
+    try {
+      String jsonString =
+          await rootBundle.loadString('assets/evaluation_excel.json');
+      final jsonDataTmp = jsonDecode(jsonString);
+      setState(() {
+        _jsonCriteriaData = jsonDataTmp['classes'] as Map<String, dynamic>;
+      });
+    } catch (e) {
+      print("Erreur lors du chargement du fichier JSON: $e");
+    }
+  }
+
+  String _getTranslatedBaremeName(String baremeName) {
+    if (_jsonCriteriaData.isEmpty ||
+        widget.selectedClassName.isEmpty ||
+        widget.matiereName.isEmpty) {
+      return baremeName;
+    }
+
+    try {
+      String jsonClassName = widget.selectedClassName;
+
+      if (jsonClassName.contains('أ') ||
+          jsonClassName.contains('ب') ||
+          jsonClassName.contains('ج') ||
+          jsonClassName.contains('د')) {
+        jsonClassName = jsonClassName.replaceAll(RegExp(r'[أ-د]$'), '').trim();
+      }
+
+      if (!_jsonCriteriaData.containsKey(jsonClassName)) {
+        return baremeName;
+      }
+
+      final classData = _jsonCriteriaData[jsonClassName];
+      if (classData is! Map<String, dynamic> ||
+          !classData.containsKey('subjects')) {
+        return baremeName;
+      }
+
+      final subjects = classData['subjects'] as Map<String, dynamic>;
+
+      if (!subjects.containsKey(widget.matiereName)) {
+        return baremeName;
+      }
+
+      final subjectData = subjects[widget.matiereName];
+      if (subjectData is! Map<String, dynamic> ||
+          !subjectData.containsKey('criteria')) {
+        return baremeName;
+      }
+
+      final criteria = subjectData['criteria'] as List;
+
+      RegExp regex = RegExp(r'مع (\d+)(?:\.([أبج]))?');
+      Match? match = regex.firstMatch(baremeName);
+
+      if (match == null) {
+        return baremeName;
+      }
+
+      int criterionIndex = int.parse(match.group(1)!) - 1;
+      String? subLetter = match.group(2);
+
+      if (criterionIndex < 0 || criterionIndex >= criteria.length) {
+        return baremeName;
+      }
+
+      var criterion = criteria[criterionIndex];
+      if (criterion is! Map<String, dynamic>) {
+        return baremeName;
+      }
+
+      String criterionName = criterion['name'] ?? '';
+
+      if (subLetter != null) {
+        List indicators = criterion['indicators'] ?? [];
+        int indicatorIndex = 0;
+        if (subLetter == 'ب')
+          indicatorIndex = 1;
+        else if (subLetter == 'ج')
+          indicatorIndex = 2;
+        else if (subLetter == 'د') indicatorIndex = 3;
+
+        if (indicatorIndex < indicators.length) {
+          String indicatorName = indicators[indicatorIndex];
+          if (indicatorName is String && indicatorName.isNotEmpty) {
+            return '$criterionName - $indicatorName';
+          }
+        }
+      }
+      return criterionName;
+    } catch (e) {
+      print('Error getting translated bareme name: $e');
+    }
+
+    return baremeName;
   }
 
   void _detectLanguage() {
@@ -2904,15 +3143,11 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
           );
         }
 
-        // Trier les barèmes sélectionnés par nom
+        // Trier les barèmes sélectionnés par nom traduit
         var sortedDocs = List.from(snapshot.data!.docs);
         sortedDocs.sort((a, b) {
-          String nameA = _isFrenchInterface
-              ? DataTranslator.translateBareme(a['baremeName'] ?? '')
-              : a['baremeName'] ?? '';
-          String nameB = _isFrenchInterface
-              ? DataTranslator.translateBareme(b['baremeName'] ?? '')
-              : b['baremeName'] ?? '';
+          String nameA = _getTranslatedBaremeName(a['baremeName'] ?? '');
+          String nameB = _getTranslatedBaremeName(b['baremeName'] ?? '');
 
           return removeArabicDiacritics(nameA.toLowerCase())
               .compareTo(removeArabicDiacritics(nameB.toLowerCase()));
@@ -2926,15 +3161,13 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
             bool isBaremeSelected = doc['selected'] ?? false;
             String baremeName = doc['baremeName'] ?? '';
 
-            // Traduire le nom du critère si l'interface est en français
-            String displayedBaremeName = _isFrenchInterface
-                ? DataTranslator.translateBareme(baremeName)
-                : baremeName;
+            // Afficher le nom du critère selon JSON
+            String displayedBaremeName = _getTranslatedBaremeName(baremeName);
 
             return Column(
               children: [
                 if (isBaremeSelected)
-                  _buildBaremeCard(displayedBaremeName, true),
+                  _buildBaremeCard(displayedBaremeName, baremeName, true),
                 _buildSousBaremesList(
                     doc.reference, displayedBaremeName, isBaremeSelected),
               ],
@@ -2945,7 +3178,8 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
     );
   }
 
-  Widget _buildBaremeCard(String baremeName, bool isSelected) {
+  Widget _buildBaremeCard(
+      String baremeName, String originalBaremeName, bool isSelected) {
     return Container(
       margin: EdgeInsets.only(bottom: 8),
       child: Card(
@@ -2967,13 +3201,27 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
               size: 24,
             ),
           ),
-          title: Text(
-            baremeName,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.blue.shade800,
-              fontSize: 16,
-            ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                baremeName,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade800,
+                  fontSize: 16,
+                ),
+              ),
+              if (baremeName != originalBaremeName)
+                Text(
+                  originalBaremeName,
+                  style: TextStyle(
+                    fontWeight: FontWeight.normal,
+                    color: Colors.grey.shade500,
+                    fontSize: 11,
+                  ),
+                ),
+            ],
           ),
           subtitle: Text(
             _isFrenchInterface ? 'Critère principal' : 'معيار رئيسي',
@@ -3031,10 +3279,9 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
           children: sousBaremes.map((sousDoc) {
             String sousBaremeName = sousDoc['sousBaremeName'] ?? '';
 
-            // Traduire le nom du sous-critère si l'interface est en français
-            String displayedSousBaremeName = _isFrenchInterface
-                ? DataTranslator.translateSousBareme(sousBaremeName)
-                : sousBaremeName;
+            // Afficher le nom du sous-critère selon JSON
+            String displayedSousBaremeName =
+                _getTranslatedBaremeName(sousBaremeName);
 
             return Container(
               margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -3058,13 +3305,26 @@ class _SelectedBaremesPageState extends State<SelectedBaremesPage> {
                       color: Colors.green.shade600,
                     ),
                   ),
-                  title: Text(
-                    displayedSousBaremeName,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade800,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  title: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayedSousBaremeName,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade800,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (displayedSousBaremeName != sousBaremeName)
+                        Text(
+                          sousBaremeName,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                    ],
                   ),
                   subtitle: Text(
                     isBaremeSelected
