@@ -1,15 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:html' as html if (dart.library.html) 'dart:html';
-
+import 'dart:io' show Platform;
 import 'dart:math';
-import 'dart:math' as math;
-import 'dart:typed_data';
-import 'package:Taqyem/taqyem/iphone.dart';
+import 'dart:math' as math show min;
 import 'package:Taqyem/taqyem/payment/PaymentPage.dart';
-import 'package:Taqyem/taqyem/pdf_report_generator.dart';
 import 'package:Taqyem/taqyem/tableau_pdf.dart';
-import 'package:Taqyem/taqyem/word_report_generator.dart';
 import 'package:Taqyem/taqyem/template_selector.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -794,6 +789,92 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   bool _isFrenchInterface = false;
   bool _useJsonBaremeTranslation = false;
   Map<String, dynamic> _jsonCriteriaData = {};
+  Map<String, dynamic> _adaJsonData = {};
+
+  String? _getPerformanceFromAdaJson(
+      String className, String matiereName, String trimestre) {
+    if (_adaJsonData.isEmpty || className.isEmpty || matiereName.isEmpty) {
+      return null;
+    }
+
+    try {
+      String jsonClassName = className;
+      if (jsonClassName.contains('أ') ||
+          jsonClassName.contains('ب') ||
+          jsonClassName.contains('ج') ||
+          jsonClassName.contains('د')) {
+        jsonClassName = jsonClassName.replaceAll(RegExp(r'[أ-د]$'), '').trim();
+      }
+
+      if (!_adaJsonData.containsKey(jsonClassName)) {
+        return null;
+      }
+
+      final classData = _adaJsonData[jsonClassName];
+      if (classData is! Map<String, dynamic>) {
+        return null;
+      }
+
+      // Chercher la matière dans les domaines (structure imbriquée)
+      String? foundMatiere;
+      String? foundDomaine;
+
+      for (final domaineKey in classData.keys) {
+        final domaineData = classData[domaineKey];
+        if (domaineData is! Map<String, dynamic>) continue;
+
+        for (final matiereKey in domaineData.keys) {
+          if (matiereKey == matiereName ||
+              matiereName.contains(matiereKey) ||
+              matiereKey.contains(matiereName)) {
+            foundMatiere = matiereKey;
+            foundDomaine = domaineKey;
+            break;
+          }
+        }
+        if (foundMatiere != null) break;
+      }
+
+      if (foundMatiere == null) {
+        return null;
+      }
+
+      // Get the actual matiere data from the nested structure
+      final matiereData = classData[foundDomaine!][foundMatiere];
+      if (matiereData is! Map<String, dynamic>) {
+        return null;
+      }
+
+      String trimestreKey;
+      switch (trimestre) {
+        case 'الأول':
+          trimestreKey = 'الثلاثي الأول';
+          break;
+        case 'الثاني':
+          trimestreKey = 'الثلاثي الثاني';
+          break;
+        case 'الثالث':
+          trimestreKey = 'الثلاثي الثالث';
+          break;
+        default:
+          return null;
+      }
+
+      if (!matiereData.containsKey(trimestreKey)) {
+        return null;
+      }
+
+      final trimesterData = matiereData[trimestreKey];
+      if (trimesterData is! List || trimesterData.isEmpty) {
+        return null;
+      }
+
+      return trimesterData.join('\n');
+    } catch (e) {
+      return null;
+    }
+  }
+
   String _matiereName = '';
   String _classNameArabic = '';
   String _selectedTrimestre = 'الأول';
@@ -802,20 +883,10 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   String _selectedTemplateId = 'classic';
   // دالة للكشف إذا كان الجهاز آيفون
   bool _isIPhone() {
-    // في Flutter web، يمكننا الكشف عن نظام التشغيل
-    if (kIsWeb) {
-      final userAgent = html.window.navigator.userAgent.toLowerCase();
-      // الكشف عن iPhone في متصفح الويب
-      return userAgent.contains('iphone') ||
-          userAgent.contains('ipad') ||
-          (userAgent.contains('mac') &&
-              userAgent.contains('safari') &&
-              !userAgent.contains('android'));
-    } else {
-      // للتطبيقات المحمولة، يمكن استخدام Platform.isIOS
-      // لكن هذا يتطلب إضافة import 'dart:io' show Platform;
-      // return Platform.isIOS;
-      return false; // مؤقتاً، يمكنك تعديله حسب الحاجة
+    try {
+      return Platform.isIOS;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -1453,7 +1524,7 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setState) {
-            // Charger les noms de classe et matière
+            // Charger les noms de classe et matière et pré-remplir la performance
             Future<void> loadClassAndMatiereNames() async {
               try {
                 // Récupérer le nom de la classe
@@ -1477,6 +1548,17 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                 matiereName = _isFrenchInterface
                     ? DataTranslator.translateMatiere(arabicMatiereName)
                     : arabicMatiereName;
+
+                // Auto-remplir la performance depuis ada.json
+                String? performanceFromJson = _getPerformanceFromAdaJson(
+                  arabicClassName,
+                  arabicMatiereName,
+                  _selectedTrimestre,
+                );
+                if (performanceFromJson != null &&
+                    performanceFromJson.isNotEmpty) {
+                  performanceAttendueController.text = performanceFromJson;
+                }
 
                 if (mounted) {
                   setState(() {});
@@ -1571,6 +1653,47 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
                                       if (v != null) {
                                         setState(() {
                                           _selectedTrimestre = v;
+                                        });
+                                        // Mettre à jour la performance attendue quand le trimestre change
+                                        Future.microtask(() {
+                                          if (className.isNotEmpty &&
+                                              matiereName.isNotEmpty) {
+                                            // Récupérer les noms arabes
+                                            var classDocFuture =
+                                                FirebaseFirestore.instance
+                                                    .collection('classes')
+                                                    .doc(widget.selectedClass)
+                                                    .get();
+                                            var matiereDocFuture =
+                                                FirebaseFirestore.instance
+                                                    .collection('classes')
+                                                    .doc(widget.selectedClass)
+                                                    .collection('matieres')
+                                                    .doc(widget.selectedMatiere)
+                                                    .get();
+
+                                            Future.wait([
+                                              classDocFuture,
+                                              matiereDocFuture
+                                            ]).then((results) {
+                                              String arabicClassName =
+                                                  results[0]['name'] ?? '';
+                                              String arabicMatiereName =
+                                                  results[1]['name'] ?? '';
+                                              String? perfFromJson =
+                                                  _getPerformanceFromAdaJson(
+                                                arabicClassName,
+                                                arabicMatiereName,
+                                                v,
+                                              );
+                                              if (perfFromJson != null &&
+                                                  perfFromJson.isNotEmpty) {
+                                                performanceAttendueController
+                                                    .text = perfFromJson;
+                                                setState(() {});
+                                              }
+                                            });
+                                          }
                                         });
                                       }
                                     },
@@ -2415,13 +2538,9 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   Future<void> _downloadReportFromUrl(
       String downloadUrl, String filename, String reportId) async {
     try {
-      // print('📥 Téléchargement depuis: $downloadUrl');
-
       if (kIsWeb) {
-        // Version Web
-        html.window.open(downloadUrl, '_blank');
-        _showSuccessSnackbar(_getTranslatedText(
-            'جاري تحميل التقرير...', 'Téléchargement du rapport...'));
+        // Web version - not available on Android
+        return;
       } else {
         // Version Mobile/Desktop
         final response = await http.get(Uri.parse(downloadUrl));
@@ -2896,22 +3015,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       final bytes = base64Decode(pdfBase64);
 
       if (kIsWeb) {
-        // Version Web
-        final blob = html.Blob([bytes], 'application/pdf');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-
-        final anchor = html.AnchorElement(href: url)
-          ..setAttribute(
-            'download',
-            'rapport_${DateTime.now().millisecondsSinceEpoch}.pdf',
-          )
-          ..click();
-
-        Future.delayed(const Duration(seconds: 2), () {
-          html.Url.revokeObjectUrl(url);
-        });
-
-        // print('✅ PDF téléchargé sur le web');
+        // Web download not available on Android APK
+        return;
       } else {
         // Version Mobile/Desktop
         final directory = await getTemporaryDirectory();
@@ -2938,7 +3043,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   Future<void> _downloadGeneratedReport(String pdfUrl) async {
     try {
       if (kIsWeb) {
-        html.window.open(pdfUrl, '_blank');
+        // Web version not available on Android APK
+        return;
       } else {
         final response = await http.get(Uri.parse(pdfUrl));
         final bytes = response.bodyBytes;
@@ -2966,22 +3072,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   Future<void> _downloadHTMLContent(String htmlContent) async {
     try {
       if (kIsWeb) {
-        // Version Web
-        final blob = html.Blob([htmlContent], 'text/html; charset=utf-8');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-
-        final anchor = html.AnchorElement(href: url)
-          ..setAttribute(
-            'download',
-            'rapport_${DateTime.now().millisecondsSinceEpoch}.html',
-          )
-          ..click();
-
-        Future.delayed(const Duration(seconds: 2), () {
-          html.Url.revokeObjectUrl(url);
-        });
-
-        // print('✅ Fichier HTML téléchargé sur le web');
+        // Web version not available on Android APK
+        return;
       } else {
         // Version Mobile/Desktop
         final directory = await getTemporaryDirectory();
@@ -3387,7 +3479,14 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       setState(() {
         _jsonCriteriaData = jsonDataTmp['classes'] as Map<String, dynamic>;
       });
-      // print('JSON data loaded: ${_jsonCriteriaData.keys.toList()}');
+
+      String adaJsonString = await rootBundle.loadString('assets/ada.json');
+      final adaDataTmp = jsonDecode(adaJsonString);
+      setState(() {
+        _adaJsonData = adaDataTmp['نظام_التقييم_الابتدائي_تونس']
+                as Map<String, dynamic>? ??
+            {};
+      });
     } catch (e) {
       // print("Erreur lors du chargement du fichier JSON: $e");
     }
@@ -4744,13 +4843,8 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
   Future<void> _saveAndOpenPDF(Uint8List pdfBytes) async {
     try {
       if (kIsWeb) {
-        // Pour le web
-        final blob = html.Blob([pdfBytes], 'application/pdf');
-        final url = html.Url.createObjectUrlFromBlob(blob);
-        final anchor = html.AnchorElement(href: url)
-          ..setAttribute('download', 'tableau_resultats.pdf')
-          ..click();
-        html.Url.revokeObjectUrl(url);
+        // Web download not available on Android APK
+        return;
       } else {
         // Pour mobile/desktop
         final directory = await getTemporaryDirectory();
@@ -5112,19 +5206,14 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
 
   Future<bool> _sendDataToFlask(Map<String, dynamic> data) async {
     try {
-      // Récupérer le système d'évaluation
       final String evaluationSystem = await _getEvaluationSystem(
           widget.selectedClass, widget.selectedMatiere);
 
-      // Récupérer les notes personnalisées
       List<String> customNotes = [];
       if (evaluationSystem == 'custom') {
         customNotes = await _loadCustomNotes(
             widget.selectedClass, widget.selectedMatiere);
-        // print('📝 Notes custom chargées: $customNotes');
       }
-
-      // print('📤 ENVOI À FLASK - SYSTÈME: $evaluationSystem');
 
       Map<String, dynamic> finalData = {
         "userId": data['userId'],
@@ -5150,49 +5239,38 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       };
 
       final url = Uri.parse(
-          'https://mohamedtsou-taqyem-imprission.hf.space/generate_pdf');
+          'https://mohamedtsou-taqyem-imprission.hf.space/generate-pdf');
 
       final response = await http
           .post(
             url,
             headers: {
-              'Content-Type': 'application/json',
+              'Content-Type': 'application/json; charset=utf-8',
               'Accept': 'application/json',
             },
             body: json.encode(finalData),
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(const Duration(seconds: 120));
 
       if (response.statusCode == 200) {
         final bytes = response.bodyBytes;
 
         if (kIsWeb) {
-          // Version Web
-          final blob = html.Blob([bytes], 'application/pdf');
-          final url = html.Url.createObjectUrlFromBlob(blob);
-
-          final anchor = html.AnchorElement(href: url)
-            ..setAttribute('download',
-                'tableau_resultats_${DateTime.now().millisecondsSinceEpoch}.pdf')
-            ..click();
-
-          html.Url.revokeObjectUrl(url);
-        } else {
-          // Version Mobile/Desktop
-          final directory = await getTemporaryDirectory();
-          final filePath =
-              '${directory.path}/tableau_resultats_${DateTime.now().millisecondsSinceEpoch}.pdf';
-
-          final xFile = XFile.fromData(
-            bytes,
-            name:
-                'tableau_resultats_${DateTime.now().millisecondsSinceEpoch}.pdf',
-            mimeType: 'application/pdf',
-          );
-
-          await xFile.saveTo(filePath);
-          await OpenFile.open(filePath);
+          return false;
         }
+        final directory = await getTemporaryDirectory();
+        final filePath =
+            '${directory.path}/tableau_resultats_${DateTime.now().millisecondsSinceEpoch}.pdf';
+
+        final xFile = XFile.fromData(
+          bytes,
+          name:
+              'tableau_resultats_${DateTime.now().millisecondsSinceEpoch}.pdf',
+          mimeType: 'application/pdf',
+        );
+
+        await xFile.saveTo(filePath);
+        await OpenFile.open(filePath);
 
         _showSuccessSnackbar(
             _getTranslatedText('تم إنشاء PDF بنجاح', 'PDF généré avec succès'));
@@ -5353,27 +5431,19 @@ class _DynamicTablePageState extends State<DynamicTablePage> {
       if (response.statusCode == 200) {
         final htmlContent = utf8.decode(response.bodyBytes);
 
-        if (kIsWeb) {
-          // Version Web
-          final blob = html.Blob([htmlContent], 'text/html; charset=utf-8');
-          final url = html.Url.createObjectUrlFromBlob(blob);
-          html.window.open(url, '_blank');
-          html.Url.revokeObjectUrl(url);
-        } else {
-          // Version Mobile/Desktop
-          final directory = await getTemporaryDirectory();
-          final filePath =
-              '${directory.path}/rapport_${DateTime.now().millisecondsSinceEpoch}.html';
+        // Version Mobile/Desktop
+        final directory = await getTemporaryDirectory();
+        final filePath =
+            '${directory.path}/rapport_${DateTime.now().millisecondsSinceEpoch}.html';
 
-          final xFile = XFile.fromData(
-            Uint8List.fromList(utf8.encode(htmlContent)),
-            name: 'rapport_${DateTime.now().millisecondsSinceEpoch}.html',
-            mimeType: 'text/html',
-          );
+        final xFile = XFile.fromData(
+          Uint8List.fromList(utf8.encode(htmlContent)),
+          name: 'rapport_${DateTime.now().millisecondsSinceEpoch}.html',
+          mimeType: 'text/html',
+        );
 
-          await xFile.saveTo(filePath);
-          await OpenFile.open(filePath);
-        }
+        await xFile.saveTo(filePath);
+        await OpenFile.open(filePath);
 
         _showSuccessSnackbar(_getTranslatedText(
             'تم إنشاء التقرير بنجاح', 'Rapport généré avec succès'));

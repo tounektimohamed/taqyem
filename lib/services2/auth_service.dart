@@ -1,17 +1,15 @@
-
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart'; // Pour kIsWeb
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../components/alert.dart';
+import '../services/notification_service.dart';
 
 class AuthService {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: ['email', 'profile'],
-    clientId: kIsWeb 
-        ? '781442905848-7stfoh28o31d2a0b1t7v3mg2pf96on5h.apps.googleusercontent.com' // Pour le web seulement
-        : null, // Pour mobile, pas besoin de clientId
+    serverClientId:
+        '781442905848-7stfoh28o31d2a0b1t7v3mg2pf96on5h.apps.googleusercontent.com',
   );
 
   Future<UserCredential> signInWithGoogle(BuildContext context) async {
@@ -42,11 +40,14 @@ class AuthService {
       );
 
       // Connexion avec Firebase
-      final userCredential = 
+      final userCredential =
           await FirebaseAuth.instance.signInWithCredential(credential);
 
       // Fermer l'indicateur de chargement
       if (Navigator.canPop(context)) Navigator.of(context).pop();
+
+      // Enregistrer le token FCM après connexion
+      await NotificationService().initialize();
 
       return userCredential;
     } catch (e) {

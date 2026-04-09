@@ -12,6 +12,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:Taqyem/components/text_field.dart';
 import 'package:Taqyem/screens2/login_signup/password_reset.dart';
 import 'package:Taqyem/services2/auth_service.dart';
+import 'package:Taqyem/services/notification_service.dart';
 
 class SignIn extends StatefulWidget {
   const SignIn({Key? key}) : super(key: key);
@@ -107,116 +108,126 @@ class _SignInState extends State<SignIn> {
     }
   }
 
-Future<void> handleUserNavigation(UserCredential userCredential, {bool isGoogleSignIn = false}) async {
-  try {
-    final userDoc = await FirebaseFirestore.instance
-        .collection('Users')
-        .doc(userCredential.user!.uid)
-        .get();
+  Future<void> handleUserNavigation(UserCredential userCredential,
+      {bool isGoogleSignIn = false}) async {
+    try {
+      // Enregistrer le token FCM après connexion
+      try {
+        await NotificationService().initialize();
+      } catch (e) {
+        print('Erreur initialization notification: $e');
+      }
 
-    if (!userDoc.exists) {
-      throw Exception("User account not found");
-    }
+      final userDoc = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(userCredential.user!.uid)
+          .get();
 
-    // Safely get all fields with defaults
-    final userData = userDoc.data() ?? {};
-    final isAgent = userData['isAgent'] ?? false;
-    final isActive = userData['isActive'] ?? false;
-    final accountExpiration = userData['accountExpiration'] as Timestamp?;
+      if (!userDoc.exists) {
+        throw Exception("User account not found");
+      }
 
-    // Check account expiration if it exists
-    if (accountExpiration != null &&
-        accountExpiration.toDate().isBefore(DateTime.now())) {
-      throw Exception("Account has expired");
-    }
+      // Safely get all fields with defaults
+      final userData = userDoc.data() ?? {};
+      final isAgent = userData['isAgent'] ?? false;
+      final isActive = userData['isActive'] ?? false;
+      final accountExpiration = userData['accountExpiration'] as Timestamp?;
 
-    // Pour Google Sign-In, on permet la connexion même si isActive = false (première connexion)
-    if (!isActive && !isGoogleSignIn) {
-      throw Exception("Account is not active");
-    }
+      // Check account expiration if it exists
+      if (accountExpiration != null &&
+          accountExpiration.toDate().isBefore(DateTime.now())) {
+        throw Exception("Account has expired");
+      }
 
-    // Log access
-    await FirebaseFirestore.instance.collection('access_logs').add({
-      'userId': userCredential.user!.uid,
-      'email': userCredential.user!.email,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+      // Pour Google Sign-In, on permet la connexion même si isActive = false (première connexion)
+      if (!isActive && !isGoogleSignIn) {
+        throw Exception("Account is not active");
+      }
 
-    if (!mounted) return;
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            isAgent ? const AdminDashboard() : const Agentdashboard(),
-      ),
-    );
-  } catch (e) {
-    print('Navigation Error: $e');
-    if (!mounted) return;
-    setState(() {
-      _isError = true;
-      errorMsg = e.toString().replaceAll('Exception: ', '');
-    });
-    await FirebaseAuth.instance.signOut();
-  }
-}
-Future<void> signInWithGoogle() async {
-  setState(() {
-    isLoadingGoogle = true;
-    _isError = false;
-  });
-
-  try {
-    UserCredential userCredential =
-        await AuthService().signInWithGoogle(context);
-    final user = userCredential.user!;
-
-    // Reference to user document
-    final userDocRef =
-        FirebaseFirestore.instance.collection('Users').doc(user.uid);
-
-    // Vérifier si l'utilisateur existe déjà
-    final userDoc = await userDocRef.get();
-    
-    if (!userDoc.exists) {
-      // PREMIÈRE INSCRIPTION : créer le compte avec isActive = false
-      await userDocRef.set(
-        {
-          'name': user.displayName,
-          'email': user.email,
-          'isAgent': false,
-          'isActive': false, // Seulement false la première fois
-          'address': user.email,
-          'dob': null,
-          'gender': null,
-          'nic': null,
-          'mobile': null,
-          'accountExpiration': null,
-          'createdAt': FieldValue.serverTimestamp(),
-          'lastLogin': FieldValue.serverTimestamp(),
-        },
-      );
-    } else {
-      // UTILISATEUR EXISTANT : seulement mettre à jour lastLogin
-      await userDocRef.update({
-        'lastLogin': FieldValue.serverTimestamp(),
+      // Log access
+      await FirebaseFirestore.instance.collection('access_logs').add({
+        'userId': userCredential.user!.uid,
+        'email': userCredential.user!.email,
+        'timestamp': FieldValue.serverTimestamp(),
       });
-    }
 
-    await handleUserNavigation(userCredential, isGoogleSignIn: true);
-  } catch (e) {
-    print('Google Sign-In Error: $e');
-    if (!mounted) return;
-    setState(() {
-      _isError = true;
-      errorMsg = "Sign-in failed. Please try again.";
-    });
-  } finally {
-    if (!mounted) return;
-    setState(() => isLoadingGoogle = false);
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              isAgent ? const AdminDashboard() : const Agentdashboard(),
+        ),
+      );
+    } catch (e) {
+      print('Navigation Error: $e');
+      if (!mounted) return;
+      setState(() {
+        _isError = true;
+        errorMsg = e.toString().replaceAll('Exception: ', '');
+      });
+      await FirebaseAuth.instance.signOut();
+    }
   }
-}
+
+  Future<void> signInWithGoogle() async {
+    setState(() {
+      isLoadingGoogle = true;
+      _isError = false;
+    });
+
+    try {
+      UserCredential userCredential =
+          await AuthService().signInWithGoogle(context);
+      final user = userCredential.user!;
+
+      // Reference to user document
+      final userDocRef =
+          FirebaseFirestore.instance.collection('Users').doc(user.uid);
+
+      // Vérifier si l'utilisateur existe déjà
+      final userDoc = await userDocRef.get();
+
+      if (!userDoc.exists) {
+        // PREMIÈRE INSCRIPTION : créer le compte avec isActive = false
+        await userDocRef.set(
+          {
+            'name': user.displayName,
+            'email': user.email,
+            'isAgent': false,
+            'isActive': false, // Seulement false la première fois
+            'address': user.email,
+            'dob': null,
+            'gender': null,
+            'nic': null,
+            'mobile': null,
+            'accountExpiration': null,
+            'createdAt': FieldValue.serverTimestamp(),
+            'lastLogin': FieldValue.serverTimestamp(),
+          },
+        );
+      } else {
+        // UTILISATEUR EXISTANT : seulement mettre à jour lastLogin
+        await userDocRef.update({
+          'lastLogin': FieldValue.serverTimestamp(),
+        });
+      }
+
+      await handleUserNavigation(userCredential, isGoogleSignIn: true);
+    } catch (e) {
+      print('Google Sign-In Error: $e');
+      if (!mounted) return;
+      setState(() {
+        _isError = true;
+        errorMsg = "Sign-in failed. Please try again.";
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() => isLoadingGoogle = false);
+    }
+  }
+
   String getErrorMessage(String errorCode) {
     switch (errorCode) {
       case "ERROR_EMAIL_ALREADY_IN_USE":
