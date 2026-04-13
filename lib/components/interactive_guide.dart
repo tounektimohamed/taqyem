@@ -58,9 +58,10 @@ class _InteractiveGuideOverlayState extends State<InteractiveGuideOverlay> {
   int _currentStep = 0;
   final PageController _pageController = PageController();
   Map<String, String> _imageUrls = {};
+  Map<String, GuideTextData> _textData = {};
   bool _isLoadingImages = true;
 
-  final List<GuideStep> _steps = [
+  final List<GuideStep> _defaultSteps = [
     GuideStep(
       id: 'welcome',
       title: 'مرحباً بك!',
@@ -190,8 +191,16 @@ class _InteractiveGuideOverlayState extends State<InteractiveGuideOverlay> {
 
       if (mounted) {
         if (doc.exists && doc.data() != null) {
+          final data = doc.data()!;
           setState(() {
-            _imageUrls = Map<String, String>.from(doc.data()!['images'] ?? {});
+            _imageUrls = Map<String, String>.from(data['images'] ?? {});
+            if (data['texts'] != null) {
+              final textsMap = data['texts'] as Map<String, dynamic>;
+              _textData = textsMap.map((key, value) => MapEntry(
+                    key,
+                    GuideTextData.fromJson(Map<String, dynamic>.from(value)),
+                  ));
+            }
             _isLoadingImages = false;
           });
         } else {
@@ -203,6 +212,37 @@ class _InteractiveGuideOverlayState extends State<InteractiveGuideOverlay> {
         setState(() => _isLoadingImages = false);
       }
     }
+  }
+
+  List<GuideStep> get _steps {
+    return _defaultSteps.map((step) {
+      final textData = _textData[step.id];
+      if (textData != null &&
+          (textData.title.isNotEmpty || textData.description.isNotEmpty)) {
+        return GuideStep(
+          id: step.id,
+          title: textData.title,
+          description: textData.description,
+          icon: step.icon,
+          color: step.color,
+          actionHint: textData.actionHint.isNotEmpty
+              ? textData.actionHint
+              : step.actionHint,
+          imagePath: step.imagePath,
+          imageUrl: _imageUrls[step.id],
+        );
+      }
+      return GuideStep(
+        id: step.id,
+        title: step.title,
+        description: step.description,
+        icon: step.icon,
+        color: step.color,
+        actionHint: step.actionHint,
+        imagePath: step.imagePath,
+        imageUrl: _imageUrls[step.id],
+      );
+    }).toList();
   }
 
   void _nextStep() {
@@ -921,4 +961,28 @@ class GuideStep {
     this.imagePath,
     this.imageUrl,
   });
+}
+
+class GuideTextData {
+  final String title;
+  final String description;
+  final String actionHint;
+
+  GuideTextData({
+    required this.title,
+    required this.description,
+    this.actionHint = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'description': description,
+        'actionHint': actionHint,
+      };
+
+  factory GuideTextData.fromJson(Map<String, dynamic> json) => GuideTextData(
+        title: json['title'] ?? '',
+        description: json['description'] ?? '',
+        actionHint: json['actionHint'] ?? '',
+      );
 }

@@ -10,12 +10,14 @@ import 'package:Taqyem/taqyem/AdminProposalsPage.dart';
 import 'package:Taqyem/taqyem/AdminRequestsPage.dart';
 import 'package:Taqyem/taqyem/EditPage.dart';
 import 'package:Taqyem/taqyem/admin_migration_page.dart';
+import 'package:Taqyem/taqyem/admin_notification_page.dart';
 import 'package:Taqyem/taqyem/chat/admin_chat_panel.dart';
 import 'package:Taqyem/taqyem/da3m_help_admin_page.dart';
 import 'package:Taqyem/taqyem/data/add_edit_screen.dart';
 import 'package:Taqyem/taqyem/ereur_solution.dart';
 import 'package:Taqyem/taqyem/feedback_management_page.dart';
 import 'package:Taqyem/taqyem/guide_admin_page.dart';
+import 'package:Taqyem/taqyem/app_download_admin_page.dart';
 import 'package:Taqyem/taqyem/payment/demande.dart';
 import 'package:Taqyem/taqyem/pdf/ManagePDFPage.dart';
 import 'package:Taqyem/taqyem/selectionPage.dart';
@@ -108,6 +110,29 @@ class _AgentDashboardState extends State<AgentDashboard> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => Da3mHelpAdminPage(),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          Tooltip(
+            message: 'إدارة تحميل التطبيق',
+            child: IconButton(
+              icon: Container(
+                padding: EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(51),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.download_for_offline,
+                    color: Colors.white, size: 22),
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AppDownloadAdminPage(),
                   ),
                 );
               },
@@ -523,6 +548,19 @@ class _AgentDashboardState extends State<AgentDashboard> {
                   context,
                   MaterialPageRoute(
                     builder: (context) => const FeedbackManagementPage(),
+                  ),
+                );
+              },
+            ),
+            _buildDrawerItem(
+              context,
+              Icons.feedback,
+              'إدارة notification',
+              () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AdminNotificationPage(),
                   ),
                 );
               },

@@ -19,63 +19,64 @@ class _GuideAdminPageState extends State<GuideAdminPage> {
   final List<GuideStepConfig> _steps = [
     GuideStepConfig(
         id: 'welcome',
-        title: 'مرحباً بك!',
+        defaultTitle: 'مرحباً بك!',
         defaultDescription: 'سنتعرف معاً على كيفية استخدام التطبيق خطوة بخطوة'),
     GuideStepConfig(
         id: 'create_class',
-        title: 'إنشاء قسم',
+        defaultTitle: 'إنشاء قسم',
         defaultDescription: 'ابدأ بإنشاء قسم جديد لطلابك من القائمة الجانبية'),
     GuideStepConfig(
         id: 'save_class',
-        title: 'حفظ القسم',
+        defaultTitle: 'حفظ القسم',
         defaultDescription: 'أدخل اسم القسم ثم اضغط حفظ'),
     GuideStepConfig(
         id: 'manage_classes',
-        title: 'إدارة الأقسام',
+        defaultTitle: 'إدارة الأقسام',
         defaultDescription: 'اذهب إلى إدارة الأقسام لاختيار القسم'),
     GuideStepConfig(
         id: 'select_class',
-        title: 'اختيار القسم',
+        defaultTitle: 'اختيار القسم',
         defaultDescription: 'اضغط على اسم القسم للدخول إليه'),
     GuideStepConfig(
         id: 'add_student',
-        title: 'إضافة التلاميذ',
+        defaultTitle: 'إضافة التلاميذ',
         defaultDescription: 'اضغط على إضافة تلميذ لإضافة طلاب جدد'),
     GuideStepConfig(
         id: 'save_student',
-        title: 'حفظ التلميذ',
+        defaultTitle: 'حفظ التلميذ',
         defaultDescription: 'أدخل اسم التلميذ ورقمه ثم اضغط حفظ'),
     GuideStepConfig(
         id: 'manage_bareme',
-        title: 'إنشاء المعايير',
+        defaultTitle: 'إنشاء المعايير',
         defaultDescription: 'اضغط على إدارة المعايير لإنشاء سُلَّم التقييم'),
     GuideStepConfig(
         id: 'add_bareme',
-        title: 'إضافة معايير',
+        defaultTitle: 'إضافة معايير',
         defaultDescription: 'أضف معايير مثل: الالتزام، التعاون، الإتقان'),
     GuideStepConfig(
         id: 'evaluate',
-        title: 'تقييم التلاميذ',
+        defaultTitle: 'تقييم التلاميذ',
         defaultDescription: 'اضغط على بطاقة تلميذ ثم اختر المعيار والقيمة'),
     GuideStepConfig(
         id: 'select_value',
-        title: 'تحديد القيمة',
+        defaultTitle: 'تحديد القيمة',
         defaultDescription: 'اختر المعيار واضغط على القيمة المناسبة'),
     GuideStepConfig(
         id: 'show_table',
-        title: 'عرض الجدول',
+        defaultTitle: 'عرض الجدول',
         defaultDescription: 'اضغط على جدول النتائج لعرض جميع التقييمات'),
     GuideStepConfig(
         id: 'export',
-        title: 'تصدير',
+        defaultTitle: 'تصدير',
         defaultDescription: 'يمكنك تصدير الجدول أو طباعته'),
     GuideStepConfig(
         id: 'complete',
-        title: 'تم!',
+        defaultTitle: 'تم!',
         defaultDescription: 'أنت جاهز الآن لاستخدام التطبيق. استمتع!'),
   ];
 
   Map<String, String> _imageBase64 = {};
+  Map<String, GuideTextData> _textData = {};
   bool _isLoading = true;
   bool _isUploading = false;
   String? _uploadingStepId;
@@ -94,12 +95,20 @@ class _GuideAdminPageState extends State<GuideAdminPage> {
           .get();
 
       if (doc.exists && doc.data() != null) {
+        final data = doc.data()!;
         setState(() {
-          _imageBase64 = Map<String, String>.from(doc.data()!['images'] ?? {});
+          _imageBase64 = Map<String, String>.from(data['images'] ?? {});
+          if (data['texts'] != null) {
+            final textsMap = data['texts'] as Map<String, dynamic>;
+            _textData = textsMap.map((key, value) => MapEntry(
+                  key,
+                  GuideTextData.fromJson(Map<String, dynamic>.from(value)),
+                ));
+          }
         });
       }
     } catch (e) {
-      print('Error loading images: $e');
+      print('Error loading data: $e');
     }
     setState(() => _isLoading = false);
   }
@@ -296,6 +305,47 @@ class _GuideAdminPageState extends State<GuideAdminPage> {
     }
   }
 
+  Future<void> _saveTextData(String stepId, String title, String description,
+      String actionHint) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      _textData[stepId] = GuideTextData(
+        title: title,
+        description: description,
+        actionHint: actionHint,
+      );
+
+      await FirebaseFirestore.instance
+          .collection('guide_images')
+          .doc('steps')
+          .update({
+        'texts': _textData.map((key, value) => MapEntry(key, value.toJson())),
+        'updatedAt': FieldValue.serverTimestamp(),
+        'updatedBy': user.uid,
+      });
+
+      setState(() {});
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('تم حفظ النص بنجاح!'),
+              backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('خطأ في حفظ النص: $e'),
+              backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Future<void> _deleteImage(String stepId) async {
     try {
       final confirm = await showDialog<bool>(
@@ -392,7 +442,7 @@ class _GuideAdminPageState extends State<GuideAdminPage> {
                             ),
                             SizedBox(width: 12),
                             Expanded(
-                                child: Text(step.title,
+                                child: Text(step.defaultTitle,
                                     style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold))),
@@ -518,12 +568,162 @@ class _GuideAdminPageState extends State<GuideAdminPage> {
                                           ])),
                                     ),
                         ),
+                        SizedBox(height: 16),
+                        _buildTextSection(step),
                       ],
                     ),
                   ),
                 );
               },
             ),
+    );
+  }
+
+  Widget _buildTextSection(GuideStepConfig step) {
+    final textData = _textData[step.id];
+    final hasCustomText = textData != null &&
+        (textData.title.isNotEmpty || textData.description.isNotEmpty);
+
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.text_fields, size: 18, color: Colors.grey[600]),
+              SizedBox(width: 8),
+              Text('النص',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, color: Colors.grey[700])),
+              SizedBox(width: 8),
+              if (hasCustomText)
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: Colors.green.withAlpha(26),
+                      borderRadius: BorderRadius.circular(8)),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.check, size: 12, color: Colors.green),
+                    SizedBox(width: 4),
+                    Text('مخصص',
+                        style: TextStyle(fontSize: 10, color: Colors.green)),
+                  ]),
+                )
+              else
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                      color: Colors.grey.withAlpha(26),
+                      borderRadius: BorderRadius.circular(8)),
+                  child: Text('افتراضي',
+                      style: TextStyle(fontSize: 10, color: Colors.grey)),
+                ),
+              Spacer(),
+              TextButton.icon(
+                onPressed: () => _showTextEditDialog(step),
+                icon: Icon(hasCustomText ? Icons.edit : Icons.add, size: 16),
+                label: Text(hasCustomText ? 'تعديل' : 'إضافة',
+                    style: TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                    backgroundColor:
+                        hasCustomText ? Colors.orange : Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8))),
+              ),
+            ],
+          ),
+          if (hasCustomText) ...[
+            SizedBox(height: 8),
+            Text('العنوان: ${textData.title}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+            SizedBox(height: 4),
+            Text('الوصف: ${textData.description}',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis),
+            if (textData.actionHint.isNotEmpty) ...[
+              SizedBox(height: 4),
+              Text('التلميح: ${textData.actionHint}',
+                  style: TextStyle(fontSize: 11, color: Colors.amber[700])),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showTextEditDialog(GuideStepConfig step) {
+    final textData = _textData[step.id];
+    final titleController =
+        TextEditingController(text: textData?.title ?? step.defaultTitle);
+    final descriptionController = TextEditingController(
+        text: textData?.description ?? step.defaultDescription);
+    final actionHintController =
+        TextEditingController(text: textData?.actionHint ?? '');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('تعديل نص "${step.defaultTitle}"'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: InputDecoration(
+                  labelText: 'العنوان',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: descriptionController,
+                decoration: InputDecoration(
+                  labelText: 'الوصف',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: actionHintController,
+                decoration: InputDecoration(
+                  labelText: 'التلميح (اختياري)',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _saveTextData(
+                step.id,
+                titleController.text,
+                descriptionController.text,
+                actionHintController.text,
+              );
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+            child: Text('حفظ'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -583,12 +783,38 @@ class _GuideAdminPageState extends State<GuideAdminPage> {
 
 class GuideStepConfig {
   final String id;
-  final String title;
+  final String defaultTitle;
   final String defaultDescription;
+  final String defaultActionHint;
 
   GuideStepConfig({
     required this.id,
-    required this.title,
+    required this.defaultTitle,
     required this.defaultDescription,
+    this.defaultActionHint = '',
   });
+}
+
+class GuideTextData {
+  final String title;
+  final String description;
+  final String actionHint;
+
+  GuideTextData({
+    required this.title,
+    required this.description,
+    this.actionHint = '',
+  });
+
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'description': description,
+        'actionHint': actionHint,
+      };
+
+  factory GuideTextData.fromJson(Map<String, dynamic> json) => GuideTextData(
+        title: json['title'] ?? '',
+        description: json['description'] ?? '',
+        actionHint: json['actionHint'] ?? '',
+      );
 }
